@@ -1,4 +1,4 @@
-import { ClockIcon, FireIcon } from "@heroicons/react/16/solid";
+import { ClockIcon, FireIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/16/solid";
 import { Card, CardBody, Chip, Divider, Link } from "@heroui/react";
 import Image from "next/image";
 
@@ -64,7 +64,20 @@ export default function RecipePageMobile() {
           <Divider />
 
           {/* Title */}
-          <h1 className="text-2xl leading-tight font-bold">{recipe.name}</h1>
+          <h1 className="text-2xl leading-tight font-bold">
+            {recipe.name}
+            {recipe.url && (
+              <a
+                className="ml-2 inline-block align-middle"
+                href={recipe.url}
+                rel="noopener noreferrer"
+                target="_blank"
+                title="View original recipe"
+              >
+                <ArrowTopRightOnSquareIcon className="text-default-400 hover:text-primary inline h-4 w-4" />
+              </a>
+            )}
+          </h1>
 
           {/* Time info */}
           <div className="text-default-500 flex flex-wrap items-center gap-4 text-sm">

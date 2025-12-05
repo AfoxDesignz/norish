@@ -1,6 +1,11 @@
 "use client";
 
-import { WrenchScrewdriverIcon, FireIcon, ClockIcon } from "@heroicons/react/16/solid";
+import {
+  WrenchScrewdriverIcon,
+  FireIcon,
+  ClockIcon,
+  ArrowTopRightOnSquareIcon,
+} from "@heroicons/react/16/solid";
 import { Card, CardBody, CardHeader, Chip, Divider } from "@heroui/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -65,7 +70,20 @@ export default function RecipePageDesktop() {
             <CardHeader className="flex-col items-start gap-2 px-0 pt-0">
               <div className="flex w-full items-start justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold">{recipe.name}</h1>
+                  <h1 className="text-3xl font-bold">
+                    {recipe.name}
+                    {recipe.url && (
+                      <a
+                        className="ml-2 inline-block align-middle"
+                        href={recipe.url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        title="View original recipe"
+                      >
+                        <ArrowTopRightOnSquareIcon className="text-default-400 hover:text-primary inline h-5 w-5" />
+                      </a>
+                    )}
+                  </h1>
                   {recipe.description && (
                     <p className="text-default-600 mt-3 max-w-md text-base">{recipe.description}</p>
                   )}

@@ -69,7 +69,7 @@ export default function TimeInputs({
           inputWrapper: "border-default-200 dark:border-default-800",
         }}
         inputMode="numeric"
-        label="Prep Time"
+        label="Prep"
         pattern="[0-9]*"
         placeholder="0"
         size="md"
@@ -84,7 +84,7 @@ export default function TimeInputs({
           inputWrapper: "border-default-200 dark:border-default-800",
         }}
         inputMode="numeric"
-        label="Cook Time"
+        label="Cook"
         pattern="[0-9]*"
         placeholder="0"
         size="md"
@@ -99,7 +99,7 @@ export default function TimeInputs({
           inputWrapper: "border-default-200 dark:border-default-800",
         }}
         inputMode="numeric"
-        label="Total Time"
+        label="Total"
         pattern="[0-9]*"
         placeholder="0"
         size="md"

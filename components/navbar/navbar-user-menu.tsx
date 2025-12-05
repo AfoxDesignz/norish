@@ -3,16 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/dropdown";
 import { Avatar } from "@heroui/avatar";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Input,
-  Button,
-  addToast,
-} from "@heroui/react";
+import { Button } from "@heroui/react";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon } from "@heroicons/react/16/solid";
 import { EllipsisVerticalIcon } from "@heroicons/react/20/solid";
 import { UsersIcon } from "@heroicons/react/24/outline";
@@ -22,7 +13,7 @@ import { useRouter } from "next/navigation";
 
 import { ThemeSwitch } from "./theme-switch";
 
-import { useRecipesContext } from "@/context/recipes-context";
+import ImportRecipeModal from "@/components/shared/import-recipe-modal";
 import { cssButtonPill, cssButtonPillDanger } from "@/config/css-tokens";
 import { useUserContext } from "@/context/user-context";
 
@@ -34,10 +25,8 @@ interface NavbarUserMenuProps {
 
 export default function NavbarUserMenu({ trigger = "avatar" }: NavbarUserMenuProps) {
   const { user, userMenuOpen, setUserMenuOpen, signOut } = useUserContext();
-  const { importRecipe } = useRecipesContext();
   const router = useRouter();
   const [showUrlModal, setShowUrlModal] = useState(false);
-  const [importUrl, setImportUrl] = useState("");
   const [mounted, setMounted] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
@@ -62,23 +51,7 @@ export default function NavbarUserMenu({ trigger = "avatar" }: NavbarUserMenuPro
     }
   };
 
-  async function handleImportFromUrl() {
-    if (importUrl.trim() === "") return;
 
-    try {
-      await importRecipe(importUrl);
-      setShowUrlModal(false);
-      setImportUrl("");
-    } catch (e) {
-      setShowUrlModal(false);
-      setImportUrl("");
-      addToast({
-        title: "Failed to import recipe",
-        description: (e as Error).message,
-        color: "danger",
-      });
-    }
-  }
 
   if (!user) return null;
 
@@ -222,32 +195,7 @@ export default function NavbarUserMenu({ trigger = "avatar" }: NavbarUserMenuPro
       </Dropdown>
 
       {/* Import from URL Modal */}
-      <Modal isOpen={showUrlModal} size="md" onOpenChange={setShowUrlModal}>
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">Import recipe</ModalHeader>
-              <ModalBody>
-                <Input
-                  label="Recipe URL"
-                  placeholder="https://example.com/your-recipe"
-                  type="url"
-                  value={importUrl}
-                  onChange={(e) => setImportUrl(e.target.value)}
-                />
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="flat" onPress={onClose}>
-                  Cancel
-                </Button>
-                <Button color="primary" onPress={handleImportFromUrl}>
-                  Import
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+      <ImportRecipeModal isOpen={showUrlModal} onOpenChange={setShowUrlModal} />
 
       {/* Backdrop - only render on client */}
       {mounted &&
