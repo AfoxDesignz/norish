@@ -40,6 +40,9 @@ COPY package.json pnpm-lock.yaml .npmrc ./
 # Tell sharp to use system libvips
 ENV SHARP_IGNORE_GLOBAL_LIBVIPS=0
 
+# CI=true is required for pnpm to run in non-interactive mode
+ENV CI=true
+
 RUN pnpm fetch --prod
 RUN pnpm install --prod --offline --frozen-lockfile --recursive
 
