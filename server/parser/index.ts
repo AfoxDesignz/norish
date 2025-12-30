@@ -1,7 +1,7 @@
 import { FullRecipeInsertDTO } from "@/types/dto/recipe";
-import { tryExtractRecipeFromJsonLd } from "@/lib/parser/jsonld";
-import { tryExtractRecipeFromMicrodata } from "@/lib/parser/microdata";
-import { fetchViaPuppeteer } from "@/lib/parser/fetch";
+import { tryExtractRecipeFromJsonLd } from "@/server/parser/jsonld";
+import { tryExtractRecipeFromMicrodata } from "@/server/parser/microdata";
+import { fetchViaPuppeteer } from "@/server/parser/fetch";
 import { extractRecipeWithAI } from "@/server/ai/recipe-parser";
 import {
   getContentIndicators,
@@ -9,7 +9,7 @@ import {
   isVideoParsingEnabled,
   shouldAlwaysUseAI,
 } from "@/config/server-config-loader";
-import { isVideoUrl } from "@/lib/helpers";
+import { isVideoUrl } from "@/server/helpers";
 import { parserLogger as log } from "@/server/logger";
 
 export async function parseRecipeFromUrl(
@@ -26,7 +26,7 @@ export async function parseRecipeFromUrl(
     }
 
     try {
-      const { processVideoRecipe } = await import("@/lib/video/processor");
+      const { processVideoRecipe } = await import("@/server/video/processor");
 
       return await processVideoRecipe(url, allergies);
     } catch (error: any) {
@@ -56,13 +56,13 @@ export async function parseRecipeFromUrl(
       throw new Error("AI-only import requested but AI is not enabled.");
     }
 
-    const ai = await extractRecipeWithAI(html, url, allergies);
+    const aiResult = await extractRecipeWithAI(html, url, allergies);
 
-    if (ai) {
-      return ai;
+    if (aiResult.success) {
+      return aiResult.data;
     }
 
-    throw new Error("AI extraction failed - could not parse recipe.");
+    throw new Error(`AI extraction failed: ${aiResult.error}`);
   }
 
   // Standard parsing flow: try structured parsers first, then AI fallback
@@ -95,11 +95,13 @@ export async function parseRecipeFromUrl(
 
   if (aiEnabled) {
     log.info({ url }, "Falling back to AI extraction");
-    const ai = await extractRecipeWithAI(html, url, allergies);
+    const aiResult = await extractRecipeWithAI(html, url, allergies);
 
-    if (ai) {
-      return ai;
+    if (aiResult.success) {
+      return aiResult.data;
     }
+
+    log.warn({ url, error: aiResult.error, code: aiResult.code }, "AI fallback extraction failed");
   }
 
   log.error({ url }, "All extraction methods failed");

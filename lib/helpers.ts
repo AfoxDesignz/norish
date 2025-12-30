@@ -131,14 +131,6 @@ export function isUrl(str: string): boolean {
   return httpUrlSchema.safeParse(str).success;
 }
 
-export async function isVideoUrl(str: string): Promise<boolean> {
-  if (!isUrl(str)) return false;
-
-  const { isSupportedVideoUrl } = await import("@/lib/video/detector");
-
-  return isSupportedVideoUrl(str);
-}
-
 export const toArr = (v: any) => (Array.isArray(v) ? v : []);
 
 export function startOfMonth(date: Date): Date {
