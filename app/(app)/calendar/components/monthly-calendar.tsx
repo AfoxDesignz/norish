@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 
 import { useCalendarContext } from "../context";
 
@@ -55,9 +57,11 @@ function getMonthDaysGrid(baseDate: Date): DayCell[] {
   return days;
 }
 
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
 export default function MonthlyCalendar() {
+  const t = useTranslations("calendar");
+  const locale = useLocale();
   const today = useMemo(() => new Date(), []);
   const [offset, setOffset] = useState(0);
   const viewDate = useMemo(
@@ -66,8 +70,8 @@ export default function MonthlyCalendar() {
   );
   const days = useMemo(() => getMonthDaysGrid(viewDate), [viewDate]);
   const monthFormatter = useMemo(
-    () => new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }),
-    []
+    () => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }),
+    [locale]
   );
 
   const { plannedItemsByDate, isLoading } = useCalendarContext();
@@ -94,30 +98,32 @@ export default function MonthlyCalendar() {
         <h2 className="text-lg font-semibold">{monthFormatter.format(viewDate)}</h2>
         <div className="flex items-center gap-2">
           <button
-            aria-label="Previous month"
-            className="rounded-medium border-default-200 hover:bg-default-100 border px-2 py-1 text-base disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={t("navigation.previousMonth")}
+            className="rounded-medium border-default-200 hover:bg-default-100 flex items-center gap-1 border px-2 py-1 text-base disabled:cursor-not-allowed disabled:opacity-50"
             disabled={offset <= -1}
             type="button"
             onClick={onPrevMonth}
           >
-            ← Prev
+            <ChevronLeftIcon className="h-4 w-4" />
+            {t("navigation.prev")}
           </button>
           <button
-            aria-label="Next month"
-            className="rounded-medium border-default-200 hover:bg-default-100 border px-2 py-1 text-base disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={t("navigation.nextMonth")}
+            className="rounded-medium border-default-200 hover:bg-default-100 flex items-center gap-1 border px-2 py-1 text-base disabled:cursor-not-allowed disabled:opacity-50"
             disabled={offset >= 1}
             type="button"
             onClick={onNextMonth}
           >
-            Next →
+            {t("navigation.next")}
+            <ChevronRightIcon className="h-4 w-4" />
           </button>
         </div>
       </div>
 
       <div className="text-default-500 grid grid-cols-7 gap-1 text-xs">
-        {WEEKDAYS.map((w) => (
-          <div key={w} className="px-2 py-1 text-center">
-            {w}
+        {WEEKDAY_KEYS.map((key) => (
+          <div key={key} className="px-2 py-1 text-center">
+            {t(`weekdays.${key}`)}
           </div>
         ))}
       </div>

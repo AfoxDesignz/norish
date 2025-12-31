@@ -1,0 +1,40 @@
+{
+  "page": {
+    "title": "Agenda"
+  },
+  "navigation": {
+    "previousMonth": "Vorige maand",
+    "nextMonth": "Volgende maand",
+    "prev": "Vorige",
+    "next": "Volgende"
+  },
+  "weekdays": {
+    "mon": "Ma",
+    "tue": "Di",
+    "wed": "Wo",
+    "thu": "Do",
+    "fri": "Vr",
+    "sat": "Za",
+    "sun": "Zo"
+  },
+  "timeline": {
+    "noItems": "Geen items",
+    "viewGroceries": "Bekijk boodschappen",
+    "goToRecipe": "Ga naar recept",
+    "deleteItem": "Verwijder item",
+    "itemActions": "Item acties",
+    "viewAllergenWarning": "Bekijk allergenenwaarschuwing",
+    "allergyWarning": "Waarschuwing:",
+    "contains": "Bevat: {allergens}",
+    "addItem": "Item toevoegen"
+  },
+  "panel": {
+    "addToCalendar": "Toevoegen aan agenda",
+    "addRecipe": "Recept toevoegen",
+    "noDaysAvailable": "Geen dagen beschikbaar.",
+    "searchPlaceholder": "Zoek recepten of voeg notities toe...",
+    "addNote": "Notitie toevoegen: {input}",
+    "noRecipesFound": "Geen recepten gevonden.",
+    "failedToLoadRecipes": "Kan recepten niet laden."
+  }
+}
