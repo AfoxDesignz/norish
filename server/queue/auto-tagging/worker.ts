@@ -1,0 +1,155 @@
+/**
+ * Auto-Tagging Worker
+ *
+ * Processes auto-tagging jobs from the queue.
+ * Generates AI-based tags for recipes that were imported via structured parsers.
+ * Runs in-process with the main server.
+ */
+
+import type { AutoTaggingJobData } from "@/types";
+
+import { Worker, Job } from "bullmq";
+
+import { redisConnection, QUEUE_NAMES } from "../config";
+
+import { createLogger } from "@/server/logger";
+import { emitByPolicy, type PolicyEmitContext } from "@/server/trpc/helpers";
+import { recipeEmitter } from "@/server/trpc/routers/recipes/emitter";
+import { getRecipePermissionPolicy } from "@/config/server-config-loader";
+import { getRecipeFull } from "@/server/db";
+import { attachTagsToRecipeByInputTx, getRecipeTagNamesTx } from "@/server/db/repositories/tags";
+import { db } from "@/server/db/drizzle";
+import { generateTagsForRecipe } from "@/server/ai/auto-tagger";
+
+const log = createLogger("worker:auto-tagging");
+
+let worker: Worker<AutoTaggingJobData> | null = null;
+
+async function processAutoTaggingJob(job: Job<AutoTaggingJobData>): Promise<void> {
+  const { recipeId, userId, householdKey } = job.data;
+
+  log.info(
+    { jobId: job.id, recipeId, attempt: job.attemptsMade + 1 },
+    "Processing auto-tagging job"
+  );
+
+  const policy = await getRecipePermissionPolicy();
+  const ctx: PolicyEmitContext = { userId, householdKey };
+
+  const recipe = await getRecipeFull(recipeId);
+
+  if (!recipe) {
+    throw new Error(`Recipe not found: ${recipeId}`);
+  }
+
+  if (recipe.recipeIngredients.length === 0) {
+    log.warn({ recipeId }, "Recipe has no ingredients, skipping auto-tagging");
+    return;
+  }
+
+  // Prepare recipe data for AI tagging
+  const recipeForTagging = {
+    title: recipe.name,
+    description: recipe.description,
+    ingredients: recipe.recipeIngredients.map((ri) => ri.ingredientName),
+  };
+
+  const result = await generateTagsForRecipe(recipeForTagging);
+
+  if (!result.success) {
+    throw new Error(result.error);
+  }
+
+  const generatedTags = result.data;
+
+  if (generatedTags.length === 0) {
+    log.info({ recipeId }, "AI returned no tags");
+    return;
+  }
+
+  // Update recipe tags in database (within transaction to avoid race conditions)
+  await db.transaction(async (tx) => {
+    // Get existing tags to merge (preserve any manually added tags)
+    const existingTags = await getRecipeTagNamesTx(tx, recipeId);
+
+    // Merge tags: AI tags + existing tags (deduplicated, lowercase comparison)
+    const existingLower = new Set(existingTags.map((t: string) => t.toLowerCase()));
+    const newTags = generatedTags.filter((t) => !existingLower.has(t.toLowerCase()));
+    const allTags = [...existingTags, ...newTags];
+
+    await attachTagsToRecipeByInputTx(tx, recipeId, allTags);
+
+    log.info(
+      { jobId: job.id, recipeId, newTags, totalTags: allTags.length },
+      "Auto-tagging completed and saved"
+    );
+  });
+
+  // Fetch updated recipe and emit event
+  const updatedRecipe = await getRecipeFull(recipeId);
+
+  if (updatedRecipe) {
+    emitByPolicy(recipeEmitter, policy.view, ctx, "updated", { recipe: updatedRecipe });
+  }
+}
+
+async function handleJobFailed(
+  job: Job<AutoTaggingJobData> | undefined,
+  error: Error
+): Promise<void> {
+  if (!job) return;
+
+  const { recipeId } = job.data;
+  const maxAttempts = job.opts.attempts ?? 3;
+  const isFinalFailure = job.attemptsMade >= maxAttempts;
+
+  log.error(
+    {
+      jobId: job.id,
+      recipeId,
+      attempt: job.attemptsMade,
+      maxAttempts,
+      isFinalFailure,
+      error: error.message,
+    },
+    "Auto-tagging job failed"
+  );
+
+  // Note: We don't emit a "failed" event for auto-tagging failures
+  // since it's a background enhancement, not a user-initiated action
+}
+
+export function startAutoTaggingWorker(): void {
+  if (worker) {
+    log.warn("Auto-tagging worker already running");
+
+    return;
+  }
+
+  worker = new Worker<AutoTaggingJobData>(QUEUE_NAMES.AUTO_TAGGING, processAutoTaggingJob, {
+    connection: redisConnection,
+    concurrency: 3,
+  });
+
+  worker.on("completed", (job) => {
+    log.debug({ jobId: job.id }, "Auto-tagging job completed");
+  });
+
+  worker.on("failed", (job, error) => {
+    handleJobFailed(job, error);
+  });
+
+  worker.on("error", (error) => {
+    log.error({ error }, "Auto-tagging worker error");
+  });
+
+  log.info("Auto-tagging worker started");
+}
+
+export async function stopAutoTaggingWorker(): Promise<void> {
+  if (worker) {
+    await worker.close();
+    worker = null;
+    log.info("Auto-tagging worker stopped");
+  }
+}

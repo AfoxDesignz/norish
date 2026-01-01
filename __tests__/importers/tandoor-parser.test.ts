@@ -23,7 +23,7 @@ vi.mock("@/config/server-config-loader", () => ({
 }));
 
 // Mock the downloader to avoid actual image saving
-vi.mock("@/lib/downloader", () => ({
+vi.mock("@/server/downloader", () => ({
   saveImageBytes: vi.fn().mockResolvedValue("mocked-image-guid"),
 }));
 

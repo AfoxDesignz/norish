@@ -149,6 +149,7 @@ export function createMockHouseholdSettings(
     id: `household-${Math.random().toString(36).slice(2)}`,
     name: "Test Household",
     users: [createMockHouseholdUser({ isAdmin: true })],
+    allergies: [],
     ...overrides,
   };
 }
@@ -165,6 +166,7 @@ export function createMockHouseholdAdminSettings(
     joinCode: "123456",
     joinCodeExpiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes from now
     users: [createMockHouseholdUser({ isAdmin: true })],
+    allergies: [],
     ...overrides,
   };
 }

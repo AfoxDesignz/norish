@@ -57,6 +57,10 @@ vi.mock("@/app/providers/trpc-provider", () => ({
       updateRecurring: { mutationOptions: vi.fn() },
       deleteRecurring: { mutationOptions: vi.fn() },
       checkRecurring: { mutationOptions: vi.fn() },
+      markAllDone: { mutationOptions: vi.fn() },
+      deleteDone: { mutationOptions: vi.fn() },
+      assignToStore: { mutationOptions: vi.fn() },
+      reorderInStore: { mutationOptions: vi.fn() },
     },
     config: {
       units: {

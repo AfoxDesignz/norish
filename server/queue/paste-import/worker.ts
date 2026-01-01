@@ -14,6 +14,7 @@ import { createLogger } from "@/server/logger";
 import { emitByPolicy, type PolicyEmitContext } from "@/server/trpc/helpers";
 import { recipeEmitter } from "@/server/trpc/routers/recipes/emitter";
 import { getRecipePermissionPolicy, getAIConfig, isAIEnabled } from "@/config/server-config-loader";
+import { addAutoTaggingJob } from "@/server/queue/auto-tagging/queue";
 import { createRecipeWithRefs, dashboardRecipe, getAllergiesForUsers } from "@/server/db";
 import { extractRecipeNodesFromJsonLd } from "@/server/parser/jsonld";
 import { normalizeRecipeFromJson } from "@/server/parser/normalize";
@@ -51,11 +52,16 @@ function hasStepsAndIngredients(parsed: any): boolean {
   );
 }
 
+interface ParseResult {
+  recipe: any;
+  usedAI: boolean;
+}
+
 async function parseFromPastedText(
   text: string,
   allergies?: string[],
   forceAI?: boolean
-): Promise<any> {
+): Promise<ParseResult> {
   const trimmed = text.trim();
 
   if (!trimmed) throw new Error("No text provided");
@@ -73,8 +79,8 @@ async function parseFromPastedText(
     const html = `<html><body><main><h1>Pasted recipe</h1><p>${escapeHtml(trimmed)}</p></main></body></html>`;
     const ai = await extractRecipeWithAI(html, undefined, allergies);
 
-    if (ai && hasStepsAndIngredients(ai)) {
-      return ai;
+    if (ai.success && hasStepsAndIngredients(ai.data)) {
+      return { recipe: ai.data, usedAI: true };
     }
 
     throw new Error("Could not parse pasted recipe.");
@@ -90,7 +96,7 @@ async function parseFromPastedText(
       if (normalized) {
         normalized.url = null;
         if (hasStepsAndIngredients(normalized)) {
-          return normalized;
+          return { recipe: normalized, usedAI: false };
         }
       }
     }
@@ -103,8 +109,8 @@ async function parseFromPastedText(
   const html = `<html><body><main><h1>Pasted recipe</h1><p>${escapeHtml(trimmed)}</p></main></body></html>`;
   const ai = await extractRecipeWithAI(html, undefined, allergies);
 
-  if (ai && hasStepsAndIngredients(ai)) {
-    return ai;
+  if (ai.success && hasStepsAndIngredients(ai.data)) {
+    return { recipe: ai.data, usedAI: true };
   }
 
   throw new Error("Could not parse pasted recipe.");
@@ -140,9 +146,9 @@ async function processPasteImportJob(job: Job<PasteImportJobData>): Promise<void
     );
   }
 
-  const parsedRecipe = await parseFromPastedText(text, allergyNames, forceAI);
+  const parseResult = await parseFromPastedText(text, allergyNames, forceAI);
 
-  const createdId = await createRecipeWithRefs(recipeId, userId, parsedRecipe);
+  const createdId = await createRecipeWithRefs(recipeId, userId, parseResult.recipe);
 
   if (!createdId) {
     throw new Error("Failed to save imported recipe");
@@ -151,12 +157,25 @@ async function processPasteImportJob(job: Job<PasteImportJobData>): Promise<void
   const dashboardDto = await dashboardRecipe(createdId);
 
   if (dashboardDto) {
-    log.info({ jobId: job.id, recipeId: createdId }, "Pasted recipe imported successfully");
+    log.info(
+      { jobId: job.id, recipeId: createdId, usedAI: parseResult.usedAI },
+      "Pasted recipe imported successfully"
+    );
 
     emitByPolicy(recipeEmitter, viewPolicy, ctx, "imported", {
       recipe: dashboardDto,
       pendingRecipeId: recipeId,
     });
+
+    // Trigger auto-tagging only if AI was NOT used for extraction
+    // (AI extraction already includes auto-tagging instructions in the prompt)
+    if (!parseResult.usedAI) {
+      await addAutoTaggingJob({
+        recipeId: createdId,
+        userId,
+        householdKey,
+      });
+    }
   }
 }
 

@@ -12,11 +12,17 @@ import {
 import { isVideoUrl } from "@/server/helpers";
 import { parserLogger as log } from "@/server/logger";
 
+export interface ParseRecipeResult {
+  recipe: FullRecipeInsertDTO;
+  /** Whether AI was used for extraction (affects auto-tagging) */
+  usedAI: boolean;
+}
+
 export async function parseRecipeFromUrl(
   url: string,
   allergies?: string[],
   forceAI?: boolean
-): Promise<FullRecipeInsertDTO> {
+): Promise<ParseRecipeResult> {
   // Check if URL is a video platform (YouTube, Instagram, TikTok, etc.)
   if (await isVideoUrl(url)) {
     const videoEnabled = await isVideoParsingEnabled();
@@ -27,8 +33,9 @@ export async function parseRecipeFromUrl(
 
     try {
       const { processVideoRecipe } = await import("@/server/video/processor");
+      const recipe = await processVideoRecipe(url, allergies);
 
-      return await processVideoRecipe(url, allergies);
+      return { recipe, usedAI: true };
     } catch (error: any) {
       log.error({ err: error }, "Video processing failed");
       throw error;
@@ -59,7 +66,7 @@ export async function parseRecipeFromUrl(
     const aiResult = await extractRecipeWithAI(html, url, allergies);
 
     if (aiResult.success) {
-      return aiResult.data;
+      return { recipe: aiResult.data, usedAI: true };
     }
 
     throw new Error(`AI extraction failed: ${aiResult.error}`);
@@ -75,7 +82,7 @@ export async function parseRecipeFromUrl(
     jsonLdParsed.steps.length > 0;
 
   if (containsStepsAndIngredients) {
-    return jsonLdParsed;
+    return { recipe: jsonLdParsed, usedAI: false };
   }
 
   const microParsed = await tryExtractRecipeFromMicrodata(url, html);
@@ -87,7 +94,7 @@ export async function parseRecipeFromUrl(
     microParsed.steps.length > 0;
 
   if (containsMicroStepsAndIngredients) {
-    return microParsed;
+    return { recipe: microParsed, usedAI: false };
   }
 
   // Only attempt AI extraction if AI is enabled
@@ -98,7 +105,7 @@ export async function parseRecipeFromUrl(
     const aiResult = await extractRecipeWithAI(html, url, allergies);
 
     if (aiResult.success) {
-      return aiResult.data;
+      return { recipe: aiResult.data, usedAI: true };
     }
 
     log.warn({ url, error: aiResult.error, code: aiResult.code }, "AI fallback extraction failed");

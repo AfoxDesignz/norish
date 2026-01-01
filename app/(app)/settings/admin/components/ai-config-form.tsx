@@ -16,7 +16,7 @@ import { useTranslations } from "next-intl";
 
 import { useAdminSettingsContext } from "../context";
 
-import { ServerConfigKeys, type AIConfig } from "@/server/db/zodSchemas/server-config";
+import { ServerConfigKeys, type AIConfig, type AutoTaggingMode } from "@/server/db/zodSchemas/server-config";
 import { useAvailableModelsQuery } from "@/hooks/admin";
 import SecretInput from "@/components/shared/secret-input";
 
@@ -35,6 +35,7 @@ export default function AIConfigForm() {
   const [maxTokens, setMaxTokens] = useState(aiConfig?.maxTokens ?? 10000);
   const [autoTagAllergies, setAutoTagAllergies] = useState(aiConfig?.autoTagAllergies ?? true);
   const [alwaysUseAI, setAlwaysUseAI] = useState(aiConfig?.alwaysUseAI ?? false);
+  const [autoTaggingMode, setAutoTaggingMode] = useState<AutoTaggingMode>(aiConfig?.autoTaggingMode ?? "disabled");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -102,6 +103,7 @@ const { models: availableModels, isLoading: isLoadingModels } = useAvailableMode
       setMaxTokens(aiConfig.maxTokens);
       setAutoTagAllergies(aiConfig.autoTagAllergies ?? true);
       setAlwaysUseAI(aiConfig.alwaysUseAI ?? false);
+      setAutoTaggingMode(aiConfig.autoTaggingMode ?? "disabled");
     }
   }, [aiConfig]);
 
@@ -172,6 +174,7 @@ const { models: availableModels, isLoading: isLoadingModels } = useAvailableMode
         maxTokens,
         autoTagAllergies,
         alwaysUseAI,
+        autoTaggingMode: autoTaggingMode as AIConfig["autoTaggingMode"],
       });
     } finally {
       setSaving(false);
@@ -332,6 +335,19 @@ const { models: availableModels, isLoading: isLoadingModels } = useAvailableMode
           onValueChange={setAlwaysUseAI}
         />
       </div>
+
+      <Select
+        description={t("autoTaggingModeDescription")}
+        isDisabled={!enabled}
+        label={t("autoTaggingMode")}
+        selectedKeys={[autoTaggingMode]}
+        onSelectionChange={(keys) => setAutoTaggingMode(Array.from(keys)[0] as AutoTaggingMode)}
+      >
+        <SelectItem key="disabled">{t("autoTaggingModes.disabled")}</SelectItem>
+        <SelectItem key="predefined">{t("autoTaggingModes.predefined")}</SelectItem>
+        <SelectItem key="predefined_db">{t("autoTaggingModes.predefinedDb")}</SelectItem>
+        <SelectItem key="freeform">{t("autoTaggingModes.freeform")}</SelectItem>
+      </Select>
 
       {testResult && (
         <div

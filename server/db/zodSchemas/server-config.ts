@@ -82,6 +82,7 @@ export const PromptsConfigSchema = z.object({
   recipeExtraction: z.string(),
   unitConversion: z.string(),
   nutritionEstimation: z.string(),
+  autoTagging: z.string(),
   isOverridden: z.boolean().default(false),
 });
 
@@ -146,6 +147,15 @@ export const AIProviderSchema = z.enum([
 
 export type AIProvider = z.infer<typeof AIProviderSchema>;
 
+export const AutoTaggingModeSchema = z.enum([
+  "disabled",
+  "predefined",
+  "predefined_db",
+  "freeform",
+]);
+
+export type AutoTaggingMode = z.infer<typeof AutoTaggingModeSchema>;
+
 export const AIConfigSchema = z.object({
   enabled: z.boolean(),
   provider: AIProviderSchema,
@@ -157,6 +167,7 @@ export const AIConfigSchema = z.object({
   maxTokens: z.number().int().positive(),
   autoTagAllergies: z.boolean().default(true),
   alwaysUseAI: z.boolean().default(false),
+  autoTaggingMode: AutoTaggingModeSchema.default("disabled"),
 });
 
 export type AIConfig = z.infer<typeof AIConfigSchema>;

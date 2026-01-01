@@ -143,6 +143,8 @@ export function createMockGrocery(overrides: Partial<GroceryDto> = {}): GroceryD
     unit: "piece",
     isDone: false,
     recurringGroceryId: null,
+    storeId: null,
+    sortOrder: 0,
     ...overrides,
   };
 }

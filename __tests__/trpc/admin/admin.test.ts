@@ -180,6 +180,7 @@ describe("admin procedures", () => {
         maxTokens: 4096,
         autoTagAllergies: true,
         alwaysUseAI: false,
+        autoTaggingMode: "disabled" as const,
       };
 
       // Current config has enabled: false
@@ -229,6 +230,7 @@ describe("admin procedures", () => {
         maxTokens: 4096,
         autoTagAllergies: true,
         alwaysUseAI: false,
+        autoTaggingMode: "disabled" as const,
       };
 
       // Current config also has enabled: false

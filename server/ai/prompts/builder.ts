@@ -6,6 +6,8 @@
 
 import { loadPrompt, fillPrompt } from "./loader";
 import { buildAllergyInstruction, type AllergyInstructionOptions } from "./fragments/allergies";
+import { getAutoTaggingMode } from "@/config/server-config-loader";
+import { listAllTagNames } from "@/server/db/repositories/tags";
 
 export interface RecipeExtractionPromptOptions {
   /**
@@ -28,6 +30,107 @@ export interface RecipeExtractionPromptOptions {
    * Additional context to append to the prompt.
    */
   additionalContext?: string;
+}
+
+export interface AutoTaggingPromptOptions {
+  /**
+   * Whether this is for embedding in an extraction prompt (true)
+   * or for standalone auto-tagging (false).
+   * @default false
+   */
+  embedded?: boolean;
+
+  /**
+   * Pre-fetched database tags (for predefined_db mode).
+   * If not provided and mode is predefined_db, will be fetched automatically.
+   */
+  existingDbTags?: string[];
+}
+
+export interface RecipeForTagging {
+  title: string;
+  description?: string | null;
+  ingredients: string[];
+}
+
+/**
+ * Build auto-tagging instructions/prompt.
+ *
+ * Can be used in two modes:
+ * - Embedded (embedded: true): Returns instructions to append to extraction prompts
+ * - Standalone (embedded: false): Returns full prompt for dedicated auto-tagging
+ *
+ * @param options - Configuration options
+ * @param recipe - Recipe data (only needed for standalone mode)
+ * @returns The prompt/instructions string, or empty string if disabled
+ */
+export async function buildAutoTaggingPrompt(
+  options: AutoTaggingPromptOptions = {},
+  recipe?: RecipeForTagging
+): Promise<string> {
+  const { embedded = false, existingDbTags: providedTags } = options;
+  const mode = await getAutoTaggingMode();
+
+  if (mode === "disabled") {
+    return "";
+  }
+
+  const basePrompt = await loadPrompt("auto-tagging");
+
+  // Fetch DB tags if needed and not provided
+  let dbTags: string[] | undefined = providedTags;
+  if (mode === "predefined_db" && !dbTags) {
+    dbTags = await listAllTagNames();
+  }
+
+  // Build mode-specific additions
+  let modeAddition = "";
+  if (mode === "predefined_db" && dbTags && dbTags.length > 0) {
+    const dbTagsList = dbTags.join(", ");
+    modeAddition = `
+
+ADDITIONAL ALLOWED TAGS (from existing recipes):
+${dbTagsList}
+
+You may use tags from both the predefined list above AND this additional list.`;
+  } else if (mode === "freeform") {
+    modeAddition = `
+
+Note: While you should prefer using predefined tags, you may create new relevant tags if needed.`;
+  }
+
+  if (embedded) {
+    // For embedding in extraction prompts - just return tagging instructions
+    return `
+
+TAGGING INSTRUCTIONS (for the "keywords" field):
+${basePrompt}${modeAddition}`;
+  }
+
+  // For standalone auto-tagging - include recipe context
+  if (!recipe) {
+    throw new Error("Recipe data required for standalone auto-tagging prompt");
+  }
+
+  const ingredientsList = recipe.ingredients.map((i) => `- ${i}`).join("\n");
+
+  let recipeContext = `
+
+RECIPE TO ANALYZE:
+Title: ${recipe.title}`;
+
+  if (recipe.description) {
+    recipeContext += `
+Description: ${recipe.description}`;
+  }
+
+  recipeContext += `
+Ingredients:
+${ingredientsList}
+
+Return ONLY a JSON object with a "tags" array, e.g.: { "tags": ["italian", "pasta", "vegetarian"] }`;
+
+  return `${basePrompt}${modeAddition}${recipeContext}`;
 }
 
 export interface VideoExtractionPromptOptions extends RecipeExtractionPromptOptions {
@@ -67,8 +170,9 @@ export async function buildRecipeExtractionPrompt(
 
   const basePrompt = await loadPrompt("recipe-extraction");
   const allergyInstruction = buildAllergyInstruction(allergies, { strict: strictAllergyDetection });
+  const autoTaggingInstruction = await buildAutoTaggingPrompt({ embedded: true });
 
-  const parts = [basePrompt, allergyInstruction];
+  const parts = [basePrompt, allergyInstruction, autoTaggingInstruction];
 
   if (url) {
     parts.push(`URL: ${url}`);
@@ -101,8 +205,9 @@ export async function buildImageExtractionPrompt(allergies?: string[]): Promise<
     .replace("reads website data", "reads recipe images");
 
   const allergyInstruction = buildAllergyInstruction(allergies, { strict: false });
+  const autoTaggingInstruction = await buildAutoTaggingPrompt({ embedded: true });
 
-  return `${imagePrompt}${allergyInstruction}
+  return `${imagePrompt}${allergyInstruction}${autoTaggingInstruction}
 
 Analyze the provided images and extract the complete recipe data. If multiple images are provided, they represent different pages/parts of the same recipe - combine them into a single complete recipe.`;
 }
@@ -122,6 +227,7 @@ export async function buildVideoExtractionPrompt(
 
   const basePrompt = await loadPrompt("recipe-extraction");
   const allergyInstruction = buildAllergyInstruction(allergies, { strict: false });
+  const autoTaggingInstruction = await buildAutoTaggingPrompt({ embedded: true });
 
   const durationMinutes = Math.floor(duration / 60);
   const durationSeconds = (duration % 60).toString().padStart(2, "0");
@@ -129,6 +235,7 @@ export async function buildVideoExtractionPrompt(
   const parts = [
     basePrompt,
     allergyInstruction,
+    autoTaggingInstruction,
     "",
     `SOURCE: Video transcript (${title})`,
     `URL: ${url}`,

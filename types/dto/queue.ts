@@ -88,3 +88,15 @@ export interface NutritionEstimationJobData {
 export type AddNutritionEstimationJobResult =
   | { status: "queued"; job: Job<NutritionEstimationJobData> }
   | { status: "duplicate"; existingJobId: string };
+
+// Auto-tagging queue types
+export interface AutoTaggingJobData {
+  recipeId: string;
+  userId: string;
+  householdKey: string;
+}
+
+export type AddAutoTaggingJobResult =
+  | { status: "queued"; job: Job<AutoTaggingJobData> }
+  | { status: "duplicate"; existingJobId: string }
+  | { status: "skipped"; reason: "disabled" };

@@ -17,6 +17,7 @@ export default function PromptsForm() {
   const [recipeExtraction, setRecipeExtraction] = useState("");
   const [unitConversion, setUnitConversion] = useState("");
   const [nutritionEstimation, setNutritionEstimation] = useState("");
+  const [autoTagging, setAutoTagging] = useState("");
   const [saving, setSaving] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -27,6 +28,7 @@ export default function PromptsForm() {
       setRecipeExtraction(prompts.recipeExtraction);
       setUnitConversion(prompts.unitConversion);
       setNutritionEstimation(prompts.nutritionEstimation);
+      setAutoTagging(prompts.autoTagging);
     }
   }, [prompts]);
 
@@ -36,11 +38,12 @@ export default function PromptsForm() {
       const changed =
         recipeExtraction !== prompts.recipeExtraction ||
         unitConversion !== prompts.unitConversion ||
-        nutritionEstimation !== prompts.nutritionEstimation;
+        nutritionEstimation !== prompts.nutritionEstimation ||
+        autoTagging !== prompts.autoTagging;
 
       setHasChanges(changed);
     }
-  }, [recipeExtraction, unitConversion, nutritionEstimation, prompts]);
+  }, [recipeExtraction, unitConversion, nutritionEstimation, autoTagging, prompts]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -48,6 +51,7 @@ export default function PromptsForm() {
       recipeExtraction,
       unitConversion,
       nutritionEstimation,
+      autoTagging,
     }).finally(() => {
       setSaving(false);
     });
@@ -103,6 +107,18 @@ export default function PromptsForm() {
           placeholder={t("nutritionEstimationPlaceholder")}
           value={nutritionEstimation}
           onValueChange={setNutritionEstimation}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Textarea
+          description={t("autoTaggingDescription")}
+          label={t("autoTagging")}
+          maxRows={15}
+          minRows={6}
+          placeholder={t("autoTaggingPlaceholder")}
+          value={autoTagging}
+          onValueChange={setAutoTagging}
         />
       </div>
 

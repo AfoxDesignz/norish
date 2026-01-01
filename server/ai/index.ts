@@ -116,6 +116,10 @@ export {
 } from "./nutrition-estimator";
 export type { NutritionEstimate } from "./nutrition-estimator";
 
+// Auto-tagging
+export { generateTagsForRecipe, type RecipeForTagging } from "./auto-tagger";
+export type { AutoTaggingOutput } from "./auto-tagger";
+
 // Transcription
 export { transcribeAudio } from "./transcriber";
 
@@ -126,6 +130,7 @@ export { transcribeAudio } from "./transcriber";
 export { recipeExtractionSchema } from "./schemas/recipe.schema";
 export { nutritionEstimationSchema } from "./schemas/nutrition.schema";
 export { conversionSchema } from "./schemas/conversion.schema";
+export { autoTaggingSchema } from "./schemas/auto-tagging.schema";
 
 // ============================================================================
 // Helpers - Utility functions

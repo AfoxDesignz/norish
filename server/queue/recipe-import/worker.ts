@@ -15,6 +15,7 @@ import { createLogger } from "@/server/logger";
 import { emitByPolicy, type PolicyEmitContext } from "@/server/trpc/helpers";
 import { recipeEmitter } from "@/server/trpc/routers/recipes/emitter";
 import { getRecipePermissionPolicy, getAIConfig } from "@/config/server-config-loader";
+import { addAutoTaggingJob } from "@/server/queue/auto-tagging/queue";
 import {
   createRecipeWithRefs,
   recipeExistsByUrlForPolicy,
@@ -85,13 +86,13 @@ async function processImportJob(job: Job<RecipeImportJobData>): Promise<void> {
   }
 
   // Parse and create recipe
-  const parsedRecipe = await parseRecipeFromUrl(url, allergyNames, job.data.forceAI);
+  const parseResult = await parseRecipeFromUrl(url, allergyNames, job.data.forceAI);
 
-  if (!parsedRecipe) {
+  if (!parseResult.recipe) {
     throw new Error("Failed to parse recipe from URL");
   }
 
-  const createdId = await createRecipeWithRefs(recipeId, userId, parsedRecipe);
+  const createdId = await createRecipeWithRefs(recipeId, userId, parseResult.recipe);
 
   if (!createdId) {
     throw new Error("Failed to save imported recipe");
@@ -100,12 +101,25 @@ async function processImportJob(job: Job<RecipeImportJobData>): Promise<void> {
   const dashboardDto = await dashboardRecipe(createdId);
 
   if (dashboardDto) {
-    log.info({ jobId: job.id, recipeId: createdId, url }, "Recipe imported successfully");
+    log.info(
+      { jobId: job.id, recipeId: createdId, url, usedAI: parseResult.usedAI },
+      "Recipe imported successfully"
+    );
 
     emitByPolicy(recipeEmitter, viewPolicy, ctx, "imported", {
       recipe: dashboardDto,
       pendingRecipeId: recipeId,
     });
+
+    // Trigger auto-tagging only if AI was NOT used for extraction
+    // (AI extraction already includes auto-tagging instructions in the prompt)
+    if (!parseResult.usedAI) {
+      await addAutoTaggingJob({
+        recipeId: createdId,
+        userId,
+        householdKey,
+      });
+    }
   }
 }
 

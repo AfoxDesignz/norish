@@ -83,6 +83,9 @@ async function processImageImportJob(job: Job<ImageImportJobData>): Promise<void
       recipe: dashboardDto,
       pendingRecipeId: recipeId,
     });
+
+    // Note: No auto-tagging job queued - image import is always AI-based,
+    // and AI extraction prompts already include auto-tagging instructions
   }
 }
 

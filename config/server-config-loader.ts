@@ -23,6 +23,7 @@ import {
   type VideoConfig,
   type RecipePermissionPolicy,
   type PromptsConfig,
+  type AutoTaggingMode,
   DEFAULT_RECIPE_PERMISSION_POLICY,
 } from "@/server/db/zodSchemas/server-config";
 import { getConfig } from "@/server/db/repositories/server-config";
@@ -137,6 +138,20 @@ export async function isVideoParsingEnabled(): Promise<boolean> {
   const videoConfig = await getConfig<VideoConfig>(ServerConfigKeys.VIDEO_CONFIG);
 
   return ((await isAIEnabled()) && videoConfig?.enabled) ?? false;
+}
+
+/**
+ * Get auto-tagging mode
+ * Returns "disabled" if AI is not enabled
+ */
+export async function getAutoTaggingMode(): Promise<AutoTaggingMode> {
+  const aiConfig = await getConfig<AIConfig>(ServerConfigKeys.AI_CONFIG);
+
+  if (!aiConfig?.enabled) {
+    return "disabled";
+  }
+
+  return aiConfig.autoTaggingMode ?? "disabled";
 }
 
 // ============================================================================

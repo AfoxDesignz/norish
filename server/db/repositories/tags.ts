@@ -155,3 +155,13 @@ export async function getRecipeTagNames(recipeId: string): Promise<string[]> {
 
   return rows.map((r) => r.name);
 }
+
+export async function getRecipeTagNamesTx(tx: any, recipeId: string): Promise<string[]> {
+  const rows = await tx
+    .select({ name: tags.name })
+    .from(recipeTags)
+    .innerJoin(tags, eq(recipeTags.tagId, tags.id))
+    .where(eq(recipeTags.recipeId, recipeId));
+
+  return rows.map((r: { name: string }) => r.name);
+}

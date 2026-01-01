@@ -379,6 +379,14 @@
       "autoTagAllergiesDescription": "Automatically add allergy-related tags when importing recipes",
       "alwaysUseAI": "Always Use AI Importing",
       "alwaysUseAIDescription": "Skip structured parsers and extract recipes using AI only",
+      "autoTaggingMode": "Auto-Tagging Mode",
+      "autoTaggingModeDescription": "Automatically assign tags/keywords to imported recipes using AI",
+      "autoTaggingModes": {
+        "disabled": "Disabled",
+        "predefined": "Predefined Tags Only",
+        "predefinedDb": "Predefined + Existing Tags",
+        "freeform": "AI Can Create New Tags"
+      },
       "connectionSuccess": "Connection successful",
       "testConnection": "Test Connection",
       "vision": "vision"
@@ -413,11 +421,14 @@
       "recipeExtractionDescription": "This prompt is used when extracting recipe data from web pages or video transcripts.",
       "recipeExtractionPlaceholder": "Enter the recipe extraction prompt...",
       "unitConversion": "Unit Conversion Prompt",
-      "unitConversionDescription": "This prompt is used when converting recipe measurements between metric and US systems. Available variables: {{sourceSystem}}, {{targetSystem}}, {{units}}",
+      "unitConversionDescription": "This prompt is used when converting recipe measurements between metric and US systems. Available variables: sourceSystem, targetSystem, units",
       "unitConversionPlaceholder": "Enter the unit conversion prompt...",
       "nutritionEstimation": "Nutrition Estimation Prompt",
-      "nutritionEstimationDescription": "This prompt is used when estimating nutrition information for a recipe. Available variables: {{recipeName}}, {{servings}}, {{ingredients}}",
-      "nutritionEstimationPlaceholder": "Enter the nutrition estimation prompt..."
+      "nutritionEstimationDescription": "This prompt is used when estimating nutrition information for a recipe. Available variables: recipeName, servings, ingredients",
+      "nutritionEstimationPlaceholder": "Enter the nutrition estimation prompt...",
+      "autoTagging": "Auto-Tagging Prompt",
+      "autoTaggingDescription": "This prompt is used to generate tags for imported recipes. Define tagging rules and predefined tags list.",
+      "autoTaggingPlaceholder": "Enter the auto-tagging prompt..."
     },
     "jsonEditor": {
       "unsavedChanges": "Unsaved changes",
