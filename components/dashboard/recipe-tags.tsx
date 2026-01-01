@@ -4,13 +4,15 @@ import { motion, useMotionValue } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Chip } from "@heroui/react";
 
+import TagsSkeleton from "@/components/skeleton/tags-skeleton";
 import { cssGlassBackdropChip } from "@/config/css-tokens";
 
 interface RecipeTagsProps {
   tags: { name: string }[];
+  isAutoTagging?: boolean;
 }
 
-export default function RecipeTags({ tags }: RecipeTagsProps) {
+export default function RecipeTags({ tags, isAutoTagging = false }: RecipeTagsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragLimit, setDragLimit] = useState(0);
   const x = useMotionValue(0);
@@ -27,6 +29,14 @@ export default function RecipeTags({ tags }: RecipeTagsProps) {
 
     return () => window.removeEventListener("resize", update);
   }, [tags]);
+
+  if (isAutoTagging) {
+    return (
+      <div className="absolute inset-x-0 bottom-0 z-30 overflow-hidden p-2">
+        <TagsSkeleton glass />
+      </div>
+    );
+  }
 
   return (
     <div className="absolute inset-x-0 bottom-0 z-30 overflow-hidden p-2">

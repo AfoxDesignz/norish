@@ -27,3 +27,14 @@ export const cssButtonPillDanger =
 // Uses important overrides to beat component defaults and keeps base transparent
 export const cssMenuItemPill =
   "rounded-full bg-transparent data-[hover=true]:!bg-default-200 data-[pressed=true]:!bg-default-300 data-[focus=true]:!bg-default-200";
+
+// AI gradient text styling for menu items and labels
+export const cssAIGradientText =
+  "bg-gradient-to-r from-rose-400 via-fuchsia-500 to-indigo-500 bg-clip-text text-transparent";
+
+// AI gradient background for buttons
+export const cssAIGradientBg =
+  "bg-gradient-to-r from-rose-400 via-fuchsia-500 to-indigo-500 text-white";
+
+// AI icon color
+export const cssAIIconColor = "text-fuchsia-500";

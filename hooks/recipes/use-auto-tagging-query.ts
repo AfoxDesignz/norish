@@ -6,33 +6,33 @@ import { useEffect, useMemo, useCallback } from "react";
 import { useTRPC } from "@/app/providers/trpc-provider";
 import { createClientLogger } from "@/lib/logger";
 
-const log = createClientLogger("pending-recipes-query");
+const log = createClientLogger("auto-tagging-query");
 
-// Key for storing pending recipe IDs in the query cache (shared state)
+// Key for storing auto-tagging recipe IDs in the query cache (shared state)
 // Exported so other hooks can read from the same key
-export const PENDING_RECIPES_KEY = ["recipes", "pending"];
+export const AUTO_TAGGING_RECIPES_KEY = ["recipes", "autoTagging"];
 
 /**
- * Hook that manages pending recipe IDs state.
+ * Hook that manages auto-tagging recipe IDs state.
  *
- * - Hydrates from server on mount (fetches pending import jobs)
+ * - Hydrates from server on mount (fetches pending auto-tagging jobs)
  * - Provides add/remove helpers for real-time updates
- * - Returns the current set of pending recipe IDs
+ * - Returns the current set of auto-tagging recipe IDs
  *
  * Call this from useRecipesSubscription to hydrate on app load.
  * Use the returned helpers in subscription handlers.
  */
-export function usePendingRecipesQuery() {
+export function useAutoTaggingQuery() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
-  // Fetch pending import jobs from server
+  // Fetch pending auto-tagging jobs from server
   const {
     data: serverData,
     isLoading,
     error,
   } = useQuery({
-    ...trpc.recipes.getPending.queryOptions(),
+    ...trpc.recipes.getPendingAutoTagging.queryOptions(),
     staleTime: 30_000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
@@ -41,7 +41,7 @@ export function usePendingRecipesQuery() {
   // Local state query - this is the source of truth for the UI
   // Uses a stable queryFn that returns empty array as initial value
   const { data: localData } = useQuery({
-    queryKey: PENDING_RECIPES_KEY,
+    queryKey: AUTO_TAGGING_RECIPES_KEY,
     queryFn: () => [] as string[],
     staleTime: Infinity,
     gcTime: Infinity,
@@ -54,23 +54,21 @@ export function usePendingRecipesQuery() {
   useEffect(() => {
     if (!serverData || serverData.length === 0) return;
 
-    const pendingIds = serverData.map((job) => job.recipeId);
+    log.debug({ count: serverData.length }, "Hydrating auto-tagging recipes from server");
 
-    log.debug({ count: pendingIds.length }, "Hydrating pending recipes from server");
-
-    queryClient.setQueryData<string[]>(PENDING_RECIPES_KEY, (prev) => {
+    queryClient.setQueryData<string[]>(AUTO_TAGGING_RECIPES_KEY, (prev) => {
       const existing = prev ?? [];
-      const merged = [...new Set([...existing, ...pendingIds])];
+      const merged = [...new Set([...existing, ...serverData])];
 
       return merged;
     });
   }, [serverData, queryClient]);
 
-  const pendingRecipeIds = useMemo(() => new Set(localData ?? []), [localData]);
+  const autoTaggingRecipeIds = useMemo(() => new Set(localData ?? []), [localData]);
 
-  const addPendingRecipe = useCallback(
+  const addAutoTaggingRecipe = useCallback(
     (recipeId: string) => {
-      queryClient.setQueryData<string[]>(PENDING_RECIPES_KEY, (prev) => {
+      queryClient.setQueryData<string[]>(AUTO_TAGGING_RECIPES_KEY, (prev) => {
         const arr = prev ?? [];
 
         if (arr.includes(recipeId)) return arr;
@@ -81,9 +79,9 @@ export function usePendingRecipesQuery() {
     [queryClient]
   );
 
-  const removePendingRecipe = useCallback(
+  const removeAutoTaggingRecipe = useCallback(
     (recipeId: string) => {
-      queryClient.setQueryData<string[]>(PENDING_RECIPES_KEY, (prev) => {
+      queryClient.setQueryData<string[]>(AUTO_TAGGING_RECIPES_KEY, (prev) => {
         const arr = prev ?? [];
 
         return arr.filter((id) => id !== recipeId);
@@ -93,9 +91,9 @@ export function usePendingRecipesQuery() {
   );
 
   return {
-    pendingRecipeIds,
-    addPendingRecipe,
-    removePendingRecipe,
+    autoTaggingRecipeIds,
+    addAutoTaggingRecipe,
+    removeAutoTaggingRecipe,
     isLoading,
     error,
   };

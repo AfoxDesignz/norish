@@ -1,6 +1,6 @@
 "use client";
 
-import type { RecipePermissionPolicy } from "@/server/db/zodSchemas/server-config";
+import type { RecipePermissionPolicy, AutoTaggingMode } from "@/server/db/zodSchemas/server-config";
 
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useSubscription } from "@trpc/tanstack-react-query";
@@ -16,6 +16,7 @@ export interface PermissionsData {
   isAIEnabled: boolean;
   householdUserIds: string[] | null;
   isServerAdmin: boolean;
+  autoTaggingMode: AutoTaggingMode;
 }
 
 export function usePermissionsQuery() {

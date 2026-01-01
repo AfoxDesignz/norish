@@ -2,16 +2,21 @@ import { router } from "../../trpc";
 import { authedProcedure } from "../../middleware";
 
 import { trpcLogger as log } from "@/server/logger";
-import { getRecipePermissionPolicy, isAIEnabled } from "@/config/server-config-loader";
+import {
+  getRecipePermissionPolicy,
+  isAIEnabled,
+  getAutoTaggingMode,
+} from "@/config/server-config-loader";
 import { isUserServerAdmin } from "@/server/db";
 
 const get = authedProcedure.query(async ({ ctx }) => {
   log.debug({ userId: ctx.user.id }, "Getting permissions");
 
-  const [recipePolicy, aiEnabled, serverAdmin] = await Promise.all([
+  const [recipePolicy, aiEnabled, serverAdmin, autoTaggingMode] = await Promise.all([
     getRecipePermissionPolicy(),
     isAIEnabled(),
     isUserServerAdmin(ctx.user.id),
+    getAutoTaggingMode(),
   ]);
 
   return {
@@ -19,6 +24,7 @@ const get = authedProcedure.query(async ({ ctx }) => {
     isAIEnabled: aiEnabled,
     householdUserIds: ctx.householdUserIds,
     isServerAdmin: serverAdmin,
+    autoTaggingMode,
   };
 });
 

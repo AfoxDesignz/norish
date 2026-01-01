@@ -28,13 +28,14 @@ import ImageLightbox from "@/components/shared/image-lightbox";
 import SmartMarkdownRenderer from "@/components/shared/smart-markdown-renderer";
 import HeartButton from "@/components/shared/heart-button";
 import DoubleTapContainer from "@/components/shared/double-tap-container";
+import TagsSkeleton from "@/components/skeleton/tags-skeleton";
 import StarRating from "@/components/shared/star-rating";
 import { useFavoritesQuery, useFavoritesMutation } from "@/hooks/favorites";
 import { useRatingQuery, useRatingsMutation } from "@/hooks/ratings";
 import NutritionCard from "@/components/recipes/nutrition-card";
 
 export default function RecipePageDesktop() {
-  var { recipe, currentServings: _currentServings } = useRecipeContextRequired();
+  var { recipe, currentServings: _currentServings, isAutoTagging } = useRecipeContextRequired();
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const { isFavorite: checkFavorite } = useFavoritesQuery();
   const { toggleFavorite } = useFavoritesMutation();
@@ -119,14 +120,18 @@ export default function RecipePageDesktop() {
               )}
 
               {/* Tags */}
-              {recipe.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {recipe.tags.map((tag: { name: string }) => (
-                    <Chip key={tag.name} size="sm" variant="flat">
-                      {tag.name}
-                    </Chip>
-                  ))}
-                </div>
+              {isAutoTagging ? (
+                <TagsSkeleton />
+              ) : (
+                recipe.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {recipe.tags.map((tag: { name: string }) => (
+                      <Chip key={tag.name} size="sm" variant="flat">
+                        {tag.name}
+                      </Chip>
+                    ))}
+                  </div>
+                )
               )}
             </CardBody>
           </Card>

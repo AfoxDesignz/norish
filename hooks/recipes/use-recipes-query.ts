@@ -3,8 +3,11 @@
 import type { RecipeDashboardDTO } from "@/types";
 import type { InfiniteData, QueryKey } from "@tanstack/react-query";
 
-import { useQueryClient, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo, useCallback } from "react";
+
+import { usePendingRecipesQuery } from "./use-pending-recipes-query";
+import { useAutoTaggingQuery } from "./use-auto-tagging-query";
 
 import { useTRPC } from "@/app/providers/trpc-provider";
 
@@ -22,8 +25,6 @@ type InfiniteRecipeData = InfiniteData<{
   nextCursor: number | null;
 }>;
 
-const PENDING_RECIPES_KEY = ["recipes", "pending"];
-
 export type RecipesQueryResult = {
   recipes: RecipeDashboardDTO[];
   total: number;
@@ -33,9 +34,12 @@ export type RecipesQueryResult = {
   error: unknown;
   queryKey: QueryKey;
   pendingRecipeIds: Set<string>;
+  autoTaggingRecipeIds: Set<string>;
   loadMore: () => void;
   addPendingRecipe: (id: string) => void;
   removePendingRecipe: (id: string) => void;
+  addAutoTaggingRecipe: (id: string) => void;
+  removeAutoTaggingRecipe: (id: string) => void;
   setRecipesData: (
     updater: (prev: InfiniteRecipeData | undefined) => InfiniteRecipeData | undefined
   ) => void;
@@ -51,19 +55,10 @@ export function useRecipesQuery(filters: RecipeFilters = {}): RecipesQueryResult
 
   const { search, tags, filterMode = "OR", sortMode = "dateDesc", minRating } = filters;
 
-  // Use pending recipes from the query cache (shared across all hook instances)
-  // Store as array to ensure React Query re-renders on changes
-  const pendingQuery = useQuery({
-    queryKey: PENDING_RECIPES_KEY,
-    queryFn: () => [] as string[],
-    staleTime: Infinity,
-    gcTime: Infinity,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  });
-
-  const pendingRecipeIds = useMemo(() => new Set(pendingQuery.data ?? []), [pendingQuery.data]);
+  // Use the dedicated hooks for pending and auto-tagging state
+  const { pendingRecipeIds, addPendingRecipe, removePendingRecipe } = usePendingRecipesQuery();
+  const { autoTaggingRecipeIds, addAutoTaggingRecipe, removeAutoTaggingRecipe } =
+    useAutoTaggingQuery();
 
   const infiniteQueryOptions = trpc.recipes.list.infiniteQueryOptions(
     { limit: 100, search, tags, filterMode, sortMode, minRating },
@@ -92,30 +87,6 @@ export function useRecipesQuery(filters: RecipeFilters = {}): RecipesQueryResult
       fetchNextPage();
     }
   }, [hasMore, isFetching, fetchNextPage]);
-
-  const addPendingRecipe = useCallback(
-    (recipeId: string) => {
-      queryClient.setQueryData<string[]>(PENDING_RECIPES_KEY, (prev) => {
-        const arr = prev ?? [];
-
-        if (arr.includes(recipeId)) return arr;
-
-        return [...arr, recipeId];
-      });
-    },
-    [queryClient]
-  );
-
-  const removePendingRecipe = useCallback(
-    (recipeId: string) => {
-      queryClient.setQueryData<string[]>(PENDING_RECIPES_KEY, (prev) => {
-        const arr = prev ?? [];
-
-        return arr.filter((id) => id !== recipeId);
-      });
-    },
-    [queryClient]
-  );
 
   const setRecipesData = useCallback(
     (updater: (prev: InfiniteRecipeData | undefined) => InfiniteRecipeData | undefined) => {
@@ -154,9 +125,12 @@ export function useRecipesQuery(filters: RecipeFilters = {}): RecipesQueryResult
     error,
     queryKey,
     pendingRecipeIds,
+    autoTaggingRecipeIds,
     loadMore,
     addPendingRecipe,
     removePendingRecipe,
+    addAutoTaggingRecipe,
+    removeAutoTaggingRecipe,
     setRecipesData,
     setAllRecipesData,
     invalidate,

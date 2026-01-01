@@ -20,6 +20,9 @@ export type RecipeSubscriptionEvents = {
   // Nutrition estimation events
   nutritionStarted: { recipeId: string };
 
+  // Auto-tagging events
+  autoTaggingStarted: { recipeId: string };
+
   // Batch recipe creation (for archive imports)
   recipeBatchCreated: { recipes: RecipeDashboardDTO[] };
 

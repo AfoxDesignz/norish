@@ -33,6 +33,15 @@ export {
   stopNutritionEstimationWorker,
 } from "./nutrition-estimation/worker";
 
+export {
+  autoTaggingQueue,
+  addAutoTaggingJob,
+  closeAutoTaggingQueue,
+  isAutoTaggingJobActive,
+} from "./auto-tagging/queue";
+
+export { startAutoTaggingWorker, stopAutoTaggingWorker } from "./auto-tagging/worker";
+
 export { caldavSyncQueue, addCaldavSyncJob, closeCaldavSyncQueue } from "./caldav-sync/queue";
 
 export { startCaldavSyncWorker, stopCaldavSyncWorker } from "./caldav-sync/worker";
@@ -54,6 +63,8 @@ export type {
   AddPasteImportJobResult,
   NutritionEstimationJobData,
   AddNutritionEstimationJobResult,
+  AutoTaggingJobData,
+  AddAutoTaggingJobResult,
   CaldavSyncJobData,
   CaldavSyncOperation,
 } from "@/types";

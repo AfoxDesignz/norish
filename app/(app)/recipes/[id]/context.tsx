@@ -20,6 +20,8 @@ import {
   useNutritionQuery,
   useNutritionMutation,
   useNutritionSubscription,
+  useAutoTagging,
+  useAutoTaggingMutation,
 } from "@/hooks/recipes";
 import { useTRPC } from "@/app/providers/trpc-provider";
 
@@ -37,6 +39,9 @@ type Ctx = {
   // Nutrition
   isEstimatingNutrition: boolean;
   estimateNutrition: () => void;
+  // Auto-tagging
+  isAutoTagging: boolean;
+  triggerAutoTag: () => void;
 };
 
 const RecipeContext = createContext<Ctx | null>(null);
@@ -70,6 +75,21 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
     () => setIsEstimatingNutrition(true),
     () => setIsEstimatingNutrition(false)
   );
+
+  // Auto-tagging hooks
+  const [isAutoTagging, setIsAutoTagging] = useState(false);
+  const autoTagMutation = useAutoTaggingMutation();
+
+  useAutoTagging(
+    recipeId,
+    () => setIsAutoTagging(true),
+    () => setIsAutoTagging(false)
+  );
+
+  const triggerAutoTag = useCallback(() => {
+    if (!recipe) return;
+    autoTagMutation.mutate({ recipeId: recipe.id });
+  }, [recipe, autoTagMutation]);
 
   // Mutation for converting measurements
   const convertMutation = useMutation(trpc.recipes.convertMeasurements.mutationOptions());
@@ -195,6 +215,8 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
       reset,
       isEstimatingNutrition,
       estimateNutrition,
+      isAutoTagging,
+      triggerAutoTag,
     }),
     [
       recipe,
@@ -209,6 +231,8 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
       reset,
       isEstimatingNutrition,
       estimateNutrition,
+      isAutoTagging,
+      triggerAutoTag,
     ]
   );
 

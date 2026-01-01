@@ -19,6 +19,11 @@ const onNutritionStarted = createPolicyAwareSubscription(
   "nutritionStarted",
   "nutrition estimation started"
 );
+const onAutoTaggingStarted = createPolicyAwareSubscription(
+  recipeEmitter,
+  "autoTaggingStarted",
+  "auto-tagging started"
+);
 const onRecipeBatchCreated = createPolicyAwareSubscription(
   recipeEmitter,
   "recipeBatchCreated",
@@ -34,5 +39,6 @@ export const recipesSubscriptions = router({
   onConverted,
   onFailed,
   onNutritionStarted,
+  onAutoTaggingStarted,
   onRecipeBatchCreated,
 });

@@ -9,14 +9,13 @@ import {
   DropdownTrigger,
   Spinner,
 } from "@heroui/react";
-import { ArrowsRightLeftIcon } from "@heroicons/react/20/solid";
+import { ArrowsRightLeftIcon, SparklesIcon } from "@heroicons/react/20/solid";
 import { useTranslations } from "next-intl";
 
 import { useRecipeContextRequired } from "../context";
 
-import AIChip from "@/components/shared/ai-chip";
 import { MeasurementSystem } from "@/types";
-import { cssMenuItemPill } from "@/config/css-tokens";
+import { cssButtonPill, cssAIGradientText, cssAIIconColor } from "@/config/css-tokens";
 import { usePermissionsContext } from "@/context/permissions-context";
 
 type ConversionOption = {
@@ -72,7 +71,7 @@ export default function SystemConvertMenu() {
     <Dropdown>
       <DropdownTrigger>
         <Button
-          className="bg-content2 text-foreground capitalize transition-transform duration-200 ease-out hover:scale-[1.02] hover:opacity-95"
+          className="bg-content2 text-foreground capitalize transition-opacity duration-150 data-[hover=true]:opacity-80"
           disabled={convertingTo != null}
           size="sm"
           startContent={
@@ -88,19 +87,36 @@ export default function SystemConvertMenu() {
         </Button>
       </DropdownTrigger>
 
-<DropdownMenu
+      <DropdownMenu
         aria-label={t("ariaLabel")}
         items={conversionOptions}
         selectedKeys={[currentSystem]}
         selectionMode="single"
-        onAction={(key) => handleConvert(key as MeasurementSystem)}
       >
         {(item) => (
-          <DropdownItem key={item.key} className={`py-2 ${cssMenuItemPill}`} textValue={item.label}>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium">{item.label}</span>
-              {item.requiresAI && <AIChip className="ml-auto" />}
-            </div>
+          <DropdownItem
+            key={item.key}
+            className="py-1 !bg-transparent data-[focus=true]:!bg-transparent data-[hover=true]:!bg-transparent data-[selected=true]:!bg-transparent"
+            textValue={item.label}
+          >
+            <Button
+              className={`w-full justify-start bg-transparent ${cssButtonPill}`}
+              radius="full"
+              size="md"
+              startContent={
+                item.requiresAI ? (
+                  <SparklesIcon className={`size-4 ${cssAIIconColor}`} />
+                ) : (
+                  <ArrowsRightLeftIcon className="size-4 text-default-400" />
+                )
+              }
+              variant="light"
+              onPress={() => handleConvert(item.key)}
+            >
+              <span className={`text-sm font-medium ${item.requiresAI ? cssAIGradientText : ""}`}>
+                {item.label}
+              </span>
+            </Button>
           </DropdownItem>
         )}
       </DropdownMenu>

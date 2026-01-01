@@ -38,6 +38,10 @@
   "actions": {
     "plan": "Plan",
     "groceries": "Groceries",
+    "edit": "Edit",
+    "delete": "Delete",
+    "autoTag": "Auto-tag",
+    "autoTagging": "Generating tags...",
     "screenOn": "Screen On",
     "keepScreenOn": "Keep Screen On",
     "actionsLabel": "Actions"

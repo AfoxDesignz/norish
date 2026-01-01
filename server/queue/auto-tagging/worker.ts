@@ -36,6 +36,9 @@ async function processAutoTaggingJob(job: Job<AutoTaggingJobData>): Promise<void
   const policy = await getRecipePermissionPolicy();
   const ctx: PolicyEmitContext = { userId, householdKey };
 
+  // Emit autoTaggingStarted event so clients can show loading state
+  emitByPolicy(recipeEmitter, policy.view, ctx, "autoTaggingStarted", { recipeId });
+
   const recipe = await getRecipeFull(recipeId);
 
   if (!recipe) {

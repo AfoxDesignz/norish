@@ -25,7 +25,7 @@ export default function RecipeCard({ recipe }: { recipe: RecipeDashboardDTO }) {
   const router = useRouter();
   const rowRef = useRef<SwipeableRowRef>(null);
   const { mobileSearchOpen } = useAppStore((s) => s);
-  const { deleteRecipe } = useRecipesContext();
+  const { deleteRecipe, autoTaggingRecipeIds } = useRecipesContext();
   const { canDeleteRecipe } = usePermissionsContext();
   const { isFavorite: checkFavorite } = useFavoritesQuery();
   const { toggleFavorite } = useFavoritesMutation();
@@ -36,6 +36,7 @@ export default function RecipeCard({ recipe }: { recipe: RecipeDashboardDTO }) {
 
   const isFavorite = checkFavorite(recipe.id);
   const averageRating = recipe.averageRating ?? null;
+  const isAutoTagging = autoTaggingRecipeIds.has(recipe.id);
 
   const handleNavigate = useCallback(() => {
     if (recipe.id && !open && !mobileSearchOpen) {
@@ -166,7 +167,9 @@ export default function RecipeCard({ recipe }: { recipe: RecipeDashboardDTO }) {
                 />
 
                 {/* bottom tags */}
-                {allTags.length > 0 && <RecipeTags tags={allTags} />}
+                {(allTags.length > 0 || isAutoTagging) && (
+                  <RecipeTags isAutoTagging={isAutoTagging} tags={allTags} />
+                )}
               </DoubleTapContainer>
 
               {/* Body*/}

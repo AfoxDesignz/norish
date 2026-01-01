@@ -17,6 +17,7 @@ type Ctx = {
   isLoading: boolean;
   hasMore: boolean;
   pendingRecipeIds: Set<string>;
+  autoTaggingRecipeIds: Set<string>;
 
   // Actions (all void - fire and forget)
   loadMore: () => void;
@@ -55,6 +56,7 @@ export function RecipesContextProvider({ children }: { children: ReactNode }) {
     hasMore,
     loadMore,
     pendingRecipeIds,
+    autoTaggingRecipeIds,
     invalidate,
   } = useRecipesQuery(queryFilters);
 
@@ -139,6 +141,7 @@ export function RecipesContextProvider({ children }: { children: ReactNode }) {
       isLoading: isLoading || isFavoritesLoading,
       hasMore,
       pendingRecipeIds,
+      autoTaggingRecipeIds,
       loadMore,
       importRecipe,
       importRecipeWithAI,
@@ -154,6 +157,7 @@ export function RecipesContextProvider({ children }: { children: ReactNode }) {
       isFavoritesLoading,
       hasMore,
       pendingRecipeIds,
+      autoTaggingRecipeIds,
       loadMore,
       importRecipe,
       importRecipeWithAI,

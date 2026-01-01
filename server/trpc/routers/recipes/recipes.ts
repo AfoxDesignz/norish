@@ -39,6 +39,7 @@ import {
   addImageImportJob,
   addPasteImportJob,
   addNutritionEstimationJob,
+  addAutoTaggingJob,
 } from "@/server/queue";
 import { FilterMode, SortOrder } from "@/types";
 import { MAX_RECIPE_PASTE_CHARS } from "@/types/uploads";
@@ -606,6 +607,72 @@ const estimateNutrition = authedProcedure
     return { success: true };
   });
 
+const triggerAutoTag = authedProcedure
+  .input(z.object({ recipeId: z.uuid() }))
+  .mutation(async ({ ctx, input }) => {
+    const { recipeId } = input;
+
+    log.info({ userId: ctx.user.id, recipeId }, "Queueing auto-tagging for recipe");
+
+    const aiEnabled = await checkAIEnabled();
+
+    if (!aiEnabled) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "AI features are disabled",
+      });
+    }
+
+    const recipe = await getRecipeFull(recipeId);
+
+    if (!recipe) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Recipe not found",
+      });
+    }
+
+    if (recipe.recipeIngredients.length === 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Recipe has no ingredients to generate tags from",
+      });
+    }
+
+    // Add to queue for background processing
+    const result = await addAutoTaggingJob({
+      recipeId,
+      userId: ctx.user.id,
+      householdKey: ctx.householdKey,
+    });
+
+    if (result.status === "duplicate") {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Auto-tagging is already in progress for this recipe",
+      });
+    }
+
+    if (result.status === "skipped") {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Auto-tagging is disabled",
+      });
+    }
+
+    const policy = await getRecipePermissionPolicy();
+
+    emitByPolicy(
+      recipeEmitter,
+      policy.view,
+      { userId: ctx.user.id, householdKey: ctx.householdKey },
+      "autoTaggingStarted",
+      { recipeId }
+    );
+
+    return { success: true };
+  });
+
 export const recipesProcedures = router({
   list,
   get,
@@ -617,6 +684,7 @@ export const recipesProcedures = router({
   importFromPaste: importFromPasteProcedure,
   convertMeasurements,
   estimateNutrition,
+  triggerAutoTag,
   reserveId,
   autocomplete,
 });

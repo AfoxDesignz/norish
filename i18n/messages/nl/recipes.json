@@ -40,6 +40,8 @@
     "groceries": "Boodschappen",
     "edit": "Bewerken",
     "delete": "Verwijder",
+    "autoTag": "Auto-tag",
+    "autoTagging": "Tags genereren...",
     "screenOn": "Scherm Aan",
     "keepScreenOn": "Scherm Aan Houden",
     "actionsLabel": "Acties"

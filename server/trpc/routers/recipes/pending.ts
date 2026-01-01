@@ -6,7 +6,7 @@ import { router } from "../../trpc";
 import { authedProcedure } from "../../middleware";
 
 import { trpcLogger as log } from "@/server/logger";
-import { recipeImportQueue, nutritionEstimationQueue } from "@/server/queue";
+import { recipeImportQueue, nutritionEstimationQueue, autoTaggingQueue } from "@/server/queue";
 import { getRecipePermissionPolicy } from "@/config/server-config-loader";
 
 const getPending = authedProcedure.query(async ({ ctx }) => {
@@ -65,7 +65,46 @@ const isNutritionEstimating = authedProcedure
     return isEstimating;
   });
 
+/**
+ * Get all recipe IDs that have pending auto-tagging jobs.
+ * Used to hydrate the auto-tagging state on page load.
+ */
+const getPendingAutoTagging = authedProcedure.query(async ({ ctx }) => {
+  log.debug({ userId: ctx.user.id }, "Fetching pending auto-tagging jobs");
+
+  const jobs = await autoTaggingQueue.getJobs(["waiting", "active", "delayed"]);
+
+  // Auto-tagging jobs are per-recipe and user-scoped
+  const recipeIds = jobs
+    .filter((job) => job.data.userId === ctx.user.id || job.data.householdKey === ctx.householdKey)
+    .map((job) => job.data.recipeId);
+
+  log.debug({ userId: ctx.user.id, count: recipeIds.length }, "Found pending auto-tagging jobs");
+
+  return recipeIds;
+});
+
+/**
+ * Check if a specific recipe has a pending auto-tagging job.
+ */
+const isAutoTagging = authedProcedure
+  .input(z.object({ recipeId: z.uuid() }))
+  .query(async ({ ctx, input }) => {
+    const jobs = await autoTaggingQueue.getJobs(["waiting", "active", "delayed"]);
+
+    const isActive = jobs.some((job) => job.data.recipeId === input.recipeId);
+
+    log.debug(
+      { userId: ctx.user.id, recipeId: input.recipeId, isActive },
+      "Checked auto-tagging status"
+    );
+
+    return isActive;
+  });
+
 export const pendingProcedures = router({
   getPending,
   isNutritionEstimating,
+  getPendingAutoTagging,
+  isAutoTagging,
 });

@@ -7,6 +7,7 @@ import {
   PencilSquareIcon,
   TrashIcon,
   DevicePhoneMobileIcon,
+  SparklesIcon,
 } from "@heroicons/react/20/solid";
 import { EllipsisHorizontalIcon } from "@heroicons/react/16/solid";
 import { useRouter } from "next/navigation";
@@ -16,7 +17,7 @@ import { useRecipeContextRequired } from "../context";
 
 import { useWakeLockContext } from "./wake-lock-context";
 
-import { cssButtonPill } from "@/config/css-tokens";
+import { cssButtonPill, cssAIGradientText, cssAIIconColor } from "@/config/css-tokens";
 import { MiniGroceries, MiniCalendar } from "@/components/Panel/consumers";
 import { usePermissionsContext } from "@/context/permissions-context";
 import { useRecipesContext } from "@/context/recipes-context";
@@ -29,16 +30,18 @@ type MenuItem = {
   icon: React.ReactNode;
   onPress: () => void;
   className?: string;
+  labelClassName?: string;
   iconClassName?: string;
+  isDisabled?: boolean;
 };
 
 export default function ActionsMenu({ id }: Props) {
   const [openCalendar, setOpenCalendar] = React.useState(false);
   const [openGroceries, setOpenGroceries] = React.useState(false);
   const router = useRouter();
-  const { canEditRecipe, canDeleteRecipe } = usePermissionsContext();
+  const { canEditRecipe, canDeleteRecipe, isAutoTaggingEnabled } = usePermissionsContext();
   const { deleteRecipe } = useRecipesContext();
-  const { recipe } = useRecipeContextRequired();
+  const { recipe, isAutoTagging, triggerAutoTag } = useRecipeContextRequired();
   const { isSupported, isActive, toggle } = useWakeLockContext();
   const t = useTranslations("recipes.actions");
 
@@ -81,8 +84,20 @@ export default function ActionsMenu({ id }: Props) {
         label: isActive ? t("screenOn") : t("keepScreenOn"),
         icon: <DevicePhoneMobileIcon className="size-4" />,
         onPress: toggle,
-        className: isActive ? "text-success" : "",
+        labelClassName: isActive ? "text-success" : "",
         iconClassName: isActive ? "text-success" : "text-default-400",
+      });
+    }
+
+    if (isAutoTaggingEnabled && canEdit) {
+      items.push({
+        key: "auto-tag",
+        label: isAutoTagging ? t("autoTagging") : t("autoTag"),
+        icon: <SparklesIcon className="size-4" />,
+        onPress: triggerAutoTag,
+        labelClassName: cssAIGradientText,
+        iconClassName: cssAIIconColor,
+        isDisabled: isAutoTagging,
       });
     }
 
@@ -92,13 +107,13 @@ export default function ActionsMenu({ id }: Props) {
         label: t("delete"),
         icon: <TrashIcon className="size-4" />,
         onPress: handleDelete,
-        className: "text-danger",
+        labelClassName: "text-danger",
         iconClassName: "text-danger",
       });
     }
 
     return items;
-  }, [canEdit, canDelete, handleDelete, id, router, isSupported, isActive, toggle, t]);
+  }, [canEdit, canDelete, handleDelete, id, router, isSupported, isActive, toggle, t, isAutoTaggingEnabled, isAutoTagging, triggerAutoTag]);
 
 return (
     <>
@@ -123,6 +138,7 @@ return (
             >
               <Button
                 className={`w-full justify-start bg-transparent ${cssButtonPill} ${item.className ?? ""}`}
+                isDisabled={item.isDisabled}
                 radius="full"
                 size="md"
                 startContent={
@@ -131,7 +147,7 @@ return (
                 variant="light"
                 onPress={item.onPress}
               >
-                <span className="text-sm font-medium">{item.label}</span>
+                <span className={`text-sm font-medium ${item.labelClassName ?? ""}`}>{item.label}</span>
               </Button>
             </DropdownItem>
           )}

@@ -57,3 +57,11 @@ export async function closeAutoTaggingQueue(): Promise<void> {
   await autoTaggingQueue.close();
   log.info("Auto-tagging queue closed");
 }
+
+/**
+ * Check if an auto-tagging job is currently active for the given recipe.
+ */
+export async function isAutoTaggingJobActive(recipeId: string): Promise<boolean> {
+  const jobId = `auto-tag-${recipeId}`;
+  return isJobInQueue(autoTaggingQueue, jobId);
+}

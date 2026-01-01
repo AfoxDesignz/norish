@@ -1,14 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Card, CardBody, Button, Divider, Skeleton } from "@heroui/react";
-import { SparklesIcon, FireIcon, BeakerIcon, CubeIcon, BoltIcon } from "@heroicons/react/16/solid";
+import { Card, CardBody, Divider, Skeleton } from "@heroui/react";
+import { FireIcon, BeakerIcon, CubeIcon, BoltIcon } from "@heroicons/react/16/solid";
 import { useTranslations } from "next-intl";
 
 import NutritionPortionControl from "./nutrition-portion-control";
 
 import { useRecipeContext } from "@/app/(app)/recipes/[id]/context";
 import { usePermissionsContext } from "@/context/permissions-context";
+import AIActionButton from "@/components/shared/ai-action-button";
 
 const MACROS = [
   {
@@ -133,14 +134,11 @@ function NutritionDisplay({ inCard = true }: { inCard?: boolean }) {
         <div className="flex flex-col items-center gap-3 py-2">
           <p className="text-default-500 text-base">{t("noInfo")}</p>
           {isAIEnabled && (
-            <Button
-              className="bg-gradient-to-r from-rose-400 via-fuchsia-500 to-indigo-500 text-white hover:brightness-110"
-              size="sm"
-              startContent={<SparklesIcon className="h-4 w-4" />}
+            <AIActionButton
+              isLoading={isEstimatingNutrition}
+              label={t("estimateWithAI")}
               onPress={estimateNutrition}
-            >
-              {t("estimateWithAI")}
-            </Button>
+            />
           )}
         </div>
       )}

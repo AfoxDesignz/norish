@@ -1,6 +1,10 @@
 "use client";
 
-import type { PermissionLevel, RecipePermissionPolicy } from "@/server/db/zodSchemas/server-config";
+import type {
+  PermissionLevel,
+  RecipePermissionPolicy,
+  AutoTaggingMode,
+} from "@/server/db/zodSchemas/server-config";
 
 import React, { createContext, useContext, useCallback, useMemo } from "react";
 
@@ -16,6 +20,10 @@ interface PermissionsContextValue {
   householdUserIds: string[] | null;
   /** Whether the current user is a server admin */
   isServerAdmin: boolean;
+  /** Auto-tagging mode setting */
+  autoTaggingMode: AutoTaggingMode;
+  /** Whether auto-tagging is enabled (not disabled) */
+  isAutoTaggingEnabled: boolean;
   /** Loading state */
   isLoading: boolean;
   /** Check if current user can view a recipe */
@@ -119,6 +127,8 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
       isAIEnabled: data?.isAIEnabled ?? false,
       householdUserIds: data?.householdUserIds ?? null,
       isServerAdmin: data?.isServerAdmin ?? false,
+      autoTaggingMode: data?.autoTaggingMode ?? "disabled",
+      isAutoTaggingEnabled: data?.autoTaggingMode !== "disabled",
       isLoading: isLoadingPermissions,
       canViewRecipe,
       canEditRecipe,

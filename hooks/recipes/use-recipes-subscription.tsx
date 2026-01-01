@@ -9,7 +9,6 @@ import { addToast, Button } from "@heroui/react";
 import Link from "next/link";
 
 import { useRecipesQuery } from "./use-recipes-query";
-import { usePendingRecipesQuery } from "./use-pending-recipes-query";
 
 import { useTRPC } from "@/app/providers/trpc-provider";
 import { createClientLogger } from "@/lib/logger";
@@ -26,16 +25,20 @@ type InfiniteRecipeData = InfiniteData<{
  * Hook that subscribes to all recipe-related WebSocket events
  * and updates the query cache accordingly.
  *
- * Also hydrates pending recipes from the server on mount.
+ * State hydration for pending recipes and auto-tagging happens automatically
+ * via useRecipesQuery -> usePendingRecipesQuery/useAutoTaggingQuery.
  */
 export function useRecipesSubscription() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const { setAllRecipesData, invalidate, addPendingRecipe, removePendingRecipe } =
-    useRecipesQuery();
-
-  // Hydrate pending recipes from the server on mount
-  usePendingRecipesQuery();
+  const {
+    setAllRecipesData,
+    invalidate,
+    addPendingRecipe,
+    removePendingRecipe,
+    addAutoTaggingRecipe,
+    removeAutoTaggingRecipe,
+  } = useRecipesQuery();
 
   const addRecipeToList = (recipe: RecipeDashboardDTO) => {
     setAllRecipesData((prev: InfiniteRecipeData | undefined): InfiniteRecipeData | undefined => {
@@ -178,6 +181,8 @@ export function useRecipesSubscription() {
       onData: (payload) => {
         log.info({ recipeId: payload.recipe.id }, "[onUpdated] Received");
         updateRecipeInList(payload.recipe);
+        // Remove from auto-tagging set (auto-tagging completed)
+        removeAutoTaggingRecipe(payload.recipe.id);
         // Also invalidate the single recipe query if it's cached
         queryClient.invalidateQueries({
           queryKey: [["recipes", "get"], { input: { id: payload.recipe.id }, type: "query" }],
@@ -236,6 +241,8 @@ export function useRecipesSubscription() {
         // Remove from pending if it was a pending recipe
         if (payload.recipeId) {
           removePendingRecipe(payload.recipeId);
+          // Also remove from auto-tagging set in case it was an auto-tagging failure
+          removeAutoTaggingRecipe(payload.recipeId);
         }
 
         // Invalidate to get correct state
@@ -257,13 +264,24 @@ export function useRecipesSubscription() {
     })
   );
 
+  // onAutoTaggingStarted - Auto-tagging job started (show skeleton on dashboard)
+  useSubscription(
+    trpc.recipes.onAutoTaggingStarted.subscriptionOptions(undefined, {
+      onData: (payload) => {
+        log.info({ recipeId: payload.recipeId }, "[onAutoTaggingStarted] Received");
+        addAutoTaggingRecipe(payload.recipeId);
+      },
+      onError: (err) => log.error({ err }, "[onAutoTaggingStarted] Error"),
+    })
+  );
+
   // onRecipeBatchCreated - Bulk recipe creation (archive imports)
   useSubscription(
     trpc.recipes.onRecipeBatchCreated.subscriptionOptions(undefined, {
       onData: (payload) => {
         log.info({ count: payload.recipes.length }, "[onRecipeBatchCreated] Received");
-        if (payload.recipes.length === 0) return;
 
+        // Add all recipes from the batch to the list
         setAllRecipesData(
           (prev: InfiniteRecipeData | undefined): InfiniteRecipeData | undefined => {
             if (!prev?.pages?.length) {
@@ -276,6 +294,8 @@ export function useRecipesSubscription() {
             }
 
             const firstPage = prev.pages[0];
+
+            // Filter out any recipes that already exist
             const existingIds = new Set(firstPage.recipes.map((r) => r.id));
             const newRecipes = payload.recipes.filter((r) => !existingIds.has(r.id));
 
@@ -294,6 +314,15 @@ export function useRecipesSubscription() {
             };
           }
         );
+
+        addToast({
+          severity: "success",
+          title: "Recipes imported",
+          description: `${payload.recipes.length} recipes imported from archive`,
+          timeout: 3000,
+          shouldShowTimeoutProgress: true,
+          radius: "full",
+        });
       },
       onError: (err) => log.error({ err }, "[onRecipeBatchCreated] Error"),
     })
