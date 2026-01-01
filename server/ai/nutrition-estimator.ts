@@ -1,6 +1,6 @@
 import { generateText, Output } from "ai";
 
-import { getModels, getGenerationSettings } from "./providers/registry";
+import { getModels, getGenerationSettings } from "./providers";
 import { nutritionEstimationSchema, type NutritionEstimate } from "./schemas/nutrition.schema";
 import { loadPrompt, fillPrompt } from "./prompts/loader";
 import { aiSuccess, aiError, mapErrorToCode, getErrorMessage, type AIResult } from "./types/result";

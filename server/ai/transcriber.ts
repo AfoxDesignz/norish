@@ -1,19 +1,121 @@
+/**
+ * Audio Transcription.
+ *
+ * Transcribes audio files to text using the configured transcription provider.
+ * Uses Vercel AI SDK for OpenAI, falls back to OpenAI client for compatible endpoints.
+ */
+
+import { experimental_transcribe as transcribe } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
 import OpenAI from "openai";
+import { readFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
 
 import { getVideoConfig, getAIConfig } from "@/config/server-config-loader";
 import { aiLogger } from "@/server/logger";
+import type { TranscriptionProvider } from "@/server/db/zodSchemas/server-config";
 
+/**
+ * Transcribe audio using Vercel AI SDK (OpenAI provider).
+ */
+async function transcribeWithSDK(
+  audioPath: string,
+  apiKey: string,
+  model: string
+): Promise<string> {
+  const openai = createOpenAI({ apiKey });
+  const audioData = await readFile(audioPath);
+
+  aiLogger.debug(
+    { audioPath, model, provider: "openai-sdk" },
+    "Starting transcription with AI SDK"
+  );
+
+  const result = await transcribe({
+    model: openai.transcription(model),
+    audio: audioData,
+    providerOptions: {
+      openai: { language: "en" },
+    },
+  });
+
+  aiLogger.debug(
+    {
+      durationSeconds: result.durationInSeconds,
+      language: result.language,
+      segmentCount: result.segments?.length,
+    },
+    "Transcription completed"
+  );
+
+  return result.text?.trim() || "";
+}
+
+/**
+ * Transcribe audio using OpenAI client directly (for compatible endpoints).
+ * The Vercel AI SDK's openai-compatible provider doesn't support transcription.
+ */
+async function transcribeWithClient(
+  audioPath: string,
+  apiKey: string,
+  model: string,
+  endpoint?: string
+): Promise<string> {
+  let baseURL = endpoint;
+
+  if (baseURL) {
+    baseURL = baseURL.replace(/\/+$/, "");
+    if (!baseURL.endsWith("/v1")) {
+      baseURL = `${baseURL}/v1`;
+    }
+  }
+
+  aiLogger.debug(
+    { audioPath, model, provider: "openai-client", endpoint: baseURL },
+    "Starting transcription with OpenAI client"
+  );
+
+  const client = new OpenAI({
+    apiKey,
+    ...(baseURL && { baseURL }),
+  });
+
+  const audioFile = createReadStream(audioPath);
+
+  const response = await client.audio.transcriptions.create({
+    file: audioFile,
+    model,
+    language: "en",
+    response_format: "json",
+  });
+
+  aiLogger.debug({ response }, "Transcription response received");
+
+  // The OpenAI SDK returns { text: string } for transcription
+  const transcript = response.text?.trim();
+
+  if (!transcript) {
+    throw new Error("Transcription response missing text content");
+  }
+
+  return transcript;
+}
+
+/**
+ * Transcribe an audio file to text.
+ *
+ * @param audioPath - Path to the audio file to transcribe.
+ * @returns The transcribed text.
+ * @throws If transcription is disabled, not configured, or fails.
+ */
 export async function transcribeAudio(audioPath: string): Promise<string> {
-  const [videoConfig, aiConfig] = await Promise.all([
-    getVideoConfig(true), // Include secrets
-    getAIConfig(true), // Include secrets (fallback for API key)
-  ]);
+  const [videoConfig, aiConfig] = await Promise.all([getVideoConfig(true), getAIConfig(true)]);
 
   if (!videoConfig?.enabled) {
     throw new Error("Video parsing is not enabled. Enable it in admin settings.");
   }
 
-  const provider = videoConfig.transcriptionProvider;
+  const provider: TranscriptionProvider = videoConfig.transcriptionProvider;
 
   if (provider === "disabled") {
     throw new Error(
@@ -21,68 +123,24 @@ export async function transcribeAudio(audioPath: string): Promise<string> {
     );
   }
 
-  // Get API key - prefer transcription-specific, fall back to AI config
   const apiKey = videoConfig.transcriptionApiKey || aiConfig?.apiKey;
 
   if (!apiKey) {
     throw new Error("No API key configured for transcription. Set it in admin settings.");
   }
 
-  // Get endpoint for generic-openai provider
-  const endpoint =
-    provider === "generic-openai"
-      ? videoConfig.transcriptionEndpoint || aiConfig?.endpoint
-      : undefined;
+  const model = videoConfig.transcriptionModel || "whisper-1";
 
   try {
-    const client = new OpenAI({
-      apiKey,
-      ...(endpoint && { baseURL: endpoint }),
-    });
-
-    const fs = await import("node:fs");
-    const audioFile = fs.createReadStream(audioPath);
-
-    const response = await client.audio.transcriptions.create({
-      file: audioFile,
-      model: videoConfig.transcriptionModel || "whisper-1",
-      language: "en", // Force English transcription (Whisper will translate if needed)
-      response_format: "json",
-    });
-
-    aiLogger.debug({ transcriptionResponse: response }, "Transcription response");
-    if (!response) {
-      throw new Error("Invalid transcription response from transcription service");
-    }
-
     let transcript: string;
-    const responseData = response as unknown;
 
-    if (typeof responseData === "string") {
-      // Some local transcribers might return plain text
-      transcript = responseData.trim();
-    } else if (typeof responseData === "object" && responseData !== null) {
-      // Standard verbose_json format with text and/or segments
-      const jsonResponse = responseData as {
-        text?: string;
-        segments?: Array<{ text?: string }>;
-      };
-
-      if (jsonResponse.text) {
-        // Use the full text field if available (standard verbose_json)
-        transcript = jsonResponse.text.trim();
-      } else if (jsonResponse.segments && Array.isArray(jsonResponse.segments)) {
-        // Fallback: concatenate text from segments
-        transcript = jsonResponse.segments
-          .map((s) => s.text?.trim())
-          .filter(Boolean)
-          .join(" ")
-          .trim();
-      } else {
-        throw new Error("Transcription response missing text content");
-      }
+    if (provider === "openai") {
+      // Use Vercel AI SDK for native OpenAI
+      transcript = await transcribeWithSDK(audioPath, apiKey, model);
     } else {
-      throw new Error("Invalid transcription response format");
+      // Use OpenAI client for generic-openai compatible endpoints
+      const endpoint = videoConfig.transcriptionEndpoint || aiConfig?.endpoint;
+      transcript = await transcribeWithClient(audioPath, apiKey, model, endpoint);
     }
 
     if (!transcript || transcript.length === 0) {
@@ -90,23 +148,39 @@ export async function transcribeAudio(audioPath: string): Promise<string> {
     }
 
     return transcript;
-  } catch (error: any) {
+  } catch (error: unknown) {
     aiLogger.error({ err: error }, "Transcription failed");
 
-    if (error.code === "ENOENT") {
-      throw new Error("Audio file not found");
+    // Handle specific error cases
+    if (error instanceof Error) {
+      if (error.message.includes("ENOENT")) {
+        throw new Error("Audio file not found");
+      }
+
+      // Re-throw our own errors
+      if (
+        error.message.includes("disabled") ||
+        error.message.includes("not enabled") ||
+        error.message.includes("No API key") ||
+        error.message.includes("empty text")
+      ) {
+        throw error;
+      }
     }
-    if (error.status === 429) {
+
+    // Handle API errors
+    const apiError = error as { status?: number; message?: string };
+
+    if (apiError.status === 429) {
       throw new Error("Rate limit exceeded on transcription service. Please try again later.");
     }
-    if (error.status === 401 || error.status === 403) {
+    if (apiError.status === 401 || apiError.status === 403) {
       throw new Error(
-        `Invalid API key for transcription service. Check your API key in admin settings.`
+        "Invalid API key for transcription service. Check your API key in admin settings."
       );
     }
 
-    const errorMessage = error.message || "Unknown error";
-
+    const errorMessage = apiError.message || "Unknown error";
     throw new Error(`Failed to transcribe audio: ${errorMessage}`);
   }
 }

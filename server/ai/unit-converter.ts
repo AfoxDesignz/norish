@@ -1,7 +1,7 @@
 import { generateText, Output } from "ai";
 
 import { normalizeIngredient, normalizeStep } from "./helpers";
-import { getModels, getGenerationSettings } from "./providers/registry";
+import { getModels, getGenerationSettings } from "./providers";
 import { conversionSchema, type ConversionOutput } from "./schemas/conversion.schema";
 import { loadPrompt, fillPrompt } from "./prompts/loader";
 import { aiSuccess, aiError, mapErrorToCode, getErrorMessage, type AIResult } from "./types/result";

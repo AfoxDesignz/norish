@@ -8,7 +8,7 @@ import { trpcLogger as log } from "@/server/logger";
 import { setConfig, getConfig } from "@/server/db/repositories/server-config";
 import { testAIEndpoint as testAIEndpointFn } from "@/server/auth/connection-tests";
 import { getRecipePermissionPolicy } from "@/config/server-config-loader";
-import { listModels, listTranscriptionModels } from "@/server/ai/providers/registry";
+import { listModels, listTranscriptionModels } from "@/server/ai/providers";
 import {
   ServerConfigKeys,
   AIConfigSchema,

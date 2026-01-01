@@ -4,9 +4,14 @@ import type { VideoMetadata } from "./types";
 
 import type { FullRecipeInsertDTO } from "@/types/dto/recipe";
 import { videoLogger } from "@/server/logger";
-import { getModels, getGenerationSettings } from "@/server/ai/providers/registry";
+import { getModels, getGenerationSettings } from "@/server/ai/providers";
 import { recipeExtractionSchema } from "@/server/ai/schemas/recipe.schema";
-import { loadPrompt } from "@/server/ai/prompts/loader";
+import { buildVideoExtractionPrompt } from "@/server/ai/prompts/builder";
+import {
+  validateExtractionOutput,
+  normalizeExtractionOutput,
+  getExtractionLogContext,
+} from "@/server/ai/features/recipe-extraction/normalizer";
 import {
   aiError,
   aiSuccess,
@@ -15,43 +20,17 @@ import {
   type AIResult,
 } from "@/server/ai/types/result";
 import { downloadImage } from "@/server/downloader";
-import { normalizeRecipeFromJson } from "@/server/parser/normalize";
-import { parseIngredientWithDefaults } from "@/lib/helpers";
-import { getUnits, isAIEnabled } from "@/config/server-config-loader";
+import { isAIEnabled } from "@/config/server-config-loader";
 
-async function buildVideoExtractionPrompt(
-  transcript: string,
-  metadata: VideoMetadata,
-  url: string,
-  allergies?: string[]
-): Promise<string> {
-  const prompt = await loadPrompt("recipe-extraction");
-
-  // Build allergy detection instruction
-  let allergyInstruction = "";
-
-  if (allergies && allergies.length > 0) {
-    allergyInstruction = `\nALLERGY DETECTION: Only detect these specific allergens/dietary tags: ${allergies.join(", ")}. Do not add any other allergy tags.`;
-  } else {
-    allergyInstruction =
-      "\nALLERGY DETECTION: Skip allergy/dietary tag detection. Do not add any tags to the keywords array.";
-  }
-
-  return `${prompt}${allergyInstruction}
-
-SOURCE: Video transcript (${metadata.title})
-URL: ${url}
-TITLE: ${metadata.title}
-DESCRIPTION: ${metadata.description || "No description provided"}
-DURATION: ${Math.floor(metadata.duration / 60)}:${(metadata.duration % 60).toString().padStart(2, "0")}
-${metadata.uploader ? `UPLOADER: ${metadata.uploader}` : ""}
-
-VIDEO TRANSCRIPT:
-${transcript}
-
-NOTE: This is a video transcript, not webpage text. Extract the recipe from the spoken content. If amounts are not specified, estimate typical quantities for the dish type.`;
-}
-
+/**
+ * Extract recipe from video transcript using AI.
+ *
+ * @param transcript - The video transcript text.
+ * @param metadata - Video metadata (title, description, duration, etc.).
+ * @param url - Source URL of the video.
+ * @param allergies - Optional list of allergens to detect.
+ * @returns AIResult with extracted recipe or error.
+ */
 export async function extractRecipeFromVideo(
   transcript: string,
   metadata: VideoMetadata,
@@ -71,7 +50,16 @@ export async function extractRecipeFromVideo(
   try {
     const { model, providerName } = await getModels();
     const settings = await getGenerationSettings();
-    const prompt = await buildVideoExtractionPrompt(transcript, metadata, url, allergies);
+
+    // Build prompt using shared builder
+    const prompt = await buildVideoExtractionPrompt(transcript, {
+      url,
+      title: metadata.title,
+      description: metadata.description,
+      duration: metadata.duration,
+      uploader: metadata.uploader,
+      allergies,
+    });
 
     videoLogger.debug(
       {
@@ -94,101 +82,42 @@ export async function extractRecipeFromVideo(
 
     const jsonLd = result.output;
 
-    if (!jsonLd || Object.keys(jsonLd).length === 0) {
-      videoLogger.error({ url }, "AI returned empty response - no recipe found in video");
-      return aiError("No recipe found in video transcript", "EMPTY_RESPONSE");
+    // Validate extraction output
+    const validation = validateExtractionOutput(jsonLd);
+    if (!validation.valid) {
+      videoLogger.error({ url, ...validation.details }, validation.error);
+      return aiError(validation.error!, "VALIDATION_ERROR");
     }
 
     videoLogger.debug(
-      {
-        url,
-        recipeName: jsonLd.name,
-        metricIngredients: jsonLd.recipeIngredient?.metric?.length ?? 0,
-        usIngredients: jsonLd.recipeIngredient?.us?.length ?? 0,
-        metricSteps: jsonLd.recipeInstructions?.metric?.length ?? 0,
-        usSteps: jsonLd.recipeInstructions?.us?.length ?? 0,
-      },
+      { url, ...getExtractionLogContext(jsonLd!, null) },
       "AI video response received"
     );
 
-    // Validate required fields
-    if (
-      !jsonLd.name ||
-      !jsonLd.recipeIngredient?.metric?.length ||
-      !jsonLd.recipeIngredient?.us?.length ||
-      !jsonLd.recipeInstructions?.metric?.length ||
-      !jsonLd.recipeInstructions?.us?.length
-    ) {
-      videoLogger.error(
-        {
-          hasName: !!jsonLd.name,
-          metricIngredients: jsonLd.recipeIngredient?.metric?.length || 0,
-          usIngredients: jsonLd.recipeIngredient?.us?.length || 0,
-          metricInstructions: jsonLd.recipeInstructions?.metric?.length || 0,
-          usInstructions: jsonLd.recipeInstructions?.us?.length || 0,
-        },
-        "AI response missing required fields"
-      );
-      return aiError("Video extraction failed - missing required fields", "VALIDATION_ERROR");
-    }
-
-    // Build metric version for normalization
-    const metricVersion = {
-      ...jsonLd,
-      image: metadata.thumbnail,
-      recipeIngredient: jsonLd.recipeIngredient.metric,
-      recipeInstructions: jsonLd.recipeInstructions.metric,
-    };
-
-    const normalized = await normalizeRecipeFromJson(metricVersion);
-
-    if (!normalized) {
-      videoLogger.error({ url }, "Failed to normalize recipe from JSON-LD");
-      return aiError("Failed to normalize recipe data", "VALIDATION_ERROR");
-    }
-
-    // Add US system data
-    const units = await getUnits();
-    const usIngredients = parseIngredientWithDefaults(jsonLd.recipeIngredient.us, units);
-    const usSteps = jsonLd.recipeInstructions.us.map((step: string, i: number) => ({
-      step,
-      order: i + 1,
-      systemUsed: "us" as const,
-    }));
-
-    normalized.url = url;
-
     // Download thumbnail as recipe image if available
+    let thumbnailPath: string | undefined;
     if (metadata.thumbnail) {
       try {
-        normalized.image = await downloadImage(metadata.thumbnail);
+        thumbnailPath = await downloadImage(metadata.thumbnail);
       } catch (_error) {
         // Continue without image rather than failing
         videoLogger.debug({ url }, "Failed to download video thumbnail");
       }
     }
 
-    normalized.recipeIngredients = [
-      ...(normalized.recipeIngredients ?? []),
-      ...usIngredients.map((ing, i) => ({
-        ingredientId: null,
-        ingredientName: ing.description,
-        amount: ing.quantity != null ? ing.quantity : null,
-        unit: ing.unitOfMeasureID,
-        systemUsed: "us" as const,
-        order: i,
-      })),
-    ];
-    normalized.steps = [...(normalized.steps ?? []), ...usSteps];
+    // Normalize using shared normalizer
+    const normalized = await normalizeExtractionOutput(jsonLd!, {
+      url,
+      image: thumbnailPath,
+    });
+
+    if (!normalized) {
+      videoLogger.error({ url }, "Failed to normalize recipe from JSON-LD");
+      return aiError("Failed to normalize recipe data", "VALIDATION_ERROR");
+    }
 
     videoLogger.info(
-      {
-        url,
-        recipeName: normalized.name,
-        totalIngredients: normalized.recipeIngredients?.length ?? 0,
-        totalSteps: normalized.steps?.length ?? 0,
-        systemUsed: normalized.systemUsed,
-      },
+      { url, ...getExtractionLogContext(jsonLd!, normalized) },
       "Video recipe extraction completed"
     );
 
