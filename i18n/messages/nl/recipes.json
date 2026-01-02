@@ -128,6 +128,13 @@
   "ingredientInput": {
     "placeholder": "bijv. 2 kopjes bloem"
   },
+  "wakeLock": {
+    "keepScreenOn": "Scherm aan houden",
+    "notSupported": "Scherm wakker houden wordt niet ondersteund in deze browser",
+    "activeTooltip": "Scherm blijft aan tijdens het koken",
+    "inactiveTooltip": "Houd het scherm aan tijdens het volgen van stappen",
+    "ariaLabel": "Scherm wakker houden"
+  },
   "toasts": {
     "processingBoth": "Tags & allergieën verwerken",
     "processingTags": "Tags genereren",

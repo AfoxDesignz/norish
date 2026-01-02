@@ -127,6 +127,13 @@
   "ingredientInput": {
     "placeholder": "e.g., 2 cups flour"
   },
+  "wakeLock": {
+    "keepScreenOn": "Keep Screen on",
+    "notSupported": "Keep screen awake is not supported in this browser",
+    "activeTooltip": "Screen will stay awake while cooking",
+    "inactiveTooltip": "Keep screen awake while following steps",
+    "ariaLabel": "Keep screen awake"
+  },
   "toasts": {
     "processingBoth": "Processing tags & allergies",
     "processingTags": "Generating tags",
