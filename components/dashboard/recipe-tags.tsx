@@ -40,7 +40,11 @@ export default function RecipeTags({ tags, allergies = [] }: RecipeTagsProps) {
   }, [tags]);
 
   return (
-    <div className="absolute inset-x-0 bottom-0 z-30 overflow-hidden p-2">
+    <div
+      className="absolute inset-x-0 bottom-0 z-30 overflow-hidden p-2"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
       <motion.div
         ref={containerRef}
         className="flex cursor-grab gap-2 active:cursor-grabbing"
