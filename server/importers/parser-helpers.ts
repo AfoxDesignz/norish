@@ -39,7 +39,7 @@ export function splitNonEmptyLines(s?: string | null): string[] {
 }
 
 /**
- * Parse servings from string or number (e.g., "2" → 2, "4 servings" → 4, 6 → 6)
+ * Parse servings from string or number (e.g., "2" => 2, "4 servings" => 4, 6 => 6)
  */
 export function parseServings(inp?: string | number | null): number | undefined {
   if (inp == null) return undefined;

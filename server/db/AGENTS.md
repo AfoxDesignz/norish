@@ -19,7 +19,7 @@ db/
 
 | Task           | Location                                          |
 | -------------- | ------------------------------------------------- |
-| Add table      | `schema/<table>.ts` → export in `schema/index.ts` |
+| Add table      | `schema/<table>.ts` => export in `schema/index.ts` |
 | Add relations  | `schema/relations.ts`                             |
 | Add CRUD ops   | `repositories/<entity>.ts`                        |
 | Zod validation | `zodSchemas/` (auto-generated, don't edit)        |

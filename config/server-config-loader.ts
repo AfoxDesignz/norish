@@ -5,8 +5,8 @@
  * Each call queries the database directly - no caching layer.
  *
  * Flow:
- * - Server code needs config → call getX() → queries DB → returns value
- * - Frontend needs config → use hook → fetches from API → API queries DB
+ * - Server code needs config => call getX() => queries DB => returns value
+ * - Frontend needs config => use hook => fetches from API => API queries DB
  */
 
 // Import defaults for fallback when DB has no value

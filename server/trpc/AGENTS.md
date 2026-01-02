@@ -73,7 +73,7 @@ emitter.onHouseholdEvent(householdId, (event, payload) => {
 ### Middleware Chain
 
 ```
-publicProcedure → authedProcedure → serverAdminProcedure
+publicProcedure => authedProcedure => serverAdminProcedure
                      ↓
             permissionMiddleware (optional)
 ```

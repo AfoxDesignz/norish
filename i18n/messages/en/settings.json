@@ -303,7 +303,7 @@
           "adminGroup": "Admin Group",
           "adminGroupDescription": "Group name that grants server admin role (case-insensitive)",
           "householdPrefix": "Household Prefix",
-          "householdPrefixDescription": "Prefix for household group names (e.g., norish_household_family → household 'family')"
+          "householdPrefixDescription": "Prefix for household group names (e.g., norish_household_family => household 'family')"
         }
       },
       "github": {

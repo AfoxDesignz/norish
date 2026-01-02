@@ -118,13 +118,13 @@ const allowed = await canAccessResource("edit", userId, ownerId, householdUserId
 
 ## Recipe Import Pipeline
 
-1. **Client** calls `importRecipe(url)` → adds `pendingRecipeId` to show skeleton
+1. **Client** calls `importRecipe(url)` => adds `pendingRecipeId` to show skeleton
 2. **tRPC router** queues job via BullMQ (`server/queue/recipe-import/`)
 3. **Worker** parses URL with structured extractors, falls back to AI if enabled
-4. **Worker** emits `imported` event via typed emitter → subscription updates cache
+4. **Worker** emits `imported` event via typed emitter => subscription updates cache
 5. **Client** removes pending skeleton, adds real recipe
 
-Parsers: `lib/parser/` (structured) → `server/ai/recipe-parser.ts` (AI fallback)
+Parsers: `lib/parser/` (structured) => `server/ai/recipe-parser.ts` (AI fallback)
 
 ## Real-time & Optimistic Updates
 

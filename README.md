@@ -103,7 +103,7 @@ services:
       # FIRST USER SETUP
       # ─────────────────────────────────────────────────────────────────────────
       # On first startup, configure ONE auth provider below to create your admin account.
-      # After first login, use Settings → Admin to configure additional providers,
+      # After first login, use Settings => Admin to configure additional providers,
       # AI settings, video parsing, and all other options.
 
       # Option 1= Password auth - basic auth with email/password

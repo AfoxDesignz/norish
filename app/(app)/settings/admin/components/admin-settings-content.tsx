@@ -3,7 +3,7 @@
 import { AdminSettingsProvider, useAdminSettingsContext } from "../context";
 
 import RegistrationCard from "./registration-card";
-import AuthProvidersCard from "./auth-providers-card";
+import { AuthProvidersCard } from "./auth-providers";
 import ContentDetectionCard from "./content-detection-card";
 import SystemCard from "./system-card";
 import AIProcessingCard from "./ai-processing-card";

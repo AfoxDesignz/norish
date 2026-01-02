@@ -303,7 +303,7 @@
           "adminGroup": "Admin Groep",
           "adminGroupDescription": "Groepsnaam die serverbeheerderrol verleent (hoofdletterongevoelig)",
           "householdPrefix": "Huishouden Prefix",
-          "householdPrefixDescription": "Prefix voor huishoudgroepnamen (bijv. norish_household_familie → huishouden 'familie')"
+          "householdPrefixDescription": "Prefix voor huishoudgroepnamen (bijv. norish_household_familie => huishouden 'familie')"
         }
       },
       "github": {

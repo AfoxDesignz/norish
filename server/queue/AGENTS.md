@@ -79,7 +79,7 @@ await stopMyWorker();
 
 1. Client calls `trpc.recipes.import({ url })`
 2. Router adds job via `addRecipeImportJob()`
-3. Worker processes: fetch → parse → save
+3. Worker processes: fetch => parse => save
 4. Worker emits event via typed emitter
 5. Client subscription receives update
 

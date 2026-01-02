@@ -21,7 +21,7 @@ norish/
 ├── types/dto/        # Shared TypeScript DTOs
 ├── tooling/          # ESLint, Vitest configs (re-exported from root)
 ├── __tests__/        # Tests mirror source structure
-└── server.ts         # Entry: migrations → seed → video init → caldav → workers → HTTP
+└── server.ts         # Entry: migrations => seed => video init => caldav => workers => HTTP
 ```
 
 ## WHERE TO LOOK
@@ -70,15 +70,15 @@ pnpm lint:fix         # eslint --fix
 
 ## UNIQUE STYLES
 
-- **Real-time pattern**: Mutations trigger server → WebSocket subscriptions update React Query cache → all household members sync automatically
+- **Real-time pattern**: Mutations trigger server => WebSocket subscriptions update React Query cache => all household members sync automatically
 - **Permission model**: Three-tier (everyone/household/owner) per action (view/edit/delete)
-- **Recipe import pipeline**: URL → BullMQ job → Parser (structured or AI fallback) → emit event → subscription updates UI
+- **Recipe import pipeline**: URL => BullMQ job => Parser (structured or AI fallback) => emit event => subscription updates UI
 - **Tooling location**: All configs in `tooling/`, root files re-export
 
 ## CI/CD
 
 - **Trigger**: PRs to main, pushes to any branch
-- **Pipeline**: install → build → (tests, lint, format:check) parallel
+- **Pipeline**: install => build => (tests, lint, format:check) parallel
 - **Node**: 22.21.1, pnpm 10.26.0
 
 ## KEY DEPENDENCIES
