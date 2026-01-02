@@ -20,15 +20,17 @@ import { useRecipesContext } from "@/context/recipes-context";
 import { useAppStore } from "@/store/useAppStore";
 import { usePermissionsContext } from "@/context/permissions-context";
 import { useFavoritesQuery, useFavoritesMutation } from "@/hooks/favorites";
+import { useActiveAllergies } from "@/hooks/user";
 
 export default function RecipeCard({ recipe }: { recipe: RecipeDashboardDTO }) {
   const router = useRouter();
   const rowRef = useRef<SwipeableRowRef>(null);
   const { mobileSearchOpen } = useAppStore((s) => s);
-  const { deleteRecipe, autoTaggingRecipeIds } = useRecipesContext();
+  const { deleteRecipe } = useRecipesContext();
   const { canDeleteRecipe } = usePermissionsContext();
   const { isFavorite: checkFavorite } = useFavoritesQuery();
   const { toggleFavorite } = useFavoritesMutation();
+  const { allergies } = useActiveAllergies();
   const [open, setOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [groceriesOpen, setGroceriesOpen] = useState(false);
@@ -36,7 +38,6 @@ export default function RecipeCard({ recipe }: { recipe: RecipeDashboardDTO }) {
 
   const isFavorite = checkFavorite(recipe.id);
   const averageRating = recipe.averageRating ?? null;
-  const isAutoTagging = autoTaggingRecipeIds.has(recipe.id);
 
   const handleNavigate = useCallback(() => {
     if (recipe.id && !open && !mobileSearchOpen) {
@@ -167,9 +168,7 @@ export default function RecipeCard({ recipe }: { recipe: RecipeDashboardDTO }) {
                 />
 
                 {/* bottom tags */}
-                {(allTags.length > 0 || isAutoTagging) && (
-                  <RecipeTags isAutoTagging={isAutoTagging} tags={allTags} />
-                )}
+                {allTags.length > 0 && <RecipeTags allergies={allergies} tags={allTags} />}
               </DoubleTapContainer>
 
               {/* Body*/}

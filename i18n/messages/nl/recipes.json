@@ -42,6 +42,8 @@
     "delete": "Verwijder",
     "autoTag": "Auto-tag",
     "autoTagging": "Tags genereren...",
+    "detectAllergies": "Detecteer Allergieën",
+    "detectingAllergies": "Allergieën detecteren...",
     "screenOn": "Scherm Aan",
     "keepScreenOn": "Scherm Aan Houden",
     "actionsLabel": "Acties"
@@ -125,5 +127,21 @@
   },
   "ingredientInput": {
     "placeholder": "bijv. 2 kopjes bloem"
+  },
+  "toasts": {
+    "processingBoth": "Tags & allergieën verwerken",
+    "processingTags": "Tags genereren",
+    "processingAllergies": "Allergieën detecteren",
+    "bothComplete": "Tags & allergieën bijgewerkt",
+    "tagsComplete": "Tags gegenereerd",
+    "allergiesComplete": "Allergieën gedetecteerd",
+    "imported": "Recept geïmporteerd",
+    "converted": "Maateenheden omgezet",
+    "convertedDescription": "Recept omgezet naar {system} eenheden",
+    "failed": "Receptbewerking mislukt",
+    "batchImported": "Recepten geïmporteerd",
+    "batchImportedDescription": "{count} recepten geïmporteerd uit archief",
+    "view": "Bekijk",
+    "open": "Open"
   }
 }

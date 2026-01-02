@@ -120,6 +120,10 @@ export type { NutritionEstimate } from "./nutrition-estimator";
 export { generateTagsForRecipe, type RecipeForTagging } from "./auto-tagger";
 export type { AutoTaggingOutput } from "./auto-tagger";
 
+// Allergy detection
+export { detectAllergiesInRecipe, type RecipeForAllergyDetection } from "./allergy-detector";
+export type { AllergyDetectionOutput } from "./allergy-detector";
+
 // Transcription
 export { transcribeAudio } from "./transcriber";
 

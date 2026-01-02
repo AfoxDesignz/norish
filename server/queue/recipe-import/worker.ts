@@ -16,6 +16,7 @@ import { emitByPolicy, type PolicyEmitContext } from "@/server/trpc/helpers";
 import { recipeEmitter } from "@/server/trpc/routers/recipes/emitter";
 import { getRecipePermissionPolicy, getAIConfig } from "@/config/server-config-loader";
 import { addAutoTaggingJob } from "@/server/queue/auto-tagging/queue";
+import { addAllergyDetectionJob } from "@/server/queue/allergy-detection/queue";
 import {
   createRecipeWithRefs,
   recipeExistsByUrlForPolicy,
@@ -60,9 +61,11 @@ async function processImportJob(job: Job<RecipeImportJobData>): Promise<void> {
       );
 
       // Include pendingRecipeId so client can remove the skeleton
+      // Show imported toast since no processing will follow for existing recipes
       emitByPolicy(recipeEmitter, viewPolicy, ctx, "imported", {
         recipe: dashboardDto,
         pendingRecipeId: recipeId,
+        toast: "imported",
       });
     }
 
@@ -106,15 +109,26 @@ async function processImportJob(job: Job<RecipeImportJobData>): Promise<void> {
       "Recipe imported successfully"
     );
 
+    // If AI was used, no processing will follow - show imported toast
+    // If AI was NOT used, auto-tagging/allergy detection will follow - no toast needed
     emitByPolicy(recipeEmitter, viewPolicy, ctx, "imported", {
       recipe: dashboardDto,
       pendingRecipeId: recipeId,
+      toast: parseResult.usedAI ? "imported" : undefined,
     });
 
     // Trigger auto-tagging only if AI was NOT used for extraction
     // (AI extraction already includes auto-tagging instructions in the prompt)
     if (!parseResult.usedAI) {
       await addAutoTaggingJob({
+        recipeId: createdId,
+        userId,
+        householdKey,
+      });
+
+      // Trigger allergy detection for structured imports
+      // (AI extraction already handles allergy detection inline)
+      await addAllergyDetectionJob({
         recipeId: createdId,
         userId,
         householdKey,

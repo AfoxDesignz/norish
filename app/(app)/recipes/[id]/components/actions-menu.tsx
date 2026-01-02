@@ -21,6 +21,7 @@ import { cssButtonPill, cssAIGradientText, cssAIIconColor } from "@/config/css-t
 import { MiniGroceries, MiniCalendar } from "@/components/Panel/consumers";
 import { usePermissionsContext } from "@/context/permissions-context";
 import { useRecipesContext } from "@/context/recipes-context";
+import { useActiveAllergies } from "@/hooks/user";
 
 type Props = { id: string };
 
@@ -39,9 +40,12 @@ export default function ActionsMenu({ id }: Props) {
   const [openCalendar, setOpenCalendar] = React.useState(false);
   const [openGroceries, setOpenGroceries] = React.useState(false);
   const router = useRouter();
-  const { canEditRecipe, canDeleteRecipe, isAutoTaggingEnabled } = usePermissionsContext();
+  const { canEditRecipe, canDeleteRecipe, isAutoTaggingEnabled, isAIEnabled } =
+    usePermissionsContext();
   const { deleteRecipe } = useRecipesContext();
-  const { recipe, isAutoTagging, triggerAutoTag } = useRecipeContextRequired();
+  const { recipe, isAutoTagging, triggerAutoTag, isDetectingAllergies, triggerAllergyDetection } =
+    useRecipeContextRequired();
+  const { allergies } = useActiveAllergies();
   const { isSupported, isActive, toggle } = useWakeLockContext();
   const t = useTranslations("recipes.actions");
 
@@ -101,6 +105,21 @@ export default function ActionsMenu({ id }: Props) {
       });
     }
 
+    // Show allergy detection when AI is enabled, user can edit, and allergies are configured
+    const hasAllergies = allergies.length > 0;
+
+    if (isAIEnabled && canEdit && hasAllergies) {
+      items.push({
+        key: "detect-allergies",
+        label: isDetectingAllergies ? t("detectingAllergies") : t("detectAllergies"),
+        icon: <SparklesIcon className="size-4" />,
+        onPress: triggerAllergyDetection,
+        labelClassName: cssAIGradientText,
+        iconClassName: cssAIIconColor,
+        isDisabled: isDetectingAllergies,
+      });
+    }
+
     if (canDelete) {
       items.push({
         key: "delete",
@@ -113,9 +132,26 @@ export default function ActionsMenu({ id }: Props) {
     }
 
     return items;
-  }, [canEdit, canDelete, handleDelete, id, router, isSupported, isActive, toggle, t, isAutoTaggingEnabled, isAutoTagging, triggerAutoTag]);
+  }, [
+    canEdit,
+    canDelete,
+    handleDelete,
+    id,
+    router,
+    isSupported,
+    isActive,
+    toggle,
+    t,
+    isAutoTaggingEnabled,
+    isAutoTagging,
+    triggerAutoTag,
+    isAIEnabled,
+    allergies,
+    isDetectingAllergies,
+    triggerAllergyDetection,
+  ]);
 
-return (
+  return (
     <>
       <Dropdown>
         <DropdownTrigger>
@@ -147,7 +183,9 @@ return (
                 variant="light"
                 onPress={item.onPress}
               >
-                <span className={`text-sm font-medium ${item.labelClassName ?? ""}`}>{item.label}</span>
+                <span className={`text-sm font-medium ${item.labelClassName ?? ""}`}>
+                  {item.label}
+                </span>
               </Button>
             </DropdownItem>
           )}

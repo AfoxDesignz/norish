@@ -22,7 +22,10 @@ import {
   useNutritionSubscription,
   useAutoTagging,
   useAutoTaggingMutation,
+  useAllergyDetection,
+  useAllergyDetectionMutation,
 } from "@/hooks/recipes";
+import { useActiveAllergies } from "@/hooks/user";
 import { useTRPC } from "@/app/providers/trpc-provider";
 
 type Ctx = {
@@ -42,6 +45,13 @@ type Ctx = {
   // Auto-tagging
   isAutoTagging: boolean;
   triggerAutoTag: () => void;
+  // Allergy detection
+  isDetectingAllergies: boolean;
+  triggerAllergyDetection: () => void;
+  // Allergies list (from household or user settings)
+  allergies: string[];
+  // Pre-computed Set for O(1) lookups
+  allergySet: Set<string>;
 };
 
 const RecipeContext = createContext<Ctx | null>(null);
@@ -54,10 +64,10 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
   const [_servings, setServings] = useState<number | null>(null);
   const [convertingTo, setConvertingTo] = useState<MeasurementSystem | null>(null);
   const [adjustedIngredients, setAdjustedIngredients] = useState<RecipeIngredientsDto[]>([]);
-  
+
   // Track the last recipe ID to detect recipe changes
   const lastRecipeIdRef = React.useRef<string | null>(null);
-  
+
   // Ref for recipe to keep callbacks stable
   const recipeRef = React.useRef(recipe);
   recipeRef.current = recipe;
@@ -91,6 +101,24 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
     autoTagMutation.mutate({ recipeId: recipe.id });
   }, [recipe, autoTagMutation]);
 
+  // Allergy detection hooks
+  const [isDetectingAllergies, setIsDetectingAllergies] = useState(false);
+  const allergyDetectionMutation = useAllergyDetectionMutation();
+
+  useAllergyDetection(
+    recipeId,
+    () => setIsDetectingAllergies(true),
+    () => setIsDetectingAllergies(false)
+  );
+
+  const triggerAllergyDetection = useCallback(() => {
+    if (!recipe) return;
+    allergyDetectionMutation.mutate({ recipeId: recipe.id });
+  }, [recipe, allergyDetectionMutation]);
+
+  // Get allergies from household (if in one) or user settings (if solo)
+  const { allergies, allergySet } = useActiveAllergies();
+
   // Mutation for converting measurements
   const convertMutation = useMutation(trpc.recipes.convertMeasurements.mutationOptions());
 
@@ -100,7 +128,7 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
   // Initialize adjusted ingredients when recipe first loads or changes to different recipe
   useEffect(() => {
     if (!recipe?.recipeIngredients) return;
-    
+
     // If this is a different recipe, reset servings and use original ingredients
     if (lastRecipeIdRef.current !== recipe.id) {
       lastRecipeIdRef.current = recipe.id;
@@ -112,7 +140,7 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
   // Recalculate ingredients when servings change
   useEffect(() => {
     if (!recipe?.recipeIngredients) return;
-    
+
     // If we have custom servings, recalculate with those servings
     if (_servings !== null && _servings !== recipe.servings) {
       setAdjustedIngredients(
@@ -192,7 +220,8 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
 
           if (isNaN(amountNum) || amountNum <= 0) return ing;
 
-          const newAmount = Math.round((amountNum / currentRecipe.servings) * servings * 10000) / 10000;
+          const newAmount =
+            Math.round((amountNum / currentRecipe.servings) * servings * 10000) / 10000;
 
           return { ...ing, amount: newAmount };
         })
@@ -217,6 +246,10 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
       estimateNutrition,
       isAutoTagging,
       triggerAutoTag,
+      isDetectingAllergies,
+      triggerAllergyDetection,
+      allergies,
+      allergySet,
     }),
     [
       recipe,
@@ -233,6 +266,10 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
       estimateNutrition,
       isAutoTagging,
       triggerAutoTag,
+      isDetectingAllergies,
+      triggerAllergyDetection,
+      allergies,
+      allergySet,
     ]
   );
 

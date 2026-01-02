@@ -58,6 +58,16 @@ export const autoTaggingJobOptions: DefaultJobOptions = {
   removeOnFail: true,
 };
 
+export const allergyDetectionJobOptions: DefaultJobOptions = {
+  attempts: 3,
+  backoff: {
+    type: "exponential",
+    delay: 2000, // 2s, 4s, 8s
+  },
+  removeOnComplete: true,
+  removeOnFail: true,
+};
+
 export const QUEUE_NAMES = {
   RECIPE_IMPORT: "recipe-import",
   IMAGE_IMPORT: "image-recipe-import",
@@ -66,4 +76,5 @@ export const QUEUE_NAMES = {
   SCHEDULED_TASKS: "scheduled-tasks",
   NUTRITION_ESTIMATION: "nutrition-estimation",
   AUTO_TAGGING: "auto-tagging",
+  ALLERGY_DETECTION: "allergy-detection",
 } as const;

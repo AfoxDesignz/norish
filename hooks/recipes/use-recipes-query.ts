@@ -8,6 +8,7 @@ import { useMemo, useCallback } from "react";
 
 import { usePendingRecipesQuery } from "./use-pending-recipes-query";
 import { useAutoTaggingQuery } from "./use-auto-tagging-query";
+import { useAllergyDetectionQuery } from "./use-allergy-detection-query";
 
 import { useTRPC } from "@/app/providers/trpc-provider";
 
@@ -35,11 +36,14 @@ export type RecipesQueryResult = {
   queryKey: QueryKey;
   pendingRecipeIds: Set<string>;
   autoTaggingRecipeIds: Set<string>;
+  allergyDetectionRecipeIds: Set<string>;
   loadMore: () => void;
   addPendingRecipe: (id: string) => void;
   removePendingRecipe: (id: string) => void;
   addAutoTaggingRecipe: (id: string) => void;
   removeAutoTaggingRecipe: (id: string) => void;
+  addAllergyDetectionRecipe: (id: string) => void;
+  removeAllergyDetectionRecipe: (id: string) => void;
   setRecipesData: (
     updater: (prev: InfiniteRecipeData | undefined) => InfiniteRecipeData | undefined
   ) => void;
@@ -59,6 +63,8 @@ export function useRecipesQuery(filters: RecipeFilters = {}): RecipesQueryResult
   const { pendingRecipeIds, addPendingRecipe, removePendingRecipe } = usePendingRecipesQuery();
   const { autoTaggingRecipeIds, addAutoTaggingRecipe, removeAutoTaggingRecipe } =
     useAutoTaggingQuery();
+  const { allergyDetectionRecipeIds, addAllergyDetectionRecipe, removeAllergyDetectionRecipe } =
+    useAllergyDetectionQuery();
 
   const infiniteQueryOptions = trpc.recipes.list.infiniteQueryOptions(
     { limit: 100, search, tags, filterMode, sortMode, minRating },
@@ -126,11 +132,14 @@ export function useRecipesQuery(filters: RecipeFilters = {}): RecipesQueryResult
     queryKey,
     pendingRecipeIds,
     autoTaggingRecipeIds,
+    allergyDetectionRecipeIds,
     loadMore,
     addPendingRecipe,
     removePendingRecipe,
     addAutoTaggingRecipe,
     removeAutoTaggingRecipe,
+    addAllergyDetectionRecipe,
+    removeAllergyDetectionRecipe,
     setRecipesData,
     setAllRecipesData,
     invalidate,

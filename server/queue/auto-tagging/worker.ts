@@ -39,6 +39,13 @@ async function processAutoTaggingJob(job: Job<AutoTaggingJobData>): Promise<void
   // Emit autoTaggingStarted event so clients can show loading state
   emitByPolicy(recipeEmitter, policy.view, ctx, "autoTaggingStarted", { recipeId });
 
+  // Emit toast with i18n key - client just shows it directly
+  emitByPolicy(recipeEmitter, policy.view, ctx, "processingToast", {
+    recipeId,
+    titleKey: "processingTags",
+    severity: "default",
+  });
+
   const recipe = await getRecipeFull(recipeId);
 
   if (!recipe) {
@@ -47,6 +54,12 @@ async function processAutoTaggingJob(job: Job<AutoTaggingJobData>): Promise<void
 
   if (recipe.recipeIngredients.length === 0) {
     log.warn({ recipeId }, "Recipe has no ingredients, skipping auto-tagging");
+    emitByPolicy(recipeEmitter, policy.view, ctx, "autoTaggingCompleted", { recipeId });
+    emitByPolicy(recipeEmitter, policy.view, ctx, "processingToast", {
+      recipeId,
+      titleKey: "tagsComplete",
+      severity: "success",
+    });
     return;
   }
 
@@ -67,6 +80,12 @@ async function processAutoTaggingJob(job: Job<AutoTaggingJobData>): Promise<void
 
   if (generatedTags.length === 0) {
     log.info({ recipeId }, "AI returned no tags");
+    emitByPolicy(recipeEmitter, policy.view, ctx, "autoTaggingCompleted", { recipeId });
+    emitByPolicy(recipeEmitter, policy.view, ctx, "processingToast", {
+      recipeId,
+      titleKey: "tagsComplete",
+      severity: "success",
+    });
     return;
   }
 
@@ -88,12 +107,22 @@ async function processAutoTaggingJob(job: Job<AutoTaggingJobData>): Promise<void
     );
   });
 
-  // Fetch updated recipe and emit event
+  // Fetch updated recipe and emit events
   const updatedRecipe = await getRecipeFull(recipeId);
 
   if (updatedRecipe) {
     emitByPolicy(recipeEmitter, policy.view, ctx, "updated", { recipe: updatedRecipe });
   }
+
+  // Emit completion event so clients can track when auto-tagging is done
+  emitByPolicy(recipeEmitter, policy.view, ctx, "autoTaggingCompleted", { recipeId });
+
+  // Emit toast with i18n key for completion
+  emitByPolicy(recipeEmitter, policy.view, ctx, "processingToast", {
+    recipeId,
+    titleKey: "tagsComplete",
+    severity: "success",
+  });
 }
 
 async function handleJobFailed(

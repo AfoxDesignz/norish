@@ -79,9 +79,11 @@ async function processImageImportJob(job: Job<ImageImportJobData>): Promise<void
     log.info({ jobId: job.id, recipeId: createdId }, "Image recipe imported successfully");
 
     // Emit imported event (replaces skeleton with actual recipe)
+    // Image import is always AI-based, so no processing will follow - show imported toast
     emitByPolicy(recipeEmitter, viewPolicy, ctx, "imported", {
       recipe: dashboardDto,
       pendingRecipeId: recipeId,
+      toast: "imported",
     });
 
     // Note: No auto-tagging job queued - image import is always AI-based,

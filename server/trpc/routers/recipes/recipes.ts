@@ -40,6 +40,7 @@ import {
   addPasteImportJob,
   addNutritionEstimationJob,
   addAutoTaggingJob,
+  addAllergyDetectionJob,
 } from "@/server/queue";
 import { FilterMode, SortOrder } from "@/types";
 import { MAX_RECIPE_PASTE_CHARS } from "@/types/uploads";
@@ -673,6 +674,76 @@ const triggerAutoTag = authedProcedure
     return { success: true };
   });
 
+const triggerAllergyDetection = authedProcedure
+  .input(z.object({ recipeId: z.uuid() }))
+  .mutation(async ({ ctx, input }) => {
+    const { recipeId } = input;
+
+    log.info({ userId: ctx.user.id, recipeId }, "Queueing allergy detection for recipe");
+
+    const aiEnabled = await checkAIEnabled();
+
+    if (!aiEnabled) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "AI features are disabled",
+      });
+    }
+
+    const recipe = await getRecipeFull(recipeId);
+
+    if (!recipe) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Recipe not found",
+      });
+    }
+
+    if (recipe.recipeIngredients.length === 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Recipe has no ingredients to detect allergies from",
+      });
+    }
+
+    // Add to queue for background processing
+    const result = await addAllergyDetectionJob({
+      recipeId,
+      userId: ctx.user.id,
+      householdKey: ctx.householdKey,
+    });
+
+    if (result.status === "duplicate") {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Allergy detection is already in progress for this recipe",
+      });
+    }
+
+    if (result.status === "skipped") {
+      const reasonMessage =
+        result.reason === "no_allergies"
+          ? "No allergies configured for your household"
+          : "Allergy detection is disabled";
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: reasonMessage,
+      });
+    }
+
+    const policy = await getRecipePermissionPolicy();
+
+    emitByPolicy(
+      recipeEmitter,
+      policy.view,
+      { userId: ctx.user.id, householdKey: ctx.householdKey },
+      "allergyDetectionStarted",
+      { recipeId }
+    );
+
+    return { success: true };
+  });
+
 export const recipesProcedures = router({
   list,
   get,
@@ -685,6 +756,7 @@ export const recipesProcedures = router({
   convertMeasurements,
   estimateNutrition,
   triggerAutoTag,
+  triggerAllergyDetection,
   reserveId,
   autocomplete,
 });

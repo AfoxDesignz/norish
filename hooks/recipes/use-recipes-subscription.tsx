@@ -7,6 +7,7 @@ import { useSubscription } from "@trpc/tanstack-react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { addToast, Button } from "@heroui/react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { useRecipesQuery } from "./use-recipes-query";
 
@@ -31,6 +32,7 @@ type InfiniteRecipeData = InfiniteData<{
 export function useRecipesSubscription() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const t = useTranslations("recipes.toasts");
   const {
     setAllRecipesData,
     invalidate,
@@ -38,6 +40,8 @@ export function useRecipesSubscription() {
     removePendingRecipe,
     addAutoTaggingRecipe,
     removeAutoTaggingRecipe,
+    addAllergyDetectionRecipe,
+    removeAllergyDetectionRecipe,
   } = useRecipesQuery();
 
   const addRecipeToList = (recipe: RecipeDashboardDTO) => {
@@ -152,24 +156,26 @@ export function useRecipesSubscription() {
         removePendingRecipe(pendingId);
         addRecipeToList(payload.recipe);
 
-        addToast({
-          severity: "success",
-          title: "Recipe imported",
-          description: "Open recipe",
-          timeout: 2000,
-          shouldShowTimeoutProgress: true,
-          radius: "full",
-          classNames: {
-            closeButton: "opacity-100 absolute right-4 top-1/2 -translate-y-1/2",
-          },
-          endContent: (
-            <Link href={`/recipes/${payload.recipe.id}`}>
-              <Button color="primary" radius="full" size="sm" variant="solid">
-                Open
-              </Button>
-            </Link>
-          ),
-        });
+        // Only show toast if backend indicates no processing will follow
+        if (payload.toast === "imported") {
+          addToast({
+            severity: "success",
+            title: t("imported"),
+            timeout: 2000,
+            shouldShowTimeoutProgress: true,
+            radius: "full",
+            classNames: {
+              closeButton: "opacity-100 absolute right-4 top-1/2 -translate-y-1/2",
+            },
+            endContent: (
+              <Link href={`/recipes/${payload.recipe.id}`}>
+                <Button color="primary" radius="full" size="sm" variant="solid">
+                  {t("open")}
+                </Button>
+              </Link>
+            ),
+          });
+        }
       },
       onError: (err) => log.error({ err }, "[onImported] Error"),
     })
@@ -181,8 +187,7 @@ export function useRecipesSubscription() {
       onData: (payload) => {
         log.info({ recipeId: payload.recipe.id }, "[onUpdated] Received");
         updateRecipeInList(payload.recipe);
-        // Remove from auto-tagging set (auto-tagging completed)
-        removeAutoTaggingRecipe(payload.recipe.id);
+        // Note: Completion toasts are now handled by dedicated onAutoTaggingCompleted/onAllergyDetectionCompleted subscriptions
         // Also invalidate the single recipe query if it's cached
         queryClient.invalidateQueries({
           queryKey: [["recipes", "get"], { input: { id: payload.recipe.id }, type: "query" }],
@@ -222,8 +227,8 @@ export function useRecipesSubscription() {
 
         addToast({
           severity: "success",
-          title: "Measurements converted",
-          description: `Recipe converted to ${payload.recipe.systemUsed} units`,
+          title: t("converted"),
+          description: t("convertedDescription", { system: payload.recipe.systemUsed }),
           timeout: 2000,
           shouldShowTimeoutProgress: true,
           radius: "full",
@@ -241,8 +246,9 @@ export function useRecipesSubscription() {
         // Remove from pending if it was a pending recipe
         if (payload.recipeId) {
           removePendingRecipe(payload.recipeId);
-          // Also remove from auto-tagging set in case it was an auto-tagging failure
+          // Also remove from auto-tagging and allergy detection sets in case it was a processing failure
           removeAutoTaggingRecipe(payload.recipeId);
+          removeAllergyDetectionRecipe(payload.recipeId);
         }
 
         // Invalidate to get correct state
@@ -250,7 +256,7 @@ export function useRecipesSubscription() {
 
         addToast({
           severity: "danger",
-          title: "Recipe operation failed",
+          title: t("failed"),
           timeout: 2000,
           shouldShowTimeoutProgress: true,
           radius: "full",
@@ -272,6 +278,69 @@ export function useRecipesSubscription() {
         addAutoTaggingRecipe(payload.recipeId);
       },
       onError: (err) => log.error({ err }, "[onAutoTaggingStarted] Error"),
+    })
+  );
+
+  // onAllergyDetectionStarted - Allergy detection job started
+  useSubscription(
+    trpc.recipes.onAllergyDetectionStarted.subscriptionOptions(undefined, {
+      onData: (payload) => {
+        log.info({ recipeId: payload.recipeId }, "[onAllergyDetectionStarted] Received");
+        addAllergyDetectionRecipe(payload.recipeId);
+      },
+      onError: (err) => log.error({ err }, "[onAllergyDetectionStarted] Error"),
+    })
+  );
+
+  // onAutoTaggingCompleted - Auto-tagging job completed
+  useSubscription(
+    trpc.recipes.onAutoTaggingCompleted.subscriptionOptions(undefined, {
+      onData: (payload) => {
+        log.info({ recipeId: payload.recipeId }, "[onAutoTaggingCompleted] Received");
+        removeAutoTaggingRecipe(payload.recipeId);
+      },
+      onError: (err) => log.error({ err }, "[onAutoTaggingCompleted] Error"),
+    })
+  );
+
+  // onAllergyDetectionCompleted - Allergy detection job completed
+  useSubscription(
+    trpc.recipes.onAllergyDetectionCompleted.subscriptionOptions(undefined, {
+      onData: (payload) => {
+        log.info({ recipeId: payload.recipeId }, "[onAllergyDetectionCompleted] Received");
+        removeAllergyDetectionRecipe(payload.recipeId);
+      },
+      onError: (err) => log.error({ err }, "[onAllergyDetectionCompleted] Error"),
+    })
+  );
+
+  // onProcessingToast - Show toast with i18n key sent from backend
+  useSubscription(
+    trpc.recipes.onProcessingToast.subscriptionOptions(undefined, {
+      onData: (payload) => {
+        log.info(
+          { recipeId: payload.recipeId, titleKey: payload.titleKey },
+          "[onProcessingToast] Received"
+        );
+        addToast({
+          severity: payload.severity,
+          title: t(payload.titleKey),
+          timeout: payload.severity === "success" ? 2000 : 3000,
+          shouldShowTimeoutProgress: true,
+          radius: "full",
+          classNames: {
+            closeButton: "opacity-100 absolute right-4 top-1/2 -translate-y-1/2",
+          },
+          endContent: (
+            <Link href={`/recipes/${payload.recipeId}`}>
+              <Button color="primary" radius="full" size="sm" variant="solid">
+                {t("open")}
+              </Button>
+            </Link>
+          ),
+        });
+      },
+      onError: (err) => log.error({ err }, "[onProcessingToast] Error"),
     })
   );
 
@@ -317,8 +386,8 @@ export function useRecipesSubscription() {
 
         addToast({
           severity: "success",
-          title: "Recipes imported",
-          description: `${payload.recipes.length} recipes imported from archive`,
+          title: t("batchImported"),
+          description: t("batchImportedDescription", { count: payload.recipes.length }),
           timeout: 3000,
           shouldShowTimeoutProgress: true,
           radius: "full",

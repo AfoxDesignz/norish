@@ -281,3 +281,42 @@ export function normalizeUrl(url: string): string {
     return url.toLowerCase().trim();
   }
 }
+
+/**
+ * Sort tags with allergen tags appearing first, then alphabetically.
+ * Uses case-insensitive matching for allergen detection.
+ *
+ * @param tags - Array of tag objects with a name property
+ * @param allergies - Array of allergy tag names to prioritize
+ * @returns Sorted array of tags (allergens first, then alphabetically)
+ */
+export function sortTagsWithAllergyPriority<T extends { name: string }>(
+  tags: T[],
+  allergies: string[]
+): T[] {
+  // Create a Set for O(1) lookup of allergen names (case-insensitive)
+  const allergySet = new Set(allergies.map((a) => a.toLowerCase()));
+
+  return [...tags].sort((a, b) => {
+    const aIsAllergen = allergySet.has(a.name.toLowerCase());
+    const bIsAllergen = allergySet.has(b.name.toLowerCase());
+
+    // Allergens come first
+    if (aIsAllergen && !bIsAllergen) return -1;
+    if (!aIsAllergen && bIsAllergen) return 1;
+
+    // Within same category, sort alphabetically
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/**
+ * Check if a tag is an allergen (case-insensitive).
+ *
+ * @param tagName - The tag name to check
+ * @param allergySet - Pre-computed Set of lowercase allergy names for O(1) lookup
+ * @returns True if the tag is an allergen
+ */
+export function isAllergenTag(tagName: string, allergySet: Set<string>): boolean {
+  return allergySet.has(tagName.toLowerCase());
+}

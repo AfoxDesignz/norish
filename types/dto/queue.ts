@@ -100,3 +100,15 @@ export type AddAutoTaggingJobResult =
   | { status: "queued"; job: Job<AutoTaggingJobData> }
   | { status: "duplicate"; existingJobId: string }
   | { status: "skipped"; reason: "disabled" };
+
+// Allergy detection queue types
+export interface AllergyDetectionJobData {
+  recipeId: string;
+  userId: string;
+  householdKey: string;
+}
+
+export type AddAllergyDetectionJobResult =
+  | { status: "queued"; job: Job<AllergyDetectionJobData> }
+  | { status: "duplicate"; existingJobId: string }
+  | { status: "skipped"; reason: "disabled" | "no_allergies" };

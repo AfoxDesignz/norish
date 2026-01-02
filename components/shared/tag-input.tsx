@@ -144,17 +144,16 @@ export default function TagInput({
         } else if (exactMatch) {
           e.preventDefault();
           handleAddTag(exactMatch, false); // Don't try to remove text for exact matches
-        } else if (suggestions.length > 0 && currentWord.trim()) {
-          // Auto-select first suggestion when pressing space
+        } else if (currentWord.trim() && currentWord.length >= 2) {
           e.preventDefault();
-          handleAddTag(suggestions[0], true);
+          handleAddTag(currentWord.trim(), false);
         }
       } else if (e.key === "Backspace" && !rawInput && value.length > 0) {
         e.preventDefault();
         handleRemoveTag(value[value.length - 1]);
       }
     },
-    [exactMatch, handleAddTag, rawInput, value, handleRemoveTag, currentWord, suggestions]
+    [exactMatch, handleAddTag, rawInput, value, handleRemoveTag, currentWord]
   );
 
   return (
@@ -208,10 +207,11 @@ export default function TagInput({
             {/* Non-matching typed words (potential new tags) */}
             {typedWords.map((word, idx) => {
               const lower = word.toLowerCase();
-              const isInSuggestions = suggestions.some((s) => s.toLowerCase().includes(lower));
+              // Only hide if it's an EXACT match with a suggestion (avoid true duplicates)
+              const isExactMatch = suggestions.some((s) => s.toLowerCase() === lower);
 
-              // Don't show if it's in suggestions (avoid duplicates)
-              if (isInSuggestions) return null;
+              // Don't show if it's an exact match in suggestions (avoid duplicates)
+              if (isExactMatch) return null;
 
               return (
                 <motion.button

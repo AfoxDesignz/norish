@@ -42,6 +42,18 @@ export {
 
 export { startAutoTaggingWorker, stopAutoTaggingWorker } from "./auto-tagging/worker";
 
+export {
+  allergyDetectionQueue,
+  addAllergyDetectionJob,
+  closeAllergyDetectionQueue,
+  isAllergyDetectionJobActive,
+} from "./allergy-detection/queue";
+
+export {
+  startAllergyDetectionWorker,
+  stopAllergyDetectionWorker,
+} from "./allergy-detection/worker";
+
 export { caldavSyncQueue, addCaldavSyncJob, closeCaldavSyncQueue } from "./caldav-sync/queue";
 
 export { startCaldavSyncWorker, stopCaldavSyncWorker } from "./caldav-sync/worker";
@@ -65,6 +77,8 @@ export type {
   AddNutritionEstimationJobResult,
   AutoTaggingJobData,
   AddAutoTaggingJobResult,
+  AllergyDetectionJobData,
+  AddAllergyDetectionJobResult,
   CaldavSyncJobData,
   CaldavSyncOperation,
 } from "@/types";

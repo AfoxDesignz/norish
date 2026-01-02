@@ -17,7 +17,7 @@ import AuthorChip from "./components/author-chip";
 import { useRecipeContextRequired } from "./context";
 import ServingsControl from "./components/servings-control";
 
-import { formatMinutesHM } from "@/lib/helpers";
+import { formatMinutesHM, sortTagsWithAllergyPriority, isAllergenTag } from "@/lib/helpers";
 import SystemConvertMenu from "@/app/(app)/recipes/[id]/components/system-convert-menu";
 import StepsList from "@/app/(app)/recipes/[id]/components/steps-list";
 import IngredientsList from "@/app/(app)/recipes/[id]/components/ingredient-list";
@@ -28,14 +28,13 @@ import ImageLightbox from "@/components/shared/image-lightbox";
 import SmartMarkdownRenderer from "@/components/shared/smart-markdown-renderer";
 import HeartButton from "@/components/shared/heart-button";
 import DoubleTapContainer from "@/components/shared/double-tap-container";
-import TagsSkeleton from "@/components/skeleton/tags-skeleton";
 import StarRating from "@/components/shared/star-rating";
 import { useFavoritesQuery, useFavoritesMutation } from "@/hooks/favorites";
 import { useRatingQuery, useRatingsMutation } from "@/hooks/ratings";
 import NutritionCard from "@/components/recipes/nutrition-card";
 
 export default function RecipePageDesktop() {
-  var { recipe, currentServings: _currentServings, isAutoTagging } = useRecipeContextRequired();
+  var { recipe, currentServings: _currentServings, allergies, allergySet } = useRecipeContextRequired();
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const { isFavorite: checkFavorite } = useFavoritesQuery();
   const { toggleFavorite } = useFavoritesMutation();
@@ -120,18 +119,25 @@ export default function RecipePageDesktop() {
               )}
 
               {/* Tags */}
-              {isAutoTagging ? (
-                <TagsSkeleton />
-              ) : (
-                recipe.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {recipe.tags.map((tag: { name: string }) => (
-                      <Chip key={tag.name} size="sm" variant="flat">
-                        {tag.name}
-                      </Chip>
-                    ))}
-                  </div>
-                )
+              {recipe.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {sortTagsWithAllergyPriority(recipe.tags, allergies).map(
+                    (tag: { name: string }) => {
+                      const isAllergen = isAllergenTag(tag.name, allergySet);
+
+                      return (
+                        <Chip
+                          key={tag.name}
+                          className={isAllergen ? "bg-warning text-warning-foreground" : ""}
+                          size="sm"
+                          variant="flat"
+                        >
+                          {tag.name}
+                        </Chip>
+                      );
+                    }
+                  )}
+                </div>
               )}
             </CardBody>
           </Card>
