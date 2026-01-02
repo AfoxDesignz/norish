@@ -201,6 +201,30 @@ Server owners and admins can configure the following via the **Settings => Admin
 - Test providers before saving, reveal/hide secrets, delete providers
 - **Note:** Auth provider changes require a server restart to take effect (use the Restart Server button)
 
+### OIDC Claim Mapping
+
+Automatically assign server admin roles and household memberships based on OIDC claims/groups.
+
+**Security Warning**: This feature is disabled by default. Enabling claim mapping allows your identity provider to control admin privileges and household membership. Only enable this if you fully trust your OIDC provider and have properly configured the group claims.
+
+- **Admin Role Assignment**: Users with the configured admin group (default: `norish_admin`) are granted server admin privileges. This is synced on every login - removing the group revokes admin on next login.
+- **Household Auto-Join**: Users with a household group (default prefix: `norish_household_`) are automatically joined to that household on first login. If the household doesn't exist, it's created with the user as admin.
+
+| Setting                       | Description                                          | Default             |
+| ----------------------------- | ---------------------------------------------------- | ------------------- |
+| `OIDC_CLAIM_MAPPING_ENABLED`  | Enable claim-based role/household assignment         | `false`             |
+| `OIDC_SCOPES`                 | Additional OAuth scopes to request (comma-separated) | (empty)             |
+| `OIDC_GROUPS_CLAIM`           | Claim name containing user groups                    | `groups`            |
+| `OIDC_ADMIN_GROUP`            | Group name that grants admin role                    | `norish_admin`      |
+| `OIDC_HOUSEHOLD_GROUP_PREFIX` | Prefix for household group names                     | `norish_household_` |
+
+**Example**: With claim mapping enabled and default settings, a user with groups `["norish_admin", "norish_household_smiths"]` would:
+
+1. Be granted server admin privileges
+2. Be automatically joined to (or create) a household named "smiths"
+
+Configure via environment variables or in **Settings => Admin => Authentication Providers => OIDC => Claim Mapping**.
+
 ### Content Detection
 
 - **Units** - Custom unit definitions for ingredient parsing

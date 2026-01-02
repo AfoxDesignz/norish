@@ -11,8 +11,10 @@ import {
   getCachedGitHubProvider,
   getCachedGoogleProvider,
   getCachedOIDCProvider,
+  getCachedOIDCClaimConfig,
   getCachedPasswordAuthEnabled,
 } from "./provider-cache";
+import { processClaimsForUser } from "./claim-processor";
 
 import { getPublisherClient } from "@/server/redis/client";
 import { db } from "@/server/db/drizzle";
@@ -104,12 +106,21 @@ function buildSocialProviders() {
   return providers;
 }
 
+// Temporary storage for OIDC profiles during auth flow
+// Key: accountId (sub claim), Value: full profile
+const pendingOIDCProfiles = new Map<string, Record<string, unknown>>();
+
 function buildOIDCProviders() {
   const providers: any[] = [];
 
   const oidcProvider = getCachedOIDCProvider();
 
   if (oidcProvider?.clientId && oidcProvider?.clientSecret && oidcProvider?.issuer) {
+    // Build scopes: base scopes + any additional configured scopes
+    const baseScopes = ["openid", "profile", "email"];
+    const additionalScopes = oidcProvider.claimConfig?.scopes ?? [];
+    const allScopes = [...new Set([...baseScopes, ...additionalScopes])];
+
     providers.push({
       providerId: "oidc",
       discoveryUrl:
@@ -117,12 +128,53 @@ function buildOIDCProviders() {
         new URL(".well-known/openid-configuration", oidcProvider.issuer).toString(),
       clientId: oidcProvider.clientId,
       clientSecret: oidcProvider.clientSecret,
-      scopes: ["openid", "profile", "email"],
+      scopes: allScopes,
       pkce: true,
+      // Store full profile for claim processing after session creation
+      getUserInfo: async (tokens: { accessToken: string }) => {
+        // Fetch user info from the OIDC provider
+        const discoveryUrl = oidcProvider.wellknown ||
+          new URL(".well-known/openid-configuration", oidcProvider.issuer).toString();
+        
+        const discoveryRes = await fetch(discoveryUrl);
+        const discovery = await discoveryRes.json();
+        const userInfoUrl = discovery.userinfo_endpoint;
+        
+        const userInfoRes = await fetch(userInfoUrl, {
+          headers: { Authorization: `Bearer ${tokens.accessToken}` },
+        });
+        const profile = await userInfoRes.json();
+        
+        // Store the full profile for later processing (keyed by sub/accountId)
+        if (profile.sub) {
+          pendingOIDCProfiles.set(profile.sub, profile);
+          authLogger.debug({ sub: profile.sub }, "Stored OIDC profile for claim processing");
+          
+          // Clean up old entries after 5 minutes to prevent memory leaks
+          setTimeout(() => pendingOIDCProfiles.delete(profile.sub), 5 * 60 * 1000);
+        }
+        
+        return {
+          id: profile.sub,
+          email: profile.email,
+          name: profile.name || profile.preferred_username,
+          image: profile.picture,
+          emailVerified: profile.email_verified ?? false,
+        };
+      },
     });
   }
 
   return providers;
+}
+
+// Export for use in session hook
+export function getPendingOIDCProfile(accountId: string): Record<string, unknown> | undefined {
+  const profile = pendingOIDCProfiles.get(accountId);
+  if (profile) {
+    pendingOIDCProfiles.delete(accountId); // Clean up after retrieval
+  }
+  return profile;
 }
 
 // Build emailAndPassword configuration from cached DB value
@@ -317,6 +369,45 @@ function createAuth() {
         create: {
           before: async (account) => {
             return { data: account };
+          },
+          after: async (account) => {
+            // Process OIDC claims after account is created/updated
+            // This runs on every OAuth login (account is updated with new tokens)
+            if (account.providerId === "oidc" && account.accountId) {
+              const profile = getPendingOIDCProfile(account.accountId);
+              if (profile) {
+                authLogger.debug({ userId: account.userId, accountId: account.accountId }, "Processing OIDC claims from account hook");
+                const claimConfig = getCachedOIDCClaimConfig();
+                try {
+                  await processClaimsForUser(account.userId, profile, claimConfig ?? undefined);
+                } catch (error) {
+                  authLogger.error(
+                    { error, userId: account.userId },
+                    "Failed to process OIDC claims"
+                  );
+                }
+              }
+            }
+          },
+        },
+        update: {
+          after: async (account) => {
+            // Also process on account update (subsequent logins update tokens)
+            if (account.providerId === "oidc" && account.accountId) {
+              const profile = getPendingOIDCProfile(account.accountId);
+              if (profile) {
+                authLogger.debug({ userId: account.userId, accountId: account.accountId }, "Processing OIDC claims from account update hook");
+                const claimConfig = getCachedOIDCClaimConfig();
+                try {
+                  await processClaimsForUser(account.userId, profile, claimConfig ?? undefined);
+                } catch (error) {
+                  authLogger.error(
+                    { error, userId: account.userId },
+                    "Failed to process OIDC claims"
+                  );
+                }
+              }
+            }
           },
         },
       },

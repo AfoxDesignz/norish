@@ -290,6 +290,20 @@
           "clientSecret": "Client Secret",
           "wellknown": "Well-known URL (optioneel)",
           "wellknownPlaceholder": "Automatisch afgeleid indien leeg"
+        },
+        "claimMapping": {
+          "title": "Claim Mapping",
+          "description": "Wijs automatisch rollen en huishoudens toe op basis van OIDC claims. Gebruikers met de admin-groep krijgen serverbeheerdersrechten. Gebruikers met een huishoudgroep worden automatisch aan dat huishouden toegevoegd.",
+          "securityWarning": "Let op: Het inschakelen van claim mapping geeft je identity provider controle over adminrechten en huishoudens. Schakel dit alleen in als je je OIDC provider volledig vertrouwt en correct hebt geconfigureerd.",
+          "scopes": "Extra Scopes",
+          "scopesPlaceholder": "groups, roles",
+          "scopesDescription": "Kommagescheiden lijst van extra OAuth scopes om aan te vragen (bijv. groups voor Keycloak)",
+          "groupsClaim": "Groups Claim",
+          "groupsClaimDescription": "Naam van de claim die gebruikersgroepen/rollen bevat",
+          "adminGroup": "Admin Groep",
+          "adminGroupDescription": "Groepsnaam die serverbeheerderrol verleent (hoofdletterongevoelig)",
+          "householdPrefix": "Huishouden Prefix",
+          "householdPrefixDescription": "Prefix voor huishoudgroepnamen (bijv. norish_household_familie → huishouden 'familie')"
         }
       },
       "github": {

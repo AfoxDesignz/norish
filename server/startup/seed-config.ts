@@ -267,6 +267,13 @@ async function syncOIDCProvider(): Promise<void> {
     clientSecret: SERVER_CONFIG.OIDC_CLIENT_SECRET!,
     wellknown: SERVER_CONFIG.OIDC_WELLKNOWN || undefined,
     isOverridden: false,
+    claimConfig: {
+      enabled: SERVER_CONFIG.OIDC_CLAIM_MAPPING_ENABLED,
+      scopes: SERVER_CONFIG.OIDC_SCOPES,
+      groupsClaim: SERVER_CONFIG.OIDC_GROUPS_CLAIM,
+      adminGroup: SERVER_CONFIG.OIDC_ADMIN_GROUP,
+      householdPrefix: SERVER_CONFIG.OIDC_HOUSEHOLD_GROUP_PREFIX,
+    },
   };
 
   serverLogger.debug(
@@ -274,6 +281,7 @@ async function syncOIDCProvider(): Promise<void> {
       name: envConfig.name,
       issuer: envConfig.issuer,
       wellknown: envConfig.wellknown ?? "(auto-derived from issuer)",
+      claimConfig: envConfig.claimConfig,
     },
     "OIDC env config loaded"
   );

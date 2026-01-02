@@ -26,6 +26,25 @@ export type ServerConfigKey = (typeof ServerConfigKeys)[keyof typeof ServerConfi
 // Auth Provider Schemas
 // ============================================================================
 
+// ============================================================================
+// OIDC Claim Mapping Schema
+// ============================================================================
+
+export const OIDCClaimConfigSchema = z.object({
+  // Whether claim mapping is enabled (disabled by default for security)
+  enabled: z.boolean().default(false),
+  // Additional scopes to request (e.g., ["groups"] for Keycloak)
+  scopes: z.array(z.string()).default([]),
+  // Claim name that contains groups/roles
+  groupsClaim: z.string().default("groups"),
+  // Group name that grants admin role (case-insensitive)
+  adminGroup: z.string().default("norish_admin"),
+  // Prefix for household groups
+  householdPrefix: z.string().default("norish_household_"),
+});
+
+export type OIDCClaimConfig = z.infer<typeof OIDCClaimConfigSchema>;
+
 // Base schema with isOverridden for storage
 export const AuthProviderOIDCSchema = z.object({
   name: z.string().min(1, "Provider name is required"),
@@ -34,9 +53,13 @@ export const AuthProviderOIDCSchema = z.object({
   clientSecret: z.string().optional(), // Optional on update, server preserves existing
   wellknown: z.url("Well-known URL must be valid").optional(),
   isOverridden: z.boolean().default(false), // True if admin edited, false means env-managed
+  claimConfig: OIDCClaimConfigSchema.optional(), // Claim-based role and household assignment
 });
 
 export type AuthProviderOIDC = z.infer<typeof AuthProviderOIDCSchema>;
+
+export const OIDCClaimConfigInputSchema = OIDCClaimConfigSchema;
+export type OIDCClaimConfigInput = z.infer<typeof OIDCClaimConfigInputSchema>;
 
 export const AuthProviderOIDCInputSchema = AuthProviderOIDCSchema.omit({ isOverridden: true });
 export type AuthProviderOIDCInput = z.infer<typeof AuthProviderOIDCInputSchema>;

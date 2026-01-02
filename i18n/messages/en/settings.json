@@ -290,6 +290,20 @@
           "clientSecret": "Client Secret",
           "wellknown": "Well-known URL (optional)",
           "wellknownPlaceholder": "Auto-derived from issuer if not set"
+        },
+        "claimMapping": {
+          "title": "Claim Mapping",
+          "description": "Automatically assign roles and households based on OIDC claims. Users with the admin group get server admin privileges. Users with a household group are auto-joined to that household.",
+          "securityWarning": "Warning: Enabling claim mapping allows your identity provider to control admin privileges and household membership. Only enable this if you fully trust your OIDC provider and have properly configured the group claims.",
+          "scopes": "Additional Scopes",
+          "scopesPlaceholder": "groups, roles",
+          "scopesDescription": "Comma-separated list of additional OAuth scopes to request (e.g., groups for Keycloak)",
+          "groupsClaim": "Groups Claim",
+          "groupsClaimDescription": "Name of the claim containing user groups/roles",
+          "adminGroup": "Admin Group",
+          "adminGroupDescription": "Group name that grants server admin role (case-insensitive)",
+          "householdPrefix": "Household Prefix",
+          "householdPrefixDescription": "Prefix for household group names (e.g., norish_household_family → household 'family')"
         }
       },
       "github": {

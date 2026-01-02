@@ -2,6 +2,7 @@ import type {
   AuthProviderOIDC,
   AuthProviderGitHub,
   AuthProviderGoogle,
+  OIDCClaimConfig,
 } from "@/server/db/zodSchemas/server-config";
 
 interface AuthProviderCache {
@@ -41,3 +42,11 @@ export const getCachedGitHubProvider = getProvider("github");
 export const getCachedGoogleProvider = getProvider("google");
 export const getCachedOIDCProvider = getProvider("oidc");
 export const getCachedPasswordAuthEnabled = (): boolean => ensureCache().passwordEnabled;
+
+/**
+ * Get the OIDC claim mapping configuration
+ * Returns null if OIDC is not configured or has no claim config
+ */
+export function getCachedOIDCClaimConfig(): OIDCClaimConfig | null {
+  return ensureCache().oidc?.claimConfig ?? null;
+}

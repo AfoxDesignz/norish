@@ -299,6 +299,59 @@ export async function transferHouseholdAdmin(
   return validated.data;
 }
 
+/**
+ * Find a household by name (case-insensitive)
+ */
+export async function findHouseholdByName(name: string): Promise<HouseholdDto | null> {
+  const normalizedName = name.toLowerCase().trim();
+
+  const rows = await db
+    .select()
+    .from(households)
+    .where(sql`LOWER(${households.name}) = ${normalizedName}`)
+    .limit(1);
+
+  const parsed = HouseholdSelectBaseSchema.safeParse(rows[0]);
+
+  return parsed.success ? parsed.data : null;
+}
+
+/**
+ * Find existing household by name or create a new one
+ * Used for OIDC claim-based household assignment
+ */
+export async function findOrCreateHouseholdByName(
+  name: string,
+  creatorUserId: string
+): Promise<HouseholdDto> {
+  const normalizedName = name.trim();
+
+  // Try to find existing (case-insensitive)
+  const existing = await findHouseholdByName(normalizedName);
+
+  if (existing) return existing;
+
+  // Create new household with this user as admin
+  const code = await generateUniqueJoinCode();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  const [row] = await db
+    .insert(households)
+    .values({
+      name: normalizedName,
+      adminUserId: creatorUserId,
+      joinCode: code,
+      joinCodeExpiresAt: expiresAt,
+    })
+    .returning();
+
+  const validated = HouseholdSelectBaseSchema.safeParse(row);
+
+  if (!validated.success) throw new Error("Failed to create household");
+
+  return validated.data;
+}
+
 async function generateUniqueJoinCode(): Promise<string> {
   while (true) {
     const code = Math.floor(Math.random() * 1_000_000)
