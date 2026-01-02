@@ -345,6 +345,7 @@ export function useRecipesSubscription() {
   );
 
   // onRecipeBatchCreated - Bulk recipe creation (archive imports)
+  // Note: Toast is handled by onArchiveCompleted subscription in use-archive-import-subscription.ts
   useSubscription(
     trpc.recipes.onRecipeBatchCreated.subscriptionOptions(undefined, {
       onData: (payload) => {
@@ -383,15 +384,6 @@ export function useRecipesSubscription() {
             };
           }
         );
-
-        addToast({
-          severity: "success",
-          title: t("batchImported"),
-          description: t("batchImportedDescription", { count: payload.recipes.length }),
-          timeout: 3000,
-          shouldShowTimeoutProgress: true,
-          radius: "full",
-        });
       },
       onError: (err) => log.error({ err }, "[onRecipeBatchCreated] Error"),
     })

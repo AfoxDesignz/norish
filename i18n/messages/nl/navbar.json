@@ -35,7 +35,7 @@
     "uploading": "Uploaden...",
     "uploadFile": "Upload een bestand",
     "dragDrop": "of sleep en zet neer",
-    "formats": ".melarecipes (Mela), .zip (Mealie of Tandoor export)",
+    "formats": ".melarecipes (Mela), .zip (Mealie, Tandoor of Paprika export)",
     "uploadingFile": "Bestand uploaden…",
     "processing": "Bezig met verwerken: {details}",
     "complete": "Voltooid: {details}",

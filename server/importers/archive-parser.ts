@@ -7,14 +7,16 @@ import {
   extractMealieRecipeImage,
 } from "./mealie-parser";
 import { extractTandoorRecipes, parseTandoorRecipeToDTO } from "./tandoor-parser";
+import { extractPaprikaRecipes, parsePaprikaRecipeToDTO } from "./paprika-parser";
 
-import { RecipeDashboardDTO } from "@/types";
+import { RecipeDashboardDTO, FullRecipeInsertDTO } from "@/types";
 import { createRecipeWithRefs, getRecipeFull, findExistingRecipe } from "@/server/db";
 
 export enum ArchiveFormat {
   MELA = "mela",
   MEALIE = "mealie",
   TANDOOR = "tandoor",
+  PAPRIKA = "paprika",
   UNKNOWN = "unknown",
 }
 
@@ -28,21 +30,49 @@ export type ImportResult = {
  * Detect archive format by inspecting contents
  * - Mealie: contains database.json
  * - Mela: contains .melarecipe files
+ * - Paprika: contains .paprikarecipe files
  * - Tandoor: contains nested .zip files with recipe.json inside
  */
-export async function detectArchiveFormat(zip: JSZip): Promise<ArchiveFormat> {
+export type ArchiveInfo = {
+  format: ArchiveFormat;
+  count: number;
+};
+
+/**
+ * Detect archive format and count recipes in one pass
+ */
+export async function getArchiveInfo(zip: JSZip): Promise<ArchiveInfo> {
   // Check for Mealie format (database.json)
   const databaseFile = zip.file("database.json");
 
   if (databaseFile) {
-    return ArchiveFormat.MEALIE;
+    const databaseJson = await databaseFile.async("string");
+    const data = JSON.parse(databaseJson);
+
+    return {
+      format: ArchiveFormat.MEALIE,
+      count: data.recipes?.length || 0,
+    };
   }
 
   // Check for Mela format (.melarecipe files)
   const melaFiles = zip.file(/\.melarecipe$/i);
 
   if (melaFiles.length > 0) {
-    return ArchiveFormat.MELA;
+    return {
+      format: ArchiveFormat.MELA,
+      count: melaFiles.length,
+    };
+  }
+
+  // Check for Paprika format (.paprikarecipe files)
+  const paprikaFiles = zip.file(/\.paprikarecipe$/i);
+
+  if (paprikaFiles.length > 0) {
+    return {
+      format: ArchiveFormat.PAPRIKA,
+      count: paprikaFiles.length,
+    };
   }
 
   // Check for Tandoor format (nested .zip files containing recipe.json)
@@ -56,14 +86,17 @@ export async function detectArchiveFormat(zip: JSZip): Promise<ArchiveFormat> {
       const recipeFile = nestedZip.file("recipe.json");
 
       if (recipeFile) {
-        return ArchiveFormat.TANDOOR;
+        return {
+          format: ArchiveFormat.TANDOOR,
+          count: nestedZips.length,
+        };
       }
     } catch {
       // Not a valid Tandoor format
     }
   }
 
-  return ArchiveFormat.UNKNOWN;
+  return { format: ArchiveFormat.UNKNOWN, count: 0 };
 }
 
 /**
@@ -80,10 +113,19 @@ export function calculateBatchSize(total: number): number {
 }
 
 /**
- * Import Mela archive (.melarecipes format)
+ * Item yielded by recipe generators for the generic import loop
  */
-async function importMelaRecipes(
-  zip: JSZip,
+type RecipeImportItem = {
+  dto: FullRecipeInsertDTO;
+  fileName: string;
+};
+
+/**
+ * Generic import loop that handles duplicate detection, persistence, and progress reporting.
+ * Takes an async generator that yields parsed recipe DTOs.
+ */
+async function importRecipeItems(
+  items: AsyncGenerator<RecipeImportItem, void, unknown>,
   userId: string | undefined,
   userIds: string[],
   onProgress?: (
@@ -92,170 +134,109 @@ async function importMelaRecipes(
     error?: { file: string; error: string }
   ) => void
 ): Promise<ImportResult> {
-  const melaRecipes = await parseMelaArchive(zip);
   const imported: RecipeDashboardDTO[] = [];
   const errors: Array<{ file: string; error: string }> = [];
   let skipped = 0;
+  let current = 0;
+
+  for await (const { dto, fileName } of items) {
+    current++;
+
+    try {
+      // Check for duplicates
+      const existingId = await findExistingRecipe(userIds, dto.url, dto.name);
+
+      if (existingId) {
+        skipped++;
+        onProgress?.(current, undefined, undefined);
+        continue;
+      }
+
+      const id = crypto.randomUUID();
+      const created = await createRecipeWithRefs(id, userId, dto);
+      const recipe = await getRecipeFull(created as string);
+
+      if (recipe) {
+        imported.push(recipe as RecipeDashboardDTO);
+        onProgress?.(current, recipe as RecipeDashboardDTO);
+      }
+    } catch (e: unknown) {
+      const error = { file: fileName, error: String((e as Error)?.message || e) };
+
+      errors.push(error);
+      onProgress?.(current, undefined, error);
+    }
+  }
+
+  return { imported, errors, skipped };
+}
+
+/**
+ * Generator for Mela recipes
+ */
+async function* generateMelaRecipes(zip: JSZip): AsyncGenerator<RecipeImportItem, void, unknown> {
+  const melaRecipes = await parseMelaArchive(zip);
 
   for (let i = 0; i < melaRecipes.length; i++) {
-    const melaRecipe = melaRecipes[i];
-    const fileName = `recipe_${i + 1}.melarecipe`;
+    const dto = await parseMelaRecipeToDTO(melaRecipes[i]);
 
-    try {
-      const dto = await parseMelaRecipeToDTO(melaRecipe);
-
-      // Check for duplicates
-      const existingId = await findExistingRecipe(userIds, dto.url, dto.name);
-
-      if (existingId) {
-        skipped++;
-        onProgress?.(i + 1, undefined, undefined);
-        continue;
-      }
-
-      const id = crypto.randomUUID();
-      const created = await createRecipeWithRefs(id, userId, dto);
-      const recipe = await getRecipeFull(created as string);
-
-      if (recipe) {
-        imported.push(recipe as RecipeDashboardDTO);
-        onProgress?.(i + 1, recipe as RecipeDashboardDTO);
-      }
-    } catch (e: any) {
-      const error = { file: fileName, error: String(e?.message || e) };
-
-      errors.push(error);
-      onProgress?.(i + 1, undefined, error);
-    }
+    yield { dto, fileName: `recipe_${i + 1}.melarecipe` };
   }
-
-  return { imported, errors, skipped };
 }
 
 /**
- * Import Mealie archive (.zip with database.json)
+ * Generator for Mealie recipes
  */
-async function importMealieRecipes(
-  zip: JSZip,
-  userId: string | undefined,
-  userIds: string[],
-  onProgress?: (
-    current: number,
-    recipe?: RecipeDashboardDTO,
-    error?: { file: string; error: string }
-  ) => void
-): Promise<ImportResult> {
+async function* generateMealieRecipes(zip: JSZip): AsyncGenerator<RecipeImportItem, void, unknown> {
   const { recipes, database } = await parseMealieArchive(zip);
-  const imported: RecipeDashboardDTO[] = [];
-  const errors: Array<{ file: string; error: string }> = [];
-  let skipped = 0;
 
-  for (let i = 0; i < recipes.length; i++) {
-    const mealieRecipe = recipes[i];
-    const fileName = `recipe_${mealieRecipe.name || mealieRecipe.id}`;
+  for (const mealieRecipe of recipes) {
+    const ingredients = database.recipes_ingredients.filter(
+      (ing) => ing.recipe_id === mealieRecipe.id
+    );
+    const instructions = database.recipe_instructions.filter(
+      (inst) => inst.recipe_id === mealieRecipe.id
+    );
+    const imageBuffer = await extractMealieRecipeImage(zip, mealieRecipe.id);
 
-    try {
-      // Extract ingredients and instructions for this recipe
-      const ingredients = database.recipes_ingredients.filter(
-        (ing) => ing.recipe_id === mealieRecipe.id
-      );
-      const instructions = database.recipe_instructions.filter(
-        (inst) => inst.recipe_id === mealieRecipe.id
-      );
+    const dto = await parseMealieRecipeToDTO(mealieRecipe, ingredients, instructions, imageBuffer);
 
-      // Extract image
-      const imageBuffer = await extractMealieRecipeImage(zip, mealieRecipe.id);
-
-      // Parse to DTO
-      const dto = await parseMealieRecipeToDTO(
-        mealieRecipe,
-        ingredients,
-        instructions,
-        imageBuffer
-      );
-
-      // Check for duplicates
-      const existingId = await findExistingRecipe(userIds, dto.url, dto.name);
-
-      if (existingId) {
-        skipped++;
-        onProgress?.(i + 1, undefined, undefined);
-        continue;
-      }
-
-      const id = crypto.randomUUID();
-      const created = await createRecipeWithRefs(id, userId, dto);
-      const recipe = await getRecipeFull(created as string);
-
-      if (recipe) {
-        imported.push(recipe as RecipeDashboardDTO);
-        onProgress?.(i + 1, recipe as RecipeDashboardDTO);
-      }
-    } catch (e: any) {
-      const error = { file: fileName, error: String(e?.message || e) };
-
-      errors.push(error);
-      onProgress?.(i + 1, undefined, error);
-    }
+    yield { dto, fileName: `recipe_${mealieRecipe.name || mealieRecipe.id}` };
   }
-
-  return { imported, errors, skipped };
 }
 
 /**
- * Import Tandoor archive
+ * Generator for Tandoor recipes
  */
-async function importTandoorRecipes(
-  zip: JSZip,
-  userId: string | undefined,
-  userIds: string[],
-  onProgress?: (
-    current: number,
-    recipe?: RecipeDashboardDTO,
-    error?: { file: string; error: string }
-  ) => void
-): Promise<ImportResult> {
+async function* generateTandoorRecipes(
+  zip: JSZip
+): AsyncGenerator<RecipeImportItem, void, unknown> {
   const tandoorRecipes = await extractTandoorRecipes(zip);
-  const imported: RecipeDashboardDTO[] = [];
-  const errors: Array<{ file: string; error: string }> = [];
-  let skipped = 0;
 
-  for (let i = 0; i < tandoorRecipes.length; i++) {
-    const { recipe, image, fileName } = tandoorRecipes[i];
+  for (const { recipe, image, fileName } of tandoorRecipes) {
+    const dto = await parseTandoorRecipeToDTO(recipe, image);
 
-    try {
-      const dto = await parseTandoorRecipeToDTO(recipe, image);
-
-      // Check for duplicates
-      const existingId = await findExistingRecipe(userIds, dto.url, dto.name);
-
-      if (existingId) {
-        skipped++;
-        onProgress?.(i + 1, undefined, undefined);
-        continue;
-      }
-
-      const id = crypto.randomUUID();
-      const created = await createRecipeWithRefs(id, userId, dto);
-      const fullRecipe = await getRecipeFull(created as string);
-
-      if (fullRecipe) {
-        imported.push(fullRecipe as RecipeDashboardDTO);
-        onProgress?.(i + 1, fullRecipe as RecipeDashboardDTO);
-      }
-    } catch (e: any) {
-      const error = { file: fileName, error: String(e?.message || e) };
-
-      errors.push(error);
-      onProgress?.(i + 1, undefined, error);
-    }
+    yield { dto, fileName };
   }
-
-  return { imported, errors, skipped };
 }
 
 /**
- * Import archive (auto-detects Mela, Mealie, or Tandoor format)
+ * Generator for Paprika recipes
+ */
+async function* generatePaprikaRecipes(
+  zip: JSZip
+): AsyncGenerator<RecipeImportItem, void, unknown> {
+  const paprikaRecipes = await extractPaprikaRecipes(zip);
+
+  for (const { recipe, image, fileName } of paprikaRecipes) {
+    const dto = await parsePaprikaRecipeToDTO(recipe, image);
+
+    yield { dto, fileName };
+  }
+}
+
+/**
+ * Import archive (auto-detects Mela, Mealie, Paprika, or Tandoor format)
  */
 export async function importArchive(
   userId: string | undefined,
@@ -273,19 +254,31 @@ export async function importArchive(
   ) as ArrayBuffer;
   const zip = await JSZip.loadAsync(arrayBuffer);
 
-  const format = await detectArchiveFormat(zip);
+  const { format } = await getArchiveInfo(zip);
 
   if (format === ArchiveFormat.UNKNOWN) {
     throw new Error(
-      "Unknown archive format. Expected .melarecipes, Mealie .zip, or Tandoor .zip export"
+      "Unknown archive format. Expected .melarecipes, Mealie .zip, Paprika .zip, or Tandoor .zip export"
     );
   }
 
-  if (format === ArchiveFormat.MELA) {
-    return importMelaRecipes(zip, userId, userIds, onProgress);
-  } else if (format === ArchiveFormat.MEALIE) {
-    return importMealieRecipes(zip, userId, userIds, onProgress);
-  } else {
-    return importTandoorRecipes(zip, userId, userIds, onProgress);
+  // Select generator based on format
+  let generator: AsyncGenerator<RecipeImportItem, void, unknown>;
+
+  switch (format) {
+    case ArchiveFormat.MELA:
+      generator = generateMelaRecipes(zip);
+      break;
+    case ArchiveFormat.MEALIE:
+      generator = generateMealieRecipes(zip);
+      break;
+    case ArchiveFormat.PAPRIKA:
+      generator = generatePaprikaRecipes(zip);
+      break;
+    case ArchiveFormat.TANDOOR:
+      generator = generateTandoorRecipes(zip);
+      break;
   }
+
+  return importRecipeItems(generator, userId, userIds, onProgress);
 }

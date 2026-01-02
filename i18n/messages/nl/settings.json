@@ -60,7 +60,7 @@
     },
     "archiveImport": {
       "title": "Importeer Receptarchief",
-      "description": "Importeer recepten van Mela (.melarecipes), Mealie, of Tandoor (.zip) exports"
+      "description": "Importeer recepten van Mela (.melarecipes), Mealie, Tandoor of Paprika (.zip) exports"
     },
     "dangerZone": {
       "title": "Gevaarlijke Zone",

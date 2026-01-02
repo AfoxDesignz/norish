@@ -23,9 +23,6 @@ export default function ArchiveImporter() {
   const [localErrors, setLocalErrors] = useState<{ file: string; error: string }[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // eslint-disable-next-line no-console
-  console.log("[Archive Importer] Render:", { current, imported, skipped, total, isImporting });
-
   const uploadFile = useCallback(
     (file: File) => {
       setLocalErrors([]);

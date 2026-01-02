@@ -10,6 +10,8 @@ import { trpcLogger as log } from "@/server/logger";
 import {
   importArchive as runArchiveImport,
   calculateBatchSize,
+  getArchiveInfo,
+  ArchiveFormat,
 } from "@/server/importers/archive-parser";
 
 /**
@@ -40,10 +42,9 @@ const importArchive = authedProcedure
     }
 
     try {
-      // Parse archive and detect format
+      // Parse archive and detect format + count using shared function
       const buffer = Buffer.from(await file.arrayBuffer());
 
-      // Quick validation to get total count
       const JSZip = (await import("jszip")).default;
       const arrayBuffer = buffer.buffer.slice(
         buffer.byteOffset,
@@ -51,27 +52,14 @@ const importArchive = authedProcedure
       ) as ArrayBuffer;
       const zip = await JSZip.loadAsync(arrayBuffer);
 
-      let total = 0;
-      const databaseFile = zip.file("database.json");
+      const { format, count: total } = await getArchiveInfo(zip);
 
-      if (databaseFile) {
-        // Mealie format - count recipes in database.json
-        const databaseJson = await databaseFile.async("string");
-        const data = JSON.parse(databaseJson);
-
-        total = data.recipes?.length || 0;
-      } else {
-        // Check for Mela format (.melarecipe files)
-        const melaEntries = zip.file(/\.melarecipe$/i);
-
-        if (melaEntries.length > 0) {
-          total = melaEntries.length;
-        } else {
-          // Check for Tandoor format (nested .zip files)
-          const nestedZips = zip.file(/\.zip$/i);
-
-          total = nestedZips.length;
-        }
+      if (format === ArchiveFormat.UNKNOWN) {
+        return {
+          success: false,
+          error:
+            "Unknown archive format. Expected .melarecipes, Mealie .zip, Paprika .zip, or Tandoor .zip export",
+        };
       }
 
       if (total === 0) {
