@@ -116,7 +116,7 @@ export default function RecipePageMobile() {
 
           {/* Description */}
           {recipe.description && (
-            <p className="text-default-600 text-base leading-relaxed">
+            <p className="text-base leading-relaxed">
               <SmartMarkdownRenderer text={recipe.description} />
             </p>
           )}

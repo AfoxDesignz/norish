@@ -116,7 +116,7 @@ export default function IngredientsList() {
                     </span>
                   )}
                   <span
-                    className={`text-base ${isChecked ? "text-default-400 line-through" : "text-default-700 dark:text-default-300"}`}
+                    className={`text-base ${isChecked ? "text-default-400 line-through" : "text-base"}`}
                   >
                     <SmartMarkdownRenderer disableLinks={isChecked} text={it.ingredientName} />
                   </span>

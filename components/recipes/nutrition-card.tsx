@@ -114,7 +114,7 @@ function NutritionDisplay({ inCard = true }: { inCard?: boolean }) {
                     <div className={`flex h-8 w-8 items-center justify-center rounded-full ${bg}`}>
                       <Icon className={`h-4 w-4 ${color}`} />
                     </div>
-                    <span className="text-default-700 text-base">{t(labelKey)}</span>
+                    <span className="text-base">{t(labelKey)}</span>
                   </div>
                   <span className="text-foreground text-base font-semibold">
                     {Math.round(value)}
