@@ -4,7 +4,6 @@ import { getTranslations } from "next-intl/server";
 import FloatingRecipeChip from "@/components/dashboard/floating-recipe-chip";
 import RecipeGrid from "@/components/dashboard/recipe-grid";
 import SearchInput from "@/components/dashboard/search-input";
-import TagCarousel from "@/components/shared/tag-carousel";
 import CreateRecipeButton from "@/components/dashboard/create-recipe-button";
 import { auth } from "@/server/auth/auth";
 
@@ -25,7 +24,6 @@ export default async function Home() {
 
       <div className="mb-6">
         <SearchInput />
-        <TagCarousel className="mt-2" />
       </div>
 
       <div className="min-h-0 flex-1">

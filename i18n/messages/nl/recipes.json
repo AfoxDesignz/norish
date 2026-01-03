@@ -7,7 +7,14 @@
     "addRecipe": "Recept toevoegen",
     "importFromUrl": "URL",
     "importFromPaste": "Plakken",
-    "importFromImage": "Afbeelding"
+    "importFromImage": "Afbeelding",
+    "searchFields": {
+      "title": "Titel",
+      "description": "Omschrijving",
+      "ingredients": "Ingrediënten",
+      "steps": "Stappen",
+      "tags": "Tags"
+    }
   },
   "empty": {
     "title": "Begin je collectie met recepten",

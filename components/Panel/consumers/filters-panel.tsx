@@ -17,6 +17,7 @@ import { useTagsQuery } from "@/hooks/config";
 import ChipSkeleton from "@/components/skeleton/chip-skeleton";
 import Panel from "@/components/Panel/Panel";
 import RatingStars from "@/components/shared/rating-stars";
+import SearchFieldToggles from "@/components/dashboard/search-field-toggles";
 
 type FiltersPanelProps = {
   open: boolean;
@@ -101,6 +102,7 @@ function FiltersPanelContent({ onOpenChange }: { onOpenChange: (open: boolean) =
           onChange={(e) => setLocalInput(e.target.value)}
           onClear={() => setLocalInput("")}
         />
+        <SearchFieldToggles className="mt-2" itemClassName="h-9 px-3 text-xs" />
       </section>
 
       {/* Sort */}

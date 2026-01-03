@@ -17,4 +17,4 @@ export type * from "@/types/dto/auth";
 export type * from "@/types/dto/queue";
 export type * from "@/types/dto/favorites";
 export * from "@/types/uploads";
-export type * from "@/types/store-types";
+export * from "@/types/store-types";

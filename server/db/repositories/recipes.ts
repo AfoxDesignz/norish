@@ -2,7 +2,14 @@ import { eq, ilike, inArray, and, asc, desc, sql, or } from "drizzle-orm";
 import z from "zod";
 
 import { db } from "../drizzle";
-import { recipes, recipeIngredients, steps as stepsTable } from "../schema";
+import {
+  recipes,
+  recipeIngredients,
+  steps as stepsTable,
+  ingredients,
+  recipeTags,
+  tags,
+} from "../schema";
 import {
   RecipeDashboardSchema,
   FullRecipeInsertSchema,
@@ -26,6 +33,7 @@ import {
   MeasurementSystem,
   RecipeIngredientsDto,
   FullRecipeUpdateDTO,
+  SearchField,
 } from "@/types";
 import { StepDto, StepInsertDto } from "@/types/dto/steps";
 import { getRecipePermissionPolicy } from "@/config/server-config-loader";
@@ -230,6 +238,7 @@ export async function listRecipes(
   limit: number,
   offset: number = 0,
   search?: string,
+  searchFields: SearchField[] = ["title", "ingredients"],
   tagNames?: string[],
   filterMode: FilterMode = "OR",
   sortMode: SortOrder = "dateDesc",
@@ -244,8 +253,83 @@ export async function listRecipes(
     whereConditions.push(policyCondition);
   }
 
-  if (search) {
-    whereConditions.push(ilike(recipes.name, `%${search}%`));
+  // Build full-text search with weighted ranking
+  // Priority: title (A) > tags (B) > ingredients (C) > description/steps (D)
+  let searchRank: ReturnType<typeof sql<number>> | null = null;
+
+  if (search && searchFields.length > 0) {
+    // Convert search terms to tsquery format with prefix matching
+    // Each term gets :* suffix for partial word matching (e.g., "om" matches "oma")
+    const searchTerms = search
+      .trim()
+      .split(/\s+/)
+      .filter((t) => t.length > 0)
+      .map((t) => `${t}:*`)
+      .join(" | ");
+
+    // Build weighted tsvector components based on selected fields
+    const tsvectorParts: ReturnType<typeof sql>[] = [];
+
+    for (const field of searchFields) {
+      switch (field) {
+        case "title":
+          // Weight A (highest) for title
+          tsvectorParts.push(
+            sql`setweight(to_tsvector('simple', coalesce(${recipes.name}, '')), 'A')`
+          );
+          break;
+        case "tags":
+          // Weight B for tags - aggregate from related table
+          tsvectorParts.push(
+            sql`setweight(to_tsvector('simple', coalesce((
+              SELECT string_agg(t.name, ' ')
+              FROM ${recipeTags} rt
+              INNER JOIN ${tags} t ON rt.tag_id = t.id
+              WHERE rt.recipe_id = ${recipes.id}
+            ), '')), 'B')`
+          );
+          break;
+        case "ingredients":
+          // Weight C for ingredients - aggregate from related table
+          tsvectorParts.push(
+            sql`setweight(to_tsvector('simple', coalesce((
+              SELECT string_agg(i.name, ' ')
+              FROM ${recipeIngredients} ri
+              INNER JOIN ${ingredients} i ON ri.ingredient_id = i.id
+              WHERE ri.recipe_id = ${recipes.id}
+            ), '')), 'C')`
+          );
+          break;
+        case "description":
+          // Weight D for description
+          tsvectorParts.push(
+            sql`setweight(to_tsvector('simple', coalesce(${recipes.description}, '')), 'D')`
+          );
+          break;
+        case "steps":
+          // Weight D for steps - aggregate from related table
+          tsvectorParts.push(
+            sql`setweight(to_tsvector('simple', coalesce((
+              SELECT string_agg(s.step, ' ')
+              FROM ${stepsTable} s
+              WHERE s.recipe_id = ${recipes.id}
+            ), '')), 'D')`
+          );
+          break;
+      }
+    }
+
+    if (tsvectorParts.length > 0) {
+      // Combine all tsvector parts with ||
+      const combinedTsvector = sql.join(tsvectorParts, sql` || `);
+      const tsQuery = sql`to_tsquery('simple', ${searchTerms})`;
+
+      // Add search condition using @@ operator
+      whereConditions.push(sql`(${combinedTsvector}) @@ ${tsQuery}`);
+
+      // Build rank expression for ordering
+      searchRank = sql<number>`ts_rank(${combinedTsvector}, ${tsQuery})`;
+    }
   }
 
   let tagFilteredIds: string[] | undefined;
@@ -292,7 +376,10 @@ export async function listRecipes(
     dateAsc: asc(recipes.createdAt),
     dateDesc: desc(recipes.createdAt),
   };
-  const orderBy = sortMap[sortMode as keyof typeof sortMap] ?? desc(recipes.createdAt);
+  const baseOrderBy = sortMap[sortMode as keyof typeof sortMap] ?? desc(recipes.createdAt);
+
+  // When searching, order by relevance rank first (descending), then by the selected sort
+  const orderBy = searchRank ? [desc(searchRank), baseOrderBy] : baseOrderBy;
 
   const [rows, totalCount] = await Promise.all([
     db.query.recipes.findMany({

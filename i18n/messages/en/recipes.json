@@ -7,7 +7,14 @@
     "addRecipe": "Add Recipe",
     "importFromUrl": "URL",
     "importFromPaste": "Paste",
-    "importFromImage": "Image"
+    "importFromImage": "Image",
+    "searchFields": {
+      "title": "Title",
+      "description": "Description",
+      "ingredients": "Ingredients",
+      "steps": "Steps",
+      "tags": "Tags"
+    }
   },
   "empty": {
     "title": "Your recipe collection awaits",

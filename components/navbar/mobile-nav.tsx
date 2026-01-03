@@ -17,7 +17,6 @@ import { useTranslations } from "next-intl";
 import Filters from "../shared/filters";
 
 import { isUrl } from "@/lib/helpers";
-import TagCarousel from "@/components/shared/tag-carousel";
 import NavbarUserMenu from "@/components/navbar/navbar-user-menu";
 import { useAppStore } from "@/store/useAppStore";
 import { useRecipesContext } from "@/context/recipes-context";
@@ -200,11 +199,6 @@ export const MobileNav = () => {
                 mobileSearchOpen ? "z-[99] mr-3" : "z-[40] mr-0"
               }`}
             >
-              {mobileSearchOpen && (
-                <div className="pointer-events-auto absolute -top-10 right-0 left-0 z-[60] px-1 pb-1">
-                  <TagCarousel />
-                </div>
-              )}
               <div
                 aria-expanded={mobileSearchOpen}
                 className={`group relative h-13 overflow-visible rounded-full transition-[width] duration-300 ease-out ${cssGlassBackdrop} ${

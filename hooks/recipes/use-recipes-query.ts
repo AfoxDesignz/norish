@@ -1,6 +1,6 @@
 "use client";
 
-import type { RecipeDashboardDTO } from "@/types";
+import type { RecipeDashboardDTO, SearchField } from "@/types";
 import type { InfiniteData, QueryKey } from "@tanstack/react-query";
 
 import { useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
@@ -14,6 +14,7 @@ import { useTRPC } from "@/app/providers/trpc-provider";
 
 export type RecipeFilters = {
   search?: string;
+  searchFields?: SearchField[];
   tags?: string[];
   filterMode?: "AND" | "OR";
   sortMode?: "titleAsc" | "titleDesc" | "dateAsc" | "dateDesc";
@@ -57,7 +58,14 @@ export function useRecipesQuery(filters: RecipeFilters = {}): RecipesQueryResult
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
-  const { search, tags, filterMode = "OR", sortMode = "dateDesc", minRating } = filters;
+  const {
+    search,
+    searchFields,
+    tags,
+    filterMode = "OR",
+    sortMode = "dateDesc",
+    minRating,
+  } = filters;
 
   // Use the dedicated hooks for pending and auto-tagging state
   const { pendingRecipeIds, addPendingRecipe, removePendingRecipe } = usePendingRecipesQuery();
@@ -67,7 +75,7 @@ export function useRecipesQuery(filters: RecipeFilters = {}): RecipesQueryResult
     useAllergyDetectionQuery();
 
   const infiniteQueryOptions = trpc.recipes.list.infiniteQueryOptions(
-    { limit: 100, search, tags, filterMode, sortMode, minRating },
+    { limit: 100, search, searchFields, tags, filterMode, sortMode, minRating },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     }

@@ -69,6 +69,9 @@ export const RecipeListInputSchema = z.object({
   cursor: z.number().int().nonnegative().default(0),
   limit: z.number().int().min(1).max(100).default(50),
   search: z.string().optional(),
+  searchFields: z
+    .array(z.enum(["title", "description", "ingredients", "steps", "tags"]))
+    .default(["title", "ingredients"]),
   tags: z.array(z.string()).optional(),
   filterMode: z.enum(["AND", "OR"]).default("OR"),
   sortMode: z.enum(["titleAsc", "titleDesc", "dateAsc", "dateDesc"]).default("dateDesc"),

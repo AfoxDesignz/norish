@@ -2,12 +2,13 @@
 
 import { createContext, useContext, ReactNode, useMemo, useCallback, useState } from "react";
 
-import { FilterMode, SortOrder } from "@/types";
+import { FilterMode, SortOrder, SearchField, DEFAULT_SEARCH_FIELDS } from "@/types";
 
 // Filter state for recipes
 export type RecipeFilters = {
   rawInput: string;
   searchTags: string[];
+  searchFields: SearchField[];
   filterMode: FilterMode;
   sortMode: SortOrder;
   showFavoritesOnly: boolean;
@@ -18,6 +19,7 @@ type FiltersCtx = {
   filters: RecipeFilters;
   setFilters: (filters: Partial<RecipeFilters>) => void;
   clearFilters: () => void;
+  toggleSearchField: (field: SearchField) => void;
 };
 
 const RecipesFiltersContext = createContext<FiltersCtx | null>(null);
@@ -27,6 +29,7 @@ export function RecipesFiltersProvider({ children }: { children: ReactNode }) {
   const [filters, setFiltersState] = useState<RecipeFilters>({
     rawInput: "",
     searchTags: [],
+    searchFields: [...DEFAULT_SEARCH_FIELDS],
     filterMode: "AND",
     sortMode: "dateDesc",
     showFavoritesOnly: false,
@@ -41,10 +44,28 @@ export function RecipesFiltersProvider({ children }: { children: ReactNode }) {
     setFiltersState({
       rawInput: "",
       searchTags: [],
+      searchFields: [...DEFAULT_SEARCH_FIELDS],
       filterMode: "AND",
       sortMode: "dateDesc",
       showFavoritesOnly: false,
       minRating: null,
+    });
+  }, []);
+
+  // Toggle a search field on/off (fallback to defaults when trying to disable the last field)
+  const toggleSearchField = useCallback((field: SearchField) => {
+    setFiltersState((prev) => {
+      const isEnabled = prev.searchFields.includes(field);
+
+      if (isEnabled) {
+        // When disabling the last field, reset to defaults instead
+        if (prev.searchFields.length <= 1) {
+          return { ...prev, searchFields: [...DEFAULT_SEARCH_FIELDS] };
+        }
+        return { ...prev, searchFields: prev.searchFields.filter((f) => f !== field) };
+      } else {
+        return { ...prev, searchFields: [...prev.searchFields, field] };
+      }
     });
   }, []);
 
@@ -53,8 +74,9 @@ export function RecipesFiltersProvider({ children }: { children: ReactNode }) {
       filters,
       setFilters,
       clearFilters,
+      toggleSearchField,
     }),
-    [filters, setFilters, clearFilters]
+    [filters, setFilters, clearFilters, toggleSearchField]
   );
 
   return <RecipesFiltersContext.Provider value={value}>{children}</RecipesFiltersContext.Provider>;
