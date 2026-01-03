@@ -6,7 +6,6 @@ import { groceries } from "@/server/db/schema";
 export const GrocerySelectBaseSchema = createSelectSchema(groceries)
   .omit({
     userId: true,
-    recipeIngredientId: true,
     recurringGroceryId: true,
     storeId: true,
     createdAt: true,
@@ -14,6 +13,7 @@ export const GrocerySelectBaseSchema = createSelectSchema(groceries)
   })
   .extend({
     amount: z.coerce.number().nullable(),
+    recipeIngredientId: z.string().uuid().nullable(),
     recurringGroceryId: z.string().uuid().nullable(),
     storeId: z.string().uuid().nullable(),
     sortOrder: z.number().int(),

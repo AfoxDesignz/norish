@@ -4,7 +4,7 @@ import { and, asc, desc, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import z from "zod";
 
 import { db } from "@/server/db/drizzle";
-import { groceries, householdUsers } from "@/server/db/schema";
+import { groceries, householdUsers, recipeIngredients, recipes } from "@/server/db/schema";
 import {
   GroceryInsertBaseSchema,
   GrocerySelectBaseSchema,
@@ -128,7 +128,10 @@ export async function createGroceries(
     for (const [storeId, storeItems] of storeGroups) {
       await trx
         .update(groceries)
-        .set({ sortOrder: sql`${groceries.sortOrder} + ${storeItems.length}`, updatedAt: new Date() })
+        .set({
+          sortOrder: sql`${groceries.sortOrder} + ${storeItems.length}`,
+          updatedAt: new Date(),
+        })
         .where(
           and(
             inArray(groceries.userId, householdUserIds),
@@ -471,4 +474,28 @@ export async function assignGroceryToStore(
       return validatedUpdate.data;
     }
   });
+}
+
+/**
+ * Get recipe info for groceries that have a recipeIngredientId.
+ * Returns a Map of recipeIngredientId -> { recipeId, recipeName }
+ */
+export async function getRecipeInfoForGroceries(
+  recipeIngredientIds: string[]
+): Promise<Map<string, { recipeId: string; recipeName: string }>> {
+  if (recipeIngredientIds.length === 0) return new Map();
+
+  const rows = await db
+    .select({
+      recipeIngredientId: recipeIngredients.id,
+      recipeId: recipes.id,
+      recipeName: recipes.name,
+    })
+    .from(recipeIngredients)
+    .innerJoin(recipes, eq(recipeIngredients.recipeId, recipes.id))
+    .where(inArray(recipeIngredients.id, recipeIngredientIds));
+
+  return new Map(
+    rows.map((r) => [r.recipeIngredientId, { recipeId: r.recipeId, recipeName: r.recipeName }])
+  );
 }

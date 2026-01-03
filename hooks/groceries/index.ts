@@ -2,6 +2,8 @@ export {
   useGroceriesQuery,
   type GroceriesData,
   type GroceriesQueryResult,
+  type RecipeMap,
+  type RecipeInfo,
 } from "./use-groceries-query";
 export {
   useGroceriesMutations,

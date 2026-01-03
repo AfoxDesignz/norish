@@ -20,6 +20,7 @@ interface GroceryListProps {
   onReorderInStore?: (updates: { id: string; sortOrder: number }[], backendOnly?: boolean) => void;
   onMarkAllDoneInStore?: (storeId: string | null) => void;
   onDeleteDoneInStore?: (storeId: string | null) => void;
+  getRecipeNameForGrocery?: (grocery: GroceryDto) => string | null;
 }
 
 export function GroceryList({
@@ -33,6 +34,7 @@ export function GroceryList({
   onReorderInStore,
   onMarkAllDoneInStore,
   onDeleteDoneInStore,
+  getRecipeNameForGrocery,
 }: GroceryListProps) {
   const t = useTranslations("groceries.empty");
   // Group groceries by storeId
@@ -189,6 +191,7 @@ export function GroceryList({
             onToggle={onToggle}
             onMarkAllDone={() => onMarkAllDoneInStore?.(null)}
             onDeleteDone={() => onDeleteDoneInStore?.(null)}
+            getRecipeNameForGrocery={getRecipeNameForGrocery}
           />
         </motion.div>
       )}
@@ -218,6 +221,7 @@ export function GroceryList({
             onToggle={onToggle}
             onMarkAllDone={() => onMarkAllDoneInStore?.(store.id)}
             onDeleteDone={() => onDeleteDoneInStore?.(store.id)}
+            getRecipeNameForGrocery={getRecipeNameForGrocery}
           />
         </motion.div>
       ))}

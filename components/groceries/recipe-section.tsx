@@ -1,22 +1,14 @@
 "use client";
 
-import type { GroceryDto, StoreDto, StoreColor, RecurringGroceryDto } from "@/types";
+import type { GroceryDto, StoreDto, RecurringGroceryDto } from "@/types";
 
 import { memo, useState, useCallback, useRef, useEffect } from "react";
 import { motion, Reorder } from "motion/react";
-import {
-  ChevronDownIcon,
-  EllipsisVerticalIcon,
-  CheckIcon,
-  TrashIcon,
-} from "@heroicons/react/24/outline";
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button } from "@heroui/react";
+import { ChevronDownIcon, BookOpenIcon, TagIcon } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
 
 import { GroceryItem } from "./grocery-item";
 import { DraggableGroceryStoreItem } from "./draggable-grocery-store-item";
-import { DynamicHeroIcon } from "./dynamic-hero-icon";
-import { getStoreColorClasses } from "./store-colors";
 
 function sortGroceries(groceries: GroceryDto[], transitioningIds: Set<string>): GroceryDto[] {
   return [...groceries].sort((a, b) => {
@@ -32,48 +24,44 @@ function sortGroceries(groceries: GroceryDto[], transitioningIds: Set<string>): 
   });
 }
 
-interface StoreSectionProps {
-  store: StoreDto | null; // null = Unsorted
+// Delay before reordering after toggle (ms)
+const REORDER_DELAY = 600;
+
+interface RecipeSectionProps {
+  recipeId: string | null; // null = Manual items
+  recipeName: string;
   groceries: GroceryDto[];
   recurringGroceries: RecurringGroceryDto[];
+  stores: StoreDto[];
   onToggle: (id: string, isDone: boolean) => void;
   onEdit: (grocery: GroceryDto) => void;
   onDelete: (id: string) => void;
   defaultExpanded?: boolean;
-  isDraggingAny: boolean;
+  // Drag and drop props
+  isDraggingAny?: boolean;
   onDragStart?: (groceryId: string) => void;
   onDragEnd?: (pointerPosition: { x: number; y: number }) => void;
-  onReorderInStore?: (updates: { id: string; sortOrder: number }[], backendOnly?: boolean) => void;
+  onReorder?: (updates: { id: string; sortOrder: number }[], backendOnly?: boolean) => void;
   onDraggingInSection?: (isDragging: boolean) => void;
-  onMarkAllDone?: () => void;
-  onDeleteDone?: () => void;
-  getRecipeNameForGrocery?: (grocery: GroceryDto) => string | null;
 }
 
-// Delay before reordering after toggle (ms)
-const REORDER_DELAY = 600;
-
-function StoreSectionComponent({
-  store,
+function RecipeSectionComponent({
+  recipeId,
+  recipeName,
   groceries,
   recurringGroceries,
+  stores,
   onToggle,
   onEdit,
   onDelete,
   defaultExpanded = true,
-  isDraggingAny,
+  isDraggingAny = false,
   onDragStart,
   onDragEnd,
-  onReorderInStore,
+  onReorder,
   onDraggingInSection,
-  onMarkAllDone,
-  onDeleteDone,
-  getRecipeNameForGrocery,
-}: StoreSectionProps) {
+}: RecipeSectionProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const dragConstraintsRef = useRef<HTMLDivElement>(null);
-  const [isHoveringForDrop, setIsHoveringForDrop] = useState(false);
   const [hasDraggingItem, setHasDraggingItem] = useState(false);
   const t = useTranslations("groceries.store");
 
@@ -88,37 +76,6 @@ function StoreSectionComponent({
       timeouts.forEach((timeout) => clearTimeout(timeout));
     };
   }, []);
-
-  // Track hover state for drop zone visual feedback
-  useEffect(() => {
-    if (!isDraggingAny) {
-      setIsHoveringForDrop(false);
-      return;
-    }
-
-    const handlePointerMove = (e: PointerEvent) => {
-      if (!sectionRef.current) return;
-      const rect = sectionRef.current.getBoundingClientRect();
-      const isInside =
-        e.clientX >= rect.left &&
-        e.clientX <= rect.right &&
-        e.clientY >= rect.top &&
-        e.clientY <= rect.bottom;
-      setIsHoveringForDrop(isInside);
-    };
-
-    const handlePointerUp = () => {
-      setIsHoveringForDrop(false);
-    };
-
-    document.addEventListener("pointermove", handlePointerMove);
-    document.addEventListener("pointerup", handlePointerUp);
-
-    return () => {
-      document.removeEventListener("pointermove", handlePointerMove);
-      document.removeEventListener("pointerup", handlePointerUp);
-    };
-  }, [isDraggingAny]);
 
   // Wrap onToggle to track transitioning items
   const handleToggle = useCallback(
@@ -150,80 +107,68 @@ function StoreSectionComponent({
     [onToggle]
   );
 
-  const colorClasses = store
-    ? getStoreColorClasses(store.color as StoreColor)
-    : {
-        bg: "bg-default-400",
-        bgLight: "bg-default-100",
-        text: "text-default-500",
-        border: "border-default-300",
-        ring: "ring-default-400",
-      };
-
   const activeCount = groceries.filter((g) => !g.isDone).length;
   const doneCount = groceries.filter((g) => g.isDone).length;
 
   // Handle reordering of items - updates visual order immediately
   const handleReorder = useCallback(
     (newOrder: GroceryDto[]) => {
-      if (!onReorderInStore) return;
+      if (!onReorder) return;
 
-      // Filter out any items that don't belong to this store
-      const storeId = store?.id ?? null;
-      const validItems = newOrder.filter((grocery) => grocery.storeId === storeId);
-
-      if (validItems.length === 0) return;
+      if (newOrder.length === 0) return;
 
       // Create updates with new sort order
-      const updates = validItems.map((grocery, index) => ({
+      const updates = newOrder.map((grocery, index) => ({
         id: grocery.id,
         sortOrder: index,
       }));
 
       // Update optimistically (visual only, backend called on drag end)
-      onReorderInStore(updates, false);
+      onReorder(updates, false);
     },
-    [onReorderInStore, store]
+    [onReorder]
   );
 
   // Sort groceries using helper function
   const sortedGroceries = sortGroceries(groceries, transitioningIds);
 
+  // Get store for a grocery
+  const getStoreForGrocery = (grocery: GroceryDto): StoreDto | null => {
+    if (!grocery.storeId) return null;
+    return stores.find((s) => s.id === grocery.storeId) ?? null;
+  };
+
   return (
-    <motion.div
-      ref={sectionRef}
-      animate={{
-        scale: isHoveringForDrop ? 0.98 : 1,
-      }}
-      className="relative"
-      data-store-id={store?.id ?? "unsorted"}
-      style={{ zIndex: hasDraggingItem ? 50 : 1 }}
-      transition={{ duration: 0.15 }}
-    >
+    <motion.div className="relative" style={{ zIndex: hasDraggingItem ? 50 : 1 }}>
       <div
         className={`rounded-xl transition-all duration-200 ${isDraggingAny ? "overflow-visible" : "overflow-hidden"}`}
       >
         {/* Header */}
         <div
-          className={`flex w-full items-center gap-3 px-4 py-3 ${colorClasses.bgLight}`}
-          data-store-drop-target={store?.id ?? "unsorted"}
+          className={`flex w-full items-center gap-3 px-4 py-3 ${
+            recipeId ? "bg-primary-100 dark:bg-primary-900/30" : "bg-default-100"
+          }`}
         >
           <button
             className="flex min-w-0 flex-1 items-center gap-3 transition-colors hover:opacity-90"
             onClick={() => setIsExpanded(!isExpanded)}
           >
             {/* Icon */}
-            <div className={`shrink-0 rounded-full p-1.5 ${colorClasses.bg}`}>
-              {store ? (
-                <DynamicHeroIcon className="h-4 w-4 text-white" iconName={store.icon} />
+            <div
+              className={`shrink-0 rounded-full p-1.5 ${
+                recipeId ? "bg-primary-500" : "bg-default-400"
+              }`}
+            >
+              {recipeId ? (
+                <BookOpenIcon className="h-4 w-4 text-white" />
               ) : (
-                <div className="h-4 w-4" />
+                <TagIcon className="h-4 w-4 text-white" />
               )}
             </div>
 
             {/* Name and count */}
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="truncate font-semibold">{store?.name ?? t("unsorted")}</span>
+              <span className="truncate font-semibold">{recipeName}</span>
               <span className="text-default-400 shrink-0 text-sm">
                 {activeCount > 0 && <span>{activeCount}</span>}
                 {doneCount > 0 && (
@@ -241,40 +186,11 @@ function StoreSectionComponent({
               <ChevronDownIcon className="h-5 w-5" />
             </motion.div>
           </button>
-
-          {/* Bulk actions dropdown */}
-          {groceries.length > 0 && (
-            <Dropdown>
-              <DropdownTrigger>
-                <Button isIconOnly className="shrink-0" size="sm" variant="light">
-                  <EllipsisVerticalIcon className="h-5 w-5" />
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu aria-label={t("storeActions")}>
-                <DropdownItem
-                  key="mark-done"
-                  startContent={<CheckIcon className="h-4 w-4" />}
-                  onPress={() => onMarkAllDone?.()}
-                >
-                  {t("markAllDone")}
-                </DropdownItem>
-                <DropdownItem
-                  key="delete-done"
-                  className="text-danger"
-                  color="danger"
-                  startContent={<TrashIcon className="h-4 w-4" />}
-                  onPress={() => onDeleteDone?.()}
-                >
-                  {t("deleteDone")}
-                </DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
-          )}
         </div>
 
         {/* Items */}
         {isExpanded && (
-          <div ref={dragConstraintsRef} className="divide-default-100 divide-y">
+          <div className="divide-default-100 divide-y">
             {/* Active (not done) items - sortable */}
             <Reorder.Group
               axis="y"
@@ -288,6 +204,7 @@ function StoreSectionComponent({
                   const recurringGrocery = grocery.recurringGroceryId
                     ? (recurringGroceries.find((r) => r.id === grocery.recurringGroceryId) ?? null)
                     : null;
+                  const store = getStoreForGrocery(grocery);
                   const isFirst = index === 0;
                   const isLast = index === array.length - 1;
                   return (
@@ -308,7 +225,6 @@ function StoreSectionComponent({
                       <GroceryItem
                         grocery={grocery}
                         recurringGrocery={recurringGrocery}
-                        recipeName={getRecipeNameForGrocery?.(grocery)}
                         store={store}
                         onDelete={onDelete}
                         onEdit={onEdit}
@@ -328,6 +244,7 @@ function StoreSectionComponent({
                 const recurringGrocery = grocery.recurringGroceryId
                   ? (recurringGroceries.find((r) => r.id === grocery.recurringGroceryId) ?? null)
                   : null;
+                const store = getStoreForGrocery(grocery);
                 const isFirst = index === 0;
                 const isLast = index === array.length - 1;
                 return (
@@ -335,7 +252,6 @@ function StoreSectionComponent({
                     <GroceryItem
                       grocery={grocery}
                       recurringGrocery={recurringGrocery}
-                      recipeName={getRecipeNameForGrocery?.(grocery)}
                       store={store}
                       onDelete={onDelete}
                       onEdit={onEdit}
@@ -353,19 +269,8 @@ function StoreSectionComponent({
           </div>
         )}
       </div>
-
-      {/* Border overlay when hovering for drop */}
-      {isHoveringForDrop && (
-        <motion.div
-          animate={{ opacity: 1 }}
-          className={`pointer-events-none absolute inset-0 z-10 rounded-xl border-2 ${colorClasses.border}`}
-          exit={{ opacity: 0 }}
-          initial={{ opacity: 0 }}
-          transition={{ duration: 0.1 }}
-        />
-      )}
     </motion.div>
   );
 }
 
-export const StoreSection = memo(StoreSectionComponent);
+export const RecipeSection = memo(RecipeSectionComponent);

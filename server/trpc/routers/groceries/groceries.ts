@@ -19,6 +19,7 @@ import {
   markAllDoneInStore,
   deleteDoneInStore,
   assignGroceryToStore,
+  getRecipeInfoForGroceries,
   GroceryCreateSchema,
   GroceryUpdateBaseSchema,
   GroceryUpdateInputSchema,
@@ -53,16 +54,31 @@ const list = authedProcedure.query(async ({ ctx }) => {
     listRecurringGroceriesByUsers(ctx.userIds),
   ]);
 
+  // Collect all recipeIngredientIds to fetch recipe info
+  const recipeIngredientIds = groceries
+    .map((g) => g.recipeIngredientId)
+    .filter((id): id is string => id !== null);
+
+  // Fetch recipe info for groceries that have a recipeIngredientId
+  const recipeInfoMap = await getRecipeInfoForGroceries(recipeIngredientIds);
+
+  // Convert Map to plain object for serialization
+  const recipeMap: Record<string, { recipeId: string; recipeName: string }> = {};
+  for (const [key, value] of recipeInfoMap) {
+    recipeMap[key] = value;
+  }
+
   log.debug(
     {
       userId: ctx.user.id,
       groceryCount: groceries.length,
       recurringCount: recurringGroceries.length,
+      recipeMapSize: Object.keys(recipeMap).length,
     },
     "Groceries listed"
   );
 
-  return { groceries, recurringGroceries };
+  return { groceries, recurringGroceries, recipeMap };
 });
 
 const create = authedProcedure
@@ -72,15 +88,20 @@ const create = authedProcedure
 
     // Get existing non-done groceries to check for duplicates
     const existingGroceries = await listGroceriesByUsers(ctx.userIds, { includeDone: false });
-    
-    // Build a map of normalized name -> existing grocery
-    const existingByName = new Map<string, typeof existingGroceries[0]>();
+
+    // Build a map of (normalized name + recipeIngredientId + recurringGroceryId) -> existing grocery
+    // Groceries with different recipeIngredientIds should NOT merge, even if same name/unit
+    // Groceries with recurringGroceryId should NOT merge with manual groceries
+    const existingByKey = new Map<string, (typeof existingGroceries)[0]>();
     for (const grocery of existingGroceries) {
       const normalizedName = normalizeGroceryName(grocery.name);
       if (normalizedName && !grocery.isDone) {
-        // If multiple exist with same name, prefer the one with matching unit
-        if (!existingByName.has(normalizedName)) {
-          existingByName.set(normalizedName, grocery);
+        // Key includes recipeIngredientId and recurringGroceryId to prevent unwanted merging
+        const recipeKey = grocery.recipeIngredientId ?? "manual";
+        const recurringKey = grocery.recurringGroceryId ?? "none";
+        const key = `${normalizedName}|${recipeKey}|${recurringKey}`;
+        if (!existingByKey.has(key)) {
+          existingByKey.set(key, grocery);
         }
       }
     }
@@ -103,11 +124,15 @@ const create = authedProcedure
 
     for (const grocery of input) {
       const normalizedName = normalizeGroceryName(grocery.name);
-      const existing = normalizedName ? existingByName.get(normalizedName) : null;
-      
-      // Check if we should merge: same name, same unit (or both null)
-      const shouldMerge = existing && 
-        (existing.unit === grocery.unit || (!existing.unit && !grocery.unit));
+      // Build key including recipeIngredientId and recurringGroceryId to prevent unwanted merging
+      const recipeKey = grocery.recipeIngredientId ?? "manual";
+      const recurringKey = grocery.recurringGroceryId ?? "none";
+      const lookupKey = normalizedName ? `${normalizedName}|${recipeKey}|${recurringKey}` : null;
+      const existing = lookupKey ? existingByKey.get(lookupKey) : null;
+
+      // Check if we should merge: same name, same unit (or both null), same recipeIngredientId
+      const shouldMerge =
+        existing && (existing.unit === grocery.unit || (!existing.unit && !grocery.unit));
 
       if (shouldMerge && existing) {
         // Merge quantities
@@ -119,11 +144,11 @@ const create = authedProcedure
         returnIds.push(existing.id);
 
         // Update the map so subsequent duplicates in the same request also merge
-        existingByName.set(normalizedName, { ...existing, amount: mergedAmount });
+        existingByKey.set(lookupKey!, { ...existing, amount: mergedAmount });
       } else {
         // Create new grocery
         const id = crypto.randomUUID();
-        
+
         // Use provided storeId, or lookup from preferences
         let storeId: string | null = grocery.storeId ?? null;
         if (!storeId && grocery.name) {
@@ -148,13 +173,14 @@ const create = authedProcedure
         returnIds.push(id);
 
         // Add to map for subsequent duplicate checking within this batch
-        if (normalizedName) {
-          existingByName.set(normalizedName, {
+        if (lookupKey) {
+          existingByKey.set(lookupKey, {
             id,
             name: grocery.name,
             unit: grocery.unit,
             amount: grocery.amount,
             isDone: false,
+            recipeIngredientId: grocery.recipeIngredientId ?? null,
             recurringGroceryId: null,
             storeId,
             sortOrder: 0,
@@ -385,7 +411,10 @@ const assignToStore = authedProcedure
         if (savePreference && storeId && grocery.name) {
           const normalized = normalizeIngredientName(grocery.name);
           await upsertIngredientStorePreference(ctx.user.id, normalized, storeId);
-          log.debug({ userId: ctx.user.id, normalized, storeId }, "Saved ingredient store preference");
+          log.debug(
+            { userId: ctx.user.id, normalized, storeId },
+            "Saved ingredient store preference"
+          );
         }
 
         groceryEmitter.emitToHousehold(ctx.householdKey, "updated", {
@@ -393,7 +422,10 @@ const assignToStore = authedProcedure
         });
       })
       .catch((err) => {
-        log.error({ err, userId: ctx.user.id, groceryId, storeId }, "Failed to assign grocery to store");
+        log.error(
+          { err, userId: ctx.user.id, groceryId, storeId },
+          "Failed to assign grocery to store"
+        );
         groceryEmitter.emitToHousehold(ctx.householdKey, "failed", {
           reason: err.message || "Failed to assign grocery to store",
         });
@@ -436,17 +468,6 @@ const reorderInStore = authedProcedure
         // Check household access for all groceries
         for (const ownerId of ownerIds.values()) {
           await assertHouseholdAccess(ctx.user.id, ownerId);
-        }
-
-        // Get groceries to validate they're in same store
-        const groceries = await getGroceriesByIds(groceryIds);
-        const storeIds = new Set(groceries.map((g) => g.storeId));
-
-        if (storeIds.size > 1) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Cannot reorder groceries across different stores",
-          });
         }
 
         // Perform reorder

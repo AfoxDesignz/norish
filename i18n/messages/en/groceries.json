@@ -2,11 +2,16 @@
   "page": {
     "title": "Groceries",
     "addItem": "Add Item",
-    "addItems": "Add items"
+    "addItems": "Add items",
+    "viewByStore": "By Store",
+    "viewByRecipe": "By Recipe",
+    "viewMode": "View Mode",
+    "manageStores": "Manage Stores"
   },
   "empty": {
     "title": "Your grocery list awaits",
-    "description": "Add items using the \"Add Item\" button above to get started."
+    "description": "Add items using the \"Add Item\" button above to get started.",
+    "manual": "Manual Items"
   },
   "item": {
     "unnamedItem": "Unnamed item"

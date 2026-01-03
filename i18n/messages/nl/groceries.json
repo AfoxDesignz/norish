@@ -2,11 +2,16 @@
   "page": {
     "title": "Boodschappen",
     "addItem": "Item toevoegen",
-    "addItems": "Items toevoegen"
+    "addItems": "Items toevoegen",
+    "viewByStore": "Per Winkel",
+    "viewByRecipe": "Per Recept",
+    "viewMode": "Weergave",
+    "manageStores": "Winkels beheren"
   },
   "empty": {
     "title": "Je boodschappenlijst wacht op je",
-    "description": "Voeg items toe met de knop \"Item toevoegen\" hierboven om te beginnen."
+    "description": "Voeg items toe met de knop \"Item toevoegen\" hierboven om te beginnen.",
+    "manual": "Handmatige items"
   },
   "item": {
     "unnamedItem": "Naamloos item"

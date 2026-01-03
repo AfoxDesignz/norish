@@ -89,7 +89,7 @@ export function useGroceriesSubscription() {
             ? prev.recurringGroceries.map((r) => (r.id === newRecurring.id ? newRecurring : r))
             : [newRecurring, ...prev.recurringGroceries];
 
-          return { groceries, recurringGroceries };
+          return { ...prev, groceries, recurringGroceries };
         });
       },
     })
@@ -105,6 +105,7 @@ export function useGroceriesSubscription() {
           const { recurringGrocery: updatedRecurring, grocery: updatedGrocery } = payload;
 
           return {
+            ...prev,
             groceries: prev.groceries.map((g) => (g.id === updatedGrocery.id ? updatedGrocery : g)),
             recurringGroceries: prev.recurringGroceries.map((r) =>
               r.id === updatedRecurring.id ? updatedRecurring : r
@@ -123,6 +124,7 @@ export function useGroceriesSubscription() {
           if (!prev) return prev;
 
           return {
+            ...prev,
             groceries: prev.groceries.filter(
               (g) => g.recurringGroceryId !== payload.recurringGroceryId
             ),

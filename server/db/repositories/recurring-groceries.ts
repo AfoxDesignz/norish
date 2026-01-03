@@ -185,6 +185,7 @@ export type DueRecurringGrocery = {
     unit: string | null;
     isDone: boolean;
     amount: number | null;
+    recipeIngredientId: string | null;
     recurringGroceryId: string | null;
     storeId: string | null;
     sortOrder: number;

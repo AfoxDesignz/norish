@@ -3,13 +3,13 @@
 import type { GroceryDto } from "@/types";
 import type { RecurrencePattern } from "@/types/recurrence";
 
-import { Button } from "@heroui/react";
-import { PlusIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
+import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, DropdownSection } from "@heroui/react";
+import { PlusIcon, Cog6ToothIcon, BuildingStorefrontIcon, BookOpenIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
 
 import { useGroceriesContext, useGroceriesUIContext } from "../context";
 import { useStoresContext } from "../stores-context";
-import { GroceryList, StoreManagerPanel } from "@/components/groceries";
+import { GroceryList, GroceryListByRecipe, StoreManagerPanel } from "@/components/groceries";
 import AddGroceryPanel from "@/components/Panel/consumers/add-grocery-panel";
 import EditGroceryPanel from "@/components/Panel/consumers/edit-grocery-panel";
 import GrocerySkeleton from "@/components/skeleton/grocery-skeleton";
@@ -18,6 +18,7 @@ export function GroceriesPage() {
   const {
     groceries,
     recurringGroceries,
+    recipeMap,
     isLoading,
     toggleGroceries,
     deleteGroceries,
@@ -31,6 +32,7 @@ export function GroceriesPage() {
     getRecurringGroceryForGrocery,
     markAllDoneInStore,
     deleteDoneInStore,
+    getRecipeNameForGrocery,
   } = useGroceriesContext();
 
   const { stores, storeManagerOpen, setStoreManagerOpen } = useStoresContext();
@@ -40,6 +42,8 @@ export function GroceriesPage() {
     setAddGroceryPanelOpen,
     editingGrocery,
     setEditingGrocery,
+    viewMode,
+    setViewMode,
   } = useGroceriesUIContext();
 
   const t = useTranslations("groceries.page");
@@ -127,16 +131,48 @@ export function GroceriesPage() {
             >
               {t("addItem")}
             </Button>
-            {/* Settings button: Different sizes and variants */}
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              className="md:size-auto md:variant-flat"
-              onPress={() => setStoreManagerOpen(true)}
-            >
-              <Cog6ToothIcon className="h-5 w-5" />
-            </Button>
+            {/* Settings dropdown with view mode and store management */}
+            <Dropdown>
+              <DropdownTrigger>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="light"
+                  aria-label={t("viewMode")}
+                >
+                  <Cog6ToothIcon className="h-5 w-5" />
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu aria-label={t("viewMode")}>
+                <DropdownSection title={t("viewMode")} showDivider>
+                  <DropdownItem
+                    key="view-store"
+                    startContent={<BuildingStorefrontIcon className="h-4 w-4" />}
+                    endContent={viewMode === "store" ? <CheckIcon className="h-4 w-4 text-primary" /> : null}
+                    onPress={() => setViewMode("store")}
+                  >
+                    {t("viewByStore")}
+                  </DropdownItem>
+                  <DropdownItem
+                    key="view-recipe"
+                    startContent={<BookOpenIcon className="h-4 w-4" />}
+                    endContent={viewMode === "recipe" ? <CheckIcon className="h-4 w-4 text-primary" /> : null}
+                    onPress={() => setViewMode("recipe")}
+                  >
+                    {t("viewByRecipe")}
+                  </DropdownItem>
+                </DropdownSection>
+                <DropdownSection>
+                  <DropdownItem
+                    key="manage-stores"
+                    startContent={<Cog6ToothIcon className="h-4 w-4" />}
+                    onPress={() => setStoreManagerOpen(true)}
+                  >
+                    {t("manageStores")}
+                  </DropdownItem>
+                </DropdownSection>
+              </DropdownMenu>
+            </Dropdown>
           </div>
         </div>
 
@@ -144,18 +180,32 @@ export function GroceriesPage() {
         {/* Mobile: Padding for fixed add button */}
         {/* Desktop: Standard overflow */}
         <div className="flex-1 overflow-y-auto px-4 pb-24 md:px-0 md:pb-0">
-          <GroceryList
-            groceries={groceries}
-            recurringGroceries={recurringGroceries}
-            stores={stores}
-            onAssignToStore={handleAssignToStore}
-            onDelete={handleDelete}
-            onEdit={handleEdit}
-            onReorderInStore={reorderGroceriesInStore}
-            onToggle={handleToggle}
-            onMarkAllDoneInStore={markAllDoneInStore}
-            onDeleteDoneInStore={deleteDoneInStore}
-          />
+          {viewMode === "store" ? (
+            <GroceryList
+              groceries={groceries}
+              recurringGroceries={recurringGroceries}
+              stores={stores}
+              onAssignToStore={handleAssignToStore}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+              onReorderInStore={reorderGroceriesInStore}
+              onToggle={handleToggle}
+              onMarkAllDoneInStore={markAllDoneInStore}
+              onDeleteDoneInStore={deleteDoneInStore}
+              getRecipeNameForGrocery={getRecipeNameForGrocery}
+            />
+          ) : (
+            <GroceryListByRecipe
+              groceries={groceries}
+              recurringGroceries={recurringGroceries}
+              stores={stores}
+              recipeMap={recipeMap}
+              onToggle={handleToggle}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onReorder={reorderGroceriesInStore}
+            />
+          )}
         </div>
 
 {/* Mobile: Centered floating add button at bottom */}

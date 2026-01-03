@@ -2,10 +2,7 @@ import { z } from "zod";
 import { createInsertSchema, createSelectSchema, createUpdateSchema } from "drizzle-zod";
 
 import { TagNameSchema } from "./tag";
-import {
-  RecipeIngredientInputSchema,
-  RecipeIngredientsWithoutIdSchema,
-} from "./recipe-ingredients";
+import { RecipeIngredientInputSchema, RecipeIngredientsWithIdSchema } from "./recipe-ingredients";
 import { StepStepSchema } from "./steps";
 
 import { measurementSystemEnum, recipes } from "@/server/db/schema";
@@ -43,7 +40,7 @@ export const RecipeDashboardSchema = RecipeSelectBaseSchema.omit({
 });
 
 export const FullRecipeSchema = RecipeSelectBaseSchema.extend({
-  recipeIngredients: z.array(RecipeIngredientsWithoutIdSchema),
+  recipeIngredients: z.array(RecipeIngredientsWithIdSchema),
   steps: z.array(StepStepSchema).default([]),
   tags: z.array(TagNameSchema).default([]),
   author: AuthorSchema,

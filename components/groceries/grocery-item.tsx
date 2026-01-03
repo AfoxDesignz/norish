@@ -12,6 +12,7 @@ interface GroceryItemProps {
   grocery: GroceryDto;
   store?: StoreDto | null;
   recurringGrocery?: RecurringGroceryDto | null;
+  recipeName?: string | null;
   onToggle: (id: string, isDone: boolean) => void;
   onEdit: (grocery: GroceryDto) => void;
   onDelete: (id: string) => void;
@@ -22,6 +23,7 @@ interface GroceryItemProps {
 function GroceryItemComponent({
   grocery,
   recurringGrocery,
+  recipeName,
   onToggle,
   onEdit,
   isFirst = false,
@@ -30,10 +32,11 @@ function GroceryItemComponent({
   const roundedClass =
     isFirst && isLast ? "rounded-lg" : isFirst ? "rounded-t-lg" : isLast ? "rounded-b-lg" : "";
   const t = useTranslations("groceries.item");
+  const hasSubtitle = Boolean(recurringGrocery || recipeName);
 
   return (
     <div
-      className={`bg-content1 flex items-center gap-3 px-4 py-3 pl-10 ${roundedClass} ${recurringGrocery ? "min-h-[72px]" : "min-h-14"}`}
+      className={`bg-content1 flex items-center gap-3 px-4 py-3 pl-10 ${roundedClass} ${hasSubtitle ? "min-h-[72px]" : "min-h-14"}`}
     >
       <Checkbox
         isSelected={grocery.isDone}
@@ -68,6 +71,11 @@ function GroceryItemComponent({
             {grocery.name || t("unnamedItem")}
           </span>
         </div>
+
+        {/* Recipe name indicator */}
+        {recipeName && !recurringGrocery && (
+          <span className="text-default-400 mt-0.5 truncate text-xs">{recipeName}</span>
+        )}
 
         {/* Recurring pill underneath */}
         {recurringGrocery && (

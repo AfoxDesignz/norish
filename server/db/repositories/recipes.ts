@@ -653,6 +653,7 @@ export async function getRecipeFull(id: string): Promise<FullRecipeDTO | null> {
       },
       ingredients: {
         columns: {
+          id: true,
           ingredientId: true,
           amount: true,
           unit: true,
@@ -719,6 +720,7 @@ export async function getRecipeFull(id: string): Promise<FullRecipeDTO | null> {
       .filter(nonEmpty)
       .map((name: string) => ({ name })),
     recipeIngredients: ((full.ingredients as any) ?? []).map((ri: any) => ({
+      id: ri.id,
       ingredientId: ri.ingredientId,
       amount: ri.amount ? Number(ri.amount) : null,
       unit: ri.unit ?? null,

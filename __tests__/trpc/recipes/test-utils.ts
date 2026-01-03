@@ -110,6 +110,7 @@ export function createMockFullRecipe(overrides: Partial<FullRecipeDTO> = {}): Fu
     tags: [{ name: "dinner" }],
     recipeIngredients: [
       {
+        id: "ri-1",
         ingredientId: "ing-1",
         ingredientName: "Flour",
         amount: 200,

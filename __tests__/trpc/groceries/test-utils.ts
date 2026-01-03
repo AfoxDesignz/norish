@@ -68,6 +68,7 @@ export function createMockGrocery(overrides: Partial<GroceryDto> = {}): GroceryD
     amount: 1,
     unit: "piece",
     isDone: false,
+    recipeIngredientId: null,
     recurringGroceryId: null,
     storeId: null,
     sortOrder: 0,

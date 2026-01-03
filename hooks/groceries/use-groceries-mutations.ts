@@ -19,12 +19,17 @@ export type GroceryCreateData = {
   amount?: number | null;
   unit?: string | null;
   isDone?: boolean;
+  recipeIngredientId?: string | null;
 };
 
 export type GroceriesMutationsResult = {
   createGrocery: (raw: string, storeId?: string | null) => void;
   createGroceriesFromData: (groceries: GroceryCreateData[]) => Promise<string[]>;
-  createRecurringGrocery: (raw: string, pattern: RecurrencePattern, storeId?: string | null) => void;
+  createRecurringGrocery: (
+    raw: string,
+    pattern: RecurrencePattern,
+    storeId?: string | null
+  ) => void;
   toggleGroceries: (ids: string[], isDone: boolean) => void;
   toggleRecurringGrocery: (recurringGroceryId: string, groceryId: string, isDone: boolean) => void;
   updateGrocery: (id: string, raw: string) => void;
@@ -37,8 +42,15 @@ export type GroceriesMutationsResult = {
   deleteGroceries: (ids: string[]) => void;
   deleteRecurringGrocery: (recurringGroceryId: string) => void;
   getRecurringGroceryForGrocery: (groceryId: string) => RecurringGroceryDto | null;
-  assignGroceryToStore: (groceryId: string, storeId: string | null, savePreference?: boolean) => void;
-  reorderGroceriesInStore: (updates: { id: string; sortOrder: number }[], updateBackend?: boolean) => void;
+  assignGroceryToStore: (
+    groceryId: string,
+    storeId: string | null,
+    savePreference?: boolean
+  ) => void;
+  reorderGroceriesInStore: (
+    updates: { id: string; sortOrder: number }[],
+    updateBackend?: boolean
+  ) => void;
   markAllDoneInStore: (storeId: string | null) => void;
   deleteDoneInStore: (storeId: string | null) => void;
 };
@@ -81,6 +93,7 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
       amount: g.amount ?? null,
       unit: g.unit ?? null,
       isDone: g.isDone ?? false,
+      recipeIngredientId: g.recipeIngredientId ?? null,
     }));
 
     return new Promise((resolve, reject) => {
@@ -97,7 +110,11 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
     });
   };
 
-  const createRecurringGrocery = (raw: string, pattern: RecurrencePattern, storeId?: string | null): void => {
+  const createRecurringGrocery = (
+    raw: string,
+    pattern: RecurrencePattern,
+    storeId?: string | null
+  ): void => {
     const parsed = parseIngredientWithDefaults(raw, units)[0];
     const today = getTodayString();
     const nextDate = calculateNextOccurrence(pattern, today);
@@ -219,6 +236,7 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
         if (!prev) return prev;
 
         return {
+          ...prev,
           groceries: prev.groceries.map((g) =>
             g.id === groceryId
               ? {
@@ -297,8 +315,8 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
       if (!prev) return prev;
 
       return {
+        ...prev,
         groceries: prev.groceries.filter((g) => !idsSet.has(g.id)),
-        recurringGroceries: prev.recurringGroceries,
       };
     });
 
@@ -330,7 +348,11 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
 
   const assignToStoreMutation = useMutation(trpc.groceries.assignToStore.mutationOptions());
 
-  const assignGroceryToStore = (groceryId: string, storeId: string | null, savePreference = true) => {
+  const assignGroceryToStore = (
+    groceryId: string,
+    storeId: string | null,
+    savePreference = true
+  ) => {
     // Get the current grocery to check if we're changing stores
     const grocery = groceries.find((g) => g.id === groceryId);
     const isChangingStore = grocery && grocery.storeId !== storeId;
@@ -380,7 +402,10 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
 
   const reorderMutation = useMutation(trpc.groceries.reorderInStore.mutationOptions());
 
-  const reorderGroceriesInStore = (updates: { id: string; sortOrder: number }[], updateBackend = false) => {
+  const reorderGroceriesInStore = (
+    updates: { id: string; sortOrder: number }[],
+    updateBackend = false
+  ) => {
     // Optimistic update always happens during drag for smooth UX
     setGroceriesData((prev) => {
       if (!prev) return prev;
@@ -403,12 +428,15 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
 
     // Call backend on drag end (when updateBackend=true)
     if (updateBackend) {
-      reorderMutation.mutate({ updates }, {
-        onError: (error) => {
-          log.error({ error, updateCount: updates.length }, "Failed to reorder groceries");
-          invalidate();
-        },
-      });
+      reorderMutation.mutate(
+        { updates },
+        {
+          onError: (error) => {
+            log.error({ error, updateCount: updates.length }, "Failed to reorder groceries");
+            invalidate();
+          },
+        }
+      );
     }
   };
 
@@ -430,12 +458,15 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
       };
     });
 
-    markAllDoneMutation.mutate({ storeId }, {
-      onError: (error) => {
-        log.error({ error, storeId }, "Failed to mark groceries as done");
-        invalidate();
-      },
-    });
+    markAllDoneMutation.mutate(
+      { storeId },
+      {
+        onError: (error) => {
+          log.error({ error, storeId }, "Failed to mark groceries as done");
+          invalidate();
+        },
+      }
+    );
   };
 
   const deleteDoneInStore = (storeId: string | null) => {
@@ -443,9 +474,7 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
     setGroceriesData((prev) => {
       if (!prev) return prev;
 
-      const updatedGroceries = prev.groceries.filter(
-        (g) => !(g.storeId === storeId && g.isDone)
-      );
+      const updatedGroceries = prev.groceries.filter((g) => !(g.storeId === storeId && g.isDone));
 
       return {
         ...prev,
@@ -453,12 +482,15 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
       };
     });
 
-    deleteDoneMutation.mutate({ storeId }, {
-      onError: (error) => {
-        log.error({ error, storeId }, "Failed to delete done groceries");
-        invalidate();
-      },
-    });
+    deleteDoneMutation.mutate(
+      { storeId },
+      {
+        onError: (error) => {
+          log.error({ error, storeId }, "Failed to delete done groceries");
+          invalidate();
+        },
+      }
+    );
   };
 
   return {

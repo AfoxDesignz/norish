@@ -17,11 +17,9 @@ export const RecipeIngredientsInsertBaseSchema = createInsertSchema(recipeIngred
 
 export const RecipeIngredientsUpdateBaseSchema = createUpdateSchema(recipeIngredients);
 
-export const RecipeIngredientsWithoutIdSchema = RecipeIngredientsSelectBaseSchema.omit({
-  id: true,
+export const RecipeIngredientsWithIdSchema = RecipeIngredientsSelectBaseSchema.omit({
   updatedAt: true,
   createdAt: true,
-  ingredientId: true,
   recipeId: true,
 }).extend({
   ingredientName: z.string(),

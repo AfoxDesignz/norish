@@ -96,6 +96,7 @@ function MiniGroceriesContent({
         amount: ri.amount ? parseFloat(String(ri.amount)) : null,
         unit: ri.unit ?? null,
         isDone: false,
+        recipeIngredientId: ri.id,
       }));
 
     createGroceriesFromData(selectedIngredients)
