@@ -22,16 +22,19 @@ export function useLocalStorage<T>(
   useEffect(() => {
     if (typeof window === "undefined") {
       setIsHydrated(true);
+
       return;
     }
 
     try {
       const stored = localStorage.getItem(key);
+
       if (stored) {
         const parsed = JSON.parse(stored) as unknown;
 
         if (validate) {
           const validated = validate(parsed);
+
           if (validated !== null) {
             setValue(validated);
           }
