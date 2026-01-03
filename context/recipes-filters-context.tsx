@@ -1,8 +1,8 @@
 "use client";
 
-import { createContext, useContext, ReactNode, useMemo } from "react";
-
 import type { SearchField } from "@/types";
+
+import { createContext, useContext, ReactNode, useMemo } from "react";
 
 import { useRecipeFilters, type RecipeFilters } from "@/hooks/recipes/use-recipe-filters";
 
