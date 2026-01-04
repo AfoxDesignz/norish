@@ -1,6 +1,5 @@
 import { ClockIcon, FireIcon, ArrowTopRightOnSquareIcon, ArrowLeftIcon } from "@heroicons/react/20/solid";
 import { Card, CardBody, Chip, Divider, Link } from "@heroui/react";
-import Image from "next/image";
 import { useTranslations } from "next-intl";
 
 import AuthorChip from "./components/author-chip";
@@ -18,44 +17,44 @@ import SmartMarkdownRenderer from "@/components/shared/smart-markdown-renderer";
 import HeartButton from "@/components/shared/heart-button";
 import DoubleTapContainer from "@/components/shared/double-tap-container";
 import StarRating from "@/components/shared/star-rating";
+import ImageCarousel, { type CarouselImage } from "@/components/shared/image-carousel";
 import { useFavoritesQuery, useFavoritesMutation } from "@/hooks/favorites";
 import { useRatingQuery, useRatingsMutation } from "@/hooks/ratings";
 import { NutritionSection } from "@/components/recipes/nutrition-card";
 
 export default function RecipePageMobile() {
-  var { recipe, currentServings: _currentServings, allergies, allergySet } = useRecipeContextRequired();
+  const { recipe, currentServings: _currentServings, allergies, allergySet } = useRecipeContextRequired();
   const { isFavorite: checkFavorite } = useFavoritesQuery();
   const { toggleFavorite } = useFavoritesMutation();
   const { userRating, averageRating, isLoading: isRatingLoading } = useRatingQuery(recipe.id);
   const { rateRecipe, isRating } = useRatingsMutation();
   const t = useTranslations("recipes.detail");
-  const tCard = useTranslations("recipes.card");
 
   const isFavorite = checkFavorite(recipe.id);
   const handleToggleFavorite = () => toggleFavorite(recipe.id);
   const handleRateRecipe = (rating: number) => rateRecipe(recipe.id, rating);
 
+  // Build carousel images from recipe.images with fallback to legacy recipe.image
+  const carouselImages: CarouselImage[] =
+    recipe.images && recipe.images.length > 0
+      ? recipe.images.map((img) => ({ image: img.image, alt: recipe.name ?? "Recipe image" }))
+      : recipe.image
+        ? [{ image: recipe.image, alt: recipe.name ?? "Recipe image" }]
+        : [];
+
   return (
-    <div className="flex w-full flex-col">
-      {/* Hero Image */}
-      <DoubleTapContainer
-        className="bg-default-200 relative h-72 w-full overflow-hidden"
-        onDoubleTap={handleToggleFavorite}
-      >
-        {recipe.image ? (
-          <Image
-            fill
-            priority
-            unoptimized
-            alt={recipe.name ?? "Recipe image"}
-            className="object-cover"
-            src={recipe.image}
+    <div className="flex w-full flex-col overflow-x-hidden">
+      {/* Hero Image Carousel */}
+      <div className="relative w-full overflow-hidden" style={{ height: "18rem" }}>
+        <DoubleTapContainer className="h-full w-full" onDoubleTap={handleToggleFavorite}>
+          <ImageCarousel
+            rounded={false}
+            aspectRatio="4/3"
+            className="h-full w-full"
+            images={carouselImages}
+            recipeName={recipe.name ?? "Recipe"}
           />
-        ) : (
-          <div className="text-default-500 flex h-full w-full items-center justify-center">
-            <span className="text-base font-medium opacity-70">{tCard("noImage")}</span>
-          </div>
-        )}
+        </DoubleTapContainer>
 
         {/* Author chip */}
         {recipe?.author && (
@@ -76,7 +75,7 @@ export default function RecipePageMobile() {
             onToggle={handleToggleFavorite}
           />
         </div>
-      </DoubleTapContainer>
+      </div>
 
       {/* Unified Content Card - contains all sections */}
       <Card

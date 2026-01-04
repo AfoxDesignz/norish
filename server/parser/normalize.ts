@@ -1,8 +1,9 @@
 import { parseIsoDuration, parseIngredientWithDefaults } from "@/lib/helpers";
-import { downloadBestImageFromJsonLd } from "@/server/downloader";
+import { downloadAllImagesFromJsonLd } from "@/server/downloader";
 import { FullRecipeInsertDTO } from "@/types/dto/recipe";
 import { inferSystemUsedFromParsed } from "@/lib/determine-recipe-system";
 import { getUnits } from "@/config/server-config-loader";
+import { MAX_RECIPE_IMAGES } from "@/server/db/zodSchemas";
 
 function parseNutritionValue(value: unknown): number | null {
   if (value == null) return null;
@@ -141,7 +142,19 @@ export async function normalizeRecipeFromJson(json: any): Promise<FullRecipeInse
       order: i + 1,
     }));
 
-  const images = json.image;
+  const imageField = json.image;
+
+  // Download all images (up to MAX_RECIPE_IMAGES)
+  const downloadedImages = await downloadAllImagesFromJsonLd(imageField, MAX_RECIPE_IMAGES);
+
+  // First image becomes the legacy `image` field for backwards compatibility
+  const primaryImage = downloadedImages.length > 0 ? downloadedImages[0] : undefined;
+
+  // Build images array with order
+  const imagesArray = downloadedImages.map((img, index) => ({
+    image: img,
+    order: index,
+  }));
 
   // Parse servings from recipeYield
   let servings: number | undefined = undefined;
@@ -163,7 +176,7 @@ export async function normalizeRecipeFromJson(json: any): Promise<FullRecipeInse
 
   const coreMaybe: Partial<FullRecipeInsertDTO> = {
     name: json.name ?? json.headline,
-    image: await downloadBestImageFromJsonLd(images),
+    image: primaryImage,
     url: "",
     description: typeof json.description === "string" ? json.description : undefined,
     servings,
@@ -202,5 +215,6 @@ export async function normalizeRecipeFromJson(json: any): Promise<FullRecipeInse
     tags: Array.isArray(json.keywords)
       ? json.keywords.map((k: string) => ({ name: k.toLowerCase() }))
       : [],
+    images: imagesArray,
   };
 }

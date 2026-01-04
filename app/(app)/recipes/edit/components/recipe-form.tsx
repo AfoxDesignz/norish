@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
-import { Input, Button, Kbd } from "@heroui/react";
+import React, { useState, useCallback, useEffect } from "react";
+import { Input, Button } from "@heroui/react";
 import { useRouter } from "next/navigation";
-import { PhotoIcon } from "@heroicons/react/16/solid";
 import { useTranslations } from "next-intl";
 
 import { FullRecipeDTO, MeasurementSystem } from "@/types";
@@ -15,12 +14,12 @@ import IngredientInput, { ParsedIngredient } from "@/components/recipes/ingredie
 import StepInput, { Step } from "@/components/recipes/step-input";
 import TimeInputs from "@/components/recipes/time-inputs";
 import MeasurementSystemSelector from "@/components/recipes/measurement-system-selector";
+import ImageGalleryInput, { RecipeGalleryImage } from "@/components/recipes/image-gallery-input";
 import { useRecipesContext } from "@/context/recipes-context";
 import { inferSystemUsedFromParsed } from "@/lib/determine-recipe-system";
 import { parseIngredientWithDefaults } from "@/lib/helpers";
 import { useUnitsQuery } from "@/hooks/config";
-import { useRecipeImages, useRecipeId } from "@/hooks/recipes";
-import { useClipboardImagePaste } from "@/hooks/use-clipboard-image-paste";
+import { useRecipeId } from "@/hooks/recipes";
 
 const log = createClientLogger("RecipeForm");
 
@@ -35,14 +34,11 @@ export default function RecipeForm({ mode, initialData }: RecipeFormProps) {
   const { units } = useUnitsQuery();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const [dragActive, setDragActive] = useState(false);
   const t = useTranslations("recipes.form");
   const tValidation = useTranslations("recipes.validation");
   const tCommon = useTranslations("common.actions");
 
-  // Use hooks for recipe images and ID reservation
-  const { uploadImage, deleteImage, isUploadingImage } = useRecipeImages();
+  // Use hook for ID reservation
   const {
     recipeId,
     isLoading: isLoadingRecipeId,
@@ -53,7 +49,6 @@ export default function RecipeForm({ mode, initialData }: RecipeFormProps) {
   const [name, setName] = useState(initialData?.name ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [url, setUrl] = useState(initialData?.url ?? "");
-  const [image, setImage] = useState(initialData?.image ?? "");
   const [servings, setServings] = useState(initialData?.servings ?? 1);
   const [prepMinutes, setPrepMinutes] = useState<number | null>(initialData?.prepMinutes ?? null);
   const [cookMinutes, setCookMinutes] = useState<number | null>(initialData?.cookMinutes ?? null);
@@ -68,6 +63,23 @@ export default function RecipeForm({ mode, initialData }: RecipeFormProps) {
   );
   const [detectedSystem, setDetectedSystem] = useState<MeasurementSystem | null>(null);
   const [manuallySetSystem, setManuallySetSystem] = useState(false);
+
+  // Images state - array of gallery images
+  const [images, setImages] = useState<RecipeGalleryImage[]>(() => {
+    // Initialize from initialData.images if available, or from legacy image field
+    if (initialData?.images && initialData.images.length > 0) {
+      return initialData.images.map((img) => ({
+        id: img.id,
+        image: img.image,
+        order: img.order,
+      }));
+    }
+    // Fallback to legacy single image field
+    if (initialData?.image) {
+      return [{ image: initialData.image, order: 0 }];
+    }
+    return [];
+  });
 
   // Nutrition state
   const [calories, setCalories] = useState<number | null>(initialData?.calories ?? null);
@@ -135,68 +147,7 @@ export default function RecipeForm({ mode, initialData }: RecipeFormProps) {
     }
   }, [ingredients, manuallySetSystem, units]);
 
-  const handleImageUpload = useCallback(
-    async (file: File) => {
-      setErrors((prev) => ({ ...prev, image: "" }));
-
-      try {
-        const result = await uploadImage(file);
-
-        if (!result.success) {
-          throw new Error(result.error || "Failed to upload image");
-        }
-
-        setImage(result.url!);
-      } catch (err) {
-        setErrors((prev) => ({ ...prev, image: (err as Error).message }));
-      }
-    },
-    [uploadImage]
-  );
-
-  const onImageInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-
-      if (file) handleImageUpload(file);
-    },
-    [handleImageUpload]
-  );
-
-  const onImageDrop = useCallback(
-    (e: React.DragEvent<HTMLElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setDragActive(false);
-      const file = e.dataTransfer.files?.[0];
-
-      if (file) handleImageUpload(file);
-    },
-    [handleImageUpload]
-  );
-
-  const { getOnPasteHandler } = useClipboardImagePaste({
-    onFiles: (pastedFiles) => {
-      const file = pastedFiles[0];
-
-      if (file) handleImageUpload(file);
-    },
-  });
-  const onImagePaste = getOnPasteHandler();
-
-  const onDragOver = (e: React.DragEvent<HTMLElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(true);
-  };
-
-  const onDragLeave = (e: React.DragEvent<HTMLElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-  };
-
-const validate = useCallback((): boolean => {
+  const validate = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!name.trim()) {
@@ -227,11 +178,15 @@ const validate = useCallback((): boolean => {
     setErrors({});
 
     try {
+      // Get primary image (first in order) for legacy image field
+      const sortedImages = [...images].sort((a, b) => a.order - b.order);
+      const primaryImage = sortedImages[0]?.image || null;
+
       const recipeData = {
         name: name.trim(),
         description: description.trim() || null,
         url: url.trim() || null,
-        image: image || null,
+        image: primaryImage, // Legacy field - first image
         servings,
         prepMinutes: prepMinutes ?? undefined,
         cookMinutes: cookMinutes ?? undefined,
@@ -256,20 +211,19 @@ const validate = useCallback((): boolean => {
           systemUsed: s.systemUsed,
           images: s.images || [],
         })),
+        // New images array field
+        images: images.map((img) => ({
+          id: img.id,
+          image: img.image,
+          order: img.order,
+        })),
       };
 
       if (mode === "create") {
         try {
           await createRecipe({ ...recipeData, id: recipeId! });
         } catch (err) {
-          // Clean up uploaded image on failure
-          if (image && !initialData?.image) {
-            try {
-              await deleteImage(image);
-            } catch (cleanupErr) {
-              log.error({ err: cleanupErr }, "Failed to clean up image");
-            }
-          }
+          log.error({ err }, "Failed to create recipe");
           throw err;
         }
       } else if (mode === "edit" && initialData) {
@@ -285,7 +239,7 @@ const validate = useCallback((): boolean => {
     name,
     description,
     url,
-    image,
+    images,
     servings,
     prepMinutes,
     cookMinutes,
@@ -298,7 +252,6 @@ const validate = useCallback((): boolean => {
     initialData,
     createRecipe,
     updateRecipe,
-    deleteImage,
     recipeId,
     calories,
     fat,
@@ -315,7 +268,7 @@ const validate = useCallback((): boolean => {
     []
   );
 
-// Show loading state while reserving recipe ID for create mode
+  // Show loading state while reserving recipe ID for create mode
   if (isLoadingRecipeId) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -325,7 +278,7 @@ const validate = useCallback((): boolean => {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 md:py-8">
+    <div className="mx-auto w-full max-w-3xl overflow-hidden px-4 py-6 md:py-8">
       {/* Header */}
       <div className="mb-8">
         <div className="mb-2 flex items-start justify-between">
@@ -348,74 +301,28 @@ const validate = useCallback((): boolean => {
         )}
       </div>
 
-      <form className="space-y-10">
-{/* 1. Photo */}
-        <section>
+      <form className="min-w-0 space-y-10">
+        {/* 1. Photos */}
+        <section className="min-w-0">
           <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
             <span className="bg-primary text-primary-foreground flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold">
               1
             </span>
             {t("photo")}
           </h2>
-          <div className="ml-0 md:ml-9">
-            {image ? (
-              <div className="border-default-200 relative aspect-video max-h-80 w-full overflow-hidden rounded-xl border-2">
-                <img alt="Recipe" className="h-full w-full object-cover" src={image} />
-                <Button
-                  className="absolute top-3 right-3"
-                  color="danger"
-                  size="sm"
-                  variant="shadow"
-                  onPress={() => setImage("")}
-                >
-                  {t("remove")}
-                </Button>
-              </div>
-            ) : (
-              <button
-                className={[
-                  "flex w-full cursor-pointer justify-center rounded-xl border-2 border-dashed px-6 py-12 transition-all",
-                  dragActive
-                    ? "border-primary bg-primary-50 dark:bg-primary-950/20 scale-[1.02]"
-                    : "border-default-300 hover:border-primary-400 hover:bg-primary-50/50 dark:hover:bg-primary-950/10",
-                  isUploadingImage ? "pointer-events-none opacity-50" : "",
-                ].join(" ")}
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                onDragLeave={onDragLeave}
-                onDragOver={onDragOver}
-                onDrop={onImageDrop}
-                onPaste={onImagePaste}
-              >
-                <div className="text-center">
-                  <PhotoIcon className="text-default-400 mx-auto h-16 w-16" />
-                  <div className="mt-4 flex flex-col items-center gap-2">
-                    <span className="text-primary text-base font-semibold">
-                      {isUploadingImage ? t("uploading") : t("clickToUpload")}
-                    </span>
-                    {!isUploadingImage && (
-                      <p className="text-default-500 flex items-center gap-1.5 text-xs">
-                        <Kbd keys={["ctrl"]}>V</Kbd> {t("pasteToUpload")}
-                      </p>
-                    )}
-                    <p className="text-default-400 text-xs">{t("imageFormats")}</p>
-                  </div>
-                  <input
-                    ref={imageInputRef}
-                    accept="image/*"
-                    className="sr-only"
-                    disabled={isUploadingImage}
-                    type="file"
-                    onChange={onImageInputChange}
-                  />
-                </div>
-              </button>
+          <div className="ml-0 min-w-0 md:ml-9">
+            {recipeId && (
+              <ImageGalleryInput
+                images={images}
+                recipeId={recipeId}
+                onChange={setImages}
+              />
             )}
             {errors.image && <p className="text-danger-600 mt-2 text-base">{errors.image}</p>}
           </div>
         </section>
 
-{/* 2. Basic Information */}
+        {/* 2. Basic Information */}
         <section>
           <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
             <span className="bg-primary text-primary-foreground flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold">
@@ -454,7 +361,7 @@ const validate = useCallback((): boolean => {
           </div>
         </section>
 
-{/* 3. Ingredients */}
+        {/* 3. Ingredients */}
         <section>
           <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
             <span className="bg-primary text-primary-foreground flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold">
@@ -479,7 +386,7 @@ const validate = useCallback((): boolean => {
           </div>
         </section>
 
-{/* 4. Instructions */}
+        {/* 4. Instructions */}
         <section>
           <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
             <span className="bg-primary text-primary-foreground flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold">
@@ -503,7 +410,7 @@ const validate = useCallback((): boolean => {
           </div>
         </section>
 
-{/* 5. Tags */}
+        {/* 5. Tags */}
         <section>
           <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
             <span className="bg-primary text-primary-foreground flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold">
@@ -519,7 +426,7 @@ const validate = useCallback((): boolean => {
           </div>
         </section>
 
-{/* 6. Nutrition */}
+        {/* 6. Nutrition */}
         <section>
           <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
             <span className="bg-primary text-primary-foreground flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold">
@@ -573,7 +480,7 @@ const validate = useCallback((): boolean => {
           </div>
         </section>
 
-{/* 7. Details */}
+        {/* 7. Details */}
         <section>
           <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
             <span className="bg-primary text-primary-foreground flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold">
@@ -614,7 +521,7 @@ const validate = useCallback((): boolean => {
           </div>
         </section>
 
-{/* 8. Additional Information */}
+        {/* 8. Additional Information */}
         <section>
           <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
             <span className="bg-primary text-primary-foreground flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold">
@@ -654,7 +561,7 @@ const validate = useCallback((): boolean => {
           </div>
         </section>
 
-{/* Submit */}
+        {/* Submit */}
         <div className="flex justify-end gap-3 border-t pt-6">
           <Button isDisabled={isSubmitting} size="lg" variant="flat" onPress={() => router.back()}>
             {tCommon("cancel")}

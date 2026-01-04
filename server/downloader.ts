@@ -310,6 +310,98 @@ export function normalizeJsonLdImages(imageField: any): ImageCandidate[] {
   });
 }
 
+// --- Core image save helper ---
+
+interface SaveImageOptions {
+  /** Directory to save the image in */
+  directory: string;
+  /** Web URL prefix for the saved image */
+  webPrefix: string;
+}
+
+/**
+ * Core helper to save image bytes to disk with normalization.
+ * All image save functions should use this internally.
+ */
+async function saveImageBytesCore(bytes: Buffer, options: SaveImageOptions): Promise<string> {
+  await ensureDir(options.directory);
+
+  // Validate buffer size
+  if (bytes.length > MAX_FILE_SIZE) {
+    throw new Error(`Image too large: ${bytes.length} bytes (max: ${MAX_FILE_SIZE})`);
+  }
+
+  // Validate it's an image
+  if (!isValidImageBuffer(bytes)) {
+    throw new Error("Buffer is not a valid image");
+  }
+
+  const detectedExt = extFromBuffer(bytes);
+
+  if (!detectedExt) {
+    throw new Error("Could not detect image format");
+  }
+
+  // Normalize to JPEG
+  const convertedBytes = await convertToJpeg(bytes, detectedExt);
+  const finalBytes = Buffer.from(new Uint8Array(convertedBytes));
+
+  const id = uuidFromBytes(finalBytes);
+  const fileName = `${id}.jpg`;
+  const filePath = path.join(options.directory, fileName);
+
+  if (!(await fileExists(filePath))) {
+    await fs.writeFile(filePath, finalBytes);
+  }
+
+  return `${options.webPrefix}/${fileName}`;
+}
+
+// --- Core image delete helper ---
+
+interface DeleteImageOptions {
+  /** URL pattern regex with named groups: recipeId, filename */
+  urlPattern: RegExp;
+  /** Function to build the file path from matched groups */
+  buildPath: (recipeId: string, filename: string) => string;
+  /** Log label for this image type */
+  label: string;
+}
+
+/**
+ * Core helper to delete an image by URL.
+ * All image delete functions should use this internally.
+ */
+async function deleteImageByUrlCore(url: string, options: DeleteImageOptions): Promise<void> {
+  const match = url.match(options.urlPattern);
+
+  if (!match) {
+    throw new Error(`Invalid ${options.label} image URL format`);
+  }
+
+  const [, recipeId, filename] = match;
+
+  // Validate recipeId is a UUID
+  if (!/^[a-f0-9-]{36}$/i.test(recipeId)) {
+    throw new Error("Invalid recipe ID in URL");
+  }
+
+  // Validate filename
+  if (!/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+$/.test(filename)) {
+    throw new Error("Invalid filename in URL");
+  }
+
+  const filePath = options.buildPath(recipeId, filename);
+
+  try {
+    await fs.unlink(filePath);
+    log.info({ recipeId, filename }, `Deleted ${options.label} image`);
+  } catch (err) {
+    log.warn({ err, recipeId, filename }, `Could not delete ${options.label} image`);
+    throw err;
+  }
+}
+
 // --- Main functions ---
 
 export async function downloadImage(url: string): Promise<string> {
@@ -411,76 +503,17 @@ export async function downloadBestImageFromJsonLd(imageField: any): Promise<stri
 }
 
 export async function saveImageBytes(bytes: Buffer, _nameHint?: string): Promise<string> {
-  await ensureDir(RECIPES_DISK_DIR);
-
-  // Validate buffer size
-  if (bytes.length > MAX_FILE_SIZE) {
-    throw new Error(`Image too large: ${bytes.length} bytes (max: ${MAX_FILE_SIZE})`);
-  }
-
-  // Validate it's an image
-  if (!isValidImageBuffer(bytes)) {
-    throw new Error("Buffer is not a valid image");
-  }
-
-  const detectedExt = extFromBuffer(bytes);
-  let finalBytes = bytes;
-  const finalExt = ".jpg";
-
-  // Normalize any image type to JPEG 720p
-  if (detectedExt) {
-    const convertedBytes = await convertToJpeg(bytes, detectedExt);
-
-    finalBytes = Buffer.from(new Uint8Array(convertedBytes));
-  } else {
-    throw new Error("Could not detect image format");
-  }
-
-  const id = uuidFromBytes(finalBytes);
-  const fileName = `${id}${finalExt}`;
-  const filePath = path.join(RECIPES_DISK_DIR, fileName);
-
-  if (!(await fileExists(filePath))) {
-    await fs.writeFile(filePath, finalBytes);
-  }
-
-  return `${RECIPES_WEB_PREFIX}/${fileName}`;
+  return saveImageBytesCore(bytes, {
+    directory: RECIPES_DISK_DIR,
+    webPrefix: RECIPES_WEB_PREFIX,
+  });
 }
 
 export async function saveStepImageBytes(bytes: Buffer, recipeId: string): Promise<string> {
-  const stepImagesDir = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "steps");
-
-  await ensureDir(stepImagesDir);
-
-  // Validate buffer size
-  if (bytes.length > MAX_FILE_SIZE) {
-    throw new Error(`Image too large: ${bytes.length} bytes (max: ${MAX_FILE_SIZE})`);
-  }
-
-  // Validate it's an image
-  if (!isValidImageBuffer(bytes)) {
-    throw new Error("Buffer is not a valid image");
-  }
-
-  const detectedExt = extFromBuffer(bytes);
-
-  if (!detectedExt) {
-    throw new Error("Could not detect image format");
-  }
-
-  // Normalize to JPEG
-  const convertedBytes = await convertToJpeg(bytes, detectedExt);
-  const finalBytes = Buffer.from(new Uint8Array(convertedBytes));
-
-  const id = uuidFromBytes(finalBytes);
-  const fileName = `${id}.jpg`;
-  const filePath = path.join(stepImagesDir, fileName);
-
-  if (!(await fileExists(filePath))) {
-    await fs.writeFile(filePath, finalBytes);
-  }
-
-  return `/recipes/${recipeId}/steps/${fileName}`;
+  return saveImageBytesCore(bytes, {
+    directory: path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "steps"),
+    webPrefix: `/recipes/${recipeId}/steps`,
+  });
 }
 
 export async function deleteRecipeStepImagesDir(recipeId: string): Promise<void> {
@@ -496,32 +529,90 @@ export async function deleteRecipeStepImagesDir(recipeId: string): Promise<void>
 }
 
 export async function deleteStepImageByUrl(url: string): Promise<void> {
-  // URL format: /recipes/<recipeId>/steps/<filename>
-  const match = url.match(/^\/recipes\/([a-f0-9-]+)\/steps\/([^/]+)$/i);
+  return deleteImageByUrlCore(url, {
+    urlPattern: /^\/recipes\/([a-f0-9-]+)\/steps\/([^/]+)$/i,
+    buildPath: (recipeId, filename) =>
+      path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "steps", filename),
+    label: "step",
+  });
+}
 
-  if (!match) {
-    throw new Error("Invalid step image URL format");
-  }
+// --- Recipe Gallery Image Functions ---
 
-  const [, recipeId, filename] = match;
+export async function saveRecipeGalleryImageBytes(
+  bytes: Buffer,
+  recipeId: string
+): Promise<string> {
+  return saveImageBytesCore(bytes, {
+    directory: path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "gallery"),
+    webPrefix: `/recipes/${recipeId}/gallery`,
+  });
+}
 
-  // Validate recipeId is a UUID
-  if (!/^[a-f0-9-]{36}$/i.test(recipeId)) {
-    throw new Error("Invalid recipe ID in URL");
-  }
+export async function deleteRecipeGalleryImageByUrl(url: string): Promise<void> {
+  return deleteImageByUrlCore(url, {
+    urlPattern: /^\/recipes\/([a-f0-9-]+)\/gallery\/([^/]+)$/i,
+    buildPath: (recipeId, filename) =>
+      path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "gallery", filename),
+    label: "gallery",
+  });
+}
 
-  // Validate filename
-  if (!/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+$/.test(filename)) {
-    throw new Error("Invalid filename in URL");
-  }
-
-  const filePath = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "steps", filename);
+export async function deleteRecipeGalleryImagesDir(recipeId: string): Promise<void> {
+  const galleryDir = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "gallery");
 
   try {
-    await fs.unlink(filePath);
-    log.info({ recipeId, filename }, "Deleted step image");
+    await fs.rm(galleryDir, { recursive: true, force: true });
+    log.info({ recipeId }, "Deleted gallery images directory");
   } catch (err) {
-    log.warn({ err, recipeId, filename }, "Could not delete step image");
-    throw err;
+    // Ignore errors (directory might not exist)
+    log.warn({ err, recipeId }, "Could not delete gallery images directory");
   }
+}
+
+/**
+ * Download all images from JSON-LD image field, up to maxImages count.
+ * Returns array of web URLs for successfully downloaded images.
+ * Prioritizes larger images first based on dimensions metadata.
+ */
+export async function downloadAllImagesFromJsonLd(
+  imageField: any,
+  maxImages: number = 10
+): Promise<string[]> {
+  const candidates = normalizeJsonLdImages(imageField);
+
+  if (!candidates.length) {
+    return [];
+  }
+
+  // Sort by area (largest first), with unknown sizes at the end
+  const ordered = (() => {
+    const withArea = candidates
+      .map((c) => ({ c, a: area(c) }))
+      .filter((x): x is { c: ImageCandidate; a: number } => typeof x.a === "number")
+      .sort((x, y) => y.a - x.a)
+      .map((x) => x.c);
+
+    const withoutArea = candidates.filter((c) => !area(c));
+
+    return [...withArea, ...withoutArea];
+  })();
+
+  const downloadedUrls: string[] = [];
+
+  // Try each candidate in order up to maxImages
+  for (let i = 0; i < ordered.length && downloadedUrls.length < maxImages; i++) {
+    const cand = ordered[i];
+
+    try {
+      const webUrl = await downloadImage(cand.url);
+
+      downloadedUrls.push(webUrl);
+    } catch (_e) {
+      // Fail silently and try next
+      log.debug({ url: cand.url }, "Failed to download image, trying next");
+    }
+  }
+
+  return downloadedUrls;
 }

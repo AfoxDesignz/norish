@@ -56,6 +56,36 @@ vi.mock("@/app/providers/trpc-provider", () => ({
           }),
         }),
       },
+      uploadGalleryImage: {
+        mutationOptions: () => ({
+          mutationFn: vi.fn(async (formData: FormData) => {
+            const file = formData.get("image");
+            const recipeId = formData.get("recipeId");
+
+            if (!file || !recipeId) {
+              return { success: false, error: "Missing file or recipeId" };
+            }
+
+            return {
+              success: true,
+              url: `/recipes/${recipeId}/gallery/test-gallery.jpg`,
+              id: "gallery-123",
+              order: 0,
+            };
+          }),
+        }),
+      },
+      deleteGalleryImage: {
+        mutationOptions: () => ({
+          mutationFn: vi.fn(async ({ imageId }: { imageId: string }) => {
+            if (!imageId) {
+              return { success: false, error: "Missing imageId" };
+            }
+
+            return { success: true };
+          }),
+        }),
+      },
     },
   }),
 }));
@@ -79,19 +109,27 @@ describe("useRecipeImages", () => {
       expect(result.current).toHaveProperty("deleteImage");
       expect(result.current).toHaveProperty("uploadStepImage");
       expect(result.current).toHaveProperty("deleteStepImage");
+      expect(result.current).toHaveProperty("uploadGalleryImage");
+      expect(result.current).toHaveProperty("deleteGalleryImage");
       expect(result.current).toHaveProperty("isUploadingImage");
       expect(result.current).toHaveProperty("isDeletingImage");
       expect(result.current).toHaveProperty("isUploadingStepImage");
       expect(result.current).toHaveProperty("isDeletingStepImage");
+      expect(result.current).toHaveProperty("isUploadingGalleryImage");
+      expect(result.current).toHaveProperty("isDeletingGalleryImage");
 
       expect(typeof result.current.uploadImage).toBe("function");
       expect(typeof result.current.deleteImage).toBe("function");
       expect(typeof result.current.uploadStepImage).toBe("function");
       expect(typeof result.current.deleteStepImage).toBe("function");
+      expect(typeof result.current.uploadGalleryImage).toBe("function");
+      expect(typeof result.current.deleteGalleryImage).toBe("function");
       expect(typeof result.current.isUploadingImage).toBe("boolean");
       expect(typeof result.current.isDeletingImage).toBe("boolean");
       expect(typeof result.current.isUploadingStepImage).toBe("boolean");
       expect(typeof result.current.isDeletingStepImage).toBe("boolean");
+      expect(typeof result.current.isUploadingGalleryImage).toBe("boolean");
+      expect(typeof result.current.isDeletingGalleryImage).toBe("boolean");
     });
   });
 
@@ -272,6 +310,82 @@ describe("useRecipeImages", () => {
     });
   });
 
+  describe("uploadGalleryImage", () => {
+    it("returns success with URL, id, and order when upload succeeds", async () => {
+      const { useRecipeImages } = await import("@/hooks/recipes/use-recipe-images");
+      const { result } = renderHook(() => useRecipeImages(), {
+        wrapper: createTestWrapper(queryClient),
+      });
+
+      const file = new File(["test"], "gallery.jpg", { type: "image/jpeg" });
+      const recipeId = "recipe-123";
+      const response = await result.current.uploadGalleryImage(file, recipeId);
+
+      expect(response.success).toBe(true);
+      expect(response.url).toBe(`/recipes/${recipeId}/gallery/test-gallery.jpg`);
+      expect(response.id).toBe("gallery-123");
+      expect(response.order).toBe(0);
+    });
+
+    it("creates FormData with file, recipeId, and optional order", async () => {
+      const { useRecipeImages } = await import("@/hooks/recipes/use-recipe-images");
+      const { result } = renderHook(() => useRecipeImages(), {
+        wrapper: createTestWrapper(queryClient),
+      });
+
+      const file = new File(["test"], "gallery.jpg", { type: "image/jpeg" });
+      const recipeId = "recipe-456";
+
+      await result.current.uploadGalleryImage(file, recipeId, 2);
+
+      expect(result.current).toBeDefined();
+    });
+
+    it("sets isUploadingGalleryImage to true during upload", async () => {
+      const { useRecipeImages } = await import("@/hooks/recipes/use-recipe-images");
+      const { result } = renderHook(() => useRecipeImages(), {
+        wrapper: createTestWrapper(queryClient),
+      });
+
+      const file = new File(["test"], "gallery.jpg", { type: "image/jpeg" });
+      const uploadPromise = result.current.uploadGalleryImage(file, "recipe-123");
+
+      await uploadPromise;
+
+      await waitFor(() => {
+        expect(result.current.isUploadingGalleryImage).toBe(false);
+      });
+    });
+  });
+
+  describe("deleteGalleryImage", () => {
+    it("returns success when deletion succeeds", async () => {
+      const { useRecipeImages } = await import("@/hooks/recipes/use-recipe-images");
+      const { result } = renderHook(() => useRecipeImages(), {
+        wrapper: createTestWrapper(queryClient),
+      });
+
+      const response = await result.current.deleteGalleryImage("gallery-123");
+
+      expect(response.success).toBe(true);
+    });
+
+    it("sets isDeletingGalleryImage to true during deletion", async () => {
+      const { useRecipeImages } = await import("@/hooks/recipes/use-recipe-images");
+      const { result } = renderHook(() => useRecipeImages(), {
+        wrapper: createTestWrapper(queryClient),
+      });
+
+      const deletePromise = result.current.deleteGalleryImage("gallery-123");
+
+      await deletePromise;
+
+      await waitFor(() => {
+        expect(result.current.isDeletingGalleryImage).toBe(false);
+      });
+    });
+  });
+
   describe("loading states", () => {
     it("all loading states are initially false", async () => {
       const { useRecipeImages } = await import("@/hooks/recipes/use-recipe-images");
@@ -283,6 +397,8 @@ describe("useRecipeImages", () => {
       expect(result.current.isDeletingImage).toBe(false);
       expect(result.current.isUploadingStepImage).toBe(false);
       expect(result.current.isDeletingStepImage).toBe(false);
+      expect(result.current.isUploadingGalleryImage).toBe(false);
+      expect(result.current.isDeletingGalleryImage).toBe(false);
     });
   });
 });

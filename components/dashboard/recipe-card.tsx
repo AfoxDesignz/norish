@@ -53,6 +53,9 @@ export default function RecipeCard({ recipe }: { recipe: RecipeDashboardDTO }) {
   const allTags = recipe.tags ?? [];
   const description = recipe.description?.trim() || "";
 
+  // Get thumbnail from first gallery image or fall back to legacy image
+  const thumbnailImage = recipe.images?.[0]?.image ?? recipe.image;
+
   function _canClick() {
     return !open && !mobileSearchOpen;
   }
@@ -137,13 +140,13 @@ export default function RecipeCard({ recipe }: { recipe: RecipeDashboardDTO }) {
               >
                 {/* Image */}
                 <div className="pointer-events-none absolute inset-0 z-0">
-                  {recipe.image ? (
+                  {thumbnailImage ? (
                     <Image
                       removeWrapper
                       alt={recipe.name}
                       className={`h-full w-full object-cover transition-transform duration-300 ease-in-out ${open ? "scale-100" : "group-hover/row:scale-110"} `}
                       radius="none"
-                      src={recipe.image}
+                      src={thumbnailImage}
                     />
                   ) : (
                     <div

@@ -145,6 +145,7 @@ export function createMockRecipe(overrides: Partial<RecipeDashboardDTO> = {}): R
     createdAt: now,
     updatedAt: now,
     tags: [],
+    images: [],
     ...overrides,
   };
 }

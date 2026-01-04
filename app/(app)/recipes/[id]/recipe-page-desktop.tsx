@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   WrenchScrewdriverIcon,
   FireIcon,
@@ -9,7 +8,6 @@ import {
   ArrowLeftIcon,
 } from "@heroicons/react/20/solid";
 import { Card, CardBody, CardHeader, Chip } from "@heroui/react";
-import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
@@ -24,7 +22,7 @@ import IngredientsList from "@/app/(app)/recipes/[id]/components/ingredient-list
 import ActionsMenu from "@/app/(app)/recipes/[id]/components/actions-menu";
 import AddToGroceries from "@/app/(app)/recipes/[id]/components/add-to-groceries-button";
 import WakeLockToggle from "@/app/(app)/recipes/[id]/components/wake-lock-toggle";
-import ImageLightbox from "@/components/shared/image-lightbox";
+import ImageCarousel, { type CarouselImage } from "@/components/shared/image-carousel";
 import SmartMarkdownRenderer from "@/components/shared/smart-markdown-renderer";
 import HeartButton from "@/components/shared/heart-button";
 import DoubleTapContainer from "@/components/shared/double-tap-container";
@@ -34,18 +32,24 @@ import { useRatingQuery, useRatingsMutation } from "@/hooks/ratings";
 import NutritionCard from "@/components/recipes/nutrition-card";
 
 export default function RecipePageDesktop() {
-  var { recipe, currentServings: _currentServings, allergies, allergySet } = useRecipeContextRequired();
-  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const { recipe, currentServings: _currentServings, allergies, allergySet } = useRecipeContextRequired();
   const { isFavorite: checkFavorite } = useFavoritesQuery();
   const { toggleFavorite } = useFavoritesMutation();
   const { userRating, averageRating, isLoading: isRatingLoading } = useRatingQuery(recipe.id);
   const { rateRecipe, isRating } = useRatingsMutation();
   const t = useTranslations("recipes.detail");
-  const tCard = useTranslations("recipes.card");
 
   const isFavorite = checkFavorite(recipe.id);
   const handleToggleFavorite = () => toggleFavorite(recipe.id);
   const handleRateRecipe = (rating: number) => rateRecipe(recipe.id, rating);
+
+  // Build carousel images from recipe.images with fallback to legacy recipe.image
+  const carouselImages: CarouselImage[] =
+    recipe.images && recipe.images.length > 0
+      ? recipe.images.map((img) => ({ image: img.image, alt: recipe.name ?? "Recipe image" }))
+      : recipe.image
+        ? [{ image: recipe.image, alt: recipe.name ?? "Recipe image" }]
+        : [];
 
   return (
     <div className="hidden flex-col space-y-6 px-6 pb-10 md:flex">
@@ -166,24 +170,16 @@ export default function RecipePageDesktop() {
 
         {/* RIGHT column: Image + Steps (stacked) */}
         <div className="col-span-3 flex flex-col gap-6">
-          {/* Hero image */}
-          <DoubleTapContainer
-            className="bg-default-200 relative min-h-[400px] overflow-hidden rounded-2xl"
-            onDoubleTap={handleToggleFavorite}
-          >
-            {recipe.image ? (
-              <Image
-                fill
-                unoptimized
-                alt={recipe.name ?? "Recipe image"}
-                className="h-full w-full object-cover"
-                src={recipe.image}
+          {/* Hero image carousel - wrapped to match Card styling */}
+          <div className="relative overflow-hidden rounded-2xl shadow-md">
+            <DoubleTapContainer onDoubleTap={handleToggleFavorite}>
+              <ImageCarousel
+                rounded={false}
+                className="min-h-[400px]"
+                images={carouselImages}
+                recipeName={recipe.name ?? "Recipe"}
               />
-            ) : (
-              <div className="text-default-500 flex h-full w-full items-center justify-center">
-                <span className="text-base font-medium opacity-70">{tCard("noImage")}</span>
-              </div>
-            )}
+            </DoubleTapContainer>
 
             {/* Heart button - top right (always visible) */}
             <div className="absolute top-4 right-4 z-50">
@@ -201,7 +197,7 @@ export default function RecipePageDesktop() {
                 <AuthorChip image={recipe.author.image} name={recipe.author.name} />
               </div>
             )}
-          </DoubleTapContainer>
+          </div>
 
           {/* Steps Card (below image in right column) */}
           <Card className="bg-content1 rounded-2xl shadow-md">
@@ -225,14 +221,6 @@ export default function RecipePageDesktop() {
           </Card>
         </div>
       </div>
-
-      {recipe.image && (
-        <ImageLightbox
-          images={[{ src: recipe.image, alt: recipe.name ?? "Recipe image" }]}
-          isOpen={lightboxOpen}
-          onClose={() => setLightboxOpen(false)}
-        />
-      )}
     </div>
   );
 }

@@ -100,6 +100,15 @@
     "pasteToUpload": "to paste",
     "imageFormats": "PNG, JPG, WEBP up to 5MB"
   },
+  "gallery": {
+    "addImage": "Add image",
+    "uploading": "Uploading...",
+    "uploadFailed": "Upload failed",
+    "dragToReorder": "Drag images to reorder"
+  },
+  "carousel": {
+    "noImageAvailable": "No image available"
+  },
   "validation": {
     "nameRequired": "Recipe name is required",
     "ingredientsRequired": "At least one ingredient is required",

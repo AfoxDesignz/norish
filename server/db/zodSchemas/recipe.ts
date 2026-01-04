@@ -4,6 +4,7 @@ import { createInsertSchema, createSelectSchema, createUpdateSchema } from "driz
 import { TagNameSchema } from "./tag";
 import { RecipeIngredientInputSchema, RecipeIngredientsWithIdSchema } from "./recipe-ingredients";
 import { StepStepSchema } from "./steps";
+import { RecipeImageSchema, RecipeImagesArraySchema } from "./recipe-images";
 
 import { measurementSystemEnum, recipes } from "@/server/db/schema";
 
@@ -37,6 +38,7 @@ export const RecipeDashboardSchema = RecipeSelectBaseSchema.omit({
   author: AuthorSchema,
   averageRating: z.number().nullable().optional(),
   ratingCount: z.number().optional(),
+  images: RecipeImagesArraySchema.default([]),
 });
 
 export const FullRecipeSchema = RecipeSelectBaseSchema.extend({
@@ -44,6 +46,7 @@ export const FullRecipeSchema = RecipeSelectBaseSchema.extend({
   steps: z.array(StepStepSchema).default([]),
   tags: z.array(TagNameSchema).default([]),
   author: AuthorSchema,
+  images: RecipeImagesArraySchema.default([]),
 });
 
 export const FullRecipeInsertSchema = RecipeInsertBaseSchema.extend({
@@ -51,12 +54,14 @@ export const FullRecipeInsertSchema = RecipeInsertBaseSchema.extend({
   recipeIngredients: z.array(RecipeIngredientInputSchema).default([]),
   tags: z.array(TagNameSchema).default([]),
   steps: z.array(StepStepSchema).default([]),
+  images: z.array(RecipeImageSchema).max(10).default([]),
 });
 
 export const FullRecipeUpdateSchema = RecipeUpdateBaseSchema.extend({
   recipeIngredients: z.array(RecipeIngredientInputSchema.partial()).optional(),
   tags: z.array(TagNameSchema).optional(),
   steps: z.array(StepStepSchema).optional(),
+  images: z.array(RecipeImageSchema).max(10).optional(),
 });
 
 export const measurementSystems = measurementSystemEnum.enumValues;

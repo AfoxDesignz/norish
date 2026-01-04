@@ -9,6 +9,7 @@ import {
   ingredients,
   recipeTags,
   tags,
+  recipeImages,
 } from "../schema";
 import {
   RecipeDashboardSchema,
@@ -22,7 +23,7 @@ import { createManyRecipeStepsTx } from "./steps";
 import { attachTagsToRecipeByInputTx } from "./tags";
 
 import { stripHtmlTags } from "@/lib/helpers";
-import { deleteRecipeStepImagesDir } from "@/server/downloader";
+import { deleteRecipeStepImagesDir, deleteRecipeGalleryImagesDir } from "@/server/downloader";
 import {
   RecipeDashboardDTO,
   FilterMode,
@@ -51,6 +52,7 @@ export async function GetTotalRecipeCount(): Promise<number> {
 
 export async function deleteRecipeById(id: string): Promise<void> {
   await deleteRecipeStepImagesDir(id);
+  await deleteRecipeGalleryImagesDir(id);
   await db.delete(recipes).where(eq(recipes.id, id));
 }
 
@@ -404,6 +406,10 @@ export async function listRecipes(
         ratings: {
           columns: { rating: true },
         },
+        images: {
+          columns: { id: true, image: true, order: true },
+          orderBy: (images, { asc }) => [asc(images.order)],
+        },
       },
       where: whereClause,
       orderBy,
@@ -442,6 +448,11 @@ export async function listRecipes(
         .map((name) => ({ name })),
       averageRating,
       ratingCount,
+      images: (r.images ?? []).map((img: any) => ({
+        id: img.id,
+        image: img.image,
+        order: Number(img.order) || 0,
+      })),
     };
   });
 
@@ -491,6 +502,10 @@ export async function dashboardRecipe(id: string): Promise<RecipeDashboardDTO | 
       ratings: {
         columns: { rating: true },
       },
+      images: {
+        columns: { id: true, image: true, order: true },
+        orderBy: (images, { asc }) => [asc(images.order)],
+      },
     },
     limit: 1,
   });
@@ -523,6 +538,11 @@ export async function dashboardRecipe(id: string): Promise<RecipeDashboardDTO | 
       .map((name: string) => ({ name })),
     averageRating,
     ratingCount,
+    images: (r.images ?? []).map((img: any) => ({
+      id: img.id,
+      image: img.image,
+      order: Number(img.order) || 0,
+    })),
   };
 
   const parsed = RecipeDashboardSchema.safeParse(dto);
@@ -611,6 +631,17 @@ export async function createRecipeWithRefs(
       );
     }
 
+    // Insert gallery images if provided
+    if (payload.images && payload.images.length > 0) {
+      await tx.insert(recipeImages).values(
+        payload.images.map((img) => ({
+          recipeId: rid,
+          image: img.image,
+          order: String(img.order ?? 0),
+        }))
+      );
+    }
+
     return rid;
   });
 
@@ -669,6 +700,10 @@ export async function getRecipeFull(id: string): Promise<FullRecipeDTO | null> {
             columns: { id: true, image: true, order: true },
           },
         },
+      },
+      images: {
+        columns: { id: true, image: true, order: true },
+        orderBy: (images, { asc }) => [asc(images.order)],
       },
     },
   });
@@ -729,6 +764,11 @@ export async function getRecipeFull(id: string): Promise<FullRecipeDTO | null> {
       order: ri.order,
     })),
     author,
+    images: (full.images ?? []).map((img: any) => ({
+      id: img.id,
+      image: img.image,
+      order: Number(img.order) || 0,
+    })),
   };
 
   const parsed = FullRecipeSchema.safeParse(dto);
@@ -853,6 +893,23 @@ export async function updateRecipeWithRefs(
         );
       }
     }
+
+    // Replace images if provided
+    if (payload.images !== undefined) {
+      // Delete existing images for this recipe
+      await tx.delete(recipeImages).where(eq(recipeImages.recipeId, recipeId));
+
+      // Add new ones
+      if (payload.images.length > 0) {
+        await tx.insert(recipeImages).values(
+          payload.images.map((img) => ({
+            recipeId,
+            image: img.image,
+            order: String(img.order ?? 0),
+          }))
+        );
+      }
+    }
   });
 }
 
@@ -879,4 +936,134 @@ export async function searchRecipesByName(
     .limit(limit);
 
   return rows.map((r) => ({ id: r.id, name: r.name, image: r.image }));
+}
+
+// --- Recipe Images Management ---
+
+export interface RecipeImageInput {
+  image: string;
+  order: number;
+}
+
+/**
+ * Add images to a recipe
+ */
+export async function addRecipeImages(
+  recipeId: string,
+  images: RecipeImageInput[]
+): Promise<{ id: string; image: string; order: number }[]> {
+  if (!images.length) return [];
+
+  const inserted = await db
+    .insert(recipeImages)
+    .values(
+      images.map((img) => ({
+        recipeId,
+        image: img.image,
+        order: String(img.order),
+      }))
+    )
+    .returning({ id: recipeImages.id, image: recipeImages.image, order: recipeImages.order });
+
+  return inserted.map((row) => ({
+    id: row.id,
+    image: row.image,
+    order: Number(row.order) || 0,
+  }));
+}
+
+/**
+ * Delete a recipe image by ID
+ */
+export async function deleteRecipeImageById(imageId: string): Promise<void> {
+  await db.delete(recipeImages).where(eq(recipeImages.id, imageId));
+}
+
+/**
+ * Get all images for a recipe
+ */
+export async function getRecipeImages(
+  recipeId: string
+): Promise<{ id: string; image: string; order: number }[]> {
+  const rows = await db
+    .select({ id: recipeImages.id, image: recipeImages.image, order: recipeImages.order })
+    .from(recipeImages)
+    .where(eq(recipeImages.recipeId, recipeId))
+    .orderBy(asc(recipeImages.order));
+
+  return rows.map((row) => ({
+    id: row.id,
+    image: row.image,
+    order: Number(row.order) || 0,
+  }));
+}
+
+/**
+ * Update order of recipe images
+ */
+export async function updateRecipeImageOrder(imageId: string, newOrder: number): Promise<void> {
+  await db
+    .update(recipeImages)
+    .set({ order: String(newOrder) })
+    .where(eq(recipeImages.id, imageId));
+}
+
+/**
+ * Get recipe image by ID (for permission checking)
+ */
+export async function getRecipeImageById(
+  imageId: string
+): Promise<{ id: string; recipeId: string; image: string } | null> {
+  const [row] = await db
+    .select({ id: recipeImages.id, recipeId: recipeImages.recipeId, image: recipeImages.image })
+    .from(recipeImages)
+    .where(eq(recipeImages.id, imageId))
+    .limit(1);
+
+  return row ?? null;
+}
+
+/**
+ * Replace all images for a recipe (used during update)
+ */
+export async function replaceRecipeImages(
+  recipeId: string,
+  images: RecipeImageInput[]
+): Promise<{ id: string; image: string; order: number }[]> {
+  return db.transaction(async (tx) => {
+    // Delete existing images
+    await tx.delete(recipeImages).where(eq(recipeImages.recipeId, recipeId));
+
+    if (!images.length) return [];
+
+    // Insert new images
+    const inserted = await tx
+      .insert(recipeImages)
+      .values(
+        images.map((img) => ({
+          recipeId,
+          image: img.image,
+          order: String(img.order),
+        }))
+      )
+      .returning({ id: recipeImages.id, image: recipeImages.image, order: recipeImages.order });
+
+    return inserted.map((row) => ({
+      id: row.id,
+      image: row.image,
+      order: Number(row.order) || 0,
+    }));
+  });
+}
+
+/**
+ * Count images for a recipe
+ */
+export async function countRecipeImages(recipeId: string): Promise<number> {
+  const [result] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(recipeImages)
+    .where(eq(recipeImages.recipeId, recipeId));
+
+  return Number(result?.count ?? 0);
 }

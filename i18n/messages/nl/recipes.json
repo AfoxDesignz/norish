@@ -101,6 +101,15 @@
     "imageFormats": "PNG, JPG, WEBP tot 5MB",
     "remove": "Verwijder"
   },
+  "gallery": {
+    "addImage": "Afbeelding toevoegen",
+    "uploading": "Bezig met uploaden...",
+    "uploadFailed": "Upload mislukt",
+    "dragToReorder": "Sleep afbeeldingen om te herordenen"
+  },
+  "carousel": {
+    "noImageAvailable": "Geen afbeelding beschikbaar"
+  },
   "validation": {
     "nameRequired": "Receptnaam is verplicht",
     "ingredientsRequired": "Er is minimaal één ingrediënt vereist",

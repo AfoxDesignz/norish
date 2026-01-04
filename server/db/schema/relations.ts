@@ -7,6 +7,7 @@ import { recipes } from "./recipes";
 import { tags } from "./tags";
 import { steps } from "./steps";
 import { stepImages } from "./step-images";
+import { recipeImages } from "./recipe-images";
 import { households } from "./households";
 import { householdUsers } from "./household-users";
 import { users } from "./auth";
@@ -21,6 +22,7 @@ export const recipesRelations = relations(recipes, ({ many }) => ({
   recipeTags: many(recipeTags),
   steps: many(steps),
   ratings: many(recipeRatings),
+  images: many(recipeImages),
 }));
 
 export const tagsRelations = relations(tags, ({ many }) => ({
@@ -69,6 +71,13 @@ export const stepImagesRelations = relations(stepImages, ({ one }) => ({
   }),
 }));
 
+export const recipeImagesRelations = relations(recipeImages, ({ one }) => ({
+  recipe: one(recipes, {
+    fields: [recipeImages.recipeId],
+    references: [recipes.id],
+  }),
+}));
+
 export const householdsRelations = relations(households, ({ many }) => ({
   users: many(householdUsers),
 }));
@@ -108,16 +117,19 @@ export const storesRelations = relations(stores, ({ one, many }) => ({
   ingredientPreferences: many(ingredientStorePreferences),
 }));
 
-export const ingredientStorePreferencesRelations = relations(ingredientStorePreferences, ({ one }) => ({
-  user: one(users, {
-    fields: [ingredientStorePreferences.userId],
-    references: [users.id],
-  }),
-  store: one(stores, {
-    fields: [ingredientStorePreferences.storeId],
-    references: [stores.id],
-  }),
-}));
+export const ingredientStorePreferencesRelations = relations(
+  ingredientStorePreferences,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [ingredientStorePreferences.userId],
+      references: [users.id],
+    }),
+    store: one(stores, {
+      fields: [ingredientStorePreferences.storeId],
+      references: [stores.id],
+    }),
+  })
+);
 
 export const serverConfigRelations = relations(serverConfig, ({ one }) => ({
   updatedByUser: one(users, {
