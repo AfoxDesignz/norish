@@ -102,9 +102,15 @@ export default function RecipeForm({ mode, initialData }: RecipeFormProps) {
   }, [recipeIdError]);
 
   // Initialize ingredients and steps from initialData
+  // Filter by the current systemUsed to only show items for the active measurement system
   useEffect(() => {
     if (initialData && mode === "edit") {
-      const initIngredients: ParsedIngredient[] = initialData.recipeIngredients.map((ing) => ({
+      // Filter ingredients by the recipe's measurement system
+      const filteredIngredients = initialData.recipeIngredients.filter(
+        (ing) => ing.systemUsed === initialData.systemUsed
+      );
+
+      const initIngredients: ParsedIngredient[] = filteredIngredients.map((ing) => ({
         ingredientName: ing.ingredientName,
         amount: ing.amount,
         unit: ing.unit,
@@ -114,7 +120,12 @@ export default function RecipeForm({ mode, initialData }: RecipeFormProps) {
 
       setIngredients(initIngredients);
 
-      const initSteps: Step[] = initialData.steps.map((s) => ({
+      // Filter steps by the recipe's measurement system
+      const filteredSteps = initialData.steps.filter(
+        (s) => s.systemUsed === initialData.systemUsed
+      );
+
+      const initSteps: Step[] = filteredSteps.map((s) => ({
         step: s.step,
         order: s.order,
         systemUsed: s.systemUsed,
