@@ -3,7 +3,7 @@
 import { ShoppingBagIcon, CalendarDaysIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { Card, CardBody, Image } from "@heroui/react";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import SwipeableRow, { SwipeableRowRef, SwipeAction } from "../shared/swipable-row";
@@ -22,7 +22,7 @@ import { usePermissionsContext } from "@/context/permissions-context";
 import { useFavoritesQuery, useFavoritesMutation } from "@/hooks/favorites";
 import { useActiveAllergies } from "@/hooks/user";
 
-export default function RecipeCard({ recipe }: { recipe: RecipeDashboardDTO }) {
+function RecipeCardComponent({ recipe }: { recipe: RecipeDashboardDTO }) {
   const router = useRouter();
   const rowRef = useRef<SwipeableRowRef>(null);
   const { mobileSearchOpen } = useAppStore((s) => s);
@@ -218,3 +218,30 @@ export default function RecipeCard({ recipe }: { recipe: RecipeDashboardDTO }) {
     </>
   );
 }
+
+// Memoize to prevent unnecessary re-renders during VirtuosoGrid scroll
+// The component only needs to re-render when the recipe data changes
+const RecipeCard = memo(RecipeCardComponent, (prevProps, nextProps) => {
+  const prev = prevProps.recipe;
+  const next = nextProps.recipe;
+
+  // Compare essential fields that would require a re-render
+  return (
+    prev.id === next.id &&
+    prev.name === next.name &&
+    prev.description === next.description &&
+    prev.image === next.image &&
+    prev.servings === next.servings &&
+    prev.prepMinutes === next.prepMinutes &&
+    prev.cookMinutes === next.cookMinutes &&
+    prev.totalMinutes === next.totalMinutes &&
+    prev.averageRating === next.averageRating &&
+    prev.updatedAt?.getTime() === next.updatedAt?.getTime() &&
+    prev.tags?.length === next.tags?.length &&
+    prev.images?.length === next.images?.length
+  );
+});
+
+RecipeCard.displayName = "RecipeCard";
+
+export default RecipeCard;

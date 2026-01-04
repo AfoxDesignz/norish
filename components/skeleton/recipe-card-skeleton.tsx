@@ -1,8 +1,9 @@
 "use client";
 
 import { Card, Skeleton, CardBody } from "@heroui/react";
+import { memo } from "react";
 
-export default function RecipeCardSkeleton() {
+function RecipeCardSkeletonComponent() {
   return (
     <Card data-recipe-card className="w-full bg-transparent shadow-none">
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl">
@@ -18,3 +19,10 @@ export default function RecipeCardSkeleton() {
     </Card>
   );
 }
+
+// Memoize skeleton - it has no props so it never needs to re-render
+const RecipeCardSkeleton = memo(RecipeCardSkeletonComponent);
+
+RecipeCardSkeleton.displayName = "RecipeCardSkeleton";
+
+export default RecipeCardSkeleton;

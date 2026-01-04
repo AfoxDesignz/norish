@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback, ChangeEvent } from "react";
+import { useState, useTransition, useCallback, ChangeEvent, memo } from "react";
 import { Virtuoso } from "react-virtuoso";
 import { Image, Input, Button } from "@heroui/react";
 import { motion, AnimatePresence } from "motion/react";
@@ -20,6 +20,38 @@ type MiniRecipesProps = {
   onOpenChange: (open: boolean) => void;
   date: Date;
 };
+
+// Memoized recipe item to prevent re-renders during scroll
+const MiniRecipeItem = memo(function MiniRecipeItem({
+  recipe,
+  onPlan,
+}: {
+  recipe: RecipeDashboardDTO;
+  onPlan: (recipe: RecipeDashboardDTO, slot: Slot) => void;
+}) {
+  const subtitle = (recipe.description?.trim() || "").slice(0, 140);
+
+  return (
+    <SlotDropdown ariaLabel="Choose slot" onSelectSlot={(slot) => onPlan(recipe, slot)}>
+      <div className="hover:bg-default-100 flex cursor-pointer items-start gap-3 rounded-md px-2 py-2">
+        <div className="bg-default-200 relative h-20 w-20 shrink-0 overflow-hidden rounded-md">
+          {recipe.image && (
+            <Image
+              removeWrapper
+              alt={recipe.name}
+              className="h-full w-full object-cover"
+              src={recipe.image}
+            />
+          )}
+        </div>
+        <div className="flex min-w-0 flex-col">
+          <div className="truncate text-base font-medium">{recipe.name}</div>
+          {subtitle && <div className="text-default-500 truncate text-base">{subtitle}</div>}
+        </div>
+      </div>
+    </SlotDropdown>
+  );
+});
 
 function MiniRecipesContent({
   date,
@@ -142,37 +174,11 @@ function MiniRecipesContent({
           </div>
         ) : (
           <Virtuoso
+            computeItemKey={(_, recipe) => recipe.id}
             data={recipes}
             endReached={loadMore}
-            itemContent={(_, recipe) => {
-              const subtitle = (recipe.description?.trim() || "").slice(0, 140);
-
-              return (
-                <SlotDropdown
-                  ariaLabel="Choose slot"
-                  onSelectSlot={(slot) => handlePlan(recipe, slot)}
-                >
-                  <div className="hover:bg-default-100 flex cursor-pointer items-start gap-3 rounded-md px-2 py-2">
-                    <div className="bg-default-200 relative h-20 w-20 shrink-0 overflow-hidden rounded-md">
-                      {recipe.image && (
-                        <Image
-                          removeWrapper
-                          alt={recipe.name}
-                          className="h-full w-full object-cover"
-                          src={recipe.image}
-                        />
-                      )}
-                    </div>
-                    <div className="flex min-w-0 flex-col">
-                      <div className="truncate text-base font-medium">{recipe.name}</div>
-                      {subtitle && (
-                        <div className="text-default-500 truncate text-base">{subtitle}</div>
-                      )}
-                    </div>
-                  </div>
-                </SlotDropdown>
-              );
-            }}
+            increaseViewportBy={{ top: 100, bottom: 100 }}
+            itemContent={(_, recipe) => <MiniRecipeItem recipe={recipe} onPlan={handlePlan} />}
             overscan={200}
             style={{ height: "100%" }}
           />

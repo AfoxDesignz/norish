@@ -432,7 +432,12 @@ function createAuth() {
 
       apiKey({
         enableSessionForAPIKeys: true,
-        apiKeyHeaders: ["x-api-key"],
+        rateLimit: {
+          enabled: true,
+          timeWindow: 1000 * 60 * 60 * 1,
+          maxRequests: 500
+        },
+        apiKeyHeaders: ["x-api-key", "bearer"],
       }),
 
       nextCookies(),
