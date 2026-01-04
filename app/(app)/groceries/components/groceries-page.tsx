@@ -198,6 +198,7 @@ export function GroceriesPage() {
               onToggle={handleToggle}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onReorder={reorderGroceriesInStore}
             />
           )}
         </div>

@@ -1,13 +1,31 @@
 "use client";
 
 import type { GroceryDto, StoreDto, RecurringGroceryDto } from "@/types";
+import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 
-import { memo, useState, useCallback, useRef, useEffect } from "react";
+import { memo, useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import { ChevronDownIcon, BookOpenIcon, TagIcon } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
 
 import { GroceryItem } from "./grocery-item";
+import { SortableGroceryItem, GroceryDragOverlay } from "./dnd";
 
 function sortGroceries(groceries: GroceryDto[], transitioningIds: Set<string>): GroceryDto[] {
   return [...groceries].sort((a, b) => {
@@ -35,6 +53,7 @@ interface RecipeSectionProps {
   onToggle: (id: string, isDone: boolean) => void;
   onEdit: (grocery: GroceryDto) => void;
   onDelete: (id: string) => void;
+  onReorder?: (updates: { id: string; sortOrder: number }[]) => void;
   defaultExpanded?: boolean;
 }
 
@@ -47,6 +66,7 @@ function RecipeSectionComponent({
   onToggle,
   onEdit,
   onDelete,
+  onReorder,
   defaultExpanded = true,
 }: RecipeSectionProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
@@ -100,9 +120,112 @@ function RecipeSectionComponent({
   // Sort groceries using helper function
   const sortedGroceries = sortGroceries(groceries, transitioningIds);
 
-  // Separate active and done items
-  const activeGroceries = sortedGroceries.filter((g) => !g.isDone && !transitioningIds.has(g.id));
+  // Separate active and done items from props
+  const propsActiveGroceries = sortedGroceries.filter(
+    (g) => !g.isDone && !transitioningIds.has(g.id)
+  );
   const doneGroceries = sortedGroceries.filter((g) => g.isDone || transitioningIds.has(g.id));
+
+  // =============================================================================
+  // Local ordered IDs state (persists visual order during and after drag)
+  // =============================================================================
+  const [orderedIds, setOrderedIds] = useState<string[]>(() =>
+    propsActiveGroceries.map((g) => g.id)
+  );
+
+  // Track previous props active IDs to detect external changes
+  const prevPropsActiveIdsRef = useRef<string[]>(propsActiveGroceries.map((g) => g.id));
+
+  // Sync orderedIds when groceries change from external source (not during drag)
+  // Only update if the set of IDs changed (new items added, items removed, etc.)
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeId) return; // Don't sync during drag
+
+    const currentPropsIds = propsActiveGroceries.map((g) => g.id);
+    const prevPropsIds = prevPropsActiveIdsRef.current;
+
+    // Check if the set of IDs changed
+    const currentSet = new Set(currentPropsIds);
+    const prevSet = new Set(prevPropsIds);
+    const setsEqual =
+      currentSet.size === prevSet.size && [...currentSet].every((id) => prevSet.has(id));
+
+    if (!setsEqual) {
+      // IDs changed (items added/removed) - rebuild from props
+      setOrderedIds(currentPropsIds);
+    }
+
+    prevPropsActiveIdsRef.current = currentPropsIds;
+  }, [propsActiveGroceries, activeId]);
+
+  // Build ordered active groceries from orderedIds
+  const orderedActiveGroceries = useMemo(() => {
+    const groceryMap = new Map(propsActiveGroceries.map((g) => [g.id, g]));
+    return orderedIds.map((id) => groceryMap.get(id)).filter(Boolean) as GroceryDto[];
+  }, [orderedIds, propsActiveGroceries]);
+
+  // =============================================================================
+  // DnD Setup
+  // =============================================================================
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Get the active grocery for overlay
+  const activeGrocery = useMemo(() => {
+    if (!activeId) return null;
+    return groceries.find((g) => g.id === activeId) ?? null;
+  }, [activeId, groceries]);
+
+  const activeRecurringGrocery = useMemo(() => {
+    if (!activeGrocery?.recurringGroceryId) return null;
+    return recurringGroceries.find((r) => r.id === activeGrocery.recurringGroceryId) ?? null;
+  }, [activeGrocery, recurringGroceries]);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveId(null);
+
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      // Find indices in current orderedIds
+      const oldIndex = orderedIds.indexOf(active.id as string);
+      const newIndex = orderedIds.indexOf(over.id as string);
+
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      // Update local state immediately (optimistic)
+      const newOrder = arrayMove(orderedIds, oldIndex, newIndex);
+      setOrderedIds(newOrder);
+
+      // Call backend with new sort orders
+      if (onReorder) {
+        const updates = newOrder.map((id, index) => ({ id, sortOrder: index }));
+        onReorder(updates);
+      }
+    },
+    [orderedIds, onReorder]
+  );
+
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null);
+  }, []);
 
   // Get store for a grocery
   const getStoreForGrocery = (grocery: GroceryDto): StoreDto | null => {
@@ -158,63 +281,83 @@ function RecipeSectionComponent({
           </button>
         </div>
 
-        {/* Items - recipe view doesn't support drag/drop, use store view for that */}
+        {/* Items with drag-and-drop for reordering */}
         {isExpanded && (
-          <div className="divide-default-100 divide-y">
-            {/* Active (not done) items */}
-            {activeGroceries.map((grocery, index) => {
-              const recurringGrocery = grocery.recurringGroceryId
-                ? (recurringGroceries.find((r) => r.id === grocery.recurringGroceryId) ?? null)
-                : null;
-              const store = getStoreForGrocery(grocery);
-              const isFirst = index === 0;
-              const isLast = index === activeGroceries.length - 1 && doneGroceries.length === 0;
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
+            <div className="divide-default-100 divide-y">
+              {/* Active (not done) items - sortable */}
+              <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
+                {orderedActiveGroceries.map((grocery, index) => {
+                  const recurringGrocery = grocery.recurringGroceryId
+                    ? (recurringGroceries.find((r) => r.id === grocery.recurringGroceryId) ?? null)
+                    : null;
+                  const store = getStoreForGrocery(grocery);
+                  const isFirst = index === 0;
+                  const isLast =
+                    index === orderedActiveGroceries.length - 1 && doneGroceries.length === 0;
 
-              return (
-                <div key={grocery.id}>
-                  <GroceryItem
-                    grocery={grocery}
-                    recurringGrocery={recurringGrocery}
-                    store={store}
-                    onDelete={onDelete}
-                    onEdit={onEdit}
-                    onToggle={handleToggle}
-                    isFirst={isFirst}
-                    isLast={isLast}
-                  />
-                </div>
-              );
-            })}
+                  return (
+                    <SortableGroceryItem key={grocery.id} grocery={grocery}>
+                      <GroceryItem
+                        grocery={grocery}
+                        recurringGrocery={recurringGrocery}
+                        store={store}
+                        onDelete={onDelete}
+                        onEdit={onEdit}
+                        onToggle={handleToggle}
+                        isFirst={isFirst}
+                        isLast={isLast}
+                      />
+                    </SortableGroceryItem>
+                  );
+                })}
+              </SortableContext>
 
-            {/* Done items */}
-            {doneGroceries.map((grocery, index) => {
-              const recurringGrocery = grocery.recurringGroceryId
-                ? (recurringGroceries.find((r) => r.id === grocery.recurringGroceryId) ?? null)
-                : null;
-              const store = getStoreForGrocery(grocery);
-              const isFirst = index === 0 && activeGroceries.length === 0;
-              const isLast = index === doneGroceries.length - 1;
+              {/* Done items - not sortable */}
+              {doneGroceries.map((grocery, index) => {
+                const recurringGrocery = grocery.recurringGroceryId
+                  ? (recurringGroceries.find((r) => r.id === grocery.recurringGroceryId) ?? null)
+                  : null;
+                const store = getStoreForGrocery(grocery);
+                const isFirst = index === 0 && orderedActiveGroceries.length === 0;
+                const isLast = index === doneGroceries.length - 1;
 
-              return (
-                <div key={grocery.id}>
-                  <GroceryItem
-                    grocery={grocery}
-                    recurringGrocery={recurringGrocery}
-                    store={store}
-                    onDelete={onDelete}
-                    onEdit={onEdit}
-                    onToggle={handleToggle}
-                    isFirst={isFirst}
-                    isLast={isLast}
-                  />
-                </div>
-              );
-            })}
+                return (
+                  <div key={grocery.id}>
+                    <GroceryItem
+                      grocery={grocery}
+                      recurringGrocery={recurringGrocery}
+                      store={store}
+                      onDelete={onDelete}
+                      onEdit={onEdit}
+                      onToggle={handleToggle}
+                      isFirst={isFirst}
+                      isLast={isLast}
+                    />
+                  </div>
+                );
+              })}
 
-            {groceries.length === 0 && (
-              <div className="text-default-400 px-4 py-6 text-center text-sm">{t("noItems")}</div>
-            )}
-          </div>
+              {groceries.length === 0 && (
+                <div className="text-default-400 px-4 py-6 text-center text-sm">{t("noItems")}</div>
+              )}
+            </div>
+
+            <DragOverlay dropAnimation={{ duration: 200, easing: "ease" }}>
+              {activeGrocery ? (
+                <GroceryDragOverlay
+                  grocery={activeGrocery}
+                  recurringGrocery={activeRecurringGrocery}
+                />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         )}
       </div>
     </motion.div>

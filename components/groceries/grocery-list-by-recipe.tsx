@@ -24,6 +24,7 @@ interface GroceryListByRecipeProps {
   onToggle: (id: string, isDone: boolean) => void;
   onEdit: (grocery: GroceryDto) => void;
   onDelete: (id: string) => void;
+  onReorder?: (updates: { id: string; sortOrder: number }[]) => void;
 }
 
 interface RecipeGroup {
@@ -40,6 +41,7 @@ export function GroceryListByRecipe({
   onToggle,
   onEdit,
   onDelete,
+  onReorder,
 }: GroceryListByRecipeProps) {
   const t = useTranslations("groceries");
 
@@ -64,7 +66,17 @@ export function GroceryListByRecipe({
     // Convert to array of RecipeGroup
     const result: RecipeGroup[] = [];
 
-    // Add recipe groups first (sorted by recipe name)
+    // Add manual items first (if present)
+    const manualItems = groups.get(null) ?? [];
+    if (manualItems.length > 0) {
+      result.push({
+        recipeId: null,
+        recipeName: t("empty.manual"),
+        groceries: manualItems,
+      });
+    }
+
+    // Add recipe groups (sorted by recipe name)
     const recipeEntries: [string, GroceryDto[]][] = [];
     groups.forEach((groceries, recipeId) => {
       if (recipeId !== null && groceries.length > 0) {
@@ -86,16 +98,6 @@ export function GroceryListByRecipe({
         groceries,
       });
     });
-
-    // Add manual items last
-    const manualItems = groups.get(null) ?? [];
-    if (manualItems.length > 0) {
-      result.push({
-        recipeId: null,
-        recipeName: t("empty.manual"),
-        groceries: manualItems,
-      });
-    }
 
     return result;
   }, [groceries, recipeMap, t]);
@@ -145,6 +147,7 @@ export function GroceryListByRecipe({
             onToggle={onToggle}
             onEdit={onEdit}
             onDelete={onDelete}
+            onReorder={onReorder}
           />
         </motion.div>
       ))}
