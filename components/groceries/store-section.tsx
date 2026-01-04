@@ -60,7 +60,7 @@ function StoreSectionComponent({
   const t = useTranslations("groceries.store");
 
   // Get DnD context for ordered items and drag state
-  const { activeId, getItemsForContainer } = useDndGroceryContext();
+  const { activeId: _activeId, getItemsForContainer } = useDndGroceryContext();
 
   // Get container ID for this store
   const containerId = store?.id ?? UNSORTED_CONTAINER;

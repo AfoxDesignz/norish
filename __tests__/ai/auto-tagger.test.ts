@@ -51,8 +51,8 @@ vi.mock("@/server/logger", () => ({
 import { generateText } from "ai";
 
 import { isAIEnabled, getAutoTaggingMode } from "@/config/server-config-loader";
-import { listAllTagNames } from "@/server/db/repositories/tags";
 import { generateTagsForRecipe } from "@/server/ai/auto-tagger";
+import { listAllTagNames } from "@/server/db/repositories/tags";
 
 describe("Auto-Tagger", () => {
   const mockRecipe = {

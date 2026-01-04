@@ -66,7 +66,7 @@ export function useGroceryDnd({
   const recentlyMovedToNewContainer = useRef(false);
 
   // Container IDs for reference
-  const containerIds = useMemo(() => [UNSORTED_CONTAINER, ...stores.map((s) => s.id)], [stores]);
+  const _containerIds = useMemo(() => [UNSORTED_CONTAINER, ...stores.map((s) => s.id)], [stores]);
 
   // =============================================================================
   // Sync items state when groceries/stores change from external source

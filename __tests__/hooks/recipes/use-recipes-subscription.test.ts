@@ -23,6 +23,18 @@ vi.mock("@/app/providers/trpc-provider", () => ({
           queryFn: async () => [],
         }),
       },
+      getPendingAutoTagging: {
+        queryOptions: () => ({
+          queryKey: ["recipes", "getPendingAutoTagging"],
+          queryFn: async () => [],
+        }),
+      },
+      getPendingAllergyDetection: {
+        queryOptions: () => ({
+          queryKey: ["recipes", "getPendingAllergyDetection"],
+          queryFn: async () => [],
+        }),
+      },
       onCreated: {
         subscriptionOptions: vi.fn((_, options) => {
           subscriptionCallbacks.onCreated = options?.onData;
@@ -79,6 +91,41 @@ vi.mock("@/app/providers/trpc-provider", () => ({
           return { enabled: true };
         }),
       },
+      onAutoTaggingStarted: {
+        subscriptionOptions: vi.fn((_, options) => {
+          subscriptionCallbacks.onAutoTaggingStarted = options?.onData;
+
+          return { enabled: true };
+        }),
+      },
+      onAutoTaggingCompleted: {
+        subscriptionOptions: vi.fn((_, options) => {
+          subscriptionCallbacks.onAutoTaggingCompleted = options?.onData;
+
+          return { enabled: true };
+        }),
+      },
+      onAllergyDetectionStarted: {
+        subscriptionOptions: vi.fn((_, options) => {
+          subscriptionCallbacks.onAllergyDetectionStarted = options?.onData;
+
+          return { enabled: true };
+        }),
+      },
+      onAllergyDetectionCompleted: {
+        subscriptionOptions: vi.fn((_, options) => {
+          subscriptionCallbacks.onAllergyDetectionCompleted = options?.onData;
+
+          return { enabled: true };
+        }),
+      },
+      onProcessingToast: {
+        subscriptionOptions: vi.fn((_, options) => {
+          subscriptionCallbacks.onProcessingToast = options?.onData;
+
+          return { enabled: true };
+        }),
+      },
     },
   }),
 }));
@@ -95,6 +142,22 @@ vi.mock("@trpc/tanstack-react-query", () => ({
 // Mock HeroUI toast
 vi.mock("@heroui/react", () => ({
   addToast: vi.fn(),
+  Button: () => null,
+}));
+
+// Mock next-intl
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+}));
+
+// Mock client logger
+vi.mock("@/lib/logger", () => ({
+  createClientLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
 }));
 
 describe("useRecipesSubscription", () => {

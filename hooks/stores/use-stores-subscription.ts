@@ -12,7 +12,7 @@ import { useTRPC } from "@/app/providers/trpc-provider";
  */
 export function useStoresSubscription() {
   const trpc = useTRPC();
-  const { setStoresData, invalidate } = useStoresQuery();
+  const { setStoresData, invalidate: _invalidate } = useStoresQuery();
 
   // onCreated
   useSubscription(

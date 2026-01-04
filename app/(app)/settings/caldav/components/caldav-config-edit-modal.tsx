@@ -86,6 +86,31 @@ export default function CalDavConfigEditModal({ isOpen, onClose }: CalDavConfigE
     }
   }, [config, isOpen]);
 
+  const performTestConnection = useCallback(
+    async (url: string, user: string, pass: string, currentCalendarUrl: string | null = null) => {
+      setTesting(true);
+      setTestResult(null);
+      setCalendars([]);
+      try {
+        const result = await testConnection(url, user, pass);
+
+        setTestResult(result);
+
+        // Store returned calendars for selection
+        if (result.success && result.calendars && result.calendars.length > 0) {
+          setCalendars(result.calendars);
+          // Auto-select first calendar if none selected, or keep existing selection if valid
+          if (!currentCalendarUrl || !result.calendars.some((c) => c.url === currentCalendarUrl)) {
+            setCalendarUrl(result.calendars[0].url);
+          }
+        }
+      } finally {
+        setTesting(false);
+      }
+    },
+    [testConnection]
+  );
+
   const handleRevealPassword = useCallback(async () => {
     const revealedPassword = await getCaldavPassword();
 
@@ -99,7 +124,7 @@ export default function CalDavConfigEditModal({ isOpen, onClose }: CalDavConfigE
     }
 
     return revealedPassword;
-  }, [getCaldavPassword, serverUrl, username, testing, calendarUrl]);
+  }, [getCaldavPassword, serverUrl, username, testing, calendarUrl, performTestConnection]);
 
   const validateTimeFormat = (time: string, field: string) => {
     if (!timeRegex.test(time)) {
@@ -121,33 +146,6 @@ export default function CalDavConfigEditModal({ isOpen, onClose }: CalDavConfigE
     return true;
   };
 
-  const performTestConnection = async (
-    url: string,
-    user: string,
-    pass: string,
-    currentCalendarUrl: string | null = null
-  ) => {
-    setTesting(true);
-    setTestResult(null);
-    setCalendars([]);
-    try {
-      const result = await testConnection(url, user, pass);
-
-      setTestResult(result);
-
-      // Store returned calendars for selection
-      if (result.success && result.calendars && result.calendars.length > 0) {
-        setCalendars(result.calendars);
-        // Auto-select first calendar if none selected, or keep existing selection if valid
-        if (!currentCalendarUrl || !result.calendars.some((c) => c.url === currentCalendarUrl)) {
-          setCalendarUrl(result.calendars[0].url);
-        }
-      }
-    } finally {
-      setTesting(false);
-    }
-  };
-
   const handleTestConnection = async () => {
     // Use form values for test
     const passwordToUse = password || (config ? await getCaldavPassword() : null) || "";
@@ -161,7 +159,7 @@ export default function CalDavConfigEditModal({ isOpen, onClose }: CalDavConfigE
       hasAutoTestedRef.current = true;
       performTestConnection(serverUrl, username, password, calendarUrl);
     }
-  }, [password]);
+  }, [password, serverUrl, username, testing, isOpen, performTestConnection, calendarUrl]);
 
   const handleSave = async () => {
     // Validate time formats

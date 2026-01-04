@@ -34,7 +34,7 @@ function MiniGroceriesContent({
   const { createGroceriesFromData } = useGroceriesMutations();
 
   const { ingredients: rawIngredients, isLoading } = useRecipeIngredients(recipeId);
-  const { units } = useUnitsQuery();
+  const { units: _units } = useUnitsQuery();
 
   // Filter out headings and recipe links - memoized to prevent infinite loops
   const ingredients = useMemo(() => {

@@ -215,7 +215,7 @@ async function importEnvAuthProvidersIfMissing(): Promise<void> {
 }
 
 /**
- * Check if two config objects differ
+ * Check if two config objects differ (deep comparison)
  * Treats undefined and missing keys as equivalent
  */
 function configsDiffer<T extends Record<string, unknown>>(
@@ -224,17 +224,13 @@ function configsDiffer<T extends Record<string, unknown>>(
 ): boolean {
   if (!stored) return true;
 
-  // Compare each key in the env config
-  for (const key of Object.keys(env) as (keyof T)[]) {
-    const envVal = env[key];
-    const storedVal = stored[key];
+  // Use JSON serialization for deep comparison (handles nested objects)
+  // JSON.stringify ignores undefined values, so we need to handle them consistently
+  const normalizeForComparison = (obj: Record<string, unknown>): string => {
+    return JSON.stringify(obj, (_, value) => (value === undefined ? null : value));
+  };
 
-    // Treat undefined and missing as equivalent
-    if (envVal === undefined && storedVal === undefined) continue;
-    if (envVal !== storedVal) return true;
-  }
-
-  return false;
+  return normalizeForComparison(stored) !== normalizeForComparison(env);
 }
 
 /**

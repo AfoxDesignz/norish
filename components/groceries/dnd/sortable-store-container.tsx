@@ -47,7 +47,13 @@ export function SortableStoreContainer({
 
   // Use useSortable for containers (like reference implementation)
   // This makes the whole container (including header) a valid drop target
-  const { active, over, setNodeRef, transition, transform } = useSortable({
+  const {
+    active,
+    over,
+    setNodeRef,
+    transition,
+    transform: _transform,
+  } = useSortable({
     id: containerId,
     data: {
       type: "container",

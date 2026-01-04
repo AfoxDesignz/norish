@@ -79,15 +79,41 @@ export default function CalDavConfigCard() {
 
   // Auto-test connection when all credentials are filled
   useEffect(() => {
-    if (serverUrl && username && password && !testing && !hasAutoTestedRef.current) {
+    // Skip if already testing or if we've already auto-tested
+    if (testing || hasAutoTestedRef.current) return;
+
+    if (serverUrl && username && password) {
       hasAutoTestedRef.current = true;
-      handleTestConnection();
+      // Use a local function to avoid dependency issues
+      const runAutoTest = async () => {
+        setTesting(true);
+        setTestResult(null);
+        setCalendars([]);
+        try {
+          const result = await testConnection(serverUrl, username, password);
+
+          setTestResult(result);
+
+          // Store returned calendars for selection
+          if (result.success && result.calendars && result.calendars.length > 0) {
+            setCalendars(result.calendars);
+            // Auto-select first calendar
+            if (!calendarUrl) {
+              setCalendarUrl(result.calendars[0].url);
+            }
+          }
+        } finally {
+          setTesting(false);
+        }
+      };
+
+      runAutoTest();
     }
     // Reset auto-test flag if credentials change after a test
     if (!serverUrl || !username || !password) {
       hasAutoTestedRef.current = false;
     }
-  }, [serverUrl, username, password]);
+  }, [serverUrl, username, password, testing, testConnection, calendarUrl]);
 
   const handleInitialSetup = async () => {
     setSaving(true);

@@ -12,11 +12,10 @@ import {
   buildRecipeDTO,
 } from "./parser-helpers";
 
+import { FullRecipeInsertDTO } from "@/types";
 import { serverLogger as log } from "@/server/logger";
 
 const gunzipAsync = promisify(gunzip);
-
-import { FullRecipeInsertDTO } from "@/types";
 
 // Zod schema for Paprika recipe structure
 const PaprikaPhotoSchema = z.object({

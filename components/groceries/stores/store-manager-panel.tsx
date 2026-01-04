@@ -275,8 +275,9 @@ function StoreEditForm({ editing, onChange, onSave, onCancel, translations }: St
 
   return (
     <div className="bg-content2 flex flex-col gap-4 rounded-lg p-4">
-      {/* Name input */}
+      {/* Name input - autoFocus is intentional UX for edit form */}
       <Input
+        // eslint-disable-next-line jsx-a11y/no-autofocus
         autoFocus
         label={t("storeName")}
         placeholder={t("storeNamePlaceholder")}

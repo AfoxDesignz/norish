@@ -14,6 +14,24 @@ vi.mock("@/app/providers/trpc-provider", () => ({
           getNextPageParam: () => null,
         }),
       },
+      getPending: {
+        queryOptions: () => ({
+          queryKey: ["recipes", "getPending"],
+          queryFn: async () => [],
+        }),
+      },
+      getPendingAutoTagging: {
+        queryOptions: () => ({
+          queryKey: ["recipes", "getPendingAutoTagging"],
+          queryFn: async () => [],
+        }),
+      },
+      getPendingAllergyDetection: {
+        queryOptions: () => ({
+          queryKey: ["recipes", "getPendingAllergyDetection"],
+          queryFn: async () => [],
+        }),
+      },
       importFromUrl: { mutationOptions: vi.fn() },
       importFromImages: { mutationOptions: vi.fn() },
       importFromPaste: { mutationOptions: vi.fn() },
@@ -22,6 +40,16 @@ vi.mock("@/app/providers/trpc-provider", () => ({
       delete: { mutationOptions: vi.fn() },
       convertMeasurements: { mutationOptions: vi.fn() },
     },
+  }),
+}));
+
+// Mock client logger
+vi.mock("@/lib/logger", () => ({
+  createClientLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   }),
 }));
 

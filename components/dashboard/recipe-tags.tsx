@@ -42,7 +42,9 @@ export default function RecipeTags({ tags, allergies = [] }: RecipeTagsProps) {
   return (
     <div
       className="absolute inset-x-0 bottom-0 z-30 overflow-hidden p-2"
+      role="presentation"
       onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
     >
       <motion.div

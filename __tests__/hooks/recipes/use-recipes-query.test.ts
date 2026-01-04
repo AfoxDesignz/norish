@@ -13,7 +13,35 @@ vi.mock("@/app/providers/trpc-provider", () => ({
         infiniteQueryOptions: (params: unknown, options: unknown) =>
           mockInfiniteQueryOptions(params, options),
       },
+      getPending: {
+        queryOptions: () => ({
+          queryKey: ["recipes", "getPending"],
+          queryFn: async () => [],
+        }),
+      },
+      getPendingAutoTagging: {
+        queryOptions: () => ({
+          queryKey: ["recipes", "getPendingAutoTagging"],
+          queryFn: async () => [],
+        }),
+      },
+      getPendingAllergyDetection: {
+        queryOptions: () => ({
+          queryKey: ["recipes", "getPendingAllergyDetection"],
+          queryFn: async () => [],
+        }),
+      },
     },
+  }),
+}));
+
+// Mock client logger
+vi.mock("@/lib/logger", () => ({
+  createClientLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   }),
 }));
 

@@ -136,7 +136,7 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
       setServings(null);
       setAdjustedIngredients(recipe.recipeIngredients);
     }
-  }, [recipe?.id]);
+  }, [recipe?.id, recipe?.recipeIngredients]);
 
   // Recalculate ingredients when servings change
   useEffect(() => {
@@ -161,7 +161,7 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
       // No custom servings, use original amounts
       setAdjustedIngredients(recipe.recipeIngredients);
     }
-  }, [_servings, recipe?.servings]);
+  }, [_servings, recipe?.servings, recipe?.recipeIngredients]);
 
   // Clear converting state when recipe system matches target
   useEffect(() => {

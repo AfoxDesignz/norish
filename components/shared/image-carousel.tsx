@@ -112,7 +112,15 @@ export default function ImageCarousel({
       <>
         <div
           className={`relative w-full overflow-hidden ${roundedClass} ${aspectRatioClass} ${className} group cursor-pointer`}
+          role="button"
+          tabIndex={0}
           onClick={() => showLightbox && setLightboxOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              showLightbox && setLightboxOpen(true);
+            }
+          }}
         >
           <NextImage
             fill

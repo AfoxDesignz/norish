@@ -1,7 +1,6 @@
 "use client";
 
-import type { GroceryDto } from "@/types";
-import type { ReactNode } from "react";
+import type { DndGroceryContextValue, DndGroceryProviderProps } from "./types";
 
 import { createContext, useContext, useMemo } from "react";
 import {
@@ -16,13 +15,6 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
-import type {
-  DndGroceryContextValue,
-  DndGroceryProviderProps,
-  ContainerId,
-  ItemsState,
-} from "./types";
-
 import { GroceryDragOverlay } from "./grocery-drag-overlay";
 import { useGroceryDnd } from "./use-grocery-dnd";
 
@@ -34,7 +26,9 @@ const DndGroceryContext = createContext<DndGroceryContextValue | null>(null);
 
 export function useDndGroceryContext(): DndGroceryContextValue {
   const ctx = useContext(DndGroceryContext);
+
   if (!ctx) throw new Error("useDndGroceryContext must be used within DndGroceryProvider");
+
   return ctx;
 }
 
@@ -118,17 +112,17 @@ export function DndGroceryProvider({
   return (
     <DndGroceryContext.Provider value={contextValue}>
       <DndContext
-        sensors={sensors}
         collisionDetection={collisionDetection}
         measuring={{
           droppable: {
             strategy: MeasuringStrategy.Always,
           },
         }}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
+        sensors={sensors}
         onDragCancel={handleDragCancel}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDragStart={handleDragStart}
       >
         {children}
 
@@ -136,8 +130,8 @@ export function DndGroceryProvider({
           {activeGrocery ? (
             <GroceryDragOverlay
               grocery={activeGrocery}
-              recurringGrocery={activeRecurringGrocery}
               recipeName={activeRecipeName}
+              recurringGrocery={activeRecurringGrocery}
             />
           ) : null}
         </DragOverlay>

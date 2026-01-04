@@ -38,18 +38,21 @@ export default function JsonEditor({
     }
   }, [value]);
 
-  const handleTextChange = useCallback((newText: string) => {
-    setText(newText);
-    setIsDirty(true);
+  const handleTextChange = useCallback(
+    (newText: string) => {
+      setText(newText);
+      setIsDirty(true);
 
-    // Validate JSON on change
-    try {
-      JSON.parse(newText);
-      setError(null);
-    } catch (_e) {
-      setError(t("invalidJson"));
-    }
-  }, []);
+      // Validate JSON on change
+      try {
+        JSON.parse(newText);
+        setError(null);
+      } catch (_e) {
+        setError(t("invalidJson"));
+      }
+    },
+    [t]
+  );
 
   const handleSave = useCallback(async () => {
     if (error) return;
@@ -68,7 +71,7 @@ export default function JsonEditor({
     } finally {
       setSaving(false);
     }
-  }, [text, error, onSave]);
+  }, [text, error, onSave, t]);
 
   const handleRestoreDefaults = useCallback(async () => {
     if (!onRestoreDefaults) return;

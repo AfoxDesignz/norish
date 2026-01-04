@@ -3,13 +3,28 @@
 import type { GroceryDto } from "@/types";
 import type { RecurrencePattern } from "@/types/recurrence";
 
-import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, DropdownSection } from "@heroui/react";
-import { PlusIcon, Cog6ToothIcon, BuildingStorefrontIcon, BookOpenIcon, CheckIcon } from "@heroicons/react/24/outline";
+import {
+  Button,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  DropdownSection,
+} from "@heroui/react";
+import {
+  PlusIcon,
+  Cog6ToothIcon,
+  BuildingStorefrontIcon,
+  BookOpenIcon,
+  CheckIcon,
+} from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
 
 import { useGroceriesContext, useGroceriesUIContext } from "../context";
 import { useStoresContext } from "../stores-context";
+
 import AddGroceryButton from "./add-grocery-button";
+
 import { GroceryList, GroceryListByRecipe, StoreManagerPanel } from "@/components/groceries";
 import EditGroceryPanel from "@/components/Panel/consumers/edit-grocery-panel";
 import { AddGroceryPanel } from "@/components/Panel/consumers";
@@ -71,12 +86,7 @@ export function GroceriesPage() {
 
     if (editingRecurringGrocery) {
       // Already recurring - update the recurring grocery
-      updateRecurringGrocery(
-        editingRecurringGrocery.id,
-        editingGrocery.id,
-        itemName,
-        pattern
-      );
+      updateRecurringGrocery(editingRecurringGrocery.id, editingGrocery.id, itemName, pattern);
     } else if (pattern) {
       // Convert regular grocery to recurring
       updateGrocery(editingGrocery.id, itemName);
@@ -116,7 +126,7 @@ export function GroceriesPage() {
         {/* Header */}
         {/* Mobile: Sticky with backdrop blur */}
         {/* Desktop: Static with inline layout */}
-<div className="bg-background/80 sticky top-0 z-10 flex items-center justify-between px-4 pb-3 pt-12 backdrop-blur-lg md:static md:bg-transparent md:px-0 md:pb-0 md:pt-0 md:backdrop-blur-none">
+        <div className="bg-background/80 sticky top-0 z-10 flex items-center justify-between px-4 pt-12 pb-3 backdrop-blur-lg md:static md:bg-transparent md:px-0 md:pt-0 md:pb-0 md:backdrop-blur-none">
           <h1 className="text-2xl font-bold">{t("title")}</h1>
           <div className="flex items-center gap-2">
             {/* Desktop add button: Full text with icon */}
@@ -131,29 +141,28 @@ export function GroceriesPage() {
             {/* Settings dropdown with view mode and store management */}
             <Dropdown>
               <DropdownTrigger>
-                <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  aria-label={t("viewMode")}
-                >
+                <Button isIconOnly aria-label={t("viewMode")} size="sm" variant="light">
                   <Cog6ToothIcon className="h-5 w-5" />
                 </Button>
               </DropdownTrigger>
               <DropdownMenu aria-label={t("viewMode")}>
-                <DropdownSection title={t("viewMode")} showDivider>
+                <DropdownSection showDivider title={t("viewMode")}>
                   <DropdownItem
                     key="view-store"
+                    endContent={
+                      viewMode === "store" ? <CheckIcon className="text-primary h-4 w-4" /> : null
+                    }
                     startContent={<BuildingStorefrontIcon className="h-4 w-4" />}
-                    endContent={viewMode === "store" ? <CheckIcon className="h-4 w-4 text-primary" /> : null}
                     onPress={() => setViewMode("store")}
                   >
                     {t("viewByStore")}
                   </DropdownItem>
                   <DropdownItem
                     key="view-recipe"
+                    endContent={
+                      viewMode === "recipe" ? <CheckIcon className="text-primary h-4 w-4" /> : null
+                    }
                     startContent={<BookOpenIcon className="h-4 w-4" />}
-                    endContent={viewMode === "recipe" ? <CheckIcon className="h-4 w-4 text-primary" /> : null}
                     onPress={() => setViewMode("recipe")}
                   >
                     {t("viewByRecipe")}
@@ -179,32 +188,32 @@ export function GroceriesPage() {
         <div className="flex-1 overflow-y-auto px-4 pb-24 md:px-0 md:pb-0">
           {viewMode === "store" ? (
             <GroceryList
+              getRecipeNameForGrocery={getRecipeNameForGrocery}
               groceries={groceries}
               recurringGroceries={recurringGroceries}
               stores={stores}
               onDelete={handleDelete}
+              onDeleteDoneInStore={deleteDoneInStore}
               onEdit={handleEdit}
+              onMarkAllDoneInStore={markAllDoneInStore}
               onReorderInStore={reorderGroceriesInStore}
               onToggle={handleToggle}
-              onMarkAllDoneInStore={markAllDoneInStore}
-              onDeleteDoneInStore={deleteDoneInStore}
-              getRecipeNameForGrocery={getRecipeNameForGrocery}
             />
           ) : (
             <GroceryListByRecipe
               groceries={groceries}
+              recipeMap={recipeMap}
               recurringGroceries={recurringGroceries}
               stores={stores}
-              recipeMap={recipeMap}
-              onToggle={handleToggle}
-              onEdit={handleEdit}
               onDelete={handleDelete}
+              onEdit={handleEdit}
               onReorder={reorderGroceriesInStore}
+              onToggle={handleToggle}
             />
           )}
         </div>
 
-{/* Mobile: Floating add button that syncs with nav auto-hide */}
+        {/* Mobile: Floating add button that syncs with nav auto-hide */}
         <AddGroceryButton />
       </div>
 

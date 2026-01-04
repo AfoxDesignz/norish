@@ -17,12 +17,12 @@ db/
 
 ## WHERE TO LOOK
 
-| Task           | Location                                          |
-| -------------- | ------------------------------------------------- |
+| Task           | Location                                           |
+| -------------- | -------------------------------------------------- |
 | Add table      | `schema/<table>.ts` => export in `schema/index.ts` |
-| Add relations  | `schema/relations.ts`                             |
-| Add CRUD ops   | `repositories/<entity>.ts`                        |
-| Zod validation | `zodSchemas/` (auto-generated, don't edit)        |
+| Add relations  | `schema/relations.ts`                              |
+| Add CRUD ops   | `repositories/<entity>.ts`                         |
+| Zod validation | `zodSchemas/` (auto-generated, don't edit)         |
 
 ## PATTERNS
 

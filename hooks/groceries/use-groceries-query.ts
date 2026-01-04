@@ -4,7 +4,7 @@ import type { GroceryDto, RecurringGroceryDto } from "@/types";
 import type { QueryKey } from "@tanstack/react-query";
 
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useTRPC } from "@/app/providers/trpc-provider";
 
@@ -45,7 +45,9 @@ export function useGroceriesQuery(): GroceriesQueryResult {
 
   const groceries = data?.groceries ?? [];
   const recurringGroceries = data?.recurringGroceries ?? [];
-  const recipeMap = data?.recipeMap ?? {};
+
+  // Wrap recipeMap in useMemo to prevent dependency changes on every render
+  const recipeMap = useMemo(() => data?.recipeMap ?? {}, [data?.recipeMap]);
 
   const setGroceriesData = (
     updater: (prev: GroceriesData | undefined) => GroceriesData | undefined
