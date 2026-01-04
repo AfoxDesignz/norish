@@ -435,7 +435,7 @@ function createAuth() {
         rateLimit: {
           enabled: true,
           timeWindow: 1000 * 60 * 60 * 1,
-          maxRequests: 500
+          maxRequests: 500,
         },
         apiKeyHeaders: ["x-api-key", "bearer"],
       }),
