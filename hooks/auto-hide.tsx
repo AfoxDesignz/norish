@@ -25,9 +25,8 @@ export function useAutoHide({
   const isHoveringRef = useRef(false);
   const [isScrollable, setIsScrollable] = useState(true);
 
-  // Track if user is actively scrolling (wheel/touch in progress)
-  const isUserScrollingRef = useRef(false);
-  const userScrollEndTimeout = useRef<NodeJS.Timeout | null>(null);
+  // Brief pause after route change to ignore scroll restoration
+  const ignoreScrollUntil = useRef(0);
 
   // Check if page is scrollable
   useEffect(() => {
@@ -67,14 +66,16 @@ export function useAutoHide({
     }
   }, [disabled, isScrollable]);
 
-  // Reset state on route change - show nav and sync scroll position
+  // Reset state on route change - show nav and ignore scroll events briefly
   useEffect(() => {
     setIsVisible(true);
     if (scrollTimeout.current) {
       clearTimeout(scrollTimeout.current);
       scrollTimeout.current = null;
     }
-    // Give time for any programmatic scroll to settle, then sync lastScrollY
+    // Ignore scroll events for 300ms to let scroll restoration settle
+    ignoreScrollUntil.current = Date.now() + 300;
+    // Sync lastScrollY after scroll restoration completes
     const timer = setTimeout(() => {
       lastScrollY.current = scrollY.get();
     }, 300);
@@ -87,35 +88,6 @@ export function useAutoHide({
     lastScrollY.current = scrollY.get();
   }, [scrollY]);
 
-  // Track user scroll gestures (wheel/touch)
-  // Only process scroll events while user is actively interacting
-  useEffect(() => {
-    const markUserScrolling = () => {
-      isUserScrollingRef.current = true;
-
-      // Clear previous timeout
-      if (userScrollEndTimeout.current) {
-        clearTimeout(userScrollEndTimeout.current);
-      }
-
-      // Mark as not scrolling after gesture ends (150ms debounce)
-      userScrollEndTimeout.current = setTimeout(() => {
-        isUserScrollingRef.current = false;
-      }, 150);
-    };
-
-    window.addEventListener("wheel", markUserScrolling, { passive: true });
-    window.addEventListener("touchmove", markUserScrolling, { passive: true });
-
-    return () => {
-      window.removeEventListener("wheel", markUserScrolling);
-      window.removeEventListener("touchmove", markUserScrolling);
-      if (userScrollEndTimeout.current) {
-        clearTimeout(userScrollEndTimeout.current);
-      }
-    };
-  }, []);
-
   useMotionValueEvent(scrollY, "change", (latest) => {
     const prev = lastScrollY.current;
     const diff = latest - prev;
@@ -126,8 +98,8 @@ export function useAutoHide({
       return;
     }
 
-    // Ignore scroll events that aren't from user interaction
-    if (!isUserScrollingRef.current) {
+    // Ignore scroll events during route change scroll restoration
+    if (Date.now() < ignoreScrollUntil.current) {
       lastScrollY.current = latest;
 
       return;
