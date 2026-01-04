@@ -36,6 +36,7 @@ export function AuthLanguageSelector() {
         selectionMode="single"
         onSelectionChange={(keys) => {
           const selected = Array.from(keys)[0] as Locale;
+
           if (selected) {
             changeLocale(selected);
           }

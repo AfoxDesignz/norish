@@ -22,4 +22,6 @@ export type StoreReorderInput = z.infer<typeof StoreReorderSchema>;
 export type StoreColor = z.infer<typeof StoreColorSchema>;
 
 export type IngredientStorePreferenceDto = z.output<typeof IngredientStorePreferenceSelectSchema>;
-export type IngredientStorePreferenceUpsertInput = z.infer<typeof IngredientStorePreferenceUpsertSchema>;
+export type IngredientStorePreferenceUpsertInput = z.infer<
+  typeof IngredientStorePreferenceUpsertSchema
+>;

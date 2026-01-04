@@ -1,15 +1,14 @@
-import type { GroceryDto, StoreDto, RecurringGroceryDto } from "@/types";
+import type { GroceryDto, RecurringGroceryDto } from "@/types";
 import type {
   DragStartEvent,
   DragOverEvent,
   DragEndEvent,
   CollisionDetection,
 } from "@dnd-kit/core";
+import type { ItemsState, ContainerId, DndGroceryProviderProps } from "./types";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
-
-import type { ItemsState, ContainerId, DndGroceryProviderProps } from "./types";
 
 import {
   UNSORTED_CONTAINER,
@@ -84,6 +83,7 @@ export function useGroceryDnd({
       Object.keys(newItems).some(
         (key) => JSON.stringify(newItems[key]) !== JSON.stringify(items[key])
       );
+
     if (itemsChanged) {
       setItems(newItems);
     }
@@ -117,16 +117,19 @@ export function useGroceryDnd({
 
   const activeGrocery = useMemo(() => {
     if (!activeId) return null;
+
     return groceries.find((g) => g.id === activeId) ?? null;
   }, [activeId, groceries]);
 
   const activeRecurringGrocery = useMemo(() => {
     if (!activeGrocery?.recurringGroceryId) return null;
+
     return recurringGroceries.find((r) => r.id === activeGrocery.recurringGroceryId) ?? null;
   }, [activeGrocery, recurringGroceries]);
 
   const activeRecipeName = useMemo(() => {
     if (!activeGrocery || !getRecipeNameForGrocery) return null;
+
     return getRecipeNameForGrocery(activeGrocery);
   }, [activeGrocery, getRecipeNameForGrocery]);
 
@@ -147,6 +150,7 @@ export function useGroceryDnd({
       if (id in items) {
         return id;
       }
+
       // Find which container has this item
       return Object.keys(items).find((key) => items[key].includes(id));
     },
@@ -160,11 +164,13 @@ export function useGroceryDnd({
   const handleDragStart = useCallback(
     ({ active }: DragStartEvent) => {
       const id = active.id as string;
+
       setActiveId(id);
       // Clone current items for cancel recovery
       clonedItems.current = JSON.parse(JSON.stringify(items));
 
       const containerId = findContainerForItem(id, items);
+
       setOverContainerId(containerId);
     },
     [items]
@@ -236,6 +242,7 @@ export function useGroceryDnd({
               [overContainer]: arrayMove(prevItems[overContainer], activeIndex, overIndex),
             };
           }
+
           return prevItems;
         });
       }
@@ -252,6 +259,7 @@ export function useGroceryDnd({
         setActiveId(null);
         setOverContainerId(null);
         clonedItems.current = null;
+
         return;
       }
 
@@ -265,6 +273,7 @@ export function useGroceryDnd({
         setActiveId(null);
         setOverContainerId(null);
         clonedItems.current = null;
+
         return;
       }
 
@@ -279,6 +288,7 @@ export function useGroceryDnd({
         // Update original container if item moved out
         if (wasCrossContainerMove && originalContainer) {
           const currentOriginalItems = items[originalContainer] ?? [];
+
           currentOriginalItems.forEach((id, index) => {
             updates.push({ id, sortOrder: index });
           });
@@ -286,11 +296,13 @@ export function useGroceryDnd({
 
         // Update destination container with current positions
         const finalItems = items[currentContainer];
+
         finalItems.forEach((id, index) => {
           const update: { id: string; sortOrder: number; storeId?: string | null } = {
             id,
             sortOrder: index,
           };
+
           if (id === active.id && wasCrossContainerMove) {
             update.storeId = containerIdToStoreId(currentContainer);
           }
@@ -302,8 +314,10 @@ export function useGroceryDnd({
           string,
           { id: string; sortOrder: number; storeId?: string | null }
         >();
+
         for (const update of updates) {
           const existing = updateMap.get(update.id);
+
           if (!existing || update.storeId !== undefined) {
             updateMap.set(update.id, update);
           }

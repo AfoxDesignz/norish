@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { router } from "../../trpc";
 import { authedProcedure } from "../../middleware";
+import { groceryEmitter } from "../groceries/emitter";
 
 import { storeEmitter } from "./emitter";
 
@@ -24,7 +25,6 @@ import {
 } from "@/server/db/zodSchemas";
 import { assertHouseholdAccess } from "@/server/auth/permissions";
 import { trpcLogger as log } from "@/server/logger";
-import { groceryEmitter } from "../groceries/emitter";
 
 const list = authedProcedure.query(async ({ ctx }) => {
   log.debug({ userId: ctx.user.id }, "Listing stores");
@@ -43,6 +43,7 @@ const create = authedProcedure.input(StoreCreateSchema).mutation(async ({ ctx, i
 
   // Check for duplicate name in household
   const exists = await checkStoreNameExistsInHousehold(input.name, ctx.userIds);
+
   if (exists) {
     throw new TRPCError({
       code: "CONFLICT",
@@ -77,6 +78,7 @@ const update = authedProcedure.input(StoreUpdateInputSchema).mutation(async ({ c
 
   // Check ownership
   const ownerId = await getStoreOwnerId(input.id);
+
   if (!ownerId) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Store not found" });
   }
@@ -85,6 +87,7 @@ const update = authedProcedure.input(StoreUpdateInputSchema).mutation(async ({ c
   // Check for duplicate name if name is being changed
   if (input.name) {
     const exists = await checkStoreNameExistsInHousehold(input.name, ctx.userIds, input.id);
+
     if (exists) {
       throw new TRPCError({
         code: "CONFLICT",
@@ -116,6 +119,7 @@ const remove = authedProcedure.input(StoreDeleteSchema).mutation(async ({ ctx, i
 
   // Check ownership
   const ownerId = await getStoreOwnerId(storeId);
+
   if (!ownerId) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Store not found" });
   }
@@ -169,6 +173,7 @@ const getGroceryCount = authedProcedure
   .input(z.object({ storeId: z.uuid() }))
   .query(async ({ ctx, input }) => {
     const ownerId = await getStoreOwnerId(input.storeId);
+
     if (!ownerId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Store not found" });
     }

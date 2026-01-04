@@ -50,9 +50,7 @@ export function AuthProvidersCard() {
             <div className="flex items-center gap-3">
               <div className="flex flex-col gap-0.5">
                 <span className="font-medium">{t("passwordAuth.title")}</span>
-                <span className="text-default-500 text-base">
-                  {t("passwordAuth.description")}
-                </span>
+                <span className="text-default-500 text-base">{t("passwordAuth.description")}</span>
               </div>
             </div>
             <Switch
@@ -75,14 +73,11 @@ export function AuthProvidersCard() {
             subtitle={t("oidc.subtitle")}
             title={
               <span className="flex items-center gap-2">
-                {t("oidc.title")}{" "}
-                <EnvManagedBadge isOverridden={authProviderOIDC?.isOverridden} />
+                {t("oidc.title")} <EnvManagedBadge isOverridden={authProviderOIDC?.isOverridden} />
               </span>
             }
           >
-            <OIDCProviderForm
-              config={authProviderOIDC as Record<string, unknown> | undefined}
-            />
+            <OIDCProviderForm config={authProviderOIDC as Record<string, unknown> | undefined} />
           </AccordionItem>
 
           <AccordionItem

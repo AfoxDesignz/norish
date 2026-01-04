@@ -125,6 +125,7 @@ const getPendingAllergyDetection = authedProcedure.query(async ({ ctx }) => {
   const recipeIds = jobs
     .filter((job) => {
       const data = job.data as AllergyDetectionJobData;
+
       return data.userId === ctx.user.id || data.householdKey === ctx.householdKey;
     })
     .map((job) => job.data.recipeId);
@@ -147,6 +148,7 @@ const isAllergyDetecting = authedProcedure
 
     const isActive = jobs.some((job) => {
       const data = job.data as AllergyDetectionJobData;
+
       return data.recipeId === input.recipeId;
     });
 

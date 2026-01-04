@@ -1,9 +1,8 @@
 import type { CollisionDetection, UniqueIdentifier } from "@dnd-kit/core";
 import type { RefObject } from "react";
+import type { ItemsState } from "./types";
 
 import { closestCenter, pointerWithin, rectIntersection, getFirstCollision } from "@dnd-kit/core";
-
-import type { ItemsState } from "./types";
 
 /**
  * Custom collision detection strategy optimized for multiple containers.

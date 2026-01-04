@@ -96,7 +96,7 @@ export default function SystemConvertMenu() {
         {(item) => (
           <DropdownItem
             key={item.key}
-            className="py-1 !bg-transparent data-[focus=true]:!bg-transparent data-[hover=true]:!bg-transparent data-[selected=true]:!bg-transparent"
+            className="!bg-transparent py-1 data-[focus=true]:!bg-transparent data-[hover=true]:!bg-transparent data-[selected=true]:!bg-transparent"
             textValue={item.label}
           >
             <Button
@@ -107,7 +107,7 @@ export default function SystemConvertMenu() {
                 item.requiresAI ? (
                   <SparklesIcon className={`size-4 ${cssAIIconColor}`} />
                 ) : (
-                  <ArrowsRightLeftIcon className="size-4 text-default-400" />
+                  <ArrowsRightLeftIcon className="text-default-400 size-4" />
                 )
               }
               variant="light"

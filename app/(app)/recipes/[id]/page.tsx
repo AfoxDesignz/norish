@@ -29,12 +29,7 @@ function RecipePageContent() {
 
   // Recipe not found or no access - show 404
   if (isNotFound || !recipe) {
-    return (
-      <NotFoundView
-        message={t("notFoundMessage")}
-        title={t("notFound")}
-      />
-    );
+    return <NotFoundView message={t("notFoundMessage")} title={t("notFound")} />;
   }
 
   return (

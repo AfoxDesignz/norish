@@ -16,7 +16,11 @@ import { useTranslations } from "next-intl";
 
 import { useAdminSettingsContext } from "../context";
 
-import { ServerConfigKeys, type AIConfig, type AutoTaggingMode } from "@/server/db/zodSchemas/server-config";
+import {
+  ServerConfigKeys,
+  type AIConfig,
+  type AutoTaggingMode,
+} from "@/server/db/zodSchemas/server-config";
 import { useAvailableModelsQuery } from "@/hooks/admin";
 import SecretInput from "@/components/shared/secret-input";
 
@@ -35,14 +39,17 @@ export default function AIConfigForm() {
   const [maxTokens, setMaxTokens] = useState(aiConfig?.maxTokens ?? 10000);
   const [autoTagAllergies, setAutoTagAllergies] = useState(aiConfig?.autoTagAllergies ?? true);
   const [alwaysUseAI, setAlwaysUseAI] = useState(aiConfig?.alwaysUseAI ?? false);
-  const [autoTaggingMode, setAutoTaggingMode] = useState<AutoTaggingMode>(aiConfig?.autoTaggingMode ?? "disabled");
+  const [autoTaggingMode, setAutoTaggingMode] = useState<AutoTaggingMode>(
+    aiConfig?.autoTaggingMode ?? "disabled"
+  );
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Fetch available models from the provider
   const needsEndpoint = provider !== "openai" && provider !== "perplexity";
-  const needsApiKey = provider === "openai" || provider === "generic-openai" || provider === "perplexity";
+  const needsApiKey =
+    provider === "openai" || provider === "generic-openai" || provider === "perplexity";
   const isApiKeyConfigured = !!aiConfig?.apiKey;
 
   const canFetchModels =
@@ -53,7 +60,7 @@ export default function AIConfigForm() {
         ? endpoint
         : endpoint); // generic-openai needs endpoint
 
-const { models: availableModels, isLoading: isLoadingModels } = useAvailableModelsQuery({
+  const { models: availableModels, isLoading: isLoadingModels } = useAvailableModelsQuery({
     provider: provider as AIConfig["provider"],
     endpoint: endpoint || undefined,
     apiKey: apiKey || undefined,
@@ -186,9 +193,7 @@ const { models: availableModels, isLoading: isLoadingModels } = useAvailableMode
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <span className="font-medium">{t("enableAI")}</span>
-          <span className="text-default-500 text-base">
-            {t("enableAIDescription")}
-          </span>
+          <span className="text-default-500 text-base">{t("enableAIDescription")}</span>
         </div>
         <Switch color="success" isSelected={enabled} onValueChange={setEnabled} />
       </div>
@@ -203,7 +208,9 @@ const { models: availableModels, isLoading: isLoadingModels } = useAvailableMode
         isDisabled={!enabled}
         label={t("provider")}
         selectedKeys={[provider]}
-        onSelectionChange={(keys) => handleProviderChange(Array.from(keys)[0] as AIConfig["provider"])}
+        onSelectionChange={(keys) =>
+          handleProviderChange(Array.from(keys)[0] as AIConfig["provider"])
+        }
       >
         <SelectItem key="openai">{t("providers.openai")}</SelectItem>
         <SelectItem key="perplexity">{t("providers.perplexity")}</SelectItem>
@@ -293,9 +300,7 @@ const { models: availableModels, isLoading: isLoadingModels } = useAvailableMode
           value={temperature}
           onChange={(v) => setTemperature(v as number)}
         />
-        <span className="text-default-500 text-xs">
-          {t("temperatureHint")}
-        </span>
+        <span className="text-default-500 text-xs">{t("temperatureHint")}</span>
       </div>
 
       <Input
@@ -309,9 +314,7 @@ const { models: availableModels, isLoading: isLoadingModels } = useAvailableMode
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <span className="font-medium">{t("autoTagAllergies")}</span>
-          <span className="text-default-500 text-base">
-            {t("autoTagAllergiesDescription")}
-          </span>
+          <span className="text-default-500 text-base">{t("autoTagAllergiesDescription")}</span>
         </div>
         <Switch
           color="success"
@@ -324,9 +327,7 @@ const { models: availableModels, isLoading: isLoadingModels } = useAvailableMode
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <span className="font-medium">{t("alwaysUseAI")}</span>
-          <span className="text-default-500 text-base">
-            {t("alwaysUseAIDescription")}
-          </span>
+          <span className="text-default-500 text-base">{t("alwaysUseAIDescription")}</span>
         </div>
         <Switch
           color="success"

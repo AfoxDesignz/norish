@@ -1,5 +1,7 @@
 "use client";
 
+import type { ProviderKey, FieldDef, TestResult } from "./types";
+
 import { useState, useCallback } from "react";
 import { Input, useDisclosure, addToast } from "@heroui/react";
 
@@ -8,7 +10,6 @@ import { useAdminSettingsContext } from "../../context";
 import { DeleteProviderModal } from "./delete-provider-modal";
 import { ProviderActions } from "./provider-actions";
 import { TestResultDisplay } from "./test-result-display";
-import type { ProviderKey, FieldDef, TestResult } from "./types";
 
 import { ServerConfigKeys, type ServerConfigKey } from "@/server/db/zodSchemas/server-config";
 import SecretInput from "@/components/shared/secret-input";
@@ -45,6 +46,7 @@ export function AuthProviderForm({
     fields.reduce(
       (acc, f) => {
         acc[f.key] = f.secret ? "" : ((config?.[f.key] as string) ?? "");
+
         return acc;
       },
       {} as Record<string, string>
@@ -64,9 +66,8 @@ export function AuthProviderForm({
     setTesting(true);
     setTestResult(null);
     try {
-      const testValues = Object.fromEntries(
-        fields.map((f) => [f.key, values[f.key] || undefined])
-      );
+      const testValues = Object.fromEntries(fields.map((f) => [f.key, values[f.key] || undefined]));
+
       setTestResult(await testAuthProvider(providerKey, testValues));
     } finally {
       setTesting(false);
@@ -76,9 +77,7 @@ export function AuthProviderForm({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const saveValues = Object.fromEntries(
-        fields.map((f) => [f.key, values[f.key] || undefined])
-      );
+      const saveValues = Object.fromEntries(fields.map((f) => [f.key, values[f.key] || undefined]));
 
       // Route to correct update function (OIDC uses OIDCProviderForm, not this generic form)
       if (providerKey === "github") {
@@ -105,6 +104,7 @@ export function AuthProviderForm({
         title: "Cannot delete provider",
         description: result.error,
       });
+
       return;
     }
 
@@ -113,6 +113,7 @@ export function AuthProviderForm({
       fields.reduce(
         (acc, f) => {
           acc[f.key] = "";
+
           return acc;
         },
         {} as Record<string, string>

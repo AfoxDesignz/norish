@@ -15,10 +15,11 @@ import {
 } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
 
+import { DeleteStoreModal } from "./delete-store-modal";
+
 import Panel, { PANEL_HEIGHT_LARGE } from "@/components/Panel/Panel";
 import { DynamicHeroIcon, STORE_ICON_NAMES } from "@/components/groceries/dynamic-hero-icon";
 import { STORE_COLOR_OPTIONS, getStoreColorClasses } from "@/components/groceries/store-colors";
-import { DeleteStoreModal } from "./delete-store-modal";
 import { useStoresMutations } from "@/hooks/stores";
 
 interface StoreManagerPanelProps {
@@ -102,6 +103,7 @@ export function StoreManagerPanel({ open, onOpenChange, stores }: StoreManagerPa
 
   const handleReorder = (newOrder: StoreDto[]) => {
     const storeIds = newOrder.map((s) => s.id);
+
     reorderStores(storeIds);
   };
 

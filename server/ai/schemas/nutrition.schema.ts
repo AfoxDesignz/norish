@@ -3,7 +3,7 @@ import { z } from "zod";
 /**
  * Schema for AI-based nutrition estimation.
  * Returns per-serving nutritional values.
-*/
+ */
 export const nutritionEstimationSchema = z
   .object({
     calories: z

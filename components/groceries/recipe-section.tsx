@@ -79,6 +79,7 @@ function RecipeSectionComponent({
   // Cleanup timeouts on unmount
   useEffect(() => {
     const timeouts = timeoutRefs.current;
+
     return () => {
       timeouts.forEach((timeout) => clearTimeout(timeout));
     };
@@ -96,13 +97,16 @@ function RecipeSectionComponent({
 
         // Clear any existing timeout for this id
         const existingTimeout = timeoutRefs.current.get(id);
+
         if (existingTimeout) clearTimeout(existingTimeout);
 
         // Remove from transitioning after delay
         const timeout = setTimeout(() => {
           setTransitioningIds((prev) => {
             const next = new Set(prev);
+
             next.delete(id);
+
             return next;
           });
           timeoutRefs.current.delete(id);
@@ -163,6 +167,7 @@ function RecipeSectionComponent({
   // Build ordered active groceries from orderedIds
   const orderedActiveGroceries = useMemo(() => {
     const groceryMap = new Map(propsActiveGroceries.map((g) => [g.id, g]));
+
     return orderedIds.map((id) => groceryMap.get(id)).filter(Boolean) as GroceryDto[];
   }, [orderedIds, propsActiveGroceries]);
 
@@ -185,11 +190,13 @@ function RecipeSectionComponent({
   // Get the active grocery for overlay
   const activeGrocery = useMemo(() => {
     if (!activeId) return null;
+
     return groceries.find((g) => g.id === activeId) ?? null;
   }, [activeId, groceries]);
 
   const activeRecurringGrocery = useMemo(() => {
     if (!activeGrocery?.recurringGroceryId) return null;
+
     return recurringGroceries.find((r) => r.id === activeGrocery.recurringGroceryId) ?? null;
   }, [activeGrocery, recurringGroceries]);
 
@@ -202,6 +209,7 @@ function RecipeSectionComponent({
       setActiveId(null);
 
       const { active, over } = event;
+
       if (!over || active.id === over.id) return;
 
       // Find indices in current orderedIds
@@ -212,11 +220,13 @@ function RecipeSectionComponent({
 
       // Update local state immediately (optimistic)
       const newOrder = arrayMove(orderedIds, oldIndex, newIndex);
+
       setOrderedIds(newOrder);
 
       // Call backend with new sort orders
       if (onReorder) {
         const updates = newOrder.map((id, index) => ({ id, sortOrder: index }));
+
         onReorder(updates);
       }
     },
@@ -230,6 +240,7 @@ function RecipeSectionComponent({
   // Get store for a grocery
   const getStoreForGrocery = (grocery: GroceryDto): StoreDto | null => {
     if (!grocery.storeId) return null;
+
     return stores.find((s) => s.id === grocery.storeId) ?? null;
   };
 
@@ -284,11 +295,11 @@ function RecipeSectionComponent({
         {/* Items with drag-and-drop for reordering */}
         {isExpanded && (
           <DndContext
-            sensors={sensors}
             collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
+            sensors={sensors}
             onDragCancel={handleDragCancel}
+            onDragEnd={handleDragEnd}
+            onDragStart={handleDragStart}
           >
             <div className="divide-default-100 divide-y">
               {/* Active (not done) items - sortable */}
@@ -306,13 +317,13 @@ function RecipeSectionComponent({
                     <SortableGroceryItem key={grocery.id} grocery={grocery}>
                       <GroceryItem
                         grocery={grocery}
+                        isFirst={isFirst}
+                        isLast={isLast}
                         recurringGrocery={recurringGrocery}
                         store={store}
                         onDelete={onDelete}
                         onEdit={onEdit}
                         onToggle={handleToggle}
-                        isFirst={isFirst}
-                        isLast={isLast}
                       />
                     </SortableGroceryItem>
                   );
@@ -332,13 +343,13 @@ function RecipeSectionComponent({
                   <div key={grocery.id}>
                     <GroceryItem
                       grocery={grocery}
+                      isFirst={isFirst}
+                      isLast={isLast}
                       recurringGrocery={recurringGrocery}
                       store={store}
                       onDelete={onDelete}
                       onEdit={onEdit}
                       onToggle={handleToggle}
-                      isFirst={isFirst}
-                      isLast={isLast}
                     />
                   </div>
                 );

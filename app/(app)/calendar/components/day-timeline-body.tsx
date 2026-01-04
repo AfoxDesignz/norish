@@ -57,7 +57,7 @@ export function DayTimelineBody({
     window.location.href = `/recipes/${recipeId}`;
   }, []);
 
-const getItemActions = useCallback(
+  const getItemActions = useCallback(
     (item: CalendarItemViewDto): SwipeAction[] => {
       const hasRecipe = item.itemType === "recipe" || (item.itemType === "note" && item.recipeId);
       const actions: SwipeAction[] = [];
@@ -128,7 +128,7 @@ const getItemActions = useCallback(
                 >
                   <div className="flex h-full w-full items-center justify-between px-2">
                     <div className="flex min-w-0 flex-1 items-center gap-2">
-{it.itemType === "recipe" &&
+                      {it.itemType === "recipe" &&
                       it.allergyWarnings &&
                       it.allergyWarnings.length > 0 ? (
                         <Popover placement="top">
@@ -164,7 +164,7 @@ const getItemActions = useCallback(
                       </span>
                     </div>
 
-{/* Desktop trigger: opens swipe actions */}
+                    {/* Desktop trigger: opens swipe actions */}
                     <div className="hidden md:block">
                       <Button
                         key={`button-${index}`}

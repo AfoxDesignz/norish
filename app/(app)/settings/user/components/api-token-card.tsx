@@ -80,9 +80,7 @@ export default function ApiKeyCard() {
           </h2>
         </CardHeader>
         <CardBody className="gap-4">
-          <p className="text-default-600 text-base">
-            {t("description")}
-          </p>
+          <p className="text-default-600 text-base">{t("description")}</p>
 
           {/* Create new key section */}
           <div className="flex items-end gap-2">
@@ -169,11 +167,7 @@ export default function ApiKeyCard() {
             </div>
           )}
 
-          {apiKeys.length === 0 && (
-            <p className="text-default-500 py-4 text-base">
-              {t("noKeys")}
-            </p>
-          )}
+          {apiKeys.length === 0 && <p className="text-default-500 py-4 text-base">{t("noKeys")}</p>}
         </CardBody>
       </Card>
 
@@ -184,9 +178,7 @@ export default function ApiKeyCard() {
             <>
               <ModalHeader>{t("generatedModal.title")}</ModalHeader>
               <ModalBody>
-                <p className="text-warning mb-4 text-base">
-                  {t("generatedModal.warning")}
-                </p>
+                <p className="text-warning mb-4 text-base">{t("generatedModal.warning")}</p>
                 <div className="flex gap-2">
                   <Input
                     isReadOnly
@@ -226,9 +218,7 @@ export default function ApiKeyCard() {
             <>
               <ModalHeader>{t("deleteModal.title")}</ModalHeader>
               <ModalBody>
-                <p>
-                  {t("deleteModal.message")}
-                </p>
+                <p>{t("deleteModal.message")}</p>
               </ModalBody>
               <ModalFooter>
                 <Button variant="flat" onPress={onClose}>

@@ -84,6 +84,7 @@ export async function detectAllergiesInRecipe(
 
   if (!aiEnabled) {
     aiLogger.info("AI features are disabled, skipping allergy detection");
+
     return aiError("AI features are disabled", "AI_DISABLED");
   }
 
@@ -92,18 +93,21 @@ export async function detectAllergiesInRecipe(
 
   if (!aiConfig?.autoTagAllergies) {
     aiLogger.info("Allergy detection is disabled");
+
     return aiError("Allergy detection is disabled", "AI_DISABLED");
   }
 
   // Guard: Must have allergens to detect
   if (allergiesToDetect.length === 0) {
     aiLogger.info("No allergens to detect");
+
     return aiSuccess([]);
   }
 
   // Guard: Must have ingredients to analyze
   if (recipe.ingredients.length === 0) {
     aiLogger.warn("No ingredients provided for allergy detection");
+
     return aiError("No ingredients provided", "INVALID_INPUT");
   }
 
@@ -137,12 +141,14 @@ export async function detectAllergiesInRecipe(
 
     if (!output) {
       aiLogger.error({ title: recipe.title }, "AI returned empty output for allergy detection");
+
       return aiError("AI returned empty response", "EMPTY_RESPONSE");
     }
 
     // Validate the response
     if (!Array.isArray(output.detectedAllergens)) {
       aiLogger.error({ title: recipe.title, output }, "Invalid allergy detection response");
+
       return aiError("AI response missing detectedAllergens array", "VALIDATION_ERROR");
     }
 

@@ -1,7 +1,11 @@
 "use client";
 
 import type { CaldavSyncStatus } from "@/types/dto/caldav-sync-status";
-import type { UserCaldavConfigWithoutPasswordDto, ConnectionTestResult, CalDavCalendarInfo } from "@/types";
+import type {
+  UserCaldavConfigWithoutPasswordDto,
+  ConnectionTestResult,
+  CalDavCalendarInfo,
+} from "@/types";
 
 import { createContext, useContext, ReactNode, useCallback, useState } from "react";
 import { addToast } from "@heroui/react";
@@ -177,6 +181,7 @@ export function CalDavSettingsProvider({ children }: { children: ReactNode }) {
           shouldShowTimeoutProgress: true,
           radius: "full",
         });
+
         return [];
       }
     },

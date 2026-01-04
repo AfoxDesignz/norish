@@ -28,6 +28,7 @@ export async function addAutoTaggingJob(
 ): Promise<AddAutoTaggingJobResult> {
   // Check if auto-tagging is enabled
   const autoTaggingMode = await getAutoTaggingMode();
+
   if (autoTaggingMode === "disabled") {
     return { status: "skipped", reason: "disabled" };
   }
@@ -63,5 +64,6 @@ export async function closeAutoTaggingQueue(): Promise<void> {
  */
 export async function isAutoTaggingJobActive(recipeId: string): Promise<boolean> {
   const jobId = `auto-tag-${recipeId}`;
+
   return isJobInQueue(autoTaggingQueue, jobId);
 }

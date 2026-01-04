@@ -78,6 +78,7 @@ export default function RecipeForm({ mode, initialData }: RecipeFormProps) {
     if (initialData?.image) {
       return [{ image: initialData.image, order: 0 }];
     }
+
     return [];
   });
 
@@ -287,9 +288,7 @@ export default function RecipeForm({ mode, initialData }: RecipeFormProps) {
               {mode === "create" ? t("createTitle") : t("editTitle")}
             </h1>
             <p className="text-default-500 mt-2">
-              {mode === "create"
-                ? t("createDescription")
-                : t("editDescription")}
+              {mode === "create" ? t("createDescription") : t("editDescription")}
             </p>
           </div>
         </div>
@@ -312,11 +311,7 @@ export default function RecipeForm({ mode, initialData }: RecipeFormProps) {
           </h2>
           <div className="ml-0 min-w-0 md:ml-9">
             {recipeId && (
-              <ImageGalleryInput
-                images={images}
-                recipeId={recipeId}
-                onChange={setImages}
-              />
+              <ImageGalleryInput images={images} recipeId={recipeId} onChange={setImages} />
             )}
             {errors.image && <p className="text-danger-600 mt-2 text-base">{errors.image}</p>}
           </div>
@@ -419,9 +414,7 @@ export default function RecipeForm({ mode, initialData }: RecipeFormProps) {
             {t("tags")}
           </h2>
           <div className="ml-0 md:ml-9">
-            <p className="text-default-500 mb-3 text-base">
-              {t("tagsHelp")}
-            </p>
+            <p className="text-default-500 mb-3 text-base">{t("tagsHelp")}</p>
             <TagInput value={tags} onChange={setTags} />
           </div>
         </section>
@@ -509,7 +502,8 @@ export default function RecipeForm({ mode, initialData }: RecipeFormProps) {
                 className="text-default-700 mb-3 block text-base font-medium"
                 id="cooking-times-label"
               >
-                {t("cookingTimes")} <span className="text-default-400 font-normal">{t("optional")}</span>
+                {t("cookingTimes")}{" "}
+                <span className="text-default-400 font-normal">{t("optional")}</span>
               </span>
               <TimeInputs
                 cookMinutes={cookMinutes}

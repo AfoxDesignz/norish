@@ -72,6 +72,7 @@ function StoreSectionComponent({
   // Cleanup timeouts on unmount
   useEffect(() => {
     const timeouts = timeoutRefs.current;
+
     return () => {
       timeouts.forEach((timeout) => clearTimeout(timeout));
     };
@@ -89,13 +90,16 @@ function StoreSectionComponent({
 
         // Clear any existing timeout for this id
         const existingTimeout = timeoutRefs.current.get(id);
+
         if (existingTimeout) clearTimeout(existingTimeout);
 
         // Remove from transitioning after delay
         const timeout = setTimeout(() => {
           setTransitioningIds((prev) => {
             const next = new Set(prev);
+
             next.delete(id);
+
             return next;
           });
           timeoutRefs.current.delete(id);
@@ -127,9 +131,11 @@ function StoreSectionComponent({
   // render items that are dragged from other stores during drag operations
   const groceryMap = useMemo(() => {
     const map = new Map<string, GroceryDto>();
+
     for (const g of allGroceries) {
       map.set(g.id, g);
     }
+
     return map;
   }, [allGroceries]);
 
@@ -137,13 +143,16 @@ function StoreSectionComponent({
   const activeGroceries = useMemo(() => {
     // Use DnD context order
     const ordered: GroceryDto[] = [];
+
     for (const id of orderedItemIds) {
       const grocery = groceryMap.get(id);
+
       // Only include if it's not done and not transitioning
       if (grocery && !grocery.isDone && !transitioningIds.has(grocery.id)) {
         ordered.push(grocery);
       }
     }
+
     return ordered;
   }, [orderedItemIds, groceryMap, transitioningIds]);
 
@@ -229,9 +238,9 @@ function StoreSectionComponent({
     <motion.div ref={sectionRef} className="relative" data-store-id={store?.id ?? "unsorted"}>
       {/* Entire section wrapped in SortableStoreContainer - header + items are droppable */}
       <SortableStoreContainer
-        storeId={store?.id ?? null}
         header={headerElement}
         headerBgClass={colorClasses.bgLight}
+        storeId={store?.id ?? null}
       >
         {/* Items area - only shown when expanded */}
         {isExpanded ? (
@@ -248,14 +257,14 @@ function StoreSectionComponent({
                 <SortableGroceryItem key={grocery.id} grocery={grocery}>
                   <GroceryItem
                     grocery={grocery}
-                    recurringGrocery={recurringGrocery}
+                    isFirst={isFirst}
+                    isLast={isLast}
                     recipeName={getRecipeNameForGrocery?.(grocery)}
+                    recurringGrocery={recurringGrocery}
                     store={store}
                     onDelete={onDelete}
                     onEdit={onEdit}
                     onToggle={handleToggle}
-                    isFirst={isFirst}
-                    isLast={isLast}
                   />
                 </SortableGroceryItem>
               );
@@ -273,14 +282,14 @@ function StoreSectionComponent({
                 <div key={grocery.id}>
                   <GroceryItem
                     grocery={grocery}
-                    recurringGrocery={recurringGrocery}
+                    isFirst={isFirst}
+                    isLast={isLast}
                     recipeName={getRecipeNameForGrocery?.(grocery)}
+                    recurringGrocery={recurringGrocery}
                     store={store}
                     onDelete={onDelete}
                     onEdit={onEdit}
                     onToggle={handleToggle}
-                    isFirst={isFirst}
-                    isLast={isLast}
                   />
                 </div>
               );

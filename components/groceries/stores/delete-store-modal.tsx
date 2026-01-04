@@ -12,9 +12,9 @@ import {
   Radio,
 } from "@heroui/react";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
 
 import { useTRPC } from "@/app/providers/trpc-provider";
-import { useQuery } from "@tanstack/react-query";
 
 interface DeleteStoreModalProps {
   isOpen: boolean;

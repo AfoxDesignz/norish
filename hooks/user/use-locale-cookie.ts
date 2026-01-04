@@ -16,8 +16,10 @@ function getLocaleFromCookie(): Locale {
   }
 
   const cookies = document.cookie.split(";");
+
   for (const cookie of cookies) {
     const [name, value] = cookie.trim().split("=");
+
     if (name === LOCALE_COOKIE_NAME && isValidLocale(value)) {
       return value;
     }
@@ -36,6 +38,7 @@ function setLocaleCookie(locale: Locale) {
 
   // Set cookie with 1 year expiry
   const expires = new Date();
+
   expires.setFullYear(expires.getFullYear() + 1);
   document.cookie = `${LOCALE_COOKIE_NAME}=${locale};path=/;expires=${expires.toUTCString()};SameSite=Lax`;
 }
@@ -79,6 +82,7 @@ export function useLocaleCookie() {
   const cycleLocale = useCallback(() => {
     const currentIndex = locales.indexOf(currentLocale);
     const nextIndex = (currentIndex + 1) % locales.length;
+
     changeLocale(locales[nextIndex]);
   }, [currentLocale, changeLocale]);
 

@@ -68,6 +68,7 @@ export function GroceryListByRecipe({
 
     // Add manual items first (if present)
     const manualItems = groups.get(null) ?? [];
+
     if (manualItems.length > 0) {
       result.push({
         recipeId: null,
@@ -78,6 +79,7 @@ export function GroceryListByRecipe({
 
     // Add recipe groups (sorted by recipe name)
     const recipeEntries: [string, GroceryDto[]][] = [];
+
     groups.forEach((groceries, recipeId) => {
       if (recipeId !== null && groceries.length > 0) {
         recipeEntries.push([recipeId, groceries]);
@@ -88,6 +90,7 @@ export function GroceryListByRecipe({
     recipeEntries.sort((a, b) => {
       const nameA = getRecipeNameFromId(a[0], a[1], recipeMap);
       const nameB = getRecipeNameFromId(b[0], b[1], recipeMap);
+
       return nameA.localeCompare(nameB);
     });
 
@@ -132,22 +135,22 @@ export function GroceryListByRecipe({
       {recipeGroups.map((group) => (
         <motion.div
           key={group.recipeId ?? "manual"}
+          layout
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           initial={{ opacity: 0, scale: 0.95 }}
-          layout
           transition={{ type: "spring", stiffness: 500, damping: 35 }}
         >
           <RecipeSection
+            groceries={group.groceries}
             recipeId={group.recipeId}
             recipeName={group.recipeName}
-            groceries={group.groceries}
             recurringGroceries={recurringGroceries}
             stores={stores}
-            onToggle={onToggle}
-            onEdit={onEdit}
             onDelete={onDelete}
+            onEdit={onEdit}
             onReorder={onReorder}
+            onToggle={onToggle}
           />
         </motion.div>
       ))}
@@ -165,10 +168,12 @@ function getRecipeNameFromId(
   for (const grocery of groceries) {
     if (grocery.recipeIngredientId) {
       const info = recipeMap[grocery.recipeIngredientId];
+
       if (info?.recipeId === recipeId) {
         return info.recipeName;
       }
     }
   }
+
   return "Unknown Recipe";
 }

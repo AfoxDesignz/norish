@@ -5,15 +5,17 @@
  * Uses Vercel AI SDK for OpenAI, falls back to OpenAI client for compatible endpoints.
  */
 
-import { experimental_transcribe as transcribe } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
-import OpenAI from "openai";
+import type { TranscriptionProvider } from "@/server/db/zodSchemas/server-config";
+
 import { readFile } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 
+import { experimental_transcribe as transcribe } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
+import OpenAI from "openai";
+
 import { getVideoConfig, getAIConfig } from "@/config/server-config-loader";
 import { aiLogger } from "@/server/logger";
-import type { TranscriptionProvider } from "@/server/db/zodSchemas/server-config";
 
 /**
  * Transcribe audio using Vercel AI SDK (OpenAI provider).
@@ -140,6 +142,7 @@ export async function transcribeAudio(audioPath: string): Promise<string> {
     } else {
       // Use OpenAI client for generic-openai compatible endpoints
       const endpoint = videoConfig.transcriptionEndpoint || aiConfig?.endpoint;
+
       transcript = await transcribeWithClient(audioPath, apiKey, model, endpoint);
     }
 
@@ -181,6 +184,7 @@ export async function transcribeAudio(audioPath: string): Promise<string> {
     }
 
     const errorMessage = apiError.message || "Unknown error";
+
     throw new Error(`Failed to transcribe audio: ${errorMessage}`);
   }
 }

@@ -26,9 +26,7 @@ export default function RegistrationCard() {
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
             <span className="font-medium">{t("allowRegistration")}</span>
-            <span className="text-default-500 text-base">
-              {t("description")}
-            </span>
+            <span className="text-default-500 text-base">{t("description")}</span>
           </div>
           <Switch
             color="success"

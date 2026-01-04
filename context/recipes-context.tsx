@@ -15,6 +15,7 @@ type Ctx = {
   recipes: RecipeDashboardDTO[];
   total: number;
   isLoading: boolean;
+  isFetchingMore: boolean;
   hasMore: boolean;
   pendingRecipeIds: Set<string>;
   autoTaggingRecipeIds: Set<string>;
@@ -54,6 +55,7 @@ export function RecipesContextProvider({ children }: { children: ReactNode }) {
     recipes: allRecipes,
     total: serverTotal,
     isLoading,
+    isValidating,
     hasMore,
     loadMore,
     pendingRecipeIds,
@@ -140,6 +142,7 @@ export function RecipesContextProvider({ children }: { children: ReactNode }) {
       recipes,
       total,
       isLoading: isLoading || isFavoritesLoading,
+      isFetchingMore: isValidating && !isLoading,
       hasMore,
       pendingRecipeIds,
       autoTaggingRecipeIds,
@@ -155,6 +158,7 @@ export function RecipesContextProvider({ children }: { children: ReactNode }) {
       recipes,
       total,
       isLoading,
+      isValidating,
       isFavoritesLoading,
       hasMore,
       pendingRecipeIds,

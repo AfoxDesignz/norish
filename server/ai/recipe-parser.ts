@@ -1,3 +1,5 @@
+import type { FullRecipeInsertDTO } from "@/types/dto/recipe";
+
 import { generateText, Output } from "ai";
 
 import { getModels, getGenerationSettings } from "./providers";
@@ -12,7 +14,6 @@ import {
 } from "./features/recipe-extraction/normalizer";
 
 import { isAIEnabled } from "@/config/server-config-loader";
-import type { FullRecipeInsertDTO } from "@/types/dto/recipe";
 import { aiLogger } from "@/server/logger";
 
 // Re-export type for consumers
@@ -36,6 +37,7 @@ export async function extractRecipeWithAI(
 
   if (!aiEnabled) {
     aiLogger.info("AI features are disabled, skipping extraction");
+
     return aiError("AI features are disabled", "AI_DISABLED");
   }
 
@@ -74,8 +76,10 @@ export async function extractRecipeWithAI(
 
     // Validate extraction output
     const validation = validateExtractionOutput(jsonLd);
+
     if (!validation.valid) {
       aiLogger.error({ url, ...validation.details }, validation.error);
+
       return aiError(validation.error!, "VALIDATION_ERROR");
     }
 
@@ -92,6 +96,7 @@ export async function extractRecipeWithAI(
 
     if (!normalized) {
       aiLogger.error({ url }, "Failed to normalize recipe from JSON-LD");
+
       return aiError("Failed to normalize recipe data", "VALIDATION_ERROR");
     }
 

@@ -142,9 +142,9 @@ export default function EditGroceryPanel({
 
               {/* Store selection */}
               <StoreSelector
+                showWhenEmpty
                 label={t("selectStore")}
                 selectedStoreId={selectedStoreId}
-                showWhenEmpty
                 stores={stores}
                 onSelectionChange={handleStoreChange}
               />

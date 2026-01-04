@@ -44,12 +44,12 @@ export function SortableGroceryItem({ grocery, children }: SortableGroceryItemPr
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="relative">
+    <div ref={setNodeRef} className="relative" style={style}>
       {/* Drag handle - positioned absolutely on the left */}
       <button
         ref={setActivatorNodeRef}
-        type="button"
         className="absolute top-1/2 left-2 z-10 flex h-8 w-8 -translate-y-1/2 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+        type="button"
         {...attributes}
         {...listeners}
       >

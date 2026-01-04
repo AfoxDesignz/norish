@@ -55,6 +55,7 @@ export function GroceryList({
     // Group groceries
     groceries.forEach((grocery) => {
       const storeId = grocery.storeId;
+
       // If the storeId doesn't exist in our map (orphaned), put in unsorted
       if (!groups.has(storeId)) {
         groups.get(null)!.push(grocery);
@@ -108,33 +109,33 @@ export function GroceryList({
 
   return (
     <DndGroceryProvider
-      groceries={groceries}
-      stores={stores}
-      recurringGroceries={recurringGroceries}
-      onReorderInStore={onReorderInStore ?? (() => {})}
       getRecipeNameForGrocery={getRecipeNameForGrocery}
+      groceries={groceries}
+      recurringGroceries={recurringGroceries}
+      stores={stores}
+      onReorderInStore={onReorderInStore ?? (() => {})}
     >
       <div className="flex flex-col gap-3 p-1">
         {/* Unsorted section - always rendered when dragging or has items, so it's a valid drop target */}
         <motion.div
           key="unsorted"
+          layout
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           initial={{ opacity: 0, scale: 0.95 }}
-          layout
           transition={{ type: "spring", stiffness: 500, damping: 35 }}
         >
           <StoreSection
-            groceries={unsortedGroceries}
             allGroceries={groceries}
+            getRecipeNameForGrocery={getRecipeNameForGrocery}
+            groceries={unsortedGroceries}
             recurringGroceries={recurringGroceries}
             store={null}
             onDelete={onDelete}
-            onEdit={onEdit}
-            onToggle={onToggle}
-            onMarkAllDone={() => onMarkAllDoneInStore?.(null)}
             onDeleteDone={() => onDeleteDoneInStore?.(null)}
-            getRecipeNameForGrocery={getRecipeNameForGrocery}
+            onEdit={onEdit}
+            onMarkAllDone={() => onMarkAllDoneInStore?.(null)}
+            onToggle={onToggle}
           />
         </motion.div>
 
@@ -142,23 +143,23 @@ export function GroceryList({
         {storeWithGroceries.map(({ store, groceries: storeGroceries }) => (
           <motion.div
             key={store.id}
+            layout
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             initial={{ opacity: 0, scale: 0.95 }}
-            layout
             transition={{ type: "spring", stiffness: 500, damping: 35 }}
           >
             <StoreSection
-              groceries={storeGroceries}
               allGroceries={groceries}
+              getRecipeNameForGrocery={getRecipeNameForGrocery}
+              groceries={storeGroceries}
               recurringGroceries={recurringGroceries}
               store={store}
               onDelete={onDelete}
-              onEdit={onEdit}
-              onToggle={onToggle}
-              onMarkAllDone={() => onMarkAllDoneInStore?.(store.id)}
               onDeleteDone={() => onDeleteDoneInStore?.(store.id)}
-              getRecipeNameForGrocery={getRecipeNameForGrocery}
+              onEdit={onEdit}
+              onMarkAllDone={() => onMarkAllDoneInStore?.(store.id)}
+              onToggle={onToggle}
             />
           </motion.div>
         ))}

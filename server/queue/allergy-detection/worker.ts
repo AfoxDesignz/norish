@@ -60,6 +60,7 @@ async function processAllergyDetectionJob(job: Job<AllergyDetectionJobData>): Pr
       titleKey: "allergiesComplete",
       severity: "success",
     });
+
     return;
   }
 
@@ -78,6 +79,7 @@ async function processAllergyDetectionJob(job: Job<AllergyDetectionJobData>): Pr
       titleKey: "allergiesComplete",
       severity: "success",
     });
+
     return;
   }
 
@@ -104,6 +106,7 @@ async function processAllergyDetectionJob(job: Job<AllergyDetectionJobData>): Pr
       titleKey: "allergiesComplete",
       severity: "success",
     });
+
     return;
   }
 

@@ -70,6 +70,7 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
 
   // Ref for recipe to keep callbacks stable
   const recipeRef = React.useRef(recipe);
+
   recipeRef.current = recipe;
 
   // Subscribe to real-time updates for this recipe
@@ -201,6 +202,7 @@ export function RecipeContextProvider({ recipeId, children }: ProviderProps) {
   const setIngredientAmounts = useCallback(
     (servings: number) => {
       const currentRecipe = recipeRef.current;
+
       if (!currentRecipe || servings == null) return;
 
       setServings(servings);

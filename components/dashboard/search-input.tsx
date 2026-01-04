@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
+import { useDebounceValue } from "usehooks-ts";
 import { Input } from "@heroui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/16/solid";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 
 import Filters from "../shared/filters";
+
 import SearchFieldToggles from "./search-field-toggles";
 
 import { useRecipesContext } from "@/context/recipes-context";
@@ -17,20 +19,32 @@ export default function SearchInput() {
   const t = useTranslations("recipes.dashboard");
   const { filters, setFilters } = useRecipesFiltersContext();
   const { importRecipe } = useRecipesContext();
-  const [_isPending, startTransition] = useTransition();
   const [inputValue, setInputValue] = useState(filters.rawInput);
+  const [debouncedValue] = useDebounceValue(inputValue, 300);
   const [isFocused, setIsFocused] = useState(false);
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const skipNextDebounceRef = useRef(false);
 
-  const scheduleFilterUpdate = useCallback(
-    (value: string) => {
-      startTransition(() => setFilters({ rawInput: value }));
-    },
-    [setFilters]
-  );
-
+  // Sync debounced value to filters (but skip when external sync happens)
   useEffect(() => {
-    setInputValue(filters.rawInput);
+    if (skipNextDebounceRef.current) {
+      skipNextDebounceRef.current = false;
+
+      return;
+    }
+    // Don't trigger if it's a URL (handled immediately in handleChange)
+    if (!isUrl(debouncedValue.trim())) {
+      setFilters({ rawInput: debouncedValue.trim() });
+    }
+  }, [debouncedValue, setFilters]);
+
+  // Sync external filter changes to input (e.g., from clear button elsewhere)
+  useEffect(() => {
+    if (filters.rawInput !== inputValue.trim()) {
+      skipNextDebounceRef.current = true;
+      setInputValue(filters.rawInput);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.rawInput]);
 
   // Cleanup timeout on unmount
@@ -44,16 +58,16 @@ export default function SearchInput() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
-
-    setInputValue(rawValue);
     const trimmedValue = rawValue.trim();
 
+    // Handle URL imports immediately (no debounce)
     if (isUrl(trimmedValue)) {
       setInputValue("");
-      scheduleFilterUpdate("");
+      setFilters({ rawInput: "" });
       void importRecipe(trimmedValue);
     } else {
-      scheduleFilterUpdate(trimmedValue);
+      // Regular text - just update input, debounce handles filter sync
+      setInputValue(rawValue);
     }
   };
 
@@ -110,7 +124,7 @@ export default function SearchInput() {
           onChange={handleChange}
           onClear={() => {
             setInputValue("");
-            scheduleFilterUpdate("");
+            setFilters({ rawInput: "" });
           }}
           onFocus={handleFocus}
         />
@@ -125,7 +139,7 @@ export default function SearchInput() {
             style={{ overflow: "hidden" }}
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            <SearchFieldToggles className="px-1 pb-1" scrollable onInteraction={resetHideTimer} />
+            <SearchFieldToggles scrollable className="px-1 pb-1" onInteraction={resetHideTimer} />
           </motion.div>
         )}
       </AnimatePresence>

@@ -104,6 +104,7 @@ const listAvailableModels = adminProcedure
     // If no API key provided, try to get from stored config
     if (!apiKey && input.provider === "openai") {
       const storedConfig = await getConfig<AIConfig>(ServerConfigKeys.AI_CONFIG, true);
+
       apiKey = storedConfig?.apiKey;
     }
 
@@ -139,10 +140,12 @@ const listAvailableTranscriptionModels = adminProcedure
     if (!apiKey && (input.provider === "openai" || input.provider === "generic-openai")) {
       // First try video config, then fall back to AI config
       const videoConfig = await getConfig<VideoConfig>(ServerConfigKeys.VIDEO_CONFIG, true);
+
       apiKey = videoConfig?.transcriptionApiKey;
 
       if (!apiKey) {
         const aiConfig = await getConfig<AIConfig>(ServerConfigKeys.AI_CONFIG, true);
+
         apiKey = aiConfig?.apiKey;
       }
     }

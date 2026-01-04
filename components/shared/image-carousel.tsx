@@ -214,12 +214,12 @@ export default function ImageCarousel({
 
       {showLightbox && (
         <ImageLightbox
-          initialIndex={currentIndex}
-          isOpen={lightboxOpen}
           images={images.map((img) => ({
             src: img.image,
             alt: img.alt || recipeName,
           }))}
+          initialIndex={currentIndex}
+          isOpen={lightboxOpen}
           onClose={() => setLightboxOpen(false)}
         />
       )}

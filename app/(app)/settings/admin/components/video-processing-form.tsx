@@ -71,15 +71,13 @@ export default function VideoProcessingForm() {
       ? transcriptionApiKey || isTranscriptionApiKeyConfigured || isAIApiKeyConfigured
       : transcriptionEndpoint);
 
-  const {
-    models: availableTranscriptionModels,
-    isLoading: isLoadingTranscriptionModels,
-  } = useAvailableTranscriptionModelsQuery({
-    provider: transcriptionProvider,
-    endpoint: transcriptionEndpoint || undefined,
-    apiKey: transcriptionApiKey || undefined,
-    enabled: !!canFetchTranscriptionModels,
-  });
+  const { models: availableTranscriptionModels, isLoading: isLoadingTranscriptionModels } =
+    useAvailableTranscriptionModelsQuery({
+      provider: transcriptionProvider,
+      endpoint: transcriptionEndpoint || undefined,
+      apiKey: transcriptionApiKey || undefined,
+      enabled: !!canFetchTranscriptionModels,
+    });
 
   // Create transcription model options for autocomplete
   const transcriptionModelOptions = useMemo(() => {
@@ -148,9 +146,7 @@ export default function VideoProcessingForm() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <span className="font-medium">{t("enableVideo")}</span>
-          <span className="text-default-500 text-base">
-            {t("enableVideoDescription")}
-          </span>
+          <span className="text-default-500 text-base">{t("enableVideoDescription")}</span>
         </div>
         <Switch color="success" isSelected={enabled} onValueChange={setEnabled} />
       </div>
@@ -183,9 +179,7 @@ export default function VideoProcessingForm() {
       {/* Transcription Section */}
       <div className="flex flex-col gap-1">
         <span className="font-medium">{t("transcription")}</span>
-        <span className="text-default-500 text-base">
-          {t("transcriptionDescription")}
-        </span>
+        <span className="text-default-500 text-base">{t("transcriptionDescription")}</span>
       </div>
 
       <Select

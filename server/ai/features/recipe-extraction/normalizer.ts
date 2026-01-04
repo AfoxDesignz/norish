@@ -7,6 +7,7 @@
 
 import type { RecipeExtractionOutput } from "@/server/ai/schemas/recipe.schema";
 import type { FullRecipeInsertDTO } from "@/types/dto/recipe";
+
 import { normalizeRecipeFromJson } from "@/server/parser/normalize";
 import { parseIngredientWithDefaults } from "@/lib/helpers";
 import { getUnits } from "@/config/server-config-loader";
@@ -117,6 +118,7 @@ export async function normalizeExtractionOutput(
       },
       "Failed to normalize recipe from JSON-LD - normalizeRecipeFromJson returned null"
     );
+
     return null;
   }
 

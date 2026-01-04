@@ -5,8 +5,9 @@ import { Button } from "@heroui/react";
 import { PlusIcon } from "@heroicons/react/16/solid";
 import { useTranslations } from "next-intl";
 
-import { MiniGroceries } from "@/components/Panel/consumers";
 import { useRecipeContextRequired } from "../context";
+
+import { MiniGroceries } from "@/components/Panel/consumers";
 
 type Props = {
   recipeId: string;
@@ -27,12 +28,12 @@ export default function AddToGroceries({ recipeId }: Props) {
       >
         {t("addToGroceries")}
       </Button>
-      <MiniGroceries 
-        open={open} 
-        recipeId={recipeId} 
+      <MiniGroceries
         initialServings={currentServings}
+        open={open}
         originalServings={recipe.servings}
-        onOpenChange={setOpen} 
+        recipeId={recipeId}
+        onOpenChange={setOpen}
       />
     </>
   );

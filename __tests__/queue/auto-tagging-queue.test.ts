@@ -110,6 +110,7 @@ describe("Auto-Tagging Queue", () => {
     it("adds job successfully when auto-tagging is enabled (predefined mode)", async () => {
       vi.mocked(getAutoTaggingMode).mockResolvedValue("predefined");
       const { isJobInQueue } = await import("@/server/queue/helpers");
+
       vi.mocked(isJobInQueue).mockResolvedValue(false);
       mockAdd.mockResolvedValue({ id: "auto-tag-recipe-123" });
 
@@ -130,6 +131,7 @@ describe("Auto-Tagging Queue", () => {
     it("adds job successfully when auto-tagging is in predefined_db mode", async () => {
       vi.mocked(getAutoTaggingMode).mockResolvedValue("predefined_db");
       const { isJobInQueue } = await import("@/server/queue/helpers");
+
       vi.mocked(isJobInQueue).mockResolvedValue(false);
       mockAdd.mockResolvedValue({ id: "auto-tag-recipe-123" });
 
@@ -143,6 +145,7 @@ describe("Auto-Tagging Queue", () => {
     it("adds job successfully when auto-tagging is in freeform mode", async () => {
       vi.mocked(getAutoTaggingMode).mockResolvedValue("freeform");
       const { isJobInQueue } = await import("@/server/queue/helpers");
+
       vi.mocked(isJobInQueue).mockResolvedValue(false);
       mockAdd.mockResolvedValue({ id: "auto-tag-recipe-123" });
 
@@ -156,6 +159,7 @@ describe("Auto-Tagging Queue", () => {
     it("returns duplicate when job already exists in queue", async () => {
       vi.mocked(getAutoTaggingMode).mockResolvedValue("predefined");
       const { isJobInQueue } = await import("@/server/queue/helpers");
+
       vi.mocked(isJobInQueue).mockResolvedValue(true);
 
       const { addAutoTaggingJob } = await import("@/server/queue/auto-tagging/queue");
@@ -172,6 +176,7 @@ describe("Auto-Tagging Queue", () => {
     it("uses recipe ID to generate unique job ID", async () => {
       vi.mocked(getAutoTaggingMode).mockResolvedValue("predefined");
       const { isJobInQueue } = await import("@/server/queue/helpers");
+
       vi.mocked(isJobInQueue).mockResolvedValue(false);
       mockAdd.mockResolvedValue({ id: "auto-tag-unique-recipe-id" });
 

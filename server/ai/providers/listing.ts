@@ -21,6 +21,7 @@ export async function listOllamaModels(endpoint: string): Promise<string[]> {
     }
 
     const data = await response.json();
+
     return (data.models || []).map((m: { name: string }) => m.name);
   } catch {
     return [];
@@ -42,6 +43,7 @@ export async function listOpenAIModels(apiKey: string): Promise<AvailableModel[]
 
     if (!response.ok) {
       aiLogger.debug({ status: response.status }, "OpenAI /v1/models request failed");
+
       return [];
     }
 
@@ -53,6 +55,7 @@ export async function listOpenAIModels(apiKey: string): Promise<AvailableModel[]
     const chatModels = models
       .filter((m) => {
         const id = m.id.toLowerCase();
+
         return (
           !id.includes("embedding") &&
           !id.includes("whisper") &&
@@ -73,9 +76,11 @@ export async function listOpenAIModels(apiKey: string): Promise<AvailableModel[]
       .sort((a, b) => a.id.localeCompare(b.id));
 
     aiLogger.debug({ count: chatModels.length }, "OpenAI models listed");
+
     return chatModels;
   } catch (error) {
     aiLogger.debug({ err: error }, "Failed to list OpenAI models");
+
     return [];
   }
 }
@@ -92,6 +97,7 @@ export async function listOpenAICompatibleModels(
     // Normalize endpoint: remove trailing slashes and /v1 suffix if present
     // We'll add /v1/models ourselves
     let baseUrl = endpoint.replace(/\/+$/, "");
+
     if (baseUrl.endsWith("/v1")) {
       baseUrl = baseUrl.slice(0, -3);
     }
@@ -112,6 +118,7 @@ export async function listOpenAICompatibleModels(
         { status: response.status, endpoint },
         "OpenAI-compatible /v1/models request failed"
       );
+
       return [];
     }
 
@@ -125,9 +132,11 @@ export async function listOpenAICompatibleModels(
     }));
 
     aiLogger.debug({ count: result.length, endpoint }, "OpenAI-compatible models listed");
+
     return result;
   } catch (error) {
     aiLogger.debug({ err: error, endpoint }, "Failed to list OpenAI-compatible models");
+
     return [];
   }
 }
@@ -146,17 +155,21 @@ export async function listModels(
     case "openai":
       if (!apiKey) {
         aiLogger.debug("Cannot list OpenAI models without API key");
+
         return [];
       }
+
       return listOpenAIModels(apiKey);
 
     case "ollama":
       if (!endpoint) {
         aiLogger.debug("Cannot list Ollama models without endpoint");
+
         return [];
       }
       // Convert string[] to AvailableModel[]
       const ollamaModels = await listOllamaModels(endpoint);
+
       return ollamaModels.map((id) => ({
         id,
         name: id,
@@ -170,8 +183,10 @@ export async function listModels(
     case "generic-openai":
       if (!endpoint) {
         aiLogger.debug("Cannot list models without endpoint");
+
         return [];
       }
+
       return listOpenAICompatibleModels(endpoint, apiKey);
 
     case "perplexity":
@@ -187,6 +202,7 @@ export async function listModels(
 
     default:
       aiLogger.debug({ provider }, "Unknown provider for model listing");
+
       return [];
   }
 }
@@ -206,6 +222,7 @@ export async function listOpenAITranscriptionModels(apiKey: string): Promise<Ava
 
     if (!response.ok) {
       aiLogger.debug({ status: response.status }, "OpenAI /v1/models request failed");
+
       return [];
     }
 
@@ -223,9 +240,11 @@ export async function listOpenAITranscriptionModels(apiKey: string): Promise<Ava
       .sort((a, b) => a.id.localeCompare(b.id));
 
     aiLogger.debug({ count: whisperModels.length }, "OpenAI transcription models listed");
+
     return whisperModels;
   } catch (error) {
     aiLogger.debug({ err: error }, "Failed to list OpenAI transcription models");
+
     return [];
   }
 }
@@ -241,11 +260,13 @@ export async function listOpenAICompatibleTranscriptionModels(
   try {
     // Normalize endpoint
     let baseUrl = endpoint.replace(/\/+$/, "");
+
     if (baseUrl.endsWith("/v1")) {
       baseUrl = baseUrl.slice(0, -3);
     }
 
     const headers: Record<string, string> = {};
+
     if (apiKey) {
       headers["Authorization"] = `Bearer ${apiKey}`;
     }
@@ -260,6 +281,7 @@ export async function listOpenAICompatibleTranscriptionModels(
         { status: response.status, endpoint },
         "OpenAI-compatible /v1/models request failed for transcription"
       );
+
       return [];
     }
 
@@ -280,12 +302,14 @@ export async function listOpenAICompatibleTranscriptionModels(
       { count: result.length, endpoint },
       "OpenAI-compatible transcription models listed"
     );
+
     return result;
   } catch (error) {
     aiLogger.debug(
       { err: error, endpoint },
       "Failed to list OpenAI-compatible transcription models"
     );
+
     return [];
   }
 }
@@ -303,15 +327,19 @@ export async function listTranscriptionModels(
     case "openai":
       if (!apiKey) {
         aiLogger.debug("Cannot list OpenAI transcription models without API key");
+
         return [];
       }
+
       return listOpenAITranscriptionModels(apiKey);
 
     case "generic-openai":
       if (!endpoint) {
         aiLogger.debug("Cannot list transcription models without endpoint");
+
         return [];
       }
+
       return listOpenAICompatibleTranscriptionModels(endpoint, apiKey);
 
     case "disabled":

@@ -88,6 +88,7 @@ export default function CalDavConfigEditModal({ isOpen, onClose }: CalDavConfigE
 
   const handleRevealPassword = useCallback(async () => {
     const revealedPassword = await getCaldavPassword();
+
     // Auto-test after revealing password
     if (revealedPassword && serverUrl && username && !testing && !hasAutoTestedRef.current) {
       hasAutoTestedRef.current = true;
@@ -96,6 +97,7 @@ export default function CalDavConfigEditModal({ isOpen, onClose }: CalDavConfigE
         performTestConnection(serverUrl, username, revealedPassword, calendarUrl);
       }, 100);
     }
+
     return revealedPassword;
   }, [getCaldavPassword, serverUrl, username, testing, calendarUrl]);
 
@@ -119,7 +121,12 @@ export default function CalDavConfigEditModal({ isOpen, onClose }: CalDavConfigE
     return true;
   };
 
-  const performTestConnection = async (url: string, user: string, pass: string, currentCalendarUrl: string | null = null) => {
+  const performTestConnection = async (
+    url: string,
+    user: string,
+    pass: string,
+    currentCalendarUrl: string | null = null
+  ) => {
     setTesting(true);
     setTestResult(null);
     setCalendars([]);
@@ -127,12 +134,12 @@ export default function CalDavConfigEditModal({ isOpen, onClose }: CalDavConfigE
       const result = await testConnection(url, user, pass);
 
       setTestResult(result);
-      
+
       // Store returned calendars for selection
       if (result.success && result.calendars && result.calendars.length > 0) {
         setCalendars(result.calendars);
         // Auto-select first calendar if none selected, or keep existing selection if valid
-        if (!currentCalendarUrl || !result.calendars.some(c => c.url === currentCalendarUrl)) {
+        if (!currentCalendarUrl || !result.calendars.some((c) => c.url === currentCalendarUrl)) {
           setCalendarUrl(result.calendars[0].url);
         }
       }
@@ -144,6 +151,7 @@ export default function CalDavConfigEditModal({ isOpen, onClose }: CalDavConfigE
   const handleTestConnection = async () => {
     // Use form values for test
     const passwordToUse = password || (config ? await getCaldavPassword() : null) || "";
+
     await performTestConnection(serverUrl, username, passwordToUse, calendarUrl);
   };
 
@@ -234,13 +242,18 @@ export default function CalDavConfigEditModal({ isOpen, onClose }: CalDavConfigE
 
             {/* Calendar Selection - always visible, disabled until calendars fetched */}
             <Select
-              description={calendars.length === 0 ? t("calendarDescriptionDisabled") : t("calendarDescription")}
+              description={
+                calendars.length === 0 ? t("calendarDescriptionDisabled") : t("calendarDescription")
+              }
               isDisabled={calendars.length === 0}
               label={t("calendarLabel")}
-              placeholder={calendars.length === 0 ? t("calendarPlaceholderDisabled") : t("calendarPlaceholder")}
+              placeholder={
+                calendars.length === 0 ? t("calendarPlaceholderDisabled") : t("calendarPlaceholder")
+              }
               selectedKeys={calendarUrl ? [calendarUrl] : []}
               onSelectionChange={(keys) => {
                 const selected = Array.from(keys)[0] as string;
+
                 setCalendarUrl(selected || null);
               }}
             >

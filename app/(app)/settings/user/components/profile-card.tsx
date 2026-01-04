@@ -90,7 +90,12 @@ export default function ProfileCard() {
             />
           </div>
           <div className="flex flex-1 flex-col gap-2">
-            <Input label={t("nameLabel")} placeholder={t("namePlaceholder")} value={name} onValueChange={setName} />
+            <Input
+              label={t("nameLabel")}
+              placeholder={t("namePlaceholder")}
+              value={name}
+              onValueChange={setName}
+            />
             <p className="text-default-500 text-xs">{t("avatarHint")}</p>
           </div>
         </div>

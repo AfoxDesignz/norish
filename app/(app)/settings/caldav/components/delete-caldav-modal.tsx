@@ -40,16 +40,12 @@ export default function DeleteCalDavModal({ isOpen, onClose, onConfirm }: Delete
       <ModalContent>
         <ModalHeader>{t("title")}</ModalHeader>
         <ModalBody>
-          <p className="text-default-600 text-base">
-            {t("confirmMessage")}
-          </p>
+          <p className="text-default-600 text-base">{t("confirmMessage")}</p>
           <div className="mt-4">
             <Switch isSelected={deleteEvents} onValueChange={setDeleteEvents}>
               <div>
                 <p className="text-base font-medium">{t("deleteEventsLabel")}</p>
-                <p className="text-default-500 text-xs">
-                  {t("deleteEventsDescription")}
-                </p>
+                <p className="text-default-500 text-xs">{t("deleteEventsDescription")}</p>
               </div>
             </Switch>
           </div>

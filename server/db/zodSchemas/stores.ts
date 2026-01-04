@@ -68,7 +68,9 @@ export const StoreReorderSchema = z.object({
 });
 
 // Ingredient store preference schemas
-export const IngredientStorePreferenceSelectSchema = createSelectSchema(ingredientStorePreferences).omit({
+export const IngredientStorePreferenceSelectSchema = createSelectSchema(
+  ingredientStorePreferences
+).omit({
   createdAt: true,
   updatedAt: true,
 });

@@ -37,7 +37,9 @@ export default function RestartConfirmationModal({
               <li>
                 {t.rich("warning3", {
                   code: (chunks) => (
-                    <code className="bg-warning-100 dark:bg-warning-800 rounded px-1">{chunks}</code>
+                    <code className="bg-warning-100 dark:bg-warning-800 rounded px-1">
+                      {chunks}
+                    </code>
                   ),
                 })}
               </li>

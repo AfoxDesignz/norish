@@ -1,5 +1,7 @@
 "use client";
 
+import type { TestResult } from "./types";
+
 import { useState, useCallback } from "react";
 import { Input, useDisclosure, addToast } from "@heroui/react";
 import { useTranslations } from "next-intl";
@@ -10,7 +12,6 @@ import { DeleteProviderModal } from "./delete-provider-modal";
 import { ProviderActions } from "./provider-actions";
 import { TestResultDisplay } from "./test-result-display";
 import { OIDCClaimMapping, type ClaimMappingValues } from "./oidc-claim-mapping";
-import type { TestResult } from "./types";
 
 import { ServerConfigKeys } from "@/server/db/zodSchemas/server-config";
 import SecretInput from "@/components/shared/secret-input";
@@ -21,12 +22,8 @@ interface OIDCProviderFormProps {
 
 export function OIDCProviderForm({ config }: OIDCProviderFormProps) {
   const tOidc = useTranslations("settings.admin.authProviders.oidc.fields");
-  const {
-    updateAuthProviderOIDC,
-    deleteAuthProvider,
-    testAuthProvider,
-    fetchConfigSecret,
-  } = useAdminSettingsContext();
+  const { updateAuthProviderOIDC, deleteAuthProvider, testAuthProvider, fetchConfigSecret } =
+    useAdminSettingsContext();
 
   // Get existing claim config
   const existingClaimConfig = config?.claimConfig as
@@ -76,6 +73,7 @@ export function OIDCProviderForm({ config }: OIDCProviderFormProps) {
         clientSecret: clientSecret || undefined,
         wellknown: wellknown || undefined,
       };
+
       setTestResult(await testAuthProvider("oidc", testValues));
     } finally {
       setTesting(false);
@@ -120,6 +118,7 @@ export function OIDCProviderForm({ config }: OIDCProviderFormProps) {
         title: "Cannot delete provider",
         description: result.error,
       });
+
       return;
     }
 

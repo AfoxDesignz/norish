@@ -24,6 +24,7 @@ export async function generateTagsForRecipe(recipe: RecipeForTagging): Promise<A
 
   if (!aiEnabled) {
     aiLogger.info("AI features are disabled, skipping auto-tagging");
+
     return aiError("AI features are disabled", "AI_DISABLED");
   }
 
@@ -32,11 +33,13 @@ export async function generateTagsForRecipe(recipe: RecipeForTagging): Promise<A
 
   if (mode === "disabled") {
     aiLogger.info("Auto-tagging is disabled");
+
     return aiError("Auto-tagging is disabled", "AI_DISABLED");
   }
 
   if (recipe.ingredients.length === 0) {
     aiLogger.warn("No ingredients provided for auto-tagging");
+
     return aiError("No ingredients provided", "INVALID_INPUT");
   }
 
@@ -74,12 +77,14 @@ export async function generateTagsForRecipe(recipe: RecipeForTagging): Promise<A
 
     if (!output) {
       aiLogger.error({ title: recipe.title }, "AI returned empty output for auto-tagging");
+
       return aiError("AI returned empty response", "EMPTY_RESPONSE");
     }
 
     // Validate the response
     if (!Array.isArray(output.tags)) {
       aiLogger.error({ title: recipe.title, output }, "Invalid auto-tagging response");
+
       return aiError("AI response missing tags array", "VALIDATION_ERROR");
     }
 

@@ -726,6 +726,7 @@ const triggerAllergyDetection = authedProcedure
         result.reason === "no_allergies"
           ? "No allergies configured for your household"
           : "Allergy detection is disabled";
+
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
         message: reasonMessage,

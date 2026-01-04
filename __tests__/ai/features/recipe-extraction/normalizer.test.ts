@@ -1,11 +1,12 @@
+import type { RecipeExtractionOutput } from "@/server/ai/schemas/recipe.schema";
+import type { FullRecipeInsertDTO } from "@/types/dto/recipe";
+
 import { describe, it, expect, vi } from "vitest";
 
 import {
   validateExtractionOutput,
   getExtractionLogContext,
 } from "@/server/ai/features/recipe-extraction/normalizer";
-import type { RecipeExtractionOutput } from "@/server/ai/schemas/recipe.schema";
-import type { FullRecipeInsertDTO } from "@/types/dto/recipe";
 
 // Mock the normalizeExtractionOutput dependencies for isolation
 vi.mock("@/server/parser/normalize", () => ({
@@ -20,12 +21,14 @@ describe("validateExtractionOutput", () => {
   describe("when output is null or empty", () => {
     it("returns invalid for null output", () => {
       const result = validateExtractionOutput(null);
+
       expect(result.valid).toBe(false);
       expect(result.error).toBe("AI returned empty response");
     });
 
     it("returns invalid for empty object", () => {
       const result = validateExtractionOutput({} as RecipeExtractionOutput);
+
       expect(result.valid).toBe(false);
       expect(result.error).toBe("AI returned empty response");
     });

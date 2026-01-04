@@ -5,10 +5,12 @@
  * with proper error handling, logging, and result types.
  */
 
-import { generateText, Output } from "ai";
 import type { ZodSchema } from "zod";
 
+import { generateText, Output } from "ai";
+
 import { getModels, getGenerationSettings } from "../providers";
+
 import { isAIEnabled } from "./guards";
 import {
   aiSuccess,
@@ -20,6 +22,7 @@ import {
   type ImageContent,
   type MessageContent,
 } from "./types";
+
 import { aiLogger } from "@/server/logger";
 
 /**
@@ -70,8 +73,10 @@ export async function execute<T>(options: ExecuteOptions<T>): Promise<AIResult<T
 
   // Check if AI is enabled
   const enabled = await isAIEnabled();
+
   if (!enabled) {
     aiLogger.debug("AI features are disabled, skipping execution");
+
     return aiError("AI features are disabled", "AI_DISABLED");
   }
 
@@ -104,6 +109,7 @@ export async function execute<T>(options: ExecuteOptions<T>): Promise<AIResult<T
 
     // Execute the AI call - use messages format for vision, prompt for text
     let result;
+
     if (useVisionModel && images && images.length > 0) {
       result = await generateText({
         ...commonOptions,
@@ -124,6 +130,7 @@ export async function execute<T>(options: ExecuteOptions<T>): Promise<AIResult<T
     // Check for empty response
     if (!result.output || Object.keys(result.output).length === 0) {
       aiLogger.warn("AI returned empty response");
+
       return aiError("AI returned empty response", "EMPTY_RESPONSE");
     }
 

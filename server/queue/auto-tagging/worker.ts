@@ -60,6 +60,7 @@ async function processAutoTaggingJob(job: Job<AutoTaggingJobData>): Promise<void
       titleKey: "tagsComplete",
       severity: "success",
     });
+
     return;
   }
 
@@ -86,6 +87,7 @@ async function processAutoTaggingJob(job: Job<AutoTaggingJobData>): Promise<void
       titleKey: "tagsComplete",
       severity: "success",
     });
+
     return;
   }
 

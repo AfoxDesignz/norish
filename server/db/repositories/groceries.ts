@@ -1,6 +1,6 @@
 import type { GroceryDto, GroceryInsertDto, GroceryUpdateDto } from "@/types/dto/groceries";
 
-import { and, asc, desc, eq, inArray, isNull, lte, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import z from "zod";
 
 import { db } from "@/server/db/drizzle";
@@ -117,9 +117,11 @@ export async function createGroceries(
   return await db.transaction(async (trx) => {
     // Group items by storeId for efficient updates
     const storeGroups = new Map<string | null, typeof prepared>();
+
     for (const item of prepared) {
       const storeKey = item.storeId ?? null;
       const group = storeGroups.get(storeKey) ?? [];
+
       group.push(item);
       storeGroups.set(storeKey, group);
     }
@@ -434,6 +436,7 @@ export async function assignGroceryToStore(
   }
 
   const validatedUpdate = GrocerySelectBaseSchema.safeParse(updated);
+
   if (!validatedUpdate.success) {
     throw new Error("Failed to parse updated grocery");
   }

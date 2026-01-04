@@ -32,7 +32,7 @@ export function ConnectionStatusOverlay() {
       {show && (
         <motion.div
           animate={{ opacity: 1 }}
-          className="bg-background/80 fixed inset-0 z-[9999] flex flex-col items-center justify-center backdrop-blur-sm"
+          className="bg-background/80 fixed inset-0 z-[99999] flex flex-col items-center justify-center backdrop-blur-sm"
           exit={{ opacity: 0 }}
           initial={{ opacity: 0 }}
         >

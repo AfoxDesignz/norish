@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { AnimateLayoutChanges } from "@dnd-kit/sortable";
+import type { ContainerId } from "./types";
 
 import {
   useSortable,
@@ -9,8 +10,6 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-
-import type { ContainerId } from "./types";
 
 import { useDndGroceryContext } from "./dnd-grocery-provider";
 import { UNSORTED_CONTAINER } from "./types";
@@ -70,11 +69,11 @@ export function SortableStoreContainer({
   return (
     <div
       ref={setNodeRef}
-      data-store-id={containerId}
-      data-is-over={isOverContainer}
       className={`overflow-hidden rounded-xl transition-all duration-200 ${
         showDropIndicator ? "ring-primary ring-2" : ""
       }`}
+      data-is-over={isOverContainer}
+      data-store-id={containerId}
       style={{
         transition,
         // Don't transform containers, only their items

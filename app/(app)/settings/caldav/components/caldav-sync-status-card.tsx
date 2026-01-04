@@ -194,7 +194,9 @@ export default function CalDavSyncStatusCard() {
           </TableHeader>
           <TableBody
             emptyContent={
-              syncStatusFilter ? t("emptyFiltered", { status: syncStatusFilter }) : t("emptyDefault")
+              syncStatusFilter
+                ? t("emptyFiltered", { status: syncStatusFilter })
+                : t("emptyDefault")
             }
           >
             {syncStatuses.map((status) => (

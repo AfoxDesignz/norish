@@ -46,9 +46,7 @@ export default function NoHouseholdView() {
           </CardHeader>
           <CardBody>
             <form className="flex flex-col gap-4" onSubmit={handleCreateHousehold}>
-              <p className="text-default-600 text-base">
-                {t("create.description")}
-              </p>
+              <p className="text-default-600 text-base">{t("create.description")}</p>
               <Input
                 isRequired
                 label={t("create.nameLabel")}
@@ -75,9 +73,7 @@ export default function NoHouseholdView() {
           </CardHeader>
           <CardBody>
             <form className="flex flex-col gap-4" onSubmit={handleJoinHousehold}>
-              <p className="text-default-600 text-base">
-                {t("join.description")}
-              </p>
+              <p className="text-default-600 text-base">{t("join.description")}</p>
               <Input
                 isRequired
                 label={t("join.codeLabel")}

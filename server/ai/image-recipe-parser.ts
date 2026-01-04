@@ -1,3 +1,6 @@
+import type { ImageImportFile } from "@/types/dto/queue";
+import type { FullRecipeInsertDTO } from "@/types/dto/recipe";
+
 import { generateText, Output } from "ai";
 
 import { getModels, getGenerationSettings } from "./providers";
@@ -10,8 +13,6 @@ import {
   getExtractionLogContext,
 } from "./features/recipe-extraction/normalizer";
 
-import type { ImageImportFile } from "@/types/dto/queue";
-import type { FullRecipeInsertDTO } from "@/types/dto/recipe";
 import { isAIEnabled } from "@/config/server-config-loader";
 import { aiLogger } from "@/server/logger";
 
@@ -54,11 +55,13 @@ export async function extractRecipeFromImages(
 
   if (!aiEnabled) {
     aiLogger.info("AI features are disabled, skipping image extraction");
+
     return aiError("AI features are disabled", "AI_DISABLED");
   }
 
   if (files.length === 0) {
     aiLogger.warn("No images provided for recipe extraction");
+
     return aiError("No images provided", "INVALID_INPUT");
   }
 
@@ -97,8 +100,10 @@ export async function extractRecipeFromImages(
 
     // Validate extraction output
     const validation = validateExtractionOutput(jsonLd);
+
     if (!validation.valid) {
       aiLogger.error(validation.details, validation.error);
+
       return aiError(validation.error!, "VALIDATION_ERROR");
     }
 
@@ -109,6 +114,7 @@ export async function extractRecipeFromImages(
 
     if (!normalized) {
       aiLogger.error("Failed to normalize recipe from image extraction");
+
       return aiError("Failed to normalize recipe data", "VALIDATION_ERROR");
     }
 

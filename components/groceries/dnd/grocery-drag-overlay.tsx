@@ -37,7 +37,7 @@ export function GroceryDragOverlay({
       </div>
 
       {/* Checkbox visual (non-functional in overlay) */}
-      <Checkbox isSelected={grocery.isDone} radius="full" size="lg" isDisabled />
+      <Checkbox isDisabled isSelected={grocery.isDone} radius="full" size="lg" />
 
       {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
@@ -81,6 +81,7 @@ function formatAmountUnit(grocery: GroceryDto): string {
   if (grocery.amount && grocery.amount > 0) {
     const formattedAmount =
       grocery.amount % 1 === 0 ? grocery.amount.toString() : grocery.amount.toFixed(1);
+
     parts.push(formattedAmount);
   }
 

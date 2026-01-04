@@ -12,7 +12,9 @@ export function useRecipeIngredients(id: string | null) {
   const { recipe, isLoading, error } = useRecipeQuery(id);
 
   return {
-    ingredients: (recipe?.recipeIngredients.filter((ingredient) => ingredient.systemUsed == recipe.systemUsed) ?? []) as RecipeIngredientsDto[],
+    ingredients: (recipe?.recipeIngredients.filter(
+      (ingredient) => ingredient.systemUsed == recipe.systemUsed
+    ) ?? []) as RecipeIngredientsDto[],
     isLoading,
     error,
   };

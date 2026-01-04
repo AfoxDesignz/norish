@@ -5,8 +5,9 @@
  * and to require AI as a precondition.
  */
 
-import { getAIConfig } from "@/config/server-config-loader";
 import { aiError, type AIResult } from "./types";
+
+import { getAIConfig } from "@/config/server-config-loader";
 
 /**
  * Check if AI features are enabled.
@@ -14,6 +15,7 @@ import { aiError, type AIResult } from "./types";
  */
 export async function isAIEnabled(): Promise<boolean> {
   const aiConfig = await getAIConfig();
+
   return aiConfig?.enabled ?? false;
 }
 
@@ -23,6 +25,7 @@ export async function isAIEnabled(): Promise<boolean> {
  */
 export async function shouldAlwaysUseAI(): Promise<boolean> {
   const aiConfig = await getAIConfig();
+
   return (aiConfig?.enabled && aiConfig?.alwaysUseAI) ?? false;
 }
 
@@ -39,9 +42,11 @@ export async function shouldAlwaysUseAI(): Promise<boolean> {
  */
 export async function requireAI<T>(): Promise<AIResult<T> | null> {
   const enabled = await isAIEnabled();
+
   if (!enabled) {
     return aiError("AI features are disabled", "AI_DISABLED");
   }
+
   return null;
 }
 
@@ -51,6 +56,7 @@ export async function requireAI<T>(): Promise<AIResult<T> | null> {
  */
 export async function requireAIOrThrow(): Promise<void> {
   const enabled = await isAIEnabled();
+
   if (!enabled) {
     throw new Error("AI features are disabled. Enable them in the admin settings.");
   }

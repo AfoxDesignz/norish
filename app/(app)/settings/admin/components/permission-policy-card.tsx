@@ -57,18 +57,14 @@ export default function PermissionPolicyCard() {
         </h2>
       </CardHeader>
       <CardBody className="gap-6">
-        <p className="text-default-500 text-base">
-          {t("description")}
-        </p>
+        <p className="text-default-500 text-base">{t("description")}</p>
 
         <div className="flex flex-col gap-4">
           {/* View Policy */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-0.5">
               <span className="font-medium">{t("viewRecipes")}</span>
-              <span className="text-default-500 text-base">
-                {t("viewDescription")}
-              </span>
+              <span className="text-default-500 text-base">{t("viewDescription")}</span>
             </div>
             <Select
               aria-label={t("viewRecipes")}

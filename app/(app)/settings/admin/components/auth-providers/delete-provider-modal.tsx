@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-} from "@heroui/react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid";
 import { useTranslations } from "next-intl";
 

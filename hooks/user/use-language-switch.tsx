@@ -24,6 +24,7 @@ export function useLanguageSwitch() {
   useEffect(() => {
     if (locale) {
       const index = locales.indexOf(locale);
+
       if (index !== -1) {
         setCurrentLocaleIndex(index);
       }
@@ -35,12 +36,14 @@ export function useLanguageSwitch() {
   const cycleLocale = () => {
     const nextIndex = (currentLocaleIndex + 1) % locales.length;
     const nextLocale = locales[nextIndex];
+
     setCurrentLocaleIndex(nextIndex);
     changeLocale(nextLocale);
   };
 
   const selectLocale = (newLocale: Locale) => {
     const index = locales.indexOf(newLocale);
+
     if (index !== -1) {
       setCurrentLocaleIndex(index);
       changeLocale(newLocale);

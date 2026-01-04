@@ -61,6 +61,7 @@ export function useGroceriesQuery(): GroceriesQueryResult {
     (grocery: GroceryDto): string | null => {
       if (!grocery.recipeIngredientId) return null;
       const info = recipeMap[grocery.recipeIngredientId];
+
       return info?.recipeName ?? null;
     },
     [recipeMap]

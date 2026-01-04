@@ -60,9 +60,7 @@ export default function SystemCard() {
             value={months.toString()}
             onValueChange={(v) => setMonths(parseInt(v) || 3)}
           />
-          <p className="text-default-500 text-xs">
-            {t("cleanup.description")}
-          </p>
+          <p className="text-default-500 text-xs">{t("cleanup.description")}</p>
           <div className="flex justify-end">
             <Button
               color="primary"
@@ -80,9 +78,7 @@ export default function SystemCard() {
           <h3 className="font-medium">{t("server.title")}</h3>
           <div className="flex flex-col gap-2">
             <span className="text-base">{t("server.restartLabel")}</span>
-            <p className="text-default-500 text-xs">
-              {t("server.restartDescription")}
-            </p>
+            <p className="text-default-500 text-xs">{t("server.restartDescription")}</p>
             <div className="flex justify-end">
               <Button
                 color="warning"

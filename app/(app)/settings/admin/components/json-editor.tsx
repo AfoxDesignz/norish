@@ -103,7 +103,7 @@ export default function JsonEditor({
       {label && (
         <div className="flex items-center gap-2">
           <span className="font-medium">{label}</span>
-        {isDirty && (
+          {isDirty && (
             <Chip color="warning" size="sm" variant="flat">
               {t("unsavedChanges")}
             </Chip>

@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CheckIcon } from "@heroicons/react/20/solid";
 
 import { useRecipeContextRequired } from "../context";
 
 import SmartMarkdownRenderer from "@/components/shared/smart-markdown-renderer";
-import { RecipeIngredientsDto } from "@/types/dto/recipe-ingredient";
 
 // Format amount as a clean decimal (e.g., 2.5, 0.25)
 function formatAmount(n: number | null | string): string {

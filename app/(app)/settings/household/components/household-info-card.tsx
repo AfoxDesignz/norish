@@ -80,13 +80,9 @@ export default function HouseholdInfoCard() {
             <>
               <ModalHeader>{t("leaveModal.title")}</ModalHeader>
               <ModalBody>
-                <p>
-                  {t("leaveModal.confirmMessage", { name: household.name })}
-                </p>
+                <p>{t("leaveModal.confirmMessage", { name: household.name })}</p>
                 {isAdmin && otherMembers.length > 0 && (
-                  <p className="text-warning mt-2">
-                    {t("leaveModal.adminWarning")}
-                  </p>
+                  <p className="text-warning mt-2">{t("leaveModal.adminWarning")}</p>
                 )}
               </ModalBody>
               <ModalFooter>

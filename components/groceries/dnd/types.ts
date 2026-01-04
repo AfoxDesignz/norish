@@ -94,6 +94,7 @@ export function containerIdToStoreId(containerId: ContainerId): string | null {
  */
 export function isContainerId(id: UniqueIdentifier, stores: StoreDto[]): boolean {
   if (id === UNSORTED_CONTAINER) return true;
+
   return stores.some((s) => s.id === id);
 }
 
@@ -109,6 +110,7 @@ export function findContainerForItem(
       return containerId;
     }
   }
+
   return null;
 }
 
@@ -131,6 +133,7 @@ export function buildItemsState(groceries: GroceryDto[], stores: StoreDto[]): It
 
   for (const grocery of activeGroceries) {
     const containerId = getContainerIdForGrocery(grocery);
+
     if (!items[containerId]) {
       items[containerId] = [];
     }
@@ -142,6 +145,7 @@ export function buildItemsState(groceries: GroceryDto[], stores: StoreDto[]): It
     items[containerId].sort((aId, bId) => {
       const a = groceries.find((g) => g.id === aId);
       const b = groceries.find((g) => g.id === bId);
+
       return (a?.sortOrder ?? 0) - (b?.sortOrder ?? 0);
     });
   }

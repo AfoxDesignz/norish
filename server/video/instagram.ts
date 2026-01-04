@@ -12,6 +12,7 @@ import { fetchViaPlaywright } from "@/server/parser/fetch";
 export function isInstagramUrl(url: string): boolean {
   try {
     const hostname = new URL(url).hostname.toLowerCase();
+
     return hostname.includes("instagram.com");
   } catch {
     return false;
@@ -35,6 +36,7 @@ function extractInstagramCaption(html: string): string {
   const metaMatch = html.match(
     /<meta\s+(?:name|property)=["'](?:og:description|description)["']\s+content=["']([^"']+)["']/i
   );
+
   if (metaMatch?.[1]) {
     const decoded = metaMatch[1]
       .replace(/&quot;/g, '"')
@@ -43,6 +45,7 @@ function extractInstagramCaption(html: string): string {
       .replace(/&gt;/g, ">")
       .replace(/&#x27;/g, "'")
       .replace(/&#39;/g, "'");
+
     if (decoded.length > 50) {
       return decoded;
     }
@@ -52,6 +55,7 @@ function extractInstagramCaption(html: string): string {
   const altMetaMatch = html.match(
     /<meta\s+content=["']([^"']+)["']\s+(?:name|property)=["'](?:og:description|description)["']/i
   );
+
   if (altMetaMatch?.[1]) {
     const decoded = altMetaMatch[1]
       .replace(/&quot;/g, '"')
@@ -60,6 +64,7 @@ function extractInstagramCaption(html: string): string {
       .replace(/&gt;/g, ">")
       .replace(/&#x27;/g, "'")
       .replace(/&#39;/g, "'");
+
     if (decoded.length > 50) {
       return decoded;
     }
@@ -67,6 +72,7 @@ function extractInstagramCaption(html: string): string {
 
   // Try to find caption in the page content (Instagram's article structure)
   const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
+
   if (articleMatch?.[1]) {
     // Extract text content, removing HTML tags
     const textContent = articleMatch[1]
@@ -75,6 +81,7 @@ function extractInstagramCaption(html: string): string {
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ")
       .trim();
+
     if (textContent.length > 50) {
       return textContent;
     }
@@ -102,6 +109,7 @@ export async function processInstagramImagePost(
     log.info({ url }, "Description from yt-dlp too short, attempting Playwright scrape");
     try {
       const html = await fetchViaPlaywright(url);
+
       if (html) {
         description = extractInstagramCaption(html);
         log.info(
@@ -130,6 +138,7 @@ export async function processInstagramImagePost(
   }
 
   const recipe = result.data;
+
   if (metadata.thumbnail) {
     try {
       recipe.image = await downloadImage(metadata.thumbnail);

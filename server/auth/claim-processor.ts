@@ -1,3 +1,5 @@
+import type { OIDCClaimConfig } from "@/server/db/zodSchemas/server-config";
+
 import { authLogger } from "@/server/logger";
 import {
   findOrCreateHouseholdByName,
@@ -5,7 +7,6 @@ import {
   getHouseholdForUser,
 } from "@/server/db/repositories/households";
 import { setUserAdminStatus } from "@/server/db/repositories/users";
-import type { OIDCClaimConfig } from "@/server/db/zodSchemas/server-config";
 
 const DEFAULT_CONFIG: Required<OIDCClaimConfig> = {
   enabled: false,

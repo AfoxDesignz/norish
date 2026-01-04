@@ -79,8 +79,8 @@ function SortableImageItem({ item, index, onDelete }: SortableImageItemProps) {
       {/* Drag handle - always visible */}
       <button
         ref={setActivatorNodeRef}
-        type="button"
         className="absolute top-2 left-2 z-20 flex h-6 w-6 cursor-grab touch-none items-center justify-center rounded-full bg-black/60 text-white active:cursor-grabbing"
+        type="button"
         {...attributes}
         {...listeners}
       >
@@ -270,7 +270,7 @@ export default function ImageGalleryInput({
         className="scrollbar-hide w-full min-w-0 overflow-x-auto pb-2"
         style={{ WebkitOverflowScrolling: "touch" }}
       >
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext collisionDetection={closestCenter} sensors={sensors} onDragEnd={handleDragEnd}>
           <SortableContext items={itemIds} strategy={horizontalListSortingStrategy}>
             <div className="flex w-max gap-3">
               {images.map((item, index) => (

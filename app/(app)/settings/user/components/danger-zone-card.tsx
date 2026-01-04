@@ -34,9 +34,7 @@ export default function DangerZoneCard() {
           <h2 className="text-danger text-lg font-semibold">{t("title")}</h2>
         </CardHeader>
         <CardBody className="gap-4">
-          <p className="text-default-600 text-base">
-            {t("description")}
-          </p>
+          <p className="text-default-600 text-base">{t("description")}</p>
           <div className="flex justify-end">
             <Button
               color="danger"
@@ -60,15 +58,9 @@ export default function DangerZoneCard() {
                 <p className="text-danger mb-2 font-semibold">
                   {t("deleteModal.permanentWarning")}
                 </p>
-                <p>
-                  {t("deleteModal.dataWarning")}
-                </p>
-                <p className="mt-2">
-                  {t("deleteModal.recipesNote")}
-                </p>
-                <p className="mt-2">
-                  {t("deleteModal.adminNote")}
-                </p>
+                <p>{t("deleteModal.dataWarning")}</p>
+                <p className="mt-2">{t("deleteModal.recipesNote")}</p>
+                <p className="mt-2">{t("deleteModal.adminNote")}</p>
               </ModalBody>
               <ModalFooter>
                 <Button variant="flat" onPress={onClose}>

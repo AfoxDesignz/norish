@@ -5,7 +5,8 @@
  */
 
 import { loadPrompt, fillPrompt } from "./loader";
-import { buildAllergyInstruction, type AllergyInstructionOptions } from "./fragments/allergies";
+import { buildAllergyInstruction } from "./fragments/allergies";
+
 import { getAutoTaggingMode } from "@/config/server-config-loader";
 import { listAllTagNames } from "@/server/db/repositories/tags";
 
@@ -79,14 +80,17 @@ export async function buildAutoTaggingPrompt(
 
   // Fetch DB tags if needed and not provided
   let dbTags: string[] | undefined = providedTags;
+
   if (mode === "predefined_db" && !dbTags) {
     dbTags = await listAllTagNames();
   }
 
   // Build mode-specific additions
   let modeAddition = "";
+
   if (mode === "predefined_db" && dbTags && dbTags.length > 0) {
     const dbTagsList = dbTags.join(", ");
+
     modeAddition = `
 
 ADDITIONAL ALLOWED TAGS (from existing recipes):

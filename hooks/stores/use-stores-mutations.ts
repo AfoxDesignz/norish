@@ -45,7 +45,9 @@ export function useStoresMutations(): StoresMutationsResult {
           setStoresData((prev) => {
             if (!prev) return [newStore];
             const exists = prev.some((s) => s.id === storeId);
+
             if (exists) return prev;
+
             return [...prev, newStore];
           });
 
@@ -63,6 +65,7 @@ export function useStoresMutations(): StoresMutationsResult {
     // Optimistically update
     setStoresData((prev) => {
       if (!prev) return prev;
+
       return prev.map((s) => (s.id === data.id ? { ...s, ...data } : s));
     });
 
@@ -75,6 +78,7 @@ export function useStoresMutations(): StoresMutationsResult {
     // Optimistically remove
     setStoresData((prev) => {
       if (!prev) return prev;
+
       return prev.filter((s) => s.id !== storeId);
     });
 
@@ -91,9 +95,11 @@ export function useStoresMutations(): StoresMutationsResult {
     setStoresData((prev) => {
       if (!prev) return prev;
       const storeMap = new Map(prev.map((s) => [s.id, s]));
+
       return storeIds
         .map((id, index) => {
           const store = storeMap.get(id);
+
           return store ? { ...store, sortOrder: index } : null;
         })
         .filter((s): s is StoreDto => s !== null);

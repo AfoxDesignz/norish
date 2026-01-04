@@ -64,6 +64,7 @@ const list = authedProcedure.query(async ({ ctx }) => {
 
   // Convert Map to plain object for serialization
   const recipeMap: Record<string, { recipeId: string; recipeName: string }> = {};
+
   for (const [key, value] of recipeInfoMap) {
     recipeMap[key] = value;
   }
@@ -93,13 +94,16 @@ const create = authedProcedure
     // Groceries with different recipeIngredientIds should NOT merge, even if same name/unit
     // Groceries with recurringGroceryId should NOT merge with manual groceries
     const existingByKey = new Map<string, (typeof existingGroceries)[0]>();
+
     for (const grocery of existingGroceries) {
       const normalizedName = normalizeGroceryName(grocery.name);
+
       if (normalizedName && !grocery.isDone) {
         // Key includes recipeIngredientId and recurringGroceryId to prevent unwanted merging
         const recipeKey = grocery.recipeIngredientId ?? "manual";
         const recurringKey = grocery.recurringGroceryId ?? "none";
         const key = `${normalizedName}|${recipeKey}|${recurringKey}`;
+
         if (!existingByKey.has(key)) {
           existingByKey.set(key, grocery);
         }
@@ -151,9 +155,11 @@ const create = authedProcedure
 
         // Use provided storeId, or lookup from preferences
         let storeId: string | null = grocery.storeId ?? null;
+
         if (!storeId && grocery.name) {
           const normalized = normalizeIngredientName(grocery.name);
           const preference = await getIngredientStorePreference(ctx.user.id, normalized);
+
           storeId = preference?.storeId ?? null;
         }
 
@@ -382,6 +388,7 @@ const assignToStore = authedProcedure
     ])
       .then(async ([ownerIds, storeOwnerId]) => {
         const ownerId = ownerIds.get(groceryId);
+
         if (!ownerId) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Grocery not found" });
         }
@@ -398,6 +405,7 @@ const assignToStore = authedProcedure
 
         // Get grocery for name (need it for preference saving)
         const [grocery] = await getGroceriesByIds([groceryId]);
+
         if (!grocery) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Grocery not found" });
         }
@@ -410,6 +418,7 @@ const assignToStore = authedProcedure
         // Save preference if requested and grocery has a name
         if (savePreference && storeId && grocery.name) {
           const normalized = normalizeIngredientName(grocery.name);
+
           await upsertIngredientStorePreference(ctx.user.id, normalized, storeId);
           log.debug(
             { userId: ctx.user.id, normalized, storeId },
@@ -461,6 +470,7 @@ const reorderInStore = authedProcedure
 
     // Collect unique store IDs that need access verification
     const storeIdsToVerify = new Set<string>();
+
     for (const u of updates) {
       if (u.storeId !== undefined && u.storeId !== null) {
         storeIdsToVerify.add(u.storeId);
@@ -484,6 +494,7 @@ const reorderInStore = authedProcedure
         // Verify access to any stores being assigned to
         for (const storeId of storeIdsToVerify) {
           const storeOwnerId = await getStoreOwnerId(storeId);
+
           if (!storeOwnerId) {
             throw new TRPCError({ code: "NOT_FOUND", message: "Store not found" });
           }
@@ -508,8 +519,10 @@ const reorderInStore = authedProcedure
 
             for (const grocery of groceriesForPreference) {
               const update = itemsWithStoreChange.find((u) => u.id === grocery.id);
+
               if (update?.storeId && grocery.name) {
                 const normalized = normalizeIngredientName(grocery.name);
+
                 await upsertIngredientStorePreference(ctx.user.id, normalized, update.storeId);
                 log.debug(
                   { userId: ctx.user.id, normalized, storeId: update.storeId },

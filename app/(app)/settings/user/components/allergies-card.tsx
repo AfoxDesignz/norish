@@ -38,9 +38,7 @@ export default function AllergiesCard() {
         </h2>
       </CardHeader>
       <CardBody className="gap-4">
-        <p className="text-default-500 text-base">
-          {t("description")}
-        </p>
+        <p className="text-default-500 text-base">{t("description")}</p>
         <TagInput
           placeholder={t("placeholder")}
           value={localAllergies}

@@ -20,9 +20,7 @@ export default function AIProcessingCard() {
         </div>
       </CardHeader>
       <CardBody>
-        <p className="text-default-500 mb-4 text-base">
-          {t("description")}
-        </p>
+        <p className="text-default-500 mb-4 text-base">{t("description")}</p>
         <Accordion selectionMode="multiple" variant="bordered">
           <AccordionItem
             key="ai"

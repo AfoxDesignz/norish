@@ -3,7 +3,17 @@
 import type { CalDavCalendarInfo } from "@/types";
 
 import { useState, useEffect, useRef } from "react";
-import { Card, CardBody, CardHeader, Input, Button, useDisclosure, Link, Select, SelectItem } from "@heroui/react";
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  Input,
+  Button,
+  useDisclosure,
+  Link,
+  Select,
+  SelectItem,
+} from "@heroui/react";
 import {
   ServerIcon,
   EyeIcon,
@@ -53,7 +63,7 @@ export default function CalDavConfigCard() {
       const result = await testConnection(serverUrl, username, password);
 
       setTestResult(result);
-      
+
       // Store returned calendars for selection
       if (result.success && result.calendars && result.calendars.length > 0) {
         setCalendars(result.calendars);
@@ -120,9 +130,7 @@ export default function CalDavConfigCard() {
           <ServerIcon className="text-primary h-6 w-6" />
           <div>
             <h2 className="text-lg font-semibold">{t("title")}</h2>
-            <p className="text-default-500 mt-1 text-base">
-              {t("description")}
-            </p>
+            <p className="text-default-500 mt-1 text-base">{t("description")}</p>
           </div>
         </div>
       </CardHeader>
@@ -134,9 +142,7 @@ export default function CalDavConfigCard() {
             <InformationCircleIcon className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-primary mb-2 text-base font-medium">{t("gettingStarted")}</p>
-              <p className="text-default-600 mb-2 text-xs">
-                {t("providerDescription")}
-              </p>
+              <p className="text-default-600 mb-2 text-xs">{t("providerDescription")}</p>
               <ul className="text-default-600 ml-4 list-disc space-y-1 text-xs">
                 <li>
                   <Link
@@ -221,13 +227,18 @@ export default function CalDavConfigCard() {
 
         {/* Calendar Selection - always visible, disabled until calendars fetched */}
         <Select
-          description={calendars.length === 0 ? t("calendarDescriptionDisabled") : t("calendarDescription")}
+          description={
+            calendars.length === 0 ? t("calendarDescriptionDisabled") : t("calendarDescription")
+          }
           isDisabled={calendars.length === 0}
           label={t("calendarLabel")}
-          placeholder={calendars.length === 0 ? t("calendarPlaceholderDisabled") : t("calendarPlaceholder")}
+          placeholder={
+            calendars.length === 0 ? t("calendarPlaceholderDisabled") : t("calendarPlaceholder")
+          }
           selectedKeys={calendarUrl ? [calendarUrl] : []}
           onSelectionChange={(keys) => {
             const selected = Array.from(keys)[0] as string;
+
             setCalendarUrl(selected || null);
           }}
         >

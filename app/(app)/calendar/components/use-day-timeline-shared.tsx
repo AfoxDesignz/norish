@@ -34,14 +34,8 @@ export function useDayTimelineShared() {
   const rangeEnd = useMemo(() => endOfMonth(addMonths(today, 1)), [today]);
   const allDays = useMemo(() => eachDayOfInterval(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
 
-  const weekdayLong = useMemo(
-    () => new Intl.DateTimeFormat(locale, { weekday: "long" }),
-    [locale]
-  );
-  const monthLong = useMemo(
-    () => new Intl.DateTimeFormat(locale, { month: "long" }),
-    [locale]
-  );
+  const weekdayLong = useMemo(() => new Intl.DateTimeFormat(locale, { weekday: "long" }), [locale]);
+  const monthLong = useMemo(() => new Intl.DateTimeFormat(locale, { month: "long" }), [locale]);
 
   const todayKey = useMemo(() => dateKey(today), [today]);
   const todayIndex = useMemo(

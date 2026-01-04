@@ -72,6 +72,7 @@ export class CalDavClient {
       if (!cal.components || cal.components.length === 0) {
         return true;
       }
+
       // Only include calendars that support VEVENT
       return cal.components.includes("VEVENT");
     });

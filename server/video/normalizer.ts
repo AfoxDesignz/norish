@@ -1,8 +1,8 @@
+import type { VideoMetadata } from "./types";
+import type { FullRecipeInsertDTO } from "@/types/dto/recipe";
+
 import { generateText, Output } from "ai";
 
-import type { VideoMetadata } from "./types";
-
-import type { FullRecipeInsertDTO } from "@/types/dto/recipe";
 import { videoLogger } from "@/server/logger";
 import { getModels, getGenerationSettings } from "@/server/ai/providers";
 import { recipeExtractionSchema } from "@/server/ai/schemas/recipe.schema";
@@ -42,6 +42,7 @@ export async function extractRecipeFromVideo(
 
   if (!aiEnabled) {
     videoLogger.info("AI features are disabled, skipping video extraction");
+
     return aiError("AI features are disabled", "AI_DISABLED");
   }
 
@@ -84,8 +85,10 @@ export async function extractRecipeFromVideo(
 
     // Validate extraction output
     const validation = validateExtractionOutput(jsonLd);
+
     if (!validation.valid) {
       videoLogger.error({ url, ...validation.details }, validation.error);
+
       return aiError(validation.error!, "VALIDATION_ERROR");
     }
 
@@ -96,6 +99,7 @@ export async function extractRecipeFromVideo(
 
     // Download thumbnail as recipe image if available
     let thumbnailPath: string | undefined;
+
     if (metadata.thumbnail) {
       try {
         thumbnailPath = await downloadImage(metadata.thumbnail);
@@ -113,6 +117,7 @@ export async function extractRecipeFromVideo(
 
     if (!normalized) {
       videoLogger.error({ url }, "Failed to normalize recipe from JSON-LD");
+
       return aiError("Failed to normalize recipe data", "VALIDATION_ERROR");
     }
 

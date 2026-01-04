@@ -16,10 +16,7 @@ export const stores = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("idx_stores_user_id").on(t.userId),
-    index("idx_stores_sort_order").on(t.sortOrder),
-  ]
+  (t) => [index("idx_stores_user_id").on(t.userId), index("idx_stores_sort_order").on(t.sortOrder)]
 );
 
 export const ingredientStorePreferences = pgTable(

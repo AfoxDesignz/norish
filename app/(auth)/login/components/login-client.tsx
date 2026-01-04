@@ -37,14 +37,12 @@ export function LoginClient({
   const hasCredential = !!credentialProvider;
   const hasOAuth = oauthProviders.length > 0;
 
-return (
+  return (
     <AuthCard
       footer={
         hasOAuth &&
         !hasCredential && (
-          <p className="text-small text-default-500 mt-6 text-center">
-            {t("redirectMessage")}
-          </p>
+          <p className="text-small text-default-500 mt-6 text-center">{t("redirectMessage")}</p>
         )
       }
       subtitle={t("subtitle")}

@@ -40,6 +40,7 @@ function MiniGroceriesContent({
   const ingredients = useMemo(() => {
     return rawIngredients.filter((i) => {
       const name = i.ingredientName?.trim() ?? "";
+
       // Skip headings, recipe links, and empty names
       return (
         !name.startsWith("#") &&
@@ -74,9 +75,11 @@ function MiniGroceriesContent({
 
   const handleEditStart = (id: string) => {
     const item = scaledIngredients.find((i) => i.ingredientId === id);
+
     if (!item) return;
     setEditingId(id);
     const text = [item.amount, item.unit, item.ingredientName].filter(Boolean).join(" ");
+
     setEditValue(text);
   };
 
@@ -252,10 +255,10 @@ export default function MiniGroceries({
     <Panel open={open} title={t("addToGroceries")} onOpenChange={onOpenChange}>
       {open && (
         <MiniGroceriesContent
-          recipeId={recipeId}
-          onOpenChange={onOpenChange}
           initialServings={initialServings}
           originalServings={originalServings}
+          recipeId={recipeId}
+          onOpenChange={onOpenChange}
         />
       )}
     </Panel>

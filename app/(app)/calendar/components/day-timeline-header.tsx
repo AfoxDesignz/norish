@@ -48,7 +48,7 @@ export function DayTimelineHeader({ date, isToday, weekday, month, onPanelOpenCh
 
       <div className="flex-1" />
 
-<Button
+      <Button
         isIconOnly
         aria-label={t("addItem")}
         className="min-w-0 bg-transparent p-1 shadow-none data-[hover=true]:bg-transparent"

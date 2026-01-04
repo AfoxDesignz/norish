@@ -39,6 +39,7 @@ export async function getModelCapabilities(
         if (endpoint && model) {
           return await queryOllamaCapabilities(endpoint, model, defaults);
         }
+
         return {
           ...defaults,
           supportsMaxTokens: false, // Ollama uses num_predict
@@ -64,6 +65,7 @@ export async function getModelCapabilities(
     }
   } catch (error) {
     aiLogger.warn({ err: error, provider }, "Failed to query model capabilities, using defaults");
+
     return defaults;
   }
 }
@@ -89,6 +91,7 @@ async function queryOllamaCapabilities(
 
     if (!response.ok) {
       aiLogger.debug({ status: response.status }, "Ollama /api/show request failed");
+
       return { ...defaults, supportsMaxTokens: false };
     }
 
@@ -113,6 +116,7 @@ async function queryOllamaCapabilities(
     };
   } catch (error) {
     aiLogger.debug({ err: error }, "Failed to query Ollama capabilities");
+
     return { ...defaults, supportsMaxTokens: false };
   }
 }

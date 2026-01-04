@@ -1,8 +1,9 @@
 import "@/styles/globals.css";
-import { appMetadata, appViewport } from "./metadata";
 
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+
+import { appMetadata, appViewport } from "./metadata";
 
 import { fontSans } from "@/config/fonts";
 import RegisterServiceWorker from "@/components/register-service-worker";
@@ -16,9 +17,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html suppressHydrationWarning lang={locale}>
-      <head>
-        <meta content="transparent" name="theme-color" />
-      </head>
+      <head />
       <body
         className={`bg-background text-foreground min-h-dvh font-sans antialiased ${fontSans.variable}`}
       >

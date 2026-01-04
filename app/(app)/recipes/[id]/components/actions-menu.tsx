@@ -37,6 +37,7 @@ type MenuItem = {
 };
 
 export default function ActionsMenu({ id }: Props) {
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const [openCalendar, setOpenCalendar] = React.useState(false);
   const [openGroceries, setOpenGroceries] = React.useState(false);
   const router = useRouter();
@@ -153,7 +154,11 @@ export default function ActionsMenu({ id }: Props) {
 
   return (
     <>
-      <Dropdown>
+      <Dropdown
+        classNames={{ content: "z-[500]" }}
+        isOpen={isDropdownOpen}
+        onOpenChange={setIsDropdownOpen}
+      >
         <DropdownTrigger>
           <Button
             isIconOnly
@@ -181,7 +186,10 @@ export default function ActionsMenu({ id }: Props) {
                   <span className={item.iconClassName ?? "text-default-400"}>{item.icon}</span>
                 }
                 variant="light"
-                onPress={item.onPress}
+                onPress={() => {
+                  setIsDropdownOpen(false);
+                  item.onPress();
+                }}
               >
                 <span className={`text-sm font-medium ${item.labelClassName ?? ""}`}>
                   {item.label}

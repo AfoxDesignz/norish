@@ -2,12 +2,12 @@
  * AI Provider Factory - Creates AI model instances from configuration.
  */
 
+import type { ModelConfig, GenerationSettings, AIProvider } from "./types";
+
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createPerplexity } from "@ai-sdk/perplexity";
 import { createOllama } from "ollama-ai-provider-v2";
-
-import type { ModelConfig, GenerationSettings, AIProvider } from "./types";
 
 import { getAIConfig } from "@/config/server-config-loader";
 import { aiLogger } from "@/server/logger";
@@ -46,6 +46,7 @@ export function createModelsFromConfig(config: {
       if (!apiKey) throw new Error("API Key is required for OpenAI provider");
 
       const openai = createOpenAI({ apiKey });
+
       return {
         model: openai(model),
         visionModel: openai(visionModel || model),
@@ -57,6 +58,7 @@ export function createModelsFromConfig(config: {
       if (!endpoint) throw new Error("Endpoint is required for Ollama provider");
 
       const ollama = createOllama({ baseURL: endpoint });
+
       return {
         model: ollama(model),
         visionModel: ollama(visionModel || model),
@@ -69,6 +71,7 @@ export function createModelsFromConfig(config: {
       if (!endpoint) throw new Error("Endpoint is required for this provider");
 
       let normalizedEndpoint = endpoint.replace(/\/+$/, ""); // Remove trailing slashes
+
       if (!normalizedEndpoint.endsWith("/v1")) {
         normalizedEndpoint = `${normalizedEndpoint}/v1`;
       }
@@ -93,6 +96,7 @@ export function createModelsFromConfig(config: {
 
       // Use the official Perplexity AI SDK provider
       const perplexity = createPerplexity({ apiKey });
+
       return {
         model: perplexity(model),
         visionModel: perplexity(visionModel || model),

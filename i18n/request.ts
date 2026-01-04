@@ -89,6 +89,7 @@ async function loadMessages(locale: Locale): Promise<Record<string, unknown>> {
   for (const section of sections) {
     try {
       const sectionMessages = (await import(`./messages/${locale}/${section}.json`)).default;
+
       messages[section] = sectionMessages;
     } catch {
       // Section file doesn't exist for this locale, skip

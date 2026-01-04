@@ -1,3 +1,5 @@
+import type { FullRecipeDTO, MeasurementSystem } from "@/types";
+
 import { generateText, Output } from "ai";
 
 import { normalizeIngredient, normalizeStep } from "./helpers";
@@ -7,7 +9,6 @@ import { loadPrompt, fillPrompt } from "./prompts/loader";
 import { aiSuccess, aiError, mapErrorToCode, getErrorMessage, type AIResult } from "./types/result";
 
 import { isAIEnabled } from "@/config/server-config-loader";
-import type { FullRecipeDTO, MeasurementSystem } from "@/types";
 import { RecipeIngredientInputSchema, StepStepSchema } from "@/server/db/zodSchemas";
 import { aiLogger } from "@/server/logger";
 
@@ -75,6 +76,7 @@ export async function convertRecipeDataWithAI(
 
   if (!aiEnabled) {
     aiLogger.info("AI features are disabled, cannot convert measurements");
+
     return aiError("AI features are disabled", "AI_DISABLED");
   }
 
@@ -108,6 +110,7 @@ export async function convertRecipeDataWithAI(
         { recipeName: recipe.name, sourceSystem, targetSystem },
         "AI returned empty output for recipe conversion"
       );
+
       return aiError("AI returned empty response", "EMPTY_RESPONSE");
     }
 
@@ -130,6 +133,7 @@ export async function convertRecipeDataWithAI(
         { recipeName: recipe.name, error: validatedIngredients.error.message },
         "Ingredient validation failed for AI conversion"
       );
+
       return aiError("AI response failed ingredient validation", "VALIDATION_ERROR");
     }
 
@@ -138,6 +142,7 @@ export async function convertRecipeDataWithAI(
         { recipeName: recipe.name, error: validatedSteps.error.message },
         "Step validation failed for AI conversion"
       );
+
       return aiError("AI response failed step validation", "VALIDATION_ERROR");
     }
 

@@ -96,9 +96,7 @@ export default function JoinCodeCard() {
       <CardBody className="gap-4">
         {adminHousehold.joinCode && !joinCodeExpired ? (
           <>
-            <p className="text-default-600 text-base">
-              {t("shareDescription")}
-            </p>
+            <p className="text-default-600 text-base">{t("shareDescription")}</p>
             <div className="flex gap-2">
               <Input
                 isReadOnly
@@ -126,9 +124,7 @@ export default function JoinCodeCard() {
           </>
         ) : (
           <>
-            <p className="text-default-600 text-base">
-              {t("noCodeDescription")}
-            </p>
+            <p className="text-default-600 text-base">{t("noCodeDescription")}</p>
             <div className="flex justify-end">
               <Button
                 color="primary"

@@ -1,4 +1,9 @@
-import type { StoreDto, StoreInsertDto, StoreUpdateDto, IngredientStorePreferenceDto } from "@/types";
+import type {
+  StoreDto,
+  StoreInsertDto,
+  StoreUpdateDto,
+  IngredientStorePreferenceDto,
+} from "@/types";
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 import z from "zod";
@@ -19,6 +24,7 @@ export async function getStoreById(id: string): Promise<StoreDto | null> {
   if (!row) return null;
 
   const parsed = StoreSelectBaseSchema.safeParse(row);
+
   if (!parsed.success) throw new Error("Failed to parse store by id");
 
   return parsed.data;
@@ -34,6 +40,7 @@ export async function listStoresByUserIds(userIds: string[]): Promise<StoreDto[]
     .orderBy(stores.sortOrder);
 
   const parsed = z.array(StoreSelectBaseSchema).safeParse(rows);
+
   if (!parsed.success) throw new Error("Failed to parse stores");
 
   return parsed.data;
@@ -67,6 +74,7 @@ export async function checkStoreNameExistsInHousehold(
 
 export async function createStore(id: string, input: StoreInsertDto): Promise<StoreDto> {
   const parsed = StoreInsertBaseSchema.safeParse(input);
+
   if (!parsed.success) throw new Error("Invalid StoreInsertDto");
 
   // Get max sort order for user's stores
@@ -83,6 +91,7 @@ export async function createStore(id: string, input: StoreInsertDto): Promise<St
     .returning();
 
   const validated = StoreSelectBaseSchema.safeParse(row);
+
   if (!validated.success) throw new Error("Failed to parse created store");
 
   return validated.data;
@@ -90,6 +99,7 @@ export async function createStore(id: string, input: StoreInsertDto): Promise<St
 
 export async function updateStore(input: StoreUpdateDto): Promise<StoreDto | null> {
   const parsed = StoreUpdateBaseSchema.safeParse(input);
+
   if (!parsed.success) throw new Error("Invalid StoreUpdateDto");
 
   const [row] = await db
@@ -101,6 +111,7 @@ export async function updateStore(input: StoreUpdateDto): Promise<StoreDto | nul
   if (!row) return null;
 
   const validated = StoreSelectBaseSchema.safeParse(row);
+
   if (!validated.success) throw new Error("Failed to parse updated store");
 
   return validated.data;
@@ -119,7 +130,9 @@ export async function reorderStores(storeIds: string[]): Promise<StoreDto[]> {
 
       if (row) {
         const validated = StoreSelectBaseSchema.safeParse(row);
-        if (!validated.success) throw new Error(`Failed to parse reordered store (id=${storeIds[i]})`);
+
+        if (!validated.success)
+          throw new Error(`Failed to parse reordered store (id=${storeIds[i]})`);
         updatedStores.push(validated.data);
       }
     }
@@ -155,7 +168,9 @@ export async function deleteStore(
     }
 
     // Delete ingredient preferences for this store
-    await trx.delete(ingredientStorePreferences).where(eq(ingredientStorePreferences.storeId, storeId));
+    await trx
+      .delete(ingredientStorePreferences)
+      .where(eq(ingredientStorePreferences.storeId, storeId));
 
     // Delete the store
     await trx.delete(stores).where(eq(stores.id, storeId));
@@ -201,18 +216,22 @@ export async function getIngredientStorePreference(
   if (!row) return null;
 
   const parsed = IngredientStorePreferenceSelectSchema.safeParse(row);
+
   if (!parsed.success) throw new Error("Failed to parse ingredient store preference");
 
   return parsed.data;
 }
 
-export async function listIngredientStorePreferences(userId: string): Promise<IngredientStorePreferenceDto[]> {
+export async function listIngredientStorePreferences(
+  userId: string
+): Promise<IngredientStorePreferenceDto[]> {
   const rows = await db
     .select()
     .from(ingredientStorePreferences)
     .where(eq(ingredientStorePreferences.userId, userId));
 
   const parsed = z.array(IngredientStorePreferenceSelectSchema).safeParse(rows);
+
   if (!parsed.success) throw new Error("Failed to parse ingredient store preferences");
 
   return parsed.data;
@@ -225,6 +244,7 @@ export async function upsertIngredientStorePreference(
 ): Promise<IngredientStorePreferenceDto> {
   const input = { userId, normalizedName, storeId };
   const parsed = IngredientStorePreferenceInsertSchema.safeParse(input);
+
   if (!parsed.success) throw new Error("Invalid IngredientStorePreferenceInsertDto");
 
   const [row] = await db
@@ -237,12 +257,16 @@ export async function upsertIngredientStorePreference(
     .returning();
 
   const validated = IngredientStorePreferenceSelectSchema.safeParse(row);
+
   if (!validated.success) throw new Error("Failed to parse upserted ingredient store preference");
 
   return validated.data;
 }
 
-export async function deleteIngredientStorePreference(userId: string, normalizedName: string): Promise<void> {
+export async function deleteIngredientStorePreference(
+  userId: string,
+  normalizedName: string
+): Promise<void> {
   await db
     .delete(ingredientStorePreferences)
     .where(

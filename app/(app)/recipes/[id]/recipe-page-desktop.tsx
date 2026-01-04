@@ -32,7 +32,12 @@ import { useRatingQuery, useRatingsMutation } from "@/hooks/ratings";
 import NutritionCard from "@/components/recipes/nutrition-card";
 
 export default function RecipePageDesktop() {
-  const { recipe, currentServings: _currentServings, allergies, allergySet } = useRecipeContextRequired();
+  const {
+    recipe,
+    currentServings: _currentServings,
+    allergies,
+    allergySet,
+  } = useRecipeContextRequired();
   const { isFavorite: checkFavorite } = useFavoritesQuery();
   const { toggleFavorite } = useFavoritesMutation();
   const { userRating, averageRating, isLoading: isRatingLoading } = useRatingQuery(recipe.id);
@@ -55,7 +60,10 @@ export default function RecipePageDesktop() {
     <div className="hidden flex-col space-y-6 px-6 pb-10 md:flex">
       {/* Back link */}
       <div className="w-fit">
-        <Link className="text-default-500 flex items-center gap-1 text-base hover:underline" href="/">
+        <Link
+          className="text-default-500 flex items-center gap-1 text-base hover:underline"
+          href="/"
+        >
           <ArrowLeftIcon className="h-4 w-4" />
           {t("backToRecipes")}
         </Link>
@@ -93,7 +101,7 @@ export default function RecipePageDesktop() {
 
               {/* Description */}
               {recipe.description && (
-                <p className="text-base text-base leading-relaxed">
+                <p className="text-base leading-relaxed">
                   <SmartMarkdownRenderer text={recipe.description} />
                 </p>
               )}
@@ -174,10 +182,10 @@ export default function RecipePageDesktop() {
           <div className="relative overflow-hidden rounded-2xl shadow-md">
             <DoubleTapContainer onDoubleTap={handleToggleFavorite}>
               <ImageCarousel
-                rounded={false}
                 className="min-h-[400px]"
                 images={carouselImages}
                 recipeName={recipe.name ?? "Recipe"}
+                rounded={false}
               />
             </DoubleTapContainer>
 

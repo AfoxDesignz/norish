@@ -43,7 +43,11 @@ type DataCtx = {
 
   // Grocery Actions
   createGrocery: (raw: string, storeId?: string | null) => void;
-  createRecurringGrocery: (raw: string, pattern: RecurrencePattern, storeId?: string | null) => void;
+  createRecurringGrocery: (
+    raw: string,
+    pattern: RecurrencePattern,
+    storeId?: string | null
+  ) => void;
   toggleGroceries: (ids: string[], isDone: boolean) => void;
   toggleRecurringGrocery: (recurringGroceryId: string, groceryId: string, isDone: boolean) => void;
   updateGrocery: (id: string, updatedText: string) => void;
@@ -96,7 +100,8 @@ const GroceriesUIContext = createContext<UICtx | null>(null);
 
 export function GroceriesContextProvider({ children }: { children: ReactNode }) {
   // Data hooks
-  const { groceries, recurringGroceries, recipeMap, isLoading, getRecipeNameForGrocery } = useGroceriesQuery();
+  const { groceries, recurringGroceries, recipeMap, isLoading, getRecipeNameForGrocery } =
+    useGroceriesQuery();
   const groceryMutations = useGroceriesMutations();
 
   // Subscribe to WebSocket events (updates query cache)
@@ -160,7 +165,16 @@ export function GroceriesContextProvider({ children }: { children: ReactNode }) 
       getRecipeNameForGrocery,
       ...groceryMutations,
     }),
-    [groceries, recurringGroceries, doneGroceries, pendingGroceries, isLoading, recipeMap, getRecipeNameForGrocery, groceryMutations]
+    [
+      groceries,
+      recurringGroceries,
+      doneGroceries,
+      pendingGroceries,
+      isLoading,
+      recipeMap,
+      getRecipeNameForGrocery,
+      groceryMutations,
+    ]
   );
 
   // UI context value
@@ -177,7 +191,16 @@ export function GroceriesContextProvider({ children }: { children: ReactNode }) 
       viewMode,
       setViewMode,
     }),
-    [recurrencePanelOpen, recurrencePanelGroceryId, openRecurrencePanel, closeRecurrencePanel, addGroceryPanelOpen, editingGrocery, viewMode, setViewMode]
+    [
+      recurrencePanelOpen,
+      recurrencePanelGroceryId,
+      openRecurrencePanel,
+      closeRecurrencePanel,
+      addGroceryPanelOpen,
+      editingGrocery,
+      viewMode,
+      setViewMode,
+    ]
   );
 
   return (

@@ -31,9 +31,7 @@ export default function ContentDetectionCard() {
         </h2>
       </CardHeader>
       <CardBody>
-        <p className="text-default-500 mb-4 text-base">
-          {t("description")}
-        </p>
+        <p className="text-default-500 mb-4 text-base">{t("description")}</p>
         <Accordion selectionMode="multiple" variant="bordered">
           <AccordionItem
             key="content-indicators"
@@ -50,11 +48,7 @@ export default function ContentDetectionCard() {
             </div>
           </AccordionItem>
 
-          <AccordionItem
-            key="units"
-            subtitle={t("units.subtitle")}
-            title={t("units.title")}
-          >
+          <AccordionItem key="units" subtitle={t("units.subtitle")} title={t("units.title")}>
             <div className="p-2">
               <JsonEditor
                 description={t("units.description")}

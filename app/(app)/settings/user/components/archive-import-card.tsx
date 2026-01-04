@@ -13,9 +13,7 @@ export default function ArchiveImportCard() {
       <CardHeader>
         <div>
           <h2 className="text-lg font-semibold">{t("title")}</h2>
-          <p className="text-default-500 mt-1 text-base">
-            {t("description")}
-          </p>
+          <p className="text-default-500 mt-1 text-base">{t("description")}</p>
         </div>
       </CardHeader>
       <CardBody>

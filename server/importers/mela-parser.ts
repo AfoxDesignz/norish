@@ -1,6 +1,5 @@
 import JSZip from "jszip";
 
-import { serverLogger as log } from "@/server/logger";
 import {
   parseHumanDurationToMinutes,
   parseServings,
@@ -8,6 +7,7 @@ import {
   buildRecipeDTO,
 } from "./parser-helpers";
 
+import { serverLogger as log } from "@/server/logger";
 import { FullRecipeInsertDTO } from "@/types";
 
 export type MelaRecipe = {

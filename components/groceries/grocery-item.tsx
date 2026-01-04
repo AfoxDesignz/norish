@@ -96,6 +96,7 @@ function formatAmountUnit(grocery: GroceryDto): string {
     // Format amount: show as integer if whole number, otherwise 1 decimal
     const formattedAmount =
       grocery.amount % 1 === 0 ? grocery.amount.toString() : grocery.amount.toFixed(1);
+
     parts.push(formattedAmount);
   }
 

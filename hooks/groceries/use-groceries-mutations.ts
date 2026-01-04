@@ -6,6 +6,7 @@ import type { RecurrencePattern } from "@/types/recurrence";
 import { useMutation } from "@tanstack/react-query";
 
 import { useGroceriesQuery } from "./use-groceries-query";
+
 import { useTRPC } from "@/app/providers/trpc-provider";
 import { useUnitsQuery } from "@/hooks/config";
 import { parseIngredientWithDefaults } from "@/lib/helpers";
@@ -395,6 +396,7 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
       const updatedGroceries = prev.groceries
         .map((g) => {
           const update = updateMap.get(g.id);
+
           if (!update) return g;
 
           const updated = { ...g, sortOrder: update.sortOrder };
@@ -402,6 +404,7 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
           if (update.storeId !== undefined) {
             updated.storeId = update.storeId;
           }
+
           return updated;
         })
         .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
@@ -433,6 +436,7 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
         if (g.storeId === storeId && !g.isDone) {
           return { ...g, isDone: true };
         }
+
         return g;
       });
 

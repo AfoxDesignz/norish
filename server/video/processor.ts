@@ -1,13 +1,13 @@
 import type { FullRecipeInsertDTO } from "@/types/dto/recipe";
 
+import { isInstagramUrl, isInstagramImagePost, processInstagramImagePost } from "./instagram";
+
 import { validateVideoLength, getVideoMetadata, downloadVideoAudio } from "@/server/video/yt-dlp";
 import { extractRecipeFromVideo } from "@/server/video/normalizer";
 import { cleanupFile } from "@/server/video/cleanup";
-
 import { videoLogger as log } from "@/server/logger";
 import { isVideoParsingEnabled } from "@/config/server-config-loader";
 import { transcribeAudio } from "@/server/ai/transcriber";
-import { isInstagramUrl, isInstagramImagePost, processInstagramImagePost } from "./instagram";
 
 export async function processVideoRecipe(
   url: string,
@@ -36,6 +36,7 @@ export async function processVideoRecipe(
     // Handle Instagram image posts (duration is 0 or undefined)
     if (isInstagram && isInstagramImagePost(metadata)) {
       log.info({ url }, "Detected Instagram image post, extracting from description");
+
       return await processInstagramImagePost(url, metadata, allergies);
     }
 
@@ -54,6 +55,7 @@ export async function processVideoRecipe(
           { url, err: audioError },
           "Audio download failed for Instagram, attempting description-based extraction"
         );
+
         return await processInstagramImagePost(url, metadata, allergies);
       }
       throw audioError;
@@ -78,6 +80,7 @@ export async function processVideoRecipe(
     return result.data;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
     log.error({ err: error }, "Failed to process video");
 
     throw new Error(`Failed to process video recipe: ${errorMessage}`);

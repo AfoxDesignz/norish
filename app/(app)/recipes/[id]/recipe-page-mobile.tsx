@@ -1,4 +1,9 @@
-import { ClockIcon, FireIcon, ArrowTopRightOnSquareIcon, ArrowLeftIcon } from "@heroicons/react/20/solid";
+import {
+  ClockIcon,
+  FireIcon,
+  ArrowTopRightOnSquareIcon,
+  ArrowLeftIcon,
+} from "@heroicons/react/20/solid";
 import { Card, CardBody, Chip, Divider, Link } from "@heroui/react";
 import { useTranslations } from "next-intl";
 
@@ -23,7 +28,12 @@ import { useRatingQuery, useRatingsMutation } from "@/hooks/ratings";
 import { NutritionSection } from "@/components/recipes/nutrition-card";
 
 export default function RecipePageMobile() {
-  const { recipe, currentServings: _currentServings, allergies, allergySet } = useRecipeContextRequired();
+  const {
+    recipe,
+    currentServings: _currentServings,
+    allergies,
+    allergySet,
+  } = useRecipeContextRequired();
   const { isFavorite: checkFavorite } = useFavoritesQuery();
   const { toggleFavorite } = useFavoritesMutation();
   const { userRating, averageRating, isLoading: isRatingLoading } = useRatingQuery(recipe.id);
@@ -48,11 +58,11 @@ export default function RecipePageMobile() {
       <div className="relative w-full overflow-hidden" style={{ height: "18rem" }}>
         <DoubleTapContainer className="h-full w-full" onDoubleTap={handleToggleFavorite}>
           <ImageCarousel
-            rounded={false}
             aspectRatio="4/3"
             className="h-full w-full"
             images={carouselImages}
             recipeName={recipe.name ?? "Recipe"}
+            rounded={false}
           />
         </DoubleTapContainer>
 

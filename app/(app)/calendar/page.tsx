@@ -12,7 +12,7 @@ import {
 
 export default function CalendarPage() {
   const t = useTranslations("calendar.page");
-  
+
   return (
     <CalendarContextProvider>
       <div className="flex min-h-0 w-full flex-1 flex-col md:mx-auto md:max-w-7xl md:p-6 lg:p-8">

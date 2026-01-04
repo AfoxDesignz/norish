@@ -209,10 +209,10 @@ export default function RecipeCard({ recipe }: { recipe: RecipeDashboardDTO }) {
 
       {/* Groceries panel */}
       <MiniGroceries
-        open={groceriesOpen}
-        recipeId={recipe.id}
         initialServings={recipe.servings || 1}
+        open={groceriesOpen}
         originalServings={recipe.servings || 1}
+        recipeId={recipe.id}
         onOpenChange={setGroceriesOpen}
       />
     </>

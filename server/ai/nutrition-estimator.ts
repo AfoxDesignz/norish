@@ -57,11 +57,13 @@ export async function estimateNutritionFromIngredients(
 
   if (!aiEnabled) {
     aiLogger.info("AI features are disabled, skipping nutrition estimation");
+
     return aiError("AI features are disabled", "AI_DISABLED");
   }
 
   if (ingredients.length === 0) {
     aiLogger.warn("No ingredients provided for nutrition estimation");
+
     return aiError("No ingredients provided", "INVALID_INPUT");
   }
 
@@ -90,6 +92,7 @@ export async function estimateNutritionFromIngredients(
 
     if (!output) {
       aiLogger.error({ recipeName }, "AI returned empty output for nutrition estimation");
+
       return aiError("AI returned empty response", "EMPTY_RESPONSE");
     }
 
@@ -101,6 +104,7 @@ export async function estimateNutritionFromIngredients(
       typeof output.protein !== "number"
     ) {
       aiLogger.error({ recipeName, output }, "Invalid nutrition estimation response");
+
       return aiError("AI response missing required fields", "VALIDATION_ERROR");
     }
 

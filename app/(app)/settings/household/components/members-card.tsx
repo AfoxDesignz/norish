@@ -177,12 +177,8 @@ export default function MembersCard() {
             <>
               <ModalHeader>{t("kickModal.title")}</ModalHeader>
               <ModalBody>
-                <p>
-                  {t("kickModal.confirmMessage", { name: userToKick?.name ?? "" })}
-                </p>
-                <p className="text-default-600 mt-2 text-base">
-                  {t("kickModal.warning")}
-                </p>
+                <p>{t("kickModal.confirmMessage", { name: userToKick?.name ?? "" })}</p>
+                <p className="text-default-600 mt-2 text-base">{t("kickModal.warning")}</p>
               </ModalBody>
               <ModalFooter>
                 <Button variant="flat" onPress={onClose}>
@@ -204,12 +200,8 @@ export default function MembersCard() {
             <>
               <ModalHeader>{t("transferModal.title")}</ModalHeader>
               <ModalBody>
-                <p>
-                  {t("transferModal.confirmMessage", { name: userToTransfer?.name ?? "" })}
-                </p>
-                <p className="text-default-600 mt-2 text-base">
-                  {t("transferModal.warning")}
-                </p>
+                <p>{t("transferModal.confirmMessage", { name: userToTransfer?.name ?? "" })}</p>
+                <p className="text-default-600 mt-2 text-base">{t("transferModal.warning")}</p>
               </ModalBody>
               <ModalFooter>
                 <Button variant="flat" onPress={onClose}>

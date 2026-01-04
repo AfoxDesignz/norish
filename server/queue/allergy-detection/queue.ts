@@ -32,12 +32,14 @@ export async function addAllergyDetectionJob(
 ): Promise<AddAllergyDetectionJobResult> {
   // Check if AI is enabled
   const aiEnabled = await isAIEnabled();
+
   if (!aiEnabled) {
     return { status: "skipped", reason: "disabled" };
   }
 
   // Check if autoTagAllergies is enabled
   const aiConfig = await getAIConfig();
+
   if (!aiConfig?.autoTagAllergies) {
     return { status: "skipped", reason: "disabled" };
   }
@@ -45,8 +47,10 @@ export async function addAllergyDetectionJob(
   // Check if household has any allergies configured
   const householdUserIds = await getHouseholdMemberIds(data.userId);
   const householdAllergies = await getAllergiesForUsers(householdUserIds);
+
   if (householdAllergies.length === 0) {
     log.debug({ recipeId: data.recipeId }, "No allergies configured for household, skipping");
+
     return { status: "skipped", reason: "no_allergies" };
   }
 
@@ -56,6 +60,7 @@ export async function addAllergyDetectionJob(
 
   if (await isJobInQueue(allergyDetectionQueue, jobId)) {
     log.warn({ recipeId: data.recipeId, jobId }, "Duplicate allergy detection job rejected");
+
     return { status: "duplicate", existingJobId: jobId };
   }
 
@@ -80,5 +85,6 @@ export async function closeAllergyDetectionQueue(): Promise<void> {
  */
 export async function isAllergyDetectionJobActive(recipeId: string): Promise<boolean> {
   const jobId = `allergy-detect-${recipeId}`;
+
   return isJobInQueue(allergyDetectionQueue, jobId);
 }

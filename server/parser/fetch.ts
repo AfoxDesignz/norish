@@ -1,5 +1,4 @@
 import { getBrowser } from "@/server/playwright";
-
 import { parserLogger as log } from "@/server/logger";
 
 const BROWSER_HEADERS: Record<string, string> = {

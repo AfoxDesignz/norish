@@ -51,6 +51,7 @@ export function StoreSelector({
 
   const handleChange = (keys: "all" | Set<React.Key>) => {
     const value = Array.from(keys)[0] as string;
+
     onSelectionChange(value === "none" ? null : value);
   };
 
@@ -78,6 +79,7 @@ export function StoreSelector({
       <Fragment>
         {sortedStores.map((store) => {
           const colorClasses = getStoreColorClasses(store.color as StoreColor);
+
           return (
             <SelectItem key={store.id} textValue={store.name}>
               <div className="flex items-center gap-2">

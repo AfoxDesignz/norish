@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-import type { RecipeIngredientsDto } from "@/types";
-
 type IngredientWithAmount = { amount?: number | string | null };
 
 export type ScaledIngredient<T extends IngredientWithAmount> = T & {
@@ -21,7 +19,7 @@ export type ServingsScalerResult<T extends IngredientWithAmount> = {
 
 /**
  * Hook for scaling recipe ingredient amounts based on servings.
- * 
+ *
  * @param ingredients - Array of ingredients from the recipe
  * @param originalServings - The base servings count from the recipe definition
  * @param initialServings - The initial servings to display (defaults to originalServings)
@@ -41,6 +39,7 @@ export function useServingsScaler<T extends IngredientWithAmount>(
   useEffect(() => {
     if (ingredients.length === 0) {
       setScaledIngredients([]);
+
       return;
     }
 
@@ -51,9 +50,10 @@ export function useServingsScaler<T extends IngredientWithAmount>(
       // Scale to current servings for display
       if (baseAmount && originalServings > 0 && servings !== originalServings) {
         const amountNum = Number(baseAmount);
+
         if (!isNaN(amountNum) && amountNum > 0) {
-          const scaledValue =
-            Math.round((amountNum / originalServings) * servings * 10000) / 10000;
+          const scaledValue = Math.round((amountNum / originalServings) * servings * 10000) / 10000;
+
           displayAmount = scaledValue.toString();
         }
       }

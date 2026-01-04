@@ -35,6 +35,7 @@ export function getValidLocale(locale: string | null | undefined): Locale {
   if (locale && isValidLocale(locale)) {
     return locale;
   }
+
   return defaultLocale;
 }
 
