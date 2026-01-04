@@ -9,9 +9,10 @@ import { useTranslations } from "next-intl";
 
 import { useGroceriesContext, useGroceriesUIContext } from "../context";
 import { useStoresContext } from "../stores-context";
+import AddGroceryButton from "./add-grocery-button";
 import { GroceryList, GroceryListByRecipe, StoreManagerPanel } from "@/components/groceries";
-import AddGroceryPanel from "@/components/Panel/consumers/add-grocery-panel";
 import EditGroceryPanel from "@/components/Panel/consumers/edit-grocery-panel";
+import { AddGroceryPanel } from "@/components/Panel/consumers";
 import GrocerySkeleton from "@/components/skeleton/grocery-skeleton";
 
 export function GroceriesPage() {
@@ -203,18 +204,8 @@ export function GroceriesPage() {
           )}
         </div>
 
-{/* Mobile: Centered floating add button at bottom */}
-        <div className="fixed bottom-24 left-0 right-0 z-20 flex justify-center pb-safe md:hidden">
-          <Button
-            className="shadow-lg px-6"
-            color="primary"
-            radius="full"
-            startContent={<PlusIcon className="h-5 w-5" />}
-            onPress={() => setAddGroceryPanelOpen(true)}
-          >
-            {t("addItems")}
-          </Button>
-        </div>
+{/* Mobile: Floating add button that syncs with nav auto-hide */}
+        <AddGroceryButton />
       </div>
 
       {/* Panels */}

@@ -1,65 +1,63 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@heroui/react";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 
-import { useGroceriesContext } from "../context";
-import { useStoresContext } from "../stores-context";
+import { useGroceriesUIContext } from "../context";
 
-import { AddGroceryPanel } from "@/components/Panel/consumers";
 import { useAutoHide } from "@/hooks/auto-hide";
 
+/**
+ * Mobile floating add button that repositions based on nav visibility.
+ * - Nav visible: sits just above the nav bar
+ * - Nav hidden: moves down to bottom of screen (flush with safe area)
+ * Uses context state so both desktop header button and this mobile FAB control the same panel.
+ * The panel itself is rendered in groceries-page.tsx (single instance).
+ */
 export default function AddGroceryButton() {
-  const { createGrocery, createRecurringGrocery } = useGroceriesContext();
-  const { stores } = useStoresContext();
-  const [panelOpen, setPanelOpen] = useState(false);
-  const { isVisible, show } = useAutoHide({ disabled: panelOpen });
+  const { addGroceryPanelOpen, setAddGroceryPanelOpen } = useGroceriesUIContext();
+  const { isVisible, show } = useAutoHide({ disabled: addGroceryPanelOpen });
   const t = useTranslations("groceries.page");
 
-  return (
-    <>
-      <motion.div
-        animate={{ y: isVisible ? 0 : 120, opacity: isVisible ? 1 : 0 }}
-        className="pointer-events-none fixed left-1/2 -translate-x-1/2 will-change-transform"
-        initial={false}
-        style={{
-          bottom: "calc(max(env(safe-area-inset-bottom), 1rem) + 3.75rem)",
-        }}
-        transition={{ duration: 0.25, ease: "easeInOut" }}
-      >
-        <motion.div
-          className="pointer-events-auto"
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <Button
-            className="shadow-lg"
-            color="primary"
-            radius="full"
-            size="lg"
-            startContent={<PlusIcon className="h-5 w-5" />}
-            onPress={() => {
-              setPanelOpen(true);
-              show();
-            }}
-          >
-            {t("addItems")}
-          </Button>
-        </motion.div>
-      </motion.div>
+  // When nav is visible: position above it (nav height ~3.25rem + gap)
+  // When nav is hidden: position at bottom safe area
+  const bottomWhenNavVisible = "calc(max(env(safe-area-inset-bottom), 1rem) + 4.5rem)";
+  const bottomWhenNavHidden = "calc(max(env(safe-area-inset-bottom), 1rem) + 0.5rem)";
 
-      {/* Creation Panel */}
-      <AddGroceryPanel
-        open={panelOpen}
-        stores={stores}
-        onCreate={createGrocery}
-        onCreateRecurring={createRecurringGrocery}
-        onOpenChange={setPanelOpen}
-      />
-    </>
+  return (
+    <motion.div
+      animate={{
+        bottom: isVisible ? bottomWhenNavVisible : bottomWhenNavHidden,
+      }}
+      className="pointer-events-none fixed left-1/2 -translate-x-1/2 will-change-transform md:hidden"
+      initial={false}
+      style={{
+        bottom: bottomWhenNavVisible,
+      }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
+    >
+      <motion.div
+        className="pointer-events-auto"
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <Button
+          className="shadow-lg"
+          color="primary"
+          radius="full"
+          size="lg"
+          startContent={<PlusIcon className="h-5 w-5" />}
+          onPress={() => {
+            setAddGroceryPanelOpen(true);
+            show();
+          }}
+        >
+          {t("addItems")}
+        </Button>
+      </motion.div>
+    </motion.div>
   );
 }

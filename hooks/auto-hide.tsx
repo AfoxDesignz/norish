@@ -23,6 +23,7 @@ export function useAutoHide({
   const isHoveringRef = useRef(false);
   const hasScrolledRef = useRef(false);
   const isMountedRef = useRef(false);
+  const isReadyRef = useRef(false);
   const [isScrollable, setIsScrollable] = useState(true);
 
   // Check if page is scrollable
@@ -71,18 +72,26 @@ export function useAutoHide({
   // Detect actual user scroll/touch gestures
   useEffect(() => {
     const handleUserScroll = () => {
+      if (isMountedRef.current) return;
       isMountedRef.current = true;
+
+      // Delay before tracking to let programmatic scrolls settle
+      // and sync lastScrollY to current position
+      setTimeout(() => {
+        lastScrollY.current = scrollY.get();
+        isReadyRef.current = true;
+      }, 500);
     };
 
     // Listen for actual user interactions that cause scroll
-    window.addEventListener("wheel", handleUserScroll, { passive: true, once: true });
-    window.addEventListener("touchmove", handleUserScroll, { passive: true, once: true });
+    window.addEventListener("wheel", handleUserScroll, { passive: true });
+    window.addEventListener("touchmove", handleUserScroll, { passive: true });
 
     return () => {
       window.removeEventListener("wheel", handleUserScroll);
       window.removeEventListener("touchmove", handleUserScroll);
     };
-  }, []);
+  }, [scrollY]);
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     const prev = lastScrollY.current;
@@ -94,7 +103,7 @@ export function useAutoHide({
       return;
     }
 
-    if (!isMountedRef.current) {
+    if (!isReadyRef.current) {
       lastScrollY.current = latest;
 
       return;

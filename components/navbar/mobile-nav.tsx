@@ -2,26 +2,13 @@
 
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useCallback, useTransition, useMemo } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import {
-  HomeIcon,
-  CalendarDaysIcon,
-  ClipboardDocumentListIcon,
-  MagnifyingGlassIcon,
-  ArrowLeftIcon,
-} from "@heroicons/react/20/solid";
-import { Button, Input } from "@heroui/react";
+import { HomeIcon, CalendarDaysIcon, ClipboardDocumentListIcon } from "@heroicons/react/20/solid";
 import { useTranslations } from "next-intl";
 
-import Filters from "../shared/filters";
-
-import { isUrl } from "@/lib/helpers";
 import NavbarUserMenu from "@/components/navbar/navbar-user-menu";
-import { useAppStore } from "@/store/useAppStore";
-import { useRecipesContext } from "@/context/recipes-context";
-import { useRecipesFiltersContext } from "@/context/recipes-filters-context";
-import { cssGlassBackdrop, cssInputNoHoverTransparent } from "@/config/css-tokens";
+import { cssGlassBackdrop } from "@/config/css-tokens";
 import { siteConfig } from "@/config/site";
 import { useAutoHide } from "@/hooks/auto-hide";
 import { useUserContext } from "@/context/user-context";
@@ -34,139 +21,35 @@ const navLabelKeys: Record<string, "home" | "calendar" | "groceries"> = {
 };
 
 export const MobileNav = () => {
-  const t = useTranslations("navbar.mobile");
   const tNav = useTranslations("navbar.nav");
   const pathname = usePathname();
-  const { mobileSearchOpen, setMobileSearchOpen } = useAppStore((s) => s);
-  const { filters, setFilters } = useRecipesFiltersContext();
-  const { importRecipe } = useRecipesContext();
   const { userMenuOpen, setUserMenuOpen } = useUserContext();
-  const [_isPending, startTransition] = useTransition();
 
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const isHome = pathname === "/";
 
   const { isVisible, show } = useAutoHide({
-    disabled: mobileSearchOpen || userMenuOpen,
+    disabled: userMenuOpen,
   });
 
-  // Keep visible while search or user menu is open
+  // Keep visible while user menu is open
   useEffect(() => {
-    if (mobileSearchOpen || userMenuOpen) {
+    if (userMenuOpen) {
       show();
     }
-  }, [mobileSearchOpen, userMenuOpen, show]);
+  }, [userMenuOpen, show]);
 
-  useEffect(() => {
-    if (!isVisible && mobileSearchOpen) {
-      inputRef.current?.blur();
-      setMobileSearchOpen(false);
-    }
-  }, [isVisible, mobileSearchOpen, setMobileSearchOpen]);
-
-  // Close search when navigating away from home
-  useEffect(() => {
-    if (!isHome && mobileSearchOpen) {
-      setMobileSearchOpen(false);
-    }
-  }, [isHome, mobileSearchOpen, setMobileSearchOpen]);
-
-  // Focus search after viewport is locked
-  useEffect(() => {
-    if (isHome && mobileSearchOpen && inputRef.current) {
-      const id = setTimeout(() => inputRef.current?.focus(), 10);
-
-      return () => clearTimeout(id);
-    }
-  }, [mobileSearchOpen, isHome]);
-
-  // Keyboard shortcut to open search (Cmd+K or /)
-  useEffect(() => {
-    if (!isHome) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+K or Ctrl+K
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setMobileSearchOpen(true);
-
-        return;
-      }
-      // "/" key (only if not typing in an input)
-      if (e.key === "/" && !["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)) {
-        e.preventDefault();
-        setMobileSearchOpen(true);
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isHome, setMobileSearchOpen]);
-
-  const closeSearch = useCallback(() => {
-    setMobileSearchOpen(false);
-    inputRef.current?.blur();
-  }, [setMobileSearchOpen]);
-
-  // Click outside search to close
-  useEffect(() => {
-    if (!isHome || !mobileSearchOpen) return;
-
-    const onPointerDown = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as HTMLElement | null;
-
-      if (!target) return;
-      if (rootRef.current?.contains(target)) return;
-      if (target.closest("[data-filter-menu]")) return;
-      closeSearch();
-    };
-
-    document.addEventListener("pointerdown", onPointerDown, { capture: true });
-
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown, {
-        capture: true,
-      } as any);
-    };
-  }, [mobileSearchOpen, closeSearch, isHome]);
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-
-    startTransition(async () => {
-      if (isUrl(value.trim())) {
-        setFilters({ rawInput: "" });
-        await importRecipe(value.trim());
-      } else {
-        setFilters({ rawInput: value });
-      }
-    });
-  };
-
-  const hasActiveSearch = useMemo(
-    () => (filters.rawInput?.trim()?.length ?? 0) > 0 || filters.searchTags.length > 0,
-    [filters.rawInput, filters.searchTags.length]
-  );
-
-  // Close both search and user menu
-  const closeAll = useCallback(() => {
-    if (mobileSearchOpen) {
-      closeSearch();
-    }
+  // Close user menu callback
+  const closeUserMenu = useCallback(() => {
     if (userMenuOpen) {
       setUserMenuOpen(false);
     }
-  }, [mobileSearchOpen, userMenuOpen, closeSearch, setUserMenuOpen]);
-
-  const showBackdrop = mobileSearchOpen || userMenuOpen;
+  }, [userMenuOpen, setUserMenuOpen]);
 
   return (
     <>
       {/* Backdrop overlay - blocks page interactions when menu is open */}
       <AnimatePresence>
-        {showBackdrop && (
+        {userMenuOpen && (
           <motion.div
             key="mobile-nav-backdrop"
             animate={{ opacity: 1 }}
@@ -175,8 +58,8 @@ export const MobileNav = () => {
             exit={{ opacity: 0 }}
             initial={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={closeAll}
-            onTouchEnd={closeAll}
+            onClick={closeUserMenu}
+            onTouchEnd={closeUserMenu}
           />
         )}
       </AnimatePresence>
@@ -191,148 +74,49 @@ export const MobileNav = () => {
         style={{ bottom: "max(calc(env(safe-area-inset-bottom) - 0.2rem), 1rem)" }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
-        <div ref={rootRef} className="relative flex items-center justify-between">
-          {/* Left side */}
-          {isHome ? (
-            <div
-              className={`relative min-w-0 flex-1 transition-all duration-300 ${
-                mobileSearchOpen ? "z-[99] mr-3" : "z-[40] mr-0"
-              }`}
-            >
-              <div
-                aria-expanded={mobileSearchOpen}
-                className={`group relative h-13 overflow-visible rounded-full transition-[width] duration-300 ease-out ${cssGlassBackdrop} ${
-                  mobileSearchOpen ? "z-[55] w-full" : "z-[55] w-[52px]"
-                }`}
-              >
-                <div className="absolute inset-y-0 left-0 z-[56] flex w-[52px] items-center justify-center">
-                  <Button
-                    isIconOnly
-                    aria-label={t("toggleSearch")}
-                    className={`relative h-10 w-10 !bg-transparent !shadow-none ${
-                      hasActiveSearch ? "text-primary" : "text-default-600 hover:text-foreground"
-                    }`}
-                    radius="full"
-                    size="md"
-                    variant="light"
-                    onPress={() => {
-                      setMobileSearchOpen(!mobileSearchOpen);
-                    }}
-                  >
-                    <MagnifyingGlassIcon className="h-5 w-5" />
-                    {hasActiveSearch && (
-                      <span className="bg-primary shadow-background absolute top-2 right-2 h-2.5 w-2.5 rounded-full shadow-[0_0_0_2px]" />
-                    )}
-                  </Button>
-                </div>
-                <div
-                  className={`flex h-full items-center pl-[52px] transition-all duration-300 ease-out ${
-                    mobileSearchOpen ? "opacity-100" : "pointer-events-none opacity-0"
-                  }`}
-                >
-                  <Input
-                    ref={inputRef}
-                    isClearable
-                    className="w-full"
-                    classNames={{
-                      inputWrapper: `!bg-transparent h-13 px-3 ${cssInputNoHoverTransparent}`,
-                      input: "text-[15px] placeholder:text-default-500 !bg-transparent",
-                    }}
-                    id="mobile-search-input"
-                    placeholder={t("searchPlaceholder")}
-                    radius="full"
-                    style={{ fontSize: "16px" }}
-                    value={filters.rawInput}
-                    variant="flat"
-                    onChange={handleSearchChange}
-                    onClear={() => setFilters({ rawInput: "" })}
-                    onKeyDown={(e) => e.key === "Escape" && closeSearch()}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="mr-2 shrink-0">
-              <Button
-                isIconOnly
-                aria-label={t("goBack")}
-                className={`h-13 w-13 ${cssGlassBackdrop} text-default-600 hover:text-foreground hover:bg-default-100/70`}
-                radius="full"
-                size="md"
-                variant="flat"
-                onPress={() => {
-                  if (typeof window !== "undefined") {
-                    if (window.history.length > 1) window.history.back();
-                    else window.location.href = "/";
-                  }
-                }}
-              >
-                <ArrowLeftIcon className="h-5 w-5" />
-              </Button>
-            </div>
-          )}
+        <div ref={rootRef} className="flex items-center justify-center gap-3">
+          {/* Nav items - full width */}
+          <div
+            className={`flex h-13 flex-1 items-center justify-center rounded-full px-4 ${cssGlassBackdrop}`}
+          >
+            <ul className="flex w-full items-center justify-around text-[11px]">
+              {siteConfig.navItems.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/" && pathname?.startsWith(item.href + "/"));
+                const Icon =
+                  item.href === "/"
+                    ? HomeIcon
+                    : item.href.startsWith("/calendar")
+                      ? CalendarDaysIcon
+                      : ClipboardDocumentListIcon;
 
-          {/* Center */}
-          <div className="absolute left-1/2 z-[45] -translate-x-1/2">
-            <div
-              className={`flex h-13 items-center gap-2 rounded-full px-4 ${cssGlassBackdrop} transition-all duration-300 ease-out ${
-                isHome && mobileSearchOpen
-                  ? "pointer-events-none translate-y-4 opacity-0"
-                  : "translate-y-0 opacity-100"
-              }`}
-            >
-              <ul className="flex items-center gap-2 text-[11px]">
-                {siteConfig.navItems.map((item) => {
-                  const isActive =
-                    pathname === item.href ||
-                    (item.href !== "/" && pathname?.startsWith(item.href + "/"));
-                  const Icon =
-                    item.href === "/"
-                      ? HomeIcon
-                      : item.href.startsWith("/calendar")
-                        ? CalendarDaysIcon
-                        : ClipboardDocumentListIcon;
-
-                  return (
-                    <li key={item.href}>
-                      <NextLink
-                        className={`flex w-[60px] flex-col items-center justify-center gap-1 rounded-full px-3 py-2 transition-colors ${
-                          isActive
-                            ? "text-primary font-semibold"
-                            : "text-default-600 hover:text-foreground hover:bg-default-100/70"
-                        }`}
-                        href={item.href}
-                      >
-                        <Icon className="h-5 w-5" />
-                        <span className="leading-none">
-                          {tNav(navLabelKeys[item.href] ?? "home")}
-                        </span>
-                      </NextLink>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+                return (
+                  <li key={item.href}>
+                    <NextLink
+                      className={`flex flex-col items-center justify-center gap-1 rounded-full px-4 py-2 transition-colors ${
+                        isActive
+                          ? "text-primary font-semibold"
+                          : "text-default-600 hover:text-foreground hover:bg-default-100/70"
+                      }`}
+                      href={item.href}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="leading-none">
+                        {tNav(navLabelKeys[item.href] ?? "home")}
+                      </span>
+                    </NextLink>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
 
-          {/* Right side */}
-          <div className="flex h-13 shrink-0 items-center justify-center">
-            <div className="relative flex h-13 w-[60px] items-center justify-center">
-              <div
-                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
-                  mobileSearchOpen ? "opacity-100" : "pointer-events-none opacity-0"
-                }`}
-              >
-                <Filters isGlass />
-              </div>
-              <div
-                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
-                  mobileSearchOpen ? "pointer-events-none opacity-0" : "opacity-100"
-                }`}
-              >
-                <NavbarUserMenu />
-              </div>
-            </div>
+          {/* User menu */}
+          <div
+            className={`flex h-13 w-13 shrink-0 items-center justify-center rounded-full ${cssGlassBackdrop}`}
+          >
+            <NavbarUserMenu />
           </div>
         </div>
       </motion.div>
