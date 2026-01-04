@@ -320,19 +320,31 @@ export async function getGroceryOwnerIds(groceryIds: string[]): Promise<Map<stri
 /**
  * Reorder groceries within a store
  * Updates sortOrder for multiple groceries in a single transaction
+ * Optionally updates storeId for items that moved between stores
  */
 export async function reorderGroceriesInStore(
-  updates: { id: string; sortOrder: number }[]
+  updates: { id: string; sortOrder: number; storeId?: string | null }[]
 ): Promise<GroceryDto[]> {
   if (updates.length === 0) return [];
 
   return await db.transaction(async (trx) => {
     const updatedGroceries: GroceryDto[] = [];
 
-    for (const { id, sortOrder } of updates) {
+    for (const { id, sortOrder, storeId } of updates) {
+      // Build update object - always update sortOrder, optionally update storeId
+      const updateData: { sortOrder: number; updatedAt: Date; storeId?: string | null } = {
+        sortOrder,
+        updatedAt: new Date(),
+      };
+
+      // Only include storeId if explicitly provided (even if null for "unsorted")
+      if (storeId !== undefined) {
+        updateData.storeId = storeId;
+      }
+
       const [row] = await trx
         .update(groceries)
-        .set({ sortOrder, updatedAt: new Date() })
+        .set(updateData)
         .where(eq(groceries.id, id))
         .returning();
 
@@ -405,75 +417,28 @@ export async function deleteDoneInStore(
 
 /**
  * Assign a grocery to a store within a transaction
- * If moving to a different store, updates sortOrder accordingly
  */
 export async function assignGroceryToStore(
   groceryId: string,
   newStoreId: string | null,
-  householdUserIds: string[]
+  _householdUserIds: string[]
 ): Promise<GroceryDto> {
-  return await db.transaction(async (trx) => {
-    // Get current grocery
-    const [currentGrocery] = await trx
-      .select()
-      .from(groceries)
-      .where(eq(groceries.id, groceryId))
-      .limit(1);
+  const [updated] = await db
+    .update(groceries)
+    .set({ storeId: newStoreId, updatedAt: new Date() })
+    .where(eq(groceries.id, groceryId))
+    .returning();
 
-    if (!currentGrocery) {
-      throw new Error("Grocery not found");
-    }
+  if (!updated) {
+    throw new Error("Grocery not found");
+  }
 
-    const parsed = GrocerySelectBaseSchema.safeParse(currentGrocery);
-    if (!parsed.success) {
-      throw new Error("Failed to parse grocery");
-    }
+  const validatedUpdate = GrocerySelectBaseSchema.safeParse(updated);
+  if (!validatedUpdate.success) {
+    throw new Error("Failed to parse updated grocery");
+  }
 
-    const isChangingStore = parsed.data.storeId !== newStoreId;
-
-    // If changing stores, reorder items in target store
-    if (isChangingStore) {
-      // Increment sortOrder of all active items in target store
-      await trx
-        .update(groceries)
-        .set({ sortOrder: sql`${groceries.sortOrder} + 1`, updatedAt: new Date() })
-        .where(
-          and(
-            inArray(groceries.userId, householdUserIds),
-            eq(groceries.isDone, false),
-            newStoreId ? eq(groceries.storeId, newStoreId) : isNull(groceries.storeId)
-          )
-        );
-
-      // Update the grocery with new store and sortOrder 0 (top of list)
-      const [updated] = await trx
-        .update(groceries)
-        .set({ storeId: newStoreId, sortOrder: 0, updatedAt: new Date() })
-        .where(eq(groceries.id, groceryId))
-        .returning();
-
-      const validatedUpdate = GrocerySelectBaseSchema.safeParse(updated);
-      if (!validatedUpdate.success) {
-        throw new Error("Failed to parse updated grocery");
-      }
-
-      return validatedUpdate.data;
-    } else {
-      // Just update the storeId without changing sortOrder
-      const [updated] = await trx
-        .update(groceries)
-        .set({ storeId: newStoreId, updatedAt: new Date() })
-        .where(eq(groceries.id, groceryId))
-        .returning();
-
-      const validatedUpdate = GrocerySelectBaseSchema.safeParse(updated);
-      if (!validatedUpdate.success) {
-        throw new Error("Failed to parse updated grocery");
-      }
-
-      return validatedUpdate.data;
-    }
-  });
+  return validatedUpdate.data;
 }
 
 /**

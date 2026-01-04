@@ -441,12 +441,14 @@ const reorderInStore = authedProcedure
         z.object({
           id: z.uuid(),
           sortOrder: z.number().int().min(0),
+          storeId: z.uuid().nullable().optional(), // Optional store change
         })
       ),
+      savePreference: z.boolean().default(true), // Save ingredient->store preference
     })
   )
   .mutation(({ ctx, input }) => {
-    const { updates } = input;
+    const { updates, savePreference } = input;
 
     if (updates.length === 0) {
       return { success: true };
@@ -456,6 +458,15 @@ const reorderInStore = authedProcedure
 
     // Verify all groceries exist and user has access
     const groceryIds = updates.map((u) => u.id);
+
+    // Collect unique store IDs that need access verification
+    const storeIdsToVerify = new Set<string>();
+    for (const u of updates) {
+      if (u.storeId !== undefined && u.storeId !== null) {
+        storeIdsToVerify.add(u.storeId);
+      }
+    }
+
     getGroceryOwnerIds(groceryIds)
       .then(async (ownerIds) => {
         if (ownerIds.size !== groceryIds.length) {
@@ -470,10 +481,45 @@ const reorderInStore = authedProcedure
           await assertHouseholdAccess(ctx.user.id, ownerId);
         }
 
-        // Perform reorder
+        // Verify access to any stores being assigned to
+        for (const storeId of storeIdsToVerify) {
+          const storeOwnerId = await getStoreOwnerId(storeId);
+          if (!storeOwnerId) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Store not found" });
+          }
+          await assertHouseholdAccess(ctx.user.id, storeOwnerId);
+        }
+
+        // Perform reorder (and optional store changes)
         const updated = await reorderGroceriesInStore(updates);
 
         log.info({ userId: ctx.user.id, count: updated.length }, "Groceries reordered");
+
+        // Save store preferences for any items that changed stores
+        if (savePreference) {
+          const itemsWithStoreChange = updates.filter(
+            (u) => u.storeId !== undefined && u.storeId !== null
+          );
+
+          if (itemsWithStoreChange.length > 0) {
+            // Get grocery names for preference saving
+            const changedIds = itemsWithStoreChange.map((u) => u.id);
+            const groceriesForPreference = await getGroceriesByIds(changedIds);
+
+            for (const grocery of groceriesForPreference) {
+              const update = itemsWithStoreChange.find((u) => u.id === grocery.id);
+              if (update?.storeId && grocery.name) {
+                const normalized = normalizeIngredientName(grocery.name);
+                await upsertIngredientStorePreference(ctx.user.id, normalized, update.storeId);
+                log.debug(
+                  { userId: ctx.user.id, normalized, storeId: update.storeId },
+                  "Saved ingredient store preference"
+                );
+              }
+            }
+          }
+        }
+
         groceryEmitter.emitToHousehold(ctx.householdKey, "updated", {
           changedGroceries: updated,
         });

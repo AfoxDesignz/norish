@@ -48,8 +48,7 @@ export type GroceriesMutationsResult = {
     savePreference?: boolean
   ) => void;
   reorderGroceriesInStore: (
-    updates: { id: string; sortOrder: number }[],
-    updateBackend?: boolean
+    updates: { id: string; sortOrder: number; storeId?: string | null }[]
   ) => void;
   markAllDoneInStore: (storeId: string | null) => void;
   deleteDoneInStore: (storeId: string | null) => void;
@@ -353,35 +352,13 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
     storeId: string | null,
     savePreference = true
   ) => {
-    // Get the current grocery to check if we're changing stores
-    const grocery = groceries.find((g) => g.id === groceryId);
-    const isChangingStore = grocery && grocery.storeId !== storeId;
-
     // Optimistic update
     setGroceriesData((prev) => {
       if (!prev) return prev;
 
-      let updatedGroceries = [...prev.groceries];
-
-      if (isChangingStore) {
-        // When moving to a different store, set sortOrder to 0 (top)
-        // and increment other items in target store
-        updatedGroceries = updatedGroceries.map((g) => {
-          if (g.id === groceryId) {
-            // The moved item gets sortOrder 0
-            return { ...g, storeId, sortOrder: 0 };
-          } else if (g.storeId === storeId && !g.isDone) {
-            // Other active items in target store get incremented
-            return { ...g, sortOrder: (g.sortOrder ?? 0) + 1 };
-          }
-          return g;
-        });
-      } else {
-        // Just updating storeId without changing (shouldn't happen but handle it)
-        updatedGroceries = updatedGroceries.map((g) =>
-          g.id === groceryId ? { ...g, storeId } : g
-        );
-      }
+      const updatedGroceries = prev.groceries.map((g) =>
+        g.id === groceryId ? { ...g, storeId } : g
+      );
 
       return {
         ...prev,
@@ -389,6 +366,7 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
       };
     });
 
+    // Call backend
     assignToStoreMutation.mutate(
       { groceryId, storeId, savePreference },
       {
@@ -403,20 +381,28 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
   const reorderMutation = useMutation(trpc.groceries.reorderInStore.mutationOptions());
 
   const reorderGroceriesInStore = (
-    updates: { id: string; sortOrder: number }[],
-    updateBackend = false
+    updates: { id: string; sortOrder: number; storeId?: string | null }[]
   ) => {
-    // Optimistic update always happens during drag for smooth UX
+    // Optimistic update
     setGroceriesData((prev) => {
       if (!prev) return prev;
 
-      const updateMap = new Map(updates.map((u) => [u.id, u.sortOrder]));
+      const updateMap = new Map(
+        updates.map((u) => [u.id, { sortOrder: u.sortOrder, storeId: u.storeId }])
+      );
 
-      // Update sortOrder and sort the array by it
+      // Update sortOrder
       const updatedGroceries = prev.groceries
         .map((g) => {
-          const newSortOrder = updateMap.get(g.id);
-          return newSortOrder !== undefined ? { ...g, sortOrder: newSortOrder } : g;
+          const update = updateMap.get(g.id);
+          if (!update) return g;
+
+          const updated = { ...g, sortOrder: update.sortOrder };
+
+          if (update.storeId !== undefined) {
+            updated.storeId = update.storeId;
+          }
+          return updated;
         })
         .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
@@ -426,18 +412,16 @@ export function useGroceriesMutations(): GroceriesMutationsResult {
       };
     });
 
-    // Call backend on drag end (when updateBackend=true)
-    if (updateBackend) {
-      reorderMutation.mutate(
-        { updates },
-        {
-          onError: (error) => {
-            log.error({ error, updateCount: updates.length }, "Failed to reorder groceries");
-            invalidate();
-          },
-        }
-      );
-    }
+    // Always call backend
+    reorderMutation.mutate(
+      { updates, savePreference: true },
+      {
+        onError: (error) => {
+          log.error({ error, updateCount: updates.length }, "Failed to reorder groceries");
+          invalidate();
+        },
+      }
+    );
   };
 
   const markAllDoneInStore = (storeId: string | null) => {

@@ -56,8 +56,14 @@ type DataCtx = {
   deleteGroceries: (ids: string[]) => void;
   deleteRecurringGrocery: (recurringGroceryId: string) => void;
   getRecurringGroceryForGrocery: (groceryId: string) => RecurringGroceryDto | null;
-  assignGroceryToStore: (groceryId: string, storeId: string | null, savePreference?: boolean) => void;
-  reorderGroceriesInStore: (updates: { id: string; sortOrder: number }[], backendOnly?: boolean) => void;
+  assignGroceryToStore: (
+    groceryId: string,
+    storeId: string | null,
+    savePreference?: boolean
+  ) => void;
+  reorderGroceriesInStore: (
+    updates: { id: string; sortOrder: number; storeId?: string | null }[]
+  ) => void;
   markAllDoneInStore: (storeId: string | null) => void;
   deleteDoneInStore: (storeId: string | null) => void;
 };

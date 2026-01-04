@@ -60,10 +60,6 @@ export function GroceriesPage() {
     deleteGroceries([id]);
   };
 
-  const handleAssignToStore = (groceryId: string, storeId: string | null) => {
-    assignGroceryToStore(groceryId, storeId);
-  };
-
   // Edit panel handlers
   const editingRecurringGrocery = editingGrocery
     ? getRecurringGroceryForGrocery(editingGrocery.id)
@@ -185,7 +181,6 @@ export function GroceriesPage() {
               groceries={groceries}
               recurringGroceries={recurringGroceries}
               stores={stores}
-              onAssignToStore={handleAssignToStore}
               onDelete={handleDelete}
               onEdit={handleEdit}
               onReorderInStore={reorderGroceriesInStore}
@@ -203,7 +198,6 @@ export function GroceriesPage() {
               onToggle={handleToggle}
               onEdit={handleEdit}
               onDelete={handleDelete}
-              onReorder={reorderGroceriesInStore}
             />
           )}
         </div>

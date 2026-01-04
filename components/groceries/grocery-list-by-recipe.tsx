@@ -2,7 +2,7 @@
 
 import type { GroceryDto, StoreDto, RecurringGroceryDto } from "@/types";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo } from "react";
 import { motion } from "motion/react";
 import { ShoppingCartIcon } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
@@ -24,7 +24,6 @@ interface GroceryListByRecipeProps {
   onToggle: (id: string, isDone: boolean) => void;
   onEdit: (grocery: GroceryDto) => void;
   onDelete: (id: string) => void;
-  onReorder?: (updates: { id: string; sortOrder: number }[], backendOnly?: boolean) => void;
 }
 
 interface RecipeGroup {
@@ -41,44 +40,8 @@ export function GroceryListByRecipe({
   onToggle,
   onEdit,
   onDelete,
-  onReorder,
 }: GroceryListByRecipeProps) {
   const t = useTranslations("groceries");
-
-  // Track if any item is being dragged globally
-  const [isDraggingAny, setIsDraggingAny] = useState(false);
-  const [draggingRecipeId, setDraggingRecipeId] = useState<string | null | "manual">(null);
-
-  // Handle drag start from any section
-  const handleDragStart = useCallback((_groceryId: string) => {
-    setIsDraggingAny(true);
-  }, []);
-
-  // Handle drag end from any section - commit reorder to backend
-  const handleDragEnd = useCallback(
-    (_pointerPosition: { x: number; y: number }) => {
-      setIsDraggingAny(false);
-
-      // Commit the current order to backend
-      if (onReorder) {
-        const activeGroceries = groceries.filter((g) => !g.isDone);
-        const updates = activeGroceries.map((g, index) => ({
-          id: g.id,
-          sortOrder: index,
-        }));
-        if (updates.length > 0) {
-          onReorder(updates, true); // true = send to backend
-        }
-      }
-    },
-    [groceries, onReorder]
-  );
-
-  // Handle dragging state change from sections
-  const handleDraggingInSection = useCallback((isDragging: boolean, recipeId: string | null) => {
-    setIsDraggingAny(isDragging);
-    setDraggingRecipeId(isDragging ? (recipeId ?? "manual") : null);
-  }, []);
 
   // Group groceries by recipe
   const recipeGroups = useMemo(() => {
@@ -171,7 +134,6 @@ export function GroceryListByRecipe({
           exit={{ opacity: 0, scale: 0.95 }}
           initial={{ opacity: 0, scale: 0.95 }}
           layout
-          style={{ zIndex: draggingRecipeId === (group.recipeId ?? "manual") ? 50 : 1 }}
           transition={{ type: "spring", stiffness: 500, damping: 35 }}
         >
           <RecipeSection
@@ -183,13 +145,6 @@ export function GroceryListByRecipe({
             onToggle={onToggle}
             onEdit={onEdit}
             onDelete={onDelete}
-            isDraggingAny={isDraggingAny}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onReorder={onReorder}
-            onDraggingInSection={(isDragging) =>
-              handleDraggingInSection(isDragging, group.recipeId)
-            }
           />
         </motion.div>
       ))}
