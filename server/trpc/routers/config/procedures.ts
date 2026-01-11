@@ -4,7 +4,6 @@ import { authedProcedure } from "../../middleware";
 import { trpcLogger as log } from "@/server/logger";
 import { getUnits, getRecurrenceConfig, getLocaleConfig } from "@/config/server-config-loader";
 import { listAllTagNames } from "@/server/db/repositories/tags";
-import { getVersionInfo } from "@/server/version";
 
 /**
  * Get locale configuration (enabled locales and default locale)
@@ -60,20 +59,9 @@ const recurrenceConfig = authedProcedure.query(async ({ ctx }) => {
   return config;
 });
 
-/**
- * Get version information for update checking.
- * Returns current installed version and latest available from GitHub.
- */
-const version = authedProcedure.query(async ({ ctx }) => {
-  log.debug({ userId: ctx.user.id }, "Getting version info");
-
-  return getVersionInfo();
-});
-
 export const configProcedures = router({
   localeConfig,
   tags,
   units,
   recurrenceConfig,
-  version,
 });
