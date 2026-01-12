@@ -16,6 +16,7 @@ import {
   deleteRecipeImageById,
   getRecipeImageById,
   countRecipeImages,
+  getRecipeOwnerId,
 } from "@/server/db/repositories/recipes";
 import { MAX_RECIPE_IMAGES } from "@/server/db/zodSchemas";
 
@@ -215,15 +216,31 @@ const uploadGalleryImage = authedProcedure
       // Parse order, default to current count (append to end)
       const order = orderStr ? parseInt(orderStr, 10) : currentCount;
 
-      // Add to database
-      const [imageRecord] = await addRecipeImages(recipeId, [{ image: url, order }]);
+      // Check if recipe exists in database before inserting into recipe_images
+      // For new recipes (created via form), the recipe doesn't exist yet - images will be
+      // linked when the recipe is saved via createRecipeWithRefs
+      const recipeOwner = await getRecipeOwnerId(recipeId);
 
-      log.info(
-        { userId: ctx.user.id, recipeId, url, imageId: imageRecord.id },
-        "Gallery image uploaded"
-      );
+      if (recipeOwner !== null) {
+        // Recipe exists, add to database
+        const [imageRecord] = await addRecipeImages(recipeId, [{ image: url, order }]);
 
-      return { success: true, url, id: imageRecord.id, order: imageRecord.order };
+        log.info(
+          { userId: ctx.user.id, recipeId, url, imageId: imageRecord.id },
+          "Gallery image uploaded"
+        );
+
+        return { success: true, url, id: imageRecord.id, order: imageRecord.order };
+      } else {
+        // Recipe doesn't exist yet (new recipe form), just return the URL
+        // The image will be linked when the recipe is created
+        log.info(
+          { userId: ctx.user.id, recipeId, url },
+          "Gallery image uploaded for pending recipe"
+        );
+
+        return { success: true, url, order };
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to upload gallery image";
 
