@@ -67,9 +67,6 @@ export function useRecipesMutations(): RecipesMutationsResult {
 
   const createRecipe = (input: FullRecipeInsertDTO): void => {
     createMutation.mutate(input, {
-      onSuccess: (recipeId) => {
-        addPendingRecipe(recipeId);
-      },
       onError: () => invalidate(),
     });
   };
