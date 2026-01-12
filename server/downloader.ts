@@ -26,8 +26,7 @@ export type ImageCandidate = {
   height?: number;
 };
 
-const RECIPES_DISK_DIR = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes");
-const RECIPES_WEB_PREFIX = "/recipes/images";
+const RECIPES_BASE_DIR = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes");
 
 // Configuration constants
 const MAX_WIDTH = 1280;
@@ -404,8 +403,15 @@ async function deleteImageByUrlCore(url: string, options: DeleteImageOptions): P
 
 // --- Main functions ---
 
-export async function downloadImage(url: string): Promise<string> {
-  await ensureDir(RECIPES_DISK_DIR);
+/**
+ * Download an image from URL and save to recipe directory.
+ * Path: uploads/recipes/{recipeId}/{hash}.jpg
+ * URL: /recipes/{recipeId}/{hash}.jpg
+ */
+export async function downloadImage(url: string, recipeId: string): Promise<string> {
+  const recipeDir = path.join(RECIPES_BASE_DIR, recipeId);
+
+  await ensureDir(recipeDir);
 
   // Validate URL
   try {
@@ -459,16 +465,23 @@ export async function downloadImage(url: string): Promise<string> {
 
   const id = uuidFromBytes(bytes);
   const fileName = `${id}.jpg`;
-  const filePath = path.join(RECIPES_DISK_DIR, fileName);
+  const filePath = path.join(recipeDir, fileName);
 
   if (!(await fileExists(filePath))) {
     await fs.writeFile(filePath, bytes);
   }
 
-  return `${RECIPES_WEB_PREFIX}/${fileName}`;
+  return `/recipes/${recipeId}/${fileName}`;
 }
 
-export async function downloadBestImageFromJsonLd(imageField: any): Promise<string | undefined> {
+/**
+ * Download best image from JSON-LD field.
+ * Path: uploads/recipes/{recipeId}/{hash}.jpg
+ */
+export async function downloadBestImageFromJsonLd(
+  imageField: any,
+  recipeId: string
+): Promise<string | undefined> {
   const candidates = normalizeJsonLdImages(imageField);
 
   if (!candidates.length) {
@@ -493,7 +506,7 @@ export async function downloadBestImageFromJsonLd(imageField: any): Promise<stri
     const cand = ordered[i];
 
     try {
-      return await downloadImage(cand.url);
+      return await downloadImage(cand.url, recipeId);
     } catch (_e) {
       // Fail silently and try next
     }
@@ -502,22 +515,83 @@ export async function downloadBestImageFromJsonLd(imageField: any): Promise<stri
   return undefined;
 }
 
-export async function saveImageBytes(bytes: Buffer, _nameHint?: string): Promise<string> {
+/**
+ * Save image bytes to recipe directory.
+ * Path: uploads/recipes/{recipeId}/{hash}.jpg
+ * URL: /recipes/{recipeId}/{hash}.jpg
+ */
+export async function saveImageBytes(bytes: Buffer, recipeId: string): Promise<string> {
   return saveImageBytesCore(bytes, {
-    directory: RECIPES_DISK_DIR,
-    webPrefix: RECIPES_WEB_PREFIX,
+    directory: path.join(RECIPES_BASE_DIR, recipeId),
+    webPrefix: `/recipes/${recipeId}`,
   });
 }
 
+/**
+ * Save step image bytes to recipe steps directory.
+ * Path: uploads/recipes/{recipeId}/steps/{hash}.jpg
+ * URL: /recipes/{recipeId}/steps/{hash}.jpg
+ */
 export async function saveStepImageBytes(bytes: Buffer, recipeId: string): Promise<string> {
   return saveImageBytesCore(bytes, {
-    directory: path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "steps"),
+    directory: path.join(RECIPES_BASE_DIR, recipeId, "steps"),
     webPrefix: `/recipes/${recipeId}/steps`,
   });
 }
 
+/**
+ * Delete recipe image by URL.
+ * URL format: /recipes/{recipeId}/{hash}.jpg
+ */
+export async function deleteImageByUrl(url: string): Promise<void> {
+  return deleteImageByUrlCore(url, {
+    urlPattern: /^\/recipes\/([a-f0-9-]+)\/([^/]+)$/i,
+    buildPath: (recipeId, filename) => path.join(RECIPES_BASE_DIR, recipeId, filename),
+    label: "recipe",
+  });
+}
+
+/**
+ * Delete step image by URL.
+ * URL format: /recipes/{recipeId}/steps/{hash}.jpg
+ */
+export async function deleteStepImageByUrl(url: string): Promise<void> {
+  return deleteImageByUrlCore(url, {
+    urlPattern: /^\/recipes\/([a-f0-9-]+)\/steps\/([^/]+)$/i,
+    buildPath: (recipeId, filename) => path.join(RECIPES_BASE_DIR, recipeId, "steps", filename),
+    label: "step",
+  });
+}
+
+/**
+ * Delete entire recipe directory (all images including steps).
+ */
+export async function deleteRecipeImagesDir(recipeId: string): Promise<void> {
+  const recipeDir = path.join(RECIPES_BASE_DIR, recipeId);
+
+  try {
+    const exists = await fs
+      .access(recipeDir)
+      .then(() => true)
+      .catch(() => false);
+
+    if (!exists) {
+      log.debug({ recipeId, recipeDir }, "Recipe images directory does not exist, skipping");
+      return;
+    }
+
+    await fs.rm(recipeDir, { recursive: true, force: true });
+    log.info({ recipeId, recipeDir }, "Deleted recipe images directory");
+  } catch (err) {
+    log.warn({ err, recipeId, recipeDir }, "Could not delete recipe images directory");
+  }
+}
+
+/**
+ * Delete step images directory only.
+ */
 export async function deleteRecipeStepImagesDir(recipeId: string): Promise<void> {
-  const stepImagesDir = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "steps");
+  const stepImagesDir = path.join(RECIPES_BASE_DIR, recipeId, "steps");
 
   try {
     await fs.rm(stepImagesDir, { recursive: true, force: true });
@@ -528,55 +602,15 @@ export async function deleteRecipeStepImagesDir(recipeId: string): Promise<void>
   }
 }
 
-export async function deleteStepImageByUrl(url: string): Promise<void> {
-  return deleteImageByUrlCore(url, {
-    urlPattern: /^\/recipes\/([a-f0-9-]+)\/steps\/([^/]+)$/i,
-    buildPath: (recipeId, filename) =>
-      path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "steps", filename),
-    label: "step",
-  });
-}
-
-// --- Recipe Gallery Image Functions ---
-
-export async function saveRecipeGalleryImageBytes(
-  bytes: Buffer,
-  recipeId: string
-): Promise<string> {
-  return saveImageBytesCore(bytes, {
-    directory: path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "gallery"),
-    webPrefix: `/recipes/${recipeId}/gallery`,
-  });
-}
-
-export async function deleteRecipeGalleryImageByUrl(url: string): Promise<void> {
-  return deleteImageByUrlCore(url, {
-    urlPattern: /^\/recipes\/([a-f0-9-]+)\/gallery\/([^/]+)$/i,
-    buildPath: (recipeId, filename) =>
-      path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "gallery", filename),
-    label: "gallery",
-  });
-}
-
-export async function deleteRecipeGalleryImagesDir(recipeId: string): Promise<void> {
-  const galleryDir = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "gallery");
-
-  try {
-    await fs.rm(galleryDir, { recursive: true, force: true });
-    log.info({ recipeId }, "Deleted gallery images directory");
-  } catch (err) {
-    // Ignore errors (directory might not exist)
-    log.warn({ err, recipeId }, "Could not delete gallery images directory");
-  }
-}
-
 /**
  * Download all images from JSON-LD image field, up to maxImages count.
  * Returns array of web URLs for successfully downloaded images.
  * Prioritizes larger images first based on dimensions metadata.
+ * Path: uploads/recipes/{recipeId}/{hash}.jpg
  */
 export async function downloadAllImagesFromJsonLd(
   imageField: any,
+  recipeId: string,
   maxImages: number = 10
 ): Promise<string[]> {
   const candidates = normalizeJsonLdImages(imageField);
@@ -605,7 +639,7 @@ export async function downloadAllImagesFromJsonLd(
     const cand = ordered[i];
 
     try {
-      const webUrl = await downloadImage(cand.url);
+      const webUrl = await downloadImage(cand.url, recipeId);
 
       downloadedUrls.push(webUrl);
     } catch (_e) {

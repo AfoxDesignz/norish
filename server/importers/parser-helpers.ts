@@ -84,12 +84,12 @@ export function base64ToBuffer(b64: string): Buffer {
  */
 export async function saveBase64Image(
   base64Data: string,
-  recipeName: string
+  recipeId: string
 ): Promise<string | undefined> {
   try {
     const buffer = base64ToBuffer(base64Data);
 
-    return await saveImageBytes(buffer, recipeName);
+    return await saveImageBytes(buffer, recipeId);
   } catch {
     // Ignore image failure, proceed without image
     return undefined;
@@ -101,12 +101,12 @@ export async function saveBase64Image(
  */
 export async function saveBufferImage(
   buffer: Buffer | undefined,
-  recipeName: string
+  recipeId: string
 ): Promise<string | undefined> {
   if (!buffer || buffer.length === 0) return undefined;
 
   try {
-    return await saveImageBytes(buffer, recipeName);
+    return await saveImageBytes(buffer, recipeId);
   } catch {
     // Ignore image failure, proceed without image
     return undefined;

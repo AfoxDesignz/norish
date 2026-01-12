@@ -1,5 +1,6 @@
 import { runMigrations } from "./server/startup/migrations";
 import { seedServerConfig } from "./server/startup/seed-config";
+import { migrateGalleryImages } from "./server/startup/migrate-gallery-images";
 import { initializeVideoProcessing } from "./server/startup/video-processing";
 import { createServer } from "./server/startup/http-server";
 import { registerShutdownHandlers } from "./server/startup/shutdown";
@@ -24,6 +25,9 @@ async function main() {
   log.info("-".repeat(50));
 
   await seedServerConfig();
+  log.info("-".repeat(50));
+
+  await migrateGalleryImages();
   log.info("-".repeat(50));
 
   await initializeVideoProcessing();

@@ -66,9 +66,10 @@ vi.mock("@/app/providers/trpc-provider", () => ({
               return { success: false, error: "Missing file or recipeId" };
             }
 
+            // Gallery images now use the same flat directory as recipe thumbnails
             return {
               success: true,
-              url: `/recipes/${recipeId}/gallery/test-gallery.jpg`,
+              url: `/recipes/images/test-gallery.jpg`,
               id: "gallery-123",
               order: 0,
             };
@@ -322,7 +323,8 @@ describe("useRecipeImages", () => {
       const response = await result.current.uploadGalleryImage(file, recipeId);
 
       expect(response.success).toBe(true);
-      expect(response.url).toBe(`/recipes/${recipeId}/gallery/test-gallery.jpg`);
+      // Gallery images now use the shared /recipes/images/ directory
+      expect(response.url).toBe("/recipes/images/test-gallery.jpg");
       expect(response.id).toBe("gallery-123");
       expect(response.order).toBe(0);
     });

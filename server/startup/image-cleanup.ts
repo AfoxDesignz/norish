@@ -9,83 +9,119 @@ import { SERVER_CONFIG } from "@/config/env-config-server";
 import { schedulerLogger } from "@/server/logger";
 
 const RECIPES_DISK_DIR = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes");
-const RECIPES_WEB_PREFIX = "/recipes/images";
 const AVATARS_DISK_DIR = path.join(SERVER_CONFIG.UPLOADS_DIR, "avatars");
+
+// URL pattern for per-recipe images: /recipes/{recipeId}/{filename}
+const RECIPE_IMAGE_URL_PATTERN = /^\/recipes\/([a-f0-9-]{36})\/([^/]+)$/i;
 
 /**
  * Clean up orphaned recipe images that aren't referenced in the database.
- * Checks both the legacy `recipes.image` field and the `recipe_images` gallery table.
+ * Scans per-recipe directories and removes files not in recipes.image or recipe_images.image.
  */
 export async function cleanupOrphanedImages(): Promise<{ deleted: number; errors: number }> {
   let deleted = 0;
   let errors = 0;
 
   try {
-    // Get all image files from disk (main images directory)
-    const imagesDir = path.join(RECIPES_DISK_DIR, "images");
-    let files;
+    // Get all subdirectories in uploads/recipes/
+    let entries;
 
     try {
-      files = await fs.readdir(imagesDir);
+      entries = await fs.readdir(RECIPES_DISK_DIR, { withFileTypes: true });
     } catch {
       // Directory doesn't exist, nothing to clean up
       return { deleted: 0, errors: 0 };
     }
 
-    const imageFiles = files.filter(
-      (f) => f.endsWith(".jpg") || f.endsWith(".jpeg") || f.endsWith(".png") || f.endsWith(".webp")
-    );
+    // Filter to recipe directories only (skip 'images' legacy dir if it exists)
+    const recipeIdDirs = entries.filter((e) => e.isDirectory() && e.name !== "images");
 
-    if (imageFiles.length === 0) {
-      schedulerLogger.info("No images found in recipes directory");
+    if (recipeIdDirs.length === 0) {
+      schedulerLogger.info("No recipe directories found");
 
       return { deleted: 0, errors: 0 };
     }
 
-    // Get all image URLs from database - both legacy field and gallery table
+    // Get all existing recipe IDs from database
+    const existingRecipes = await db.select({ id: recipes.id }).from(recipes);
+    const existingRecipeIds = new Set(existingRecipes.map((r) => r.id));
+
+    // Get all image URLs from database - both recipes.image and recipe_images.image
     const [allRecipes, allGalleryImages] = await Promise.all([
-      db.select({ image: recipes.image }).from(recipes),
-      db.select({ image: recipeImages.image }).from(recipeImages),
+      db.select({ id: recipes.id, image: recipes.image }).from(recipes),
+      db.select({ recipeId: recipeImages.recipeId, image: recipeImages.image }).from(recipeImages),
     ]);
 
-    const usedImages = new Set<string>();
+    // Build map of recipeId -> Set of referenced filenames
+    const referencedFiles = new Map<string, Set<string>>();
 
-    // Add images from legacy recipes.image field
+    // From recipes.image
     for (const r of allRecipes) {
-      if (r.image && r.image.startsWith(RECIPES_WEB_PREFIX)) {
-        const filename = r.image.substring(RECIPES_WEB_PREFIX.length + 1);
+      if (r.image) {
+        const match = r.image.match(RECIPE_IMAGE_URL_PATTERN);
 
-        usedImages.add(filename);
-      }
-    }
+        if (match) {
+          const [, recipeId, filename] = match;
 
-    // Add images from recipe_images gallery table
-    for (const img of allGalleryImages) {
-      if (img.image && img.image.startsWith(RECIPES_WEB_PREFIX)) {
-        const filename = img.image.substring(RECIPES_WEB_PREFIX.length + 1);
-
-        usedImages.add(filename);
-      }
-    }
-
-    schedulerLogger.info(
-      { total: imageFiles.length, referenced: usedImages.size },
-      "Found image files"
-    );
-
-    // Delete orphaned images
-    for (const file of imageFiles) {
-      if (!usedImages.has(file)) {
-        try {
-          const filePath = path.join(imagesDir, file);
-
-          await fs.unlink(filePath);
-          deleted++;
-          schedulerLogger.info({ file }, "Deleted orphaned image");
-        } catch (err) {
-          errors++;
-          schedulerLogger.error({ err, file }, "Error deleting image");
+          if (!referencedFiles.has(recipeId)) {
+            referencedFiles.set(recipeId, new Set());
+          }
+          referencedFiles.get(recipeId)!.add(filename);
         }
+      }
+    }
+
+    // From recipe_images.image
+    for (const img of allGalleryImages) {
+      const match = img.image.match(RECIPE_IMAGE_URL_PATTERN);
+
+      if (match) {
+        const [, recipeId, filename] = match;
+
+        if (!referencedFiles.has(recipeId)) {
+          referencedFiles.set(recipeId, new Set());
+        }
+        referencedFiles.get(recipeId)!.add(filename);
+      }
+    }
+
+    // Scan each recipe directory
+    for (const dir of recipeIdDirs) {
+      const recipeId = dir.name;
+      const recipeDir = path.join(RECIPES_DISK_DIR, recipeId);
+
+      // If recipe doesn't exist in DB, the whole directory is handled by cleanupOrphanedStepImages
+      if (!existingRecipeIds.has(recipeId)) {
+        continue;
+      }
+
+      try {
+        const files = await fs.readdir(recipeDir);
+        const imageFiles = files.filter(
+          (f) =>
+            !f.includes("/") &&
+            (f.endsWith(".jpg") || f.endsWith(".jpeg") || f.endsWith(".png") || f.endsWith(".webp"))
+        );
+
+        const referenced = referencedFiles.get(recipeId) || new Set();
+
+        for (const file of imageFiles) {
+          if (!referenced.has(file)) {
+            try {
+              const filePath = path.join(recipeDir, file);
+
+              await fs.unlink(filePath);
+              deleted++;
+              schedulerLogger.info({ recipeId, file }, "Deleted orphaned recipe image");
+            } catch (err) {
+              errors++;
+              schedulerLogger.error({ err, recipeId, file }, "Error deleting image");
+            }
+          }
+        }
+      } catch (err) {
+        schedulerLogger.error({ err, recipeId }, "Error scanning recipe directory");
+        errors++;
       }
     }
 
@@ -99,22 +135,31 @@ export async function cleanupOrphanedImages(): Promise<{ deleted: number; errors
 }
 
 /**
- * Delete a specific image file by URL
+ * Delete a specific image file by URL.
+ * URL format: /recipes/{recipeId}/{filename}
  */
 export async function deleteImageByUrl(imageUrl: string | null | undefined): Promise<void> {
-  if (!imageUrl || !imageUrl.startsWith(RECIPES_WEB_PREFIX)) {
+  if (!imageUrl) {
     return;
   }
 
-  const filename = imageUrl.substring(RECIPES_WEB_PREFIX.length + 1);
-  const filePath = path.join(RECIPES_DISK_DIR, "images", filename);
+  const match = imageUrl.match(RECIPE_IMAGE_URL_PATTERN);
+
+  if (!match) {
+    schedulerLogger.warn({ imageUrl }, "Invalid recipe image URL format");
+
+    return;
+  }
+
+  const [, recipeId, filename] = match;
+  const filePath = path.join(RECIPES_DISK_DIR, recipeId, filename);
 
   try {
     await fs.unlink(filePath);
-    schedulerLogger.info({ filename }, "Deleted image");
+    schedulerLogger.info({ recipeId, filename }, "Deleted image");
   } catch (err) {
     // Ignore errors (file might not exist)
-    schedulerLogger.warn({ err, filename }, "Could not delete image");
+    schedulerLogger.warn({ err, recipeId, filename }, "Could not delete image");
   }
 }
 
@@ -219,25 +264,27 @@ export async function deleteAvatarByFilename(filename: string | null | undefined
   }
 }
 
+/**
+ * Clean up orphaned step images and recipe directories for deleted recipes.
+ * Deletes entire per-recipe directories when the recipe no longer exists.
+ */
 export async function cleanupOrphanedStepImages(): Promise<{ deleted: number; errors: number }> {
   let deleted = 0;
   let errors = 0;
-
-  const recipesDir = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes");
 
   try {
     // Get all subdirectories in uploads/recipes/
     let entries;
 
     try {
-      entries = await fs.readdir(recipesDir, { withFileTypes: true });
+      entries = await fs.readdir(RECIPES_DISK_DIR, { withFileTypes: true });
     } catch {
       // Directory doesn't exist, nothing to clean up
       return { deleted: 0, errors: 0 };
     }
 
-    // Filter to directories only (these should be recipe IDs)
-    const recipeIdDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+    // Filter to directories only (skip 'images' legacy dir if it exists)
+    const recipeIdDirs = entries.filter((e) => e.isDirectory() && e.name !== "images");
 
     if (recipeIdDirs.length === 0) {
       return { deleted: 0, errors: 0 };
@@ -249,33 +296,30 @@ export async function cleanupOrphanedStepImages(): Promise<{ deleted: number; er
 
     schedulerLogger.info(
       { totalDirs: recipeIdDirs.length, existingRecipes: existingRecipeIds.size },
-      "Checking step image directories"
+      "Checking recipe directories"
     );
 
     // Delete directories for recipes that no longer exist
-    for (const recipeId of recipeIdDirs) {
-      // Skip "images" directory (main recipe images directory)
-      if (recipeId === "images") {
-        continue;
-      }
+    for (const dir of recipeIdDirs) {
+      const recipeId = dir.name;
 
       if (!existingRecipeIds.has(recipeId)) {
         try {
-          const dirPath = path.join(recipesDir, recipeId);
+          const dirPath = path.join(RECIPES_DISK_DIR, recipeId);
 
           await fs.rm(dirPath, { recursive: true, force: true });
           deleted++;
-          schedulerLogger.info({ recipeId }, "Deleted orphaned step images directory");
+          schedulerLogger.info({ recipeId }, "Deleted orphaned recipe directory");
         } catch (err) {
           errors++;
-          schedulerLogger.error({ err, recipeId }, "Error deleting step images directory");
+          schedulerLogger.error({ err, recipeId }, "Error deleting recipe directory");
         }
       }
     }
 
-    schedulerLogger.info({ deleted, errors }, "Step images cleanup complete");
+    schedulerLogger.info({ deleted, errors }, "Recipe directory cleanup complete");
   } catch (err) {
-    schedulerLogger.error({ err }, "Fatal error during step images cleanup");
+    schedulerLogger.error({ err }, "Fatal error during recipe directory cleanup");
     errors++;
   }
 

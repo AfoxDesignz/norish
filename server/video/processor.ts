@@ -11,6 +11,7 @@ import { transcribeAudio } from "@/server/ai/transcriber";
 
 export async function processVideoRecipe(
   url: string,
+  recipeId: string,
   allergies?: string[]
 ): Promise<FullRecipeInsertDTO> {
   const videoEnabled = await isVideoParsingEnabled();
@@ -37,7 +38,7 @@ export async function processVideoRecipe(
     if (isInstagram && isInstagramImagePost(metadata)) {
       log.info({ url }, "Detected Instagram image post, extracting from description");
 
-      return await processInstagramImagePost(url, metadata, allergies);
+      return await processInstagramImagePost(url, recipeId, metadata, allergies);
     }
 
     // Validate video length before downloading (only for actual videos)
@@ -56,7 +57,7 @@ export async function processVideoRecipe(
           "Audio download failed for Instagram, attempting description-based extraction"
         );
 
-        return await processInstagramImagePost(url, metadata, allergies);
+        return await processInstagramImagePost(url, recipeId, metadata, allergies);
       }
       throw audioError;
     }
@@ -74,7 +75,7 @@ export async function processVideoRecipe(
     log.info({ url, transcriptLength: transcript.length }, "Audio transcribed");
 
     // Extract recipe from transcript + metadata
-    const result = await extractRecipeFromVideo(transcript, metadata, url, allergies);
+    const result = await extractRecipeFromVideo(transcript, metadata, recipeId, url, allergies);
 
     if (!result.success) {
       throw new Error(

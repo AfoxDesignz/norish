@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+
 import { decode } from "html-entities";
 
 import { parseIsoDuration, parseIngredientWithDefaults } from "@/lib/helpers";
@@ -49,9 +51,14 @@ function extractNutrition(json: any): {
   };
 }
 
-export async function normalizeRecipeFromJson(json: any): Promise<FullRecipeInsertDTO | null> {
+export async function normalizeRecipeFromJson(
+  json: any,
+  recipeId?: string
+): Promise<FullRecipeInsertDTO | null> {
   if (!json) return null;
 
+  // Generate a recipe ID if not provided - needed for image storage paths
+  const effectiveRecipeId = recipeId ?? randomUUID();
   const units = await getUnits();
 
   // --- INGREDIENTS ---
@@ -167,6 +174,7 @@ export async function normalizeRecipeFromJson(json: any): Promise<FullRecipeInse
       if (remotePaths.length > 0) {
         const downloaded = await downloadAllImagesFromJsonLd(
           remotePaths,
+          effectiveRecipeId,
           MAX_RECIPE_IMAGES - localPaths.length
         );
 
@@ -174,7 +182,11 @@ export async function normalizeRecipeFromJson(json: any): Promise<FullRecipeInse
       }
     } else {
       // Remote URLs - download them
-      downloadedImages = await downloadAllImagesFromJsonLd(imageField, MAX_RECIPE_IMAGES);
+      downloadedImages = await downloadAllImagesFromJsonLd(
+        imageField,
+        effectiveRecipeId,
+        MAX_RECIPE_IMAGES
+      );
     }
   }
 
@@ -247,5 +259,6 @@ export async function normalizeRecipeFromJson(json: any): Promise<FullRecipeInse
       ? json.keywords.map((k: string) => ({ name: k.toLowerCase() }))
       : [],
     images: imagesArray,
+    id: effectiveRecipeId,
   };
 }

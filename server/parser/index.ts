@@ -20,6 +20,7 @@ export interface ParseRecipeResult {
 
 export async function parseRecipeFromUrl(
   url: string,
+  recipeId: string,
   allergies?: string[],
   forceAI?: boolean
 ): Promise<ParseRecipeResult> {
@@ -33,7 +34,7 @@ export async function parseRecipeFromUrl(
 
     try {
       const { processVideoRecipe } = await import("@/server/video/processor");
-      const recipe = await processVideoRecipe(url, allergies);
+      const recipe = await processVideoRecipe(url, recipeId, allergies);
 
       return { recipe, usedAI: true };
     } catch (error: any) {
@@ -63,7 +64,7 @@ export async function parseRecipeFromUrl(
       throw new Error("AI-only import requested but AI is not enabled.");
     }
 
-    const aiResult = await extractRecipeWithAI(html, url, allergies);
+    const aiResult = await extractRecipeWithAI(html, recipeId, url, allergies);
 
     if (aiResult.success) {
       return { recipe: aiResult.data, usedAI: true };
@@ -73,7 +74,7 @@ export async function parseRecipeFromUrl(
   }
 
   // Standard parsing flow: try structured parsers first, then AI fallback
-  const jsonLdParsed = await tryExtractRecipeFromJsonLd(url, html);
+  const jsonLdParsed = await tryExtractRecipeFromJsonLd(url, html, recipeId);
   const containsStepsAndIngredients =
     !!jsonLdParsed &&
     Array.isArray(jsonLdParsed.recipeIngredients) &&
@@ -85,7 +86,7 @@ export async function parseRecipeFromUrl(
     return { recipe: jsonLdParsed, usedAI: false };
   }
 
-  const microParsed = await tryExtractRecipeFromMicrodata(url, html);
+  const microParsed = await tryExtractRecipeFromMicrodata(url, html, recipeId);
   const containsMicroStepsAndIngredients =
     !!microParsed &&
     Array.isArray(microParsed.recipeIngredients) &&
@@ -102,7 +103,7 @@ export async function parseRecipeFromUrl(
 
   if (aiEnabled) {
     log.info({ url }, "Falling back to AI extraction");
-    const aiResult = await extractRecipeWithAI(html, url, allergies);
+    const aiResult = await extractRecipeWithAI(html, recipeId, url, allergies);
 
     if (aiResult.success) {
       return { recipe: aiResult.data, usedAI: true };

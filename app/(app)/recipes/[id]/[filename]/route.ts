@@ -30,12 +30,12 @@ export async function GET(
     return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
   }
 
-  const galleryDir = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", id, "gallery");
-  const filePath = path.join(galleryDir, filename);
+  const recipeDir = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", id);
+  const filePath = path.join(recipeDir, filename);
 
   // Verify we're still within the expected directory (prevent path traversal)
   const resolvedPath = path.resolve(filePath);
-  const resolvedDir = path.resolve(galleryDir);
+  const resolvedDir = path.resolve(recipeDir);
   const relative = path.relative(resolvedDir, resolvedPath);
 
   if (relative.startsWith("..") || path.isAbsolute(relative)) {

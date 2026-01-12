@@ -89,7 +89,7 @@ async function processImportJob(job: Job<RecipeImportJobData>): Promise<void> {
   }
 
   // Parse and create recipe
-  const parseResult = await parseRecipeFromUrl(url, allergyNames, job.data.forceAI);
+  const parseResult = await parseRecipeFromUrl(url, recipeId, allergyNames, job.data.forceAI);
 
   if (!parseResult.recipe) {
     throw new Error("Failed to parse recipe from URL");

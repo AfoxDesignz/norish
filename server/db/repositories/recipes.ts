@@ -23,7 +23,7 @@ import { createManyRecipeStepsTx } from "./steps";
 import { attachTagsToRecipeByInputTx } from "./tags";
 
 import { stripHtmlTags } from "@/lib/helpers";
-import { deleteRecipeStepImagesDir, deleteRecipeGalleryImagesDir } from "@/server/downloader";
+import { deleteRecipeImagesDir } from "@/server/downloader";
 import {
   RecipeDashboardDTO,
   FilterMode,
@@ -51,8 +51,7 @@ export async function GetTotalRecipeCount(): Promise<number> {
 }
 
 export async function deleteRecipeById(id: string): Promise<void> {
-  await deleteRecipeStepImagesDir(id);
-  await deleteRecipeGalleryImagesDir(id);
+  await deleteRecipeImagesDir(id);
   await db.delete(recipes).where(eq(recipes.id, id));
 }
 
