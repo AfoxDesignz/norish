@@ -15,6 +15,7 @@ import StepInput, { Step } from "@/components/recipes/step-input";
 import TimeInputs from "@/components/recipes/time-inputs";
 import MeasurementSystemSelector from "@/components/recipes/measurement-system-selector";
 import ImageGalleryInput, { RecipeGalleryImage } from "@/components/recipes/image-gallery-input";
+import EditRecipeSkeleton from "@/components/skeleton/edit-recipe-skeleton";
 import { useRecipesContext } from "@/context/recipes-context";
 import { inferSystemUsedFromParsed } from "@/lib/determine-recipe-system";
 import { parseIngredientWithDefaults } from "@/lib/helpers";
@@ -280,13 +281,9 @@ export default function RecipeForm({ mode, initialData }: RecipeFormProps) {
     []
   );
 
-  // Show loading state while reserving recipe ID for create mode
+  // Show skeleton while reserving recipe ID for create mode
   if (isLoadingRecipeId) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-default-500">{t("initializingForm")}</div>
-      </div>
-    );
+    return <EditRecipeSkeleton />;
   }
 
   return (
