@@ -18,13 +18,13 @@
 
 The vision for Norish is a shared recipe app, to be shared with friends to make one big recipe catalogue.
 
-The name is derived of our dog named: Nora, and dish. As a coincidence this can also be pronounced as Nourish. If you look hard enough you can find a picture of Nora.
+The name is derived from our dog named: Nora, and dish. As a coincidence this can also be pronounced as Nourish. If you look hard enough you can find a picture of Nora.
 
 ---
 
 # Why
 
-Norish was built solely because me and my girlfriend like to cook and keep track of our recipes. Sadly we could not get used to the aesthetic of Tandoor or Mealie. Both are great alternatives providing a more rich featureset than Norish. I have not tried tandoor or mealie enough to know their exact feature set but. I believe Noris is different in the sense that the instance is fully-realtime in theory.
+Norish was built solely because me and my girlfriend like to cook and keep track of our recipes. Sadly we could not get used to the aesthetic of Tandoor or Mealie. Both are great alternatives providing a more rich featureset than Norish. I have not tried tandoor or mealie enough to know their exact feature set but, I believe Norish is different in the sense that the instance is fully-realtime in theory.
 
 This was one of the only requirements my girlfriend had as we do groceries together and this way we can keep track of who picked what grocery items.
 
@@ -50,9 +50,9 @@ On my _todolist_ are still in order of current priority:
 - **Allergy warning** show allergy warnings for planned recipes. Can auto detect allergies based on ingredients. _(auto detection requires OpenAI provider)_
 - **Unit conversion** Convert units from metric to US or vice versa, note: AI has to be enabled and setup for this.
 - **Recurring groceries** Groceries can be marked as recurring this can be done using NLP or the interface
-  - Currently we support: daily, weekly on day, monthly, montly on day. Every _x_ weeks on day.
+  - Currently we support: daily, weekly on day, monthly, monthly on day. Every _x_ weeks on day.
 - **Real-time sync** of recipes, grocery lists and meal plans
-- **Households** Share grocery lists, and meal plan(calendar)
+- **Households** Share grocery lists, and meal plan (calendar)
 - **CalDav sync** Sync your recipes with any caldav provider(only tested with radicale)
 - **Mobile-first design** for use in the kitchen
 - **Light & dark mode** support
@@ -61,11 +61,11 @@ On my _todolist_ are still in order of current priority:
 - **Admin Settings UI** for server owners to manage configuration without editing files
 - **Permission policies** for controlling who can view/edit/delete recipes (everyone, household, or owner only)
   - Default view: Everyone
-  - Defaul Edit: household
+  - Default Edit: household
   - Default Remove: household
 - **Local AI** In theory Norish supports local AI providers - however I have not tested this. Although I am looking to buy a machine that is capable.
 
-_Note: All AI related features seem to be rather slow for me using the OpenAI API. I am not sure why this is your results may vary._
+_Note: All AI related features seem to be rather slow for me using the OpenAI API. I am not sure why this is; your results may vary._
 
 ---
 
