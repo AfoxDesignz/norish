@@ -1,3 +1,5 @@
+import type { BrowserContext } from "playwright-core";
+
 import { getBrowser } from "@/server/playwright";
 import { parserLogger as log } from "@/server/logger";
 
@@ -31,10 +33,13 @@ function getReferer(url: string): string {
 }
 
 export async function fetchViaPlaywright(targetUrl: string): Promise<string> {
+  let context: BrowserContext | undefined;
+
   try {
     const browser = await getBrowser();
     const referer = getReferer(targetUrl);
-    const context = await browser.newContext({
+
+    context = await browser.newContext({
       userAgent: BROWSER_HEADERS["User-Agent"],
       viewport: { width: 1920, height: 1080 },
       locale: "en-US",
@@ -57,8 +62,13 @@ export async function fetchViaPlaywright(targetUrl: string): Promise<string> {
     const page = await context.newPage();
 
     await page.goto(targetUrl, {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
       timeout: 30000,
+    });
+
+    // Wait for network to settle, but don't block forever on slow/persistent connections
+    await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {
+      log.debug({ url: targetUrl }, "Network idle timeout, proceeding with available content");
     });
 
     const title = await page.title();
@@ -90,17 +100,16 @@ export async function fetchViaPlaywright(targetUrl: string): Promise<string> {
       );
     }
 
-    const content = await page.content();
-
-    await context.close();
-
-    return content;
+    return await page.content();
   } catch (error) {
     log.warn({ err: error }, "Playwright fetch failed, Chrome may not be available");
 
     return ""; // Fallback will use HTTP
+  } finally {
+    if (context) {
+      await context.close().catch((err) => {
+        log.debug({ err }, "Failed to close browser context during cleanup");
+      });
+    }
   }
 }
-
-// Keep backwards compatibility alias
-export const fetchViaPuppeteer = fetchViaPlaywright;

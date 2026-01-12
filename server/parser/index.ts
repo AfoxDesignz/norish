@@ -1,7 +1,6 @@
 import { FullRecipeInsertDTO } from "@/types/dto/recipe";
 import { tryExtractRecipeFromJsonLd } from "@/server/parser/jsonld";
 import { tryExtractRecipeFromMicrodata } from "@/server/parser/microdata";
-import { fetchViaPuppeteer } from "@/server/parser/fetch";
 import { extractRecipeWithAI } from "@/server/ai/recipe-parser";
 import {
   getContentIndicators,
@@ -11,6 +10,7 @@ import {
 } from "@/config/server-config-loader";
 import { isVideoUrl } from "@/server/helpers";
 import { parserLogger as log } from "@/server/logger";
+import { fetchViaPlaywright } from "./fetch";
 
 export interface ParseRecipeResult {
   recipe: FullRecipeInsertDTO;
@@ -43,7 +43,7 @@ export async function parseRecipeFromUrl(
     }
   }
 
-  const html = await fetchViaPuppeteer(url);
+  const html = await fetchViaPlaywright(url);
 
   if (!html) throw new Error("Cannot fetch recipe page.");
 
