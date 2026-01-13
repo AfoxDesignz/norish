@@ -51,7 +51,9 @@
     "favorites": "Favorieten",
     "sortByTitle": "Titel",
     "sortByDate": "Datum",
-    "clearFilters": "Filters wissen"
+    "clearFilters": "Filters wissen",
+    "cookingTime": "Kooktijd",
+    "maxCookingTime": "Max kooktijd"
   },
   "time": {
     "minutes": "min",

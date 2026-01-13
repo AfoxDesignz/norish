@@ -51,7 +51,9 @@
     "favorites": "Favoris",
     "sortByTitle": "Titre",
     "sortByDate": "Date",
-    "clearFilters": "Effacer les filtres"
+    "clearFilters": "Effacer les filtres",
+    "cookingTime": "Temps de cuisson",
+    "maxCookingTime": "Temps max de cuisson"
   },
   "time": {
     "minutes": "min",

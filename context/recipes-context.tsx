@@ -56,6 +56,7 @@ export function RecipesContextProvider({ children }: { children: ReactNode }) {
       filterMode: filters.filterMode as "AND" | "OR",
       sortMode: filters.sortMode as "titleAsc" | "titleDesc" | "dateAsc" | "dateDesc",
       minRating: filters.minRating ?? undefined,
+      maxCookingTime: filters.maxCookingTime ?? undefined,
     }),
     [filters]
   );

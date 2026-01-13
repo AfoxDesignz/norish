@@ -6,6 +6,7 @@ import {
   CheckIcon,
   ArrowPathIcon,
   HeartIcon,
+  ClockIcon,
 } from "@heroicons/react/16/solid";
 import { Input, Button, Chip } from "@heroui/react";
 import { motion } from "motion/react";
@@ -37,6 +38,9 @@ function FiltersPanelContent({ onOpenChange }: { onOpenChange: (open: boolean) =
   const [localInput, setLocalInput] = useState(filters.rawInput);
   const [localFavoritesOnly, setLocalFavoritesOnly] = useState(filters.showFavoritesOnly);
   const [localMinRating, setLocalMinRating] = useState<number | null>(filters.minRating);
+  const [localMaxCookingTime, setLocalMaxCookingTime] = useState<number | null>(
+    filters.maxCookingTime
+  );
 
   const { tags: allTags, isLoading } = useTagsQuery();
 
@@ -47,6 +51,7 @@ function FiltersPanelContent({ onOpenChange }: { onOpenChange: (open: boolean) =
     setLocalInput(filters.rawInput);
     setLocalFavoritesOnly(filters.showFavoritesOnly);
     setLocalMinRating(filters.minRating);
+    setLocalMaxCookingTime(filters.maxCookingTime);
   }, [filters]);
 
   const toggleTag = useCallback((tag: string) => {
@@ -81,6 +86,7 @@ function FiltersPanelContent({ onOpenChange }: { onOpenChange: (open: boolean) =
       rawInput: localInput,
       showFavoritesOnly: localFavoritesOnly,
       minRating: localMinRating,
+      maxCookingTime: localMaxCookingTime,
     });
 
     close();
@@ -195,6 +201,36 @@ function FiltersPanelContent({ onOpenChange }: { onOpenChange: (open: boolean) =
         </div>
       </section>
 
+      {/* Cooking Time */}
+      <section>
+        <h3 className="text-default-500 mb-2 text-[11px] font-medium tracking-wide uppercase">
+          {t("cookingTime")}
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { minutes: 30, label: "<30m" },
+            { minutes: 60, label: "<60m" },
+            { minutes: 90, label: "<90m" },
+            { minutes: 120, label: "<120m" },
+          ].map(({ minutes, label }) => (
+            <Button
+              key={minutes}
+              className="h-9 px-3 text-xs"
+              color={localMaxCookingTime === minutes ? "primary" : "default"}
+              radius="full"
+              size="sm"
+              startContent={<ClockIcon className="size-3.5" />}
+              variant={localMaxCookingTime === minutes ? "solid" : "flat"}
+              onPress={() =>
+                setLocalMaxCookingTime(localMaxCookingTime === minutes ? null : minutes)
+              }
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+      </section>
+
       {/* Tags */}
       <section>
         <h3 className="text-default-500 mb-3 text-xs font-medium tracking-wide uppercase">
@@ -259,6 +295,7 @@ function FiltersPanelContent({ onOpenChange }: { onOpenChange: (open: boolean) =
             setLocalInput("");
             setLocalFavoritesOnly(false);
             setLocalMinRating(null);
+            setLocalMaxCookingTime(null);
             close();
           }}
         >

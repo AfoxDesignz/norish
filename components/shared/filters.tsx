@@ -20,9 +20,10 @@ export default function Filters({ isGlass = false }: FiltersProps) {
     const hasSearch = filters.rawInput.trim().length > 0;
     const hasTags = filters.searchTags.length > 0;
     const hasRating = filters.minRating !== null;
+    const hasCookingTime = filters.maxCookingTime !== null;
 
-    return hasSearch || hasTags || hasRating;
-  }, [filters.rawInput, filters.searchTags, filters.minRating]);
+    return hasSearch || hasTags || hasRating || hasCookingTime;
+  }, [filters.rawInput, filters.searchTags, filters.minRating, filters.maxCookingTime]);
 
   return (
     <>

@@ -1,4 +1,4 @@
-import { eq, ilike, inArray, and, asc, desc, sql, or } from "drizzle-orm";
+import { eq, ilike, inArray, and, asc, desc, sql, or, lte } from "drizzle-orm";
 import z from "zod";
 
 import { db } from "../drizzle";
@@ -244,7 +244,8 @@ export async function listRecipes(
   tagNames?: string[],
   filterMode: FilterMode = "OR",
   sortMode: SortOrder = "dateDesc",
-  minRating?: number
+  minRating?: number,
+  maxCookingTime?: number
 ): Promise<{ recipes: RecipeDashboardDTO[]; total: number }> {
   const whereConditions: any[] = [];
 
@@ -253,6 +254,11 @@ export async function listRecipes(
 
   if (policyCondition) {
     whereConditions.push(policyCondition);
+  }
+
+  // Filter by max cooking time if specified
+  if (maxCookingTime !== undefined) {
+    whereConditions.push(lte(recipes.totalMinutes, maxCookingTime));
   }
 
   // Build full-text search with weighted ranking
