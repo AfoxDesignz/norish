@@ -303,7 +303,7 @@ const importFromUrlProcedure = authedProcedure
     if (result.status === "exists" || result.status === "duplicate") {
       throw new TRPCError({
         code: "CONFLICT",
-        message: "This recipe is already exist or is being imported",
+        message: "This recipe already exists or is being imported",
       });
     }
 
