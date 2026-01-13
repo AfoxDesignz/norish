@@ -109,7 +109,11 @@
     "dragToReorder": "Glissez les images pour réorganiser"
   },
   "carousel": {
-    "noImageAvailable": "Aucune image disponible"
+    "noImageAvailable": "Aucune image disponible",
+    "videoPlayer": {
+      "mute": "Couper le son",
+      "unmute": "Activer le son"
+    }
   },
   "validation": {
     "nameRequired": "Le nom de la recette est requis",

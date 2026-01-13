@@ -4,6 +4,7 @@ import { authedProcedure } from "../../middleware";
 import { trpcLogger as log } from "@/server/logger";
 import { getUnits, getRecurrenceConfig, getLocaleConfig } from "@/config/server-config-loader";
 import { listAllTagNames } from "@/server/db/repositories/tags";
+import { SERVER_CONFIG } from "@/config/env-config-server";
 
 /**
  * Get locale configuration (enabled locales and default locale)
@@ -59,9 +60,22 @@ const recurrenceConfig = authedProcedure.query(async ({ ctx }) => {
   return config;
 });
 
+/**
+ * Get upload size limits from server configuration.
+ * These are configurable via environment variables.
+ */
+const uploadLimits = publicProcedure.query(() => {
+  return {
+    maxAvatarSize: SERVER_CONFIG.MAX_AVATAR_FILE_SIZE,
+    maxImageSize: SERVER_CONFIG.MAX_IMAGE_FILE_SIZE,
+    maxVideoSize: SERVER_CONFIG.MAX_VIDEO_FILE_SIZE,
+  };
+});
+
 export const configProcedures = router({
   localeConfig,
   tags,
   units,
   recurrenceConfig,
+  uploadLimits,
 });

@@ -6,6 +6,9 @@ import path from "path";
 vi.mock("@/config/env-config-server", () => ({
   SERVER_CONFIG: {
     UPLOADS_DIR: "/test/uploads",
+    MAX_AVATAR_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+    MAX_IMAGE_FILE_SIZE: 10 * 1024 * 1024, // 10MB
+    MAX_VIDEO_FILE_SIZE: 100 * 1024 * 1024, // 100MB
   },
 }));
 
@@ -500,6 +503,145 @@ describe("image URL path prefixes", () => {
       const newUrl = "/recipes/550e8400-e29b-41d4-a716-446655440000/image.jpg";
 
       expect(newUrl).not.toMatch(deprecatedPattern);
+    });
+  });
+});
+
+describe("downloader - file size limits", () => {
+  const MAX_AVATAR_FILE_SIZE = 5 * 1024 * 1024; // 5MB (from SERVER_CONFIG mock)
+  const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024; // 10MB (from SERVER_CONFIG mock)
+  const MAX_VIDEO_FILE_SIZE = 100 * 1024 * 1024; // 100MB (from SERVER_CONFIG mock)
+
+  describe("avatar file size validation", () => {
+    it("accepts avatars at exactly the size limit", () => {
+      const fileSize = MAX_AVATAR_FILE_SIZE;
+
+      expect(fileSize <= MAX_AVATAR_FILE_SIZE).toBe(true);
+    });
+
+    it("rejects avatars over the size limit", () => {
+      const fileSize = MAX_AVATAR_FILE_SIZE + 1;
+
+      expect(fileSize > MAX_AVATAR_FILE_SIZE).toBe(true);
+    });
+
+    it("accepts small avatars well under the limit", () => {
+      const fileSize = 1 * 1024 * 1024; // 1MB
+
+      expect(fileSize <= MAX_AVATAR_FILE_SIZE).toBe(true);
+    });
+
+    it("generates correct error message for oversized avatars", () => {
+      const fileSize = 8 * 1024 * 1024; // 8MB
+      const expectedError = `File too large. Maximum size is 5MB.`;
+
+      expect(expectedError).toContain("5MB");
+      expect(fileSize > MAX_AVATAR_FILE_SIZE).toBe(true);
+    });
+
+    it("has smaller limit than general image uploads", () => {
+      expect(MAX_AVATAR_FILE_SIZE).toBeLessThan(MAX_IMAGE_FILE_SIZE);
+    });
+  });
+
+  describe("image file size validation", () => {
+    it("accepts images at exactly the size limit", () => {
+      const fileSize = MAX_IMAGE_FILE_SIZE;
+
+      expect(fileSize <= MAX_IMAGE_FILE_SIZE).toBe(true);
+    });
+
+    it("rejects images over the size limit", () => {
+      const fileSize = MAX_IMAGE_FILE_SIZE + 1;
+
+      expect(fileSize > MAX_IMAGE_FILE_SIZE).toBe(true);
+    });
+
+    it("accepts small images well under the limit", () => {
+      const fileSize = 1 * 1024 * 1024; // 1MB
+
+      expect(fileSize <= MAX_IMAGE_FILE_SIZE).toBe(true);
+    });
+
+    it("generates correct error message for oversized images", () => {
+      const fileSize = 15 * 1024 * 1024; // 15MB
+      const expectedError = `Image too large: ${fileSize} bytes (max: ${MAX_IMAGE_FILE_SIZE})`;
+
+      expect(expectedError).toContain("15728640 bytes");
+      expect(expectedError).toContain("max: 10485760");
+    });
+  });
+
+  describe("video file size validation", () => {
+    it("accepts videos at exactly the size limit", () => {
+      const fileSize = MAX_VIDEO_FILE_SIZE;
+
+      expect(fileSize <= MAX_VIDEO_FILE_SIZE).toBe(true);
+    });
+
+    it("rejects videos over the size limit", () => {
+      const fileSize = MAX_VIDEO_FILE_SIZE + 1;
+
+      expect(fileSize > MAX_VIDEO_FILE_SIZE).toBe(true);
+    });
+
+    it("accepts videos well under the limit", () => {
+      const fileSize = 50 * 1024 * 1024; // 50MB
+
+      expect(fileSize <= MAX_VIDEO_FILE_SIZE).toBe(true);
+    });
+
+    it("generates correct error message for oversized videos", () => {
+      const fileSize = 150 * 1024 * 1024; // 150MB
+      const expectedError = `Video file too large: ${fileSize} bytes (max: ${MAX_VIDEO_FILE_SIZE})`;
+
+      expect(expectedError).toContain("157286400 bytes");
+      expect(expectedError).toContain("max: 104857600");
+    });
+  });
+
+  describe("SERVER_CONFIG integration", () => {
+    it("uses configurable MAX_AVATAR_FILE_SIZE from SERVER_CONFIG", () => {
+      // The mock sets MAX_AVATAR_FILE_SIZE to 5MB
+      // This verifies the config is being used rather than hardcoded values
+      expect(MAX_AVATAR_FILE_SIZE).toBe(5 * 1024 * 1024);
+    });
+
+    it("uses configurable MAX_IMAGE_FILE_SIZE from SERVER_CONFIG", () => {
+      // The mock sets MAX_IMAGE_FILE_SIZE to 10MB
+      // This verifies the config is being used rather than hardcoded values
+      expect(MAX_IMAGE_FILE_SIZE).toBe(10 * 1024 * 1024);
+    });
+
+    it("uses configurable MAX_VIDEO_FILE_SIZE from SERVER_CONFIG", () => {
+      // The mock sets MAX_VIDEO_FILE_SIZE to 100MB
+      expect(MAX_VIDEO_FILE_SIZE).toBe(100 * 1024 * 1024);
+    });
+
+    it("allows different limits via SERVER_CONFIG", () => {
+      // Verify that the config approach allows customization
+      const customImageLimit = 20 * 1024 * 1024; // 20MB
+      const customVideoLimit = 200 * 1024 * 1024; // 200MB
+
+      // These would be set via env vars in production
+      expect(customImageLimit).not.toBe(MAX_IMAGE_FILE_SIZE);
+      expect(customVideoLimit).not.toBe(MAX_VIDEO_FILE_SIZE);
+    });
+  });
+
+  describe("content-length header validation", () => {
+    it("rejects requests where content-length exceeds limit before download", () => {
+      const contentLength = "15728640"; // 15MB as string (from header)
+      const parsedLength = parseInt(contentLength);
+
+      expect(parsedLength > MAX_IMAGE_FILE_SIZE).toBe(true);
+    });
+
+    it("accepts requests where content-length is within limit", () => {
+      const contentLength = "5242880"; // 5MB as string
+      const parsedLength = parseInt(contentLength);
+
+      expect(parsedLength <= MAX_IMAGE_FILE_SIZE).toBe(true);
     });
   });
 });

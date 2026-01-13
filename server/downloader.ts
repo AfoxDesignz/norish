@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import { spawn } from "child_process";
 
 import { v5 as uuidv5 } from "uuid";
 import sharp from "sharp";
@@ -31,7 +32,6 @@ const RECIPES_BASE_DIR = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes");
 // Configuration constants
 const MAX_WIDTH = 1280;
 const MAX_HEIGHT = 720;
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const FETCH_TIMEOUT = 30000; // 30 seconds
 const JPEG_QUALITY = 80;
 
@@ -326,8 +326,10 @@ async function saveImageBytesCore(bytes: Buffer, options: SaveImageOptions): Pro
   await ensureDir(options.directory);
 
   // Validate buffer size
-  if (bytes.length > MAX_FILE_SIZE) {
-    throw new Error(`Image too large: ${bytes.length} bytes (max: ${MAX_FILE_SIZE})`);
+  if (bytes.length > SERVER_CONFIG.MAX_IMAGE_FILE_SIZE) {
+    throw new Error(
+      `Image too large: ${bytes.length} bytes (max: ${SERVER_CONFIG.MAX_IMAGE_FILE_SIZE})`
+    );
   }
 
   // Validate it's an image
@@ -436,15 +438,19 @@ export async function downloadImage(url: string, recipeId: string): Promise<stri
   // Check content length if available
   const contentLength = res.headers.get("content-length");
 
-  if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE) {
-    throw new Error(`Image too large: ${contentLength} bytes (max: ${MAX_FILE_SIZE})`);
+  if (contentLength && parseInt(contentLength) > SERVER_CONFIG.MAX_IMAGE_FILE_SIZE) {
+    throw new Error(
+      `Image too large: ${contentLength} bytes (max: ${SERVER_CONFIG.MAX_IMAGE_FILE_SIZE})`
+    );
   }
 
   const arrayBuffer = await res.arrayBuffer();
 
   // Check actual size
-  if (arrayBuffer.byteLength > MAX_FILE_SIZE) {
-    throw new Error(`Image too large: ${arrayBuffer.byteLength} bytes (max: ${MAX_FILE_SIZE})`);
+  if (arrayBuffer.byteLength > SERVER_CONFIG.MAX_IMAGE_FILE_SIZE) {
+    throw new Error(
+      `Image too large: ${arrayBuffer.byteLength} bytes (max: ${SERVER_CONFIG.MAX_IMAGE_FILE_SIZE})`
+    );
   }
 
   let bytes = Buffer.from(new Uint8Array(arrayBuffer));
@@ -649,4 +655,209 @@ export async function downloadAllImagesFromJsonLd(
   }
 
   return downloadedUrls;
+}
+
+// --- Video File Helpers ---
+
+function videoMimeFromExt(ext: string): string {
+  const mimes: Record<string, string> = {
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".mov": "video/quicktime",
+    ".mkv": "video/x-matroska",
+    ".avi": "video/x-msvideo",
+  };
+
+  return mimes[ext] || "video/mp4";
+}
+
+export interface ConvertToMp4Result {
+  /** Path to the MP4 file (may be same as input if already MP4) */
+  filePath: string;
+  /** Whether conversion was performed */
+  converted: boolean;
+  /** Method used: 'none', 'remux', 'transcode', 'original' */
+  method: "none" | "remux" | "transcode" | "original";
+}
+
+/**
+ * Convert video to MP4 format if needed.
+ * Strategy: Try remux first (fast, lossless), fallback to transcode, keep original if both fail.
+ */
+export async function convertToMp4(
+  inputPath: string,
+  ffmpegPath: string | null
+): Promise<ConvertToMp4Result> {
+  const ext = path.extname(inputPath).toLowerCase();
+
+  // Already MP4 - no conversion needed
+  if (ext === ".mp4") {
+    log.debug({ inputPath }, "Video is already MP4, no conversion needed");
+
+    return { filePath: inputPath, converted: false, method: "none" };
+  }
+
+  if (!ffmpegPath) {
+    log.warn({ inputPath }, "ffmpeg not available, keeping original format");
+
+    return { filePath: inputPath, converted: false, method: "original" };
+  }
+
+  const dir = path.dirname(inputPath);
+  const baseName = path.basename(inputPath, ext);
+  const outputPath = path.join(dir, `${baseName}.mp4`);
+
+  // Try remux first (fast, lossless copy of streams into MP4 container)
+  try {
+    log.debug({ inputPath, outputPath }, "Attempting video remux to MP4");
+
+    await runFfmpeg(ffmpegPath, [
+      "-i",
+      inputPath,
+      "-c",
+      "copy", // Copy streams without re-encoding
+      "-movflags",
+      "+faststart", // Optimize for web streaming
+      outputPath,
+    ]);
+
+    // Verify output exists and has content
+    const stats = await fs.stat(outputPath);
+
+    if (stats.size > 0) {
+      // Remove original file
+      await fs.unlink(inputPath).catch(() => {});
+      log.info({ inputPath, outputPath, size: stats.size }, "Video remuxed to MP4 successfully");
+
+      return { filePath: outputPath, converted: true, method: "remux" };
+    }
+  } catch (remuxErr) {
+    log.debug({ err: remuxErr }, "Remux failed, trying transcode");
+    // Remove failed output if it exists
+    await fs.unlink(outputPath).catch(() => {});
+  }
+
+  // Fallback to transcode (slower, but handles incompatible codecs)
+  try {
+    log.debug({ inputPath, outputPath }, "Attempting video transcode to MP4");
+
+    await runFfmpeg(ffmpegPath, [
+      "-i",
+      inputPath,
+      "-c:v",
+      "libx264", // Re-encode video to H.264
+      "-preset",
+      "fast", // Balance speed vs compression
+      "-crf",
+      "23", // Quality (lower = better, 23 is good default)
+      "-c:a",
+      "aac", // Re-encode audio to AAC
+      "-b:a",
+      "128k", // Audio bitrate
+      "-movflags",
+      "+faststart",
+      outputPath,
+    ]);
+
+    const stats = await fs.stat(outputPath);
+
+    if (stats.size > 0) {
+      await fs.unlink(inputPath).catch(() => {});
+      log.info({ inputPath, outputPath, size: stats.size }, "Video transcoded to MP4 successfully");
+
+      return { filePath: outputPath, converted: true, method: "transcode" };
+    }
+  } catch (transcodeErr) {
+    log.warn({ err: transcodeErr }, "Transcode failed, keeping original format");
+    await fs.unlink(outputPath).catch(() => {});
+  }
+
+  // Keep original if all conversion attempts failed
+  log.warn({ inputPath }, "All conversion attempts failed, keeping original format");
+
+  return { filePath: inputPath, converted: false, method: "original" };
+}
+
+/**
+ * Run ffmpeg command and return a promise.
+ */
+function runFfmpeg(ffmpegPath: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(ffmpegPath, ["-y", ...args], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stderr = "";
+
+    proc.stderr?.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    proc.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`ffmpeg exited with code ${code}: ${stderr.slice(-500)}`));
+      }
+    });
+
+    proc.on("error", (err) => {
+      reject(err);
+    });
+  });
+}
+
+export interface SavedVideo {
+  /** Web URL path to the video */
+  video: string;
+  /** Video duration in seconds (if known) */
+  duration: number | null;
+}
+
+/**
+ * Save a video file to the recipe directory.
+ * Path: uploads/recipes/{recipeId}/video-{timestamp}.mp4
+ * URL: /recipes/{recipeId}/video-{timestamp}.mp4
+ */
+export async function saveVideoFile(
+  sourcePath: string,
+  recipeId: string,
+  duration?: number
+): Promise<SavedVideo> {
+  const recipeDir = path.join(RECIPES_BASE_DIR, recipeId);
+
+  await ensureDir(recipeDir);
+
+  // Validate file size
+  const stats = await fs.stat(sourcePath);
+
+  if (stats.size > SERVER_CONFIG.MAX_VIDEO_FILE_SIZE) {
+    throw new Error(
+      `Video file too large: ${stats.size} bytes (max: ${SERVER_CONFIG.MAX_VIDEO_FILE_SIZE})`
+    );
+  }
+
+  const ext = path.extname(sourcePath).toLowerCase();
+  const timestamp = Date.now();
+  const fileName = `video-${timestamp}${ext}`;
+  const destPath = path.join(recipeDir, fileName);
+
+  // Copy file to recipe directory
+  await fs.copyFile(sourcePath, destPath);
+
+  log.info({ sourcePath, destPath, size: stats.size }, "Video file saved");
+
+  return {
+    video: `/recipes/${recipeId}/${fileName}`,
+    duration: duration ?? null,
+  };
+}
+
+/**
+ * Get MIME type for a video file extension.
+ */
+export function getVideoMimeType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+
+  return videoMimeFromExt(ext);
 }

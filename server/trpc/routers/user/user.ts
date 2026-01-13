@@ -10,7 +10,7 @@ import { emitConnectionInvalidation } from "../../connection-manager";
 import { UpdateNameInputSchema } from "./types";
 
 import { trpcLogger as log } from "@/server/logger";
-import { IMAGE_MIME_TO_EXTENSION, MAX_AVATAR_SIZE } from "@/types";
+import { IMAGE_MIME_TO_EXTENSION } from "@/types";
 import {
   updateUserName,
   updateUserAvatar,
@@ -106,7 +106,7 @@ const uploadAvatar = authedProcedure
     const buffer = Buffer.from(await file.arrayBuffer());
 
     // Validate file size
-    if (buffer.length > MAX_AVATAR_SIZE) {
+    if (buffer.length > SERVER_CONFIG.MAX_AVATAR_FILE_SIZE) {
       return { success: false, error: "File too large. Maximum size is 5MB." };
     }
 

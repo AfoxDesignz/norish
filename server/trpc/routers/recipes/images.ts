@@ -10,7 +10,8 @@ import {
   deleteStepImageByUrl,
   deleteImageByUrl,
 } from "@/server/downloader";
-import { ALLOWED_IMAGE_MIME_SET, MAX_RECIPE_IMAGE_SIZE } from "@/types";
+import { ALLOWED_IMAGE_MIME_SET } from "@/types";
+import { SERVER_CONFIG } from "@/config/env-config-server";
 import {
   addRecipeImages,
   deleteRecipeImageById,
@@ -44,8 +45,10 @@ async function extractAndValidateImage(formData: FormData): Promise<ImageValidat
     };
   }
 
-  if (file.size > MAX_RECIPE_IMAGE_SIZE) {
-    return { success: false, error: "File too large. Maximum size is 10MB." };
+  if (file.size > SERVER_CONFIG.MAX_IMAGE_FILE_SIZE) {
+    const maxMB = Math.round(SERVER_CONFIG.MAX_IMAGE_FILE_SIZE / 1024 / 1024);
+
+    return { success: false, error: `File too large. Maximum size is ${maxMB}MB.` };
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());

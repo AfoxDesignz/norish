@@ -109,7 +109,11 @@
     "dragToReorder": "Drag images to reorder"
   },
   "carousel": {
-    "noImageAvailable": "No image available"
+    "noImageAvailable": "No image available",
+    "videoPlayer": {
+      "mute": "Mute",
+      "unmute": "Unmute"
+    }
   },
   "validation": {
     "nameRequired": "Recipe name is required",

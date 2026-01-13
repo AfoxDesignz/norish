@@ -48,8 +48,8 @@ function RecipeCardComponent({ recipe }: { recipe: RecipeDashboardDTO }) {
   const allTags = recipe.tags ?? [];
   const description = recipe.description?.trim() || "";
 
-  // Get thumbnail from first gallery image or fall back to legacy image
-  const thumbnailImage = recipe.images?.[0]?.image ?? recipe.image;
+  // Get thumbnail from the legacy image field
+  const thumbnailImage = recipe.image;
 
   function _canClick() {
     return !open && !mobileSearchOpen;
@@ -232,8 +232,7 @@ const RecipeCard = memo(RecipeCardComponent, (prevProps, nextProps) => {
     prev.totalMinutes === next.totalMinutes &&
     prev.averageRating === next.averageRating &&
     prev.updatedAt?.getTime() === next.updatedAt?.getTime() &&
-    prev.tags?.length === next.tags?.length &&
-    prev.images?.length === next.images?.length
+    prev.tags?.length === next.tags?.length
   );
 });
 

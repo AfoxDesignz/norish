@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import path from "node:path";
 
 import { NextResponse } from "next/server";
@@ -9,6 +10,32 @@ export const runtime = "nodejs";
 
 const VALID_FILENAME_PATTERN = /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+$/;
 const VALID_UUID_PATTERN = /^[a-f0-9-]{36}$/i;
+
+const IMAGE_MIMES: Record<string, string> = {
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".avif": "image/avif",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+};
+
+const VIDEO_MIMES: Record<string, string> = {
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
+  ".mkv": "video/x-matroska",
+  ".avi": "video/x-msvideo",
+};
+
+function getMimeType(ext: string): { type: string; isVideo: boolean } {
+  const lowerExt = ext.toLowerCase();
+
+  if (VIDEO_MIMES[lowerExt]) {
+    return { type: VIDEO_MIMES[lowerExt], isVideo: true };
+  }
+
+  return { type: IMAGE_MIMES[lowerExt] || "image/jpeg", isVideo: false };
+}
 
 export async function GET(
   req: Request,
@@ -43,20 +70,68 @@ export async function GET(
   }
 
   try {
+    const stat = await fs.stat(filePath);
+    const ext = path.extname(filePath);
+    const { type: mimeType, isVideo } = getMimeType(ext);
+
+    // For videos, handle Range requests for streaming
+    if (isVideo) {
+      const rangeHeader = req.headers.get("range");
+
+      if (rangeHeader) {
+        // Parse range header
+        const match = rangeHeader.match(/bytes=(\d*)-(\d*)/);
+
+        if (!match) {
+          return new Response("Invalid range", { status: 416 });
+        }
+
+        const start = match[1] ? parseInt(match[1], 10) : 0;
+        const end = match[2] ? parseInt(match[2], 10) : stat.size - 1;
+
+        if (start >= stat.size || end >= stat.size || start > end) {
+          return new Response("Range not satisfiable", {
+            status: 416,
+            headers: { "Content-Range": `bytes */${stat.size}` },
+          });
+        }
+
+        const chunkSize = end - start + 1;
+
+        // Create a readable stream for the range
+        const stream = fsSync.createReadStream(filePath, { start, end });
+
+        return new Response(stream as unknown as ReadableStream, {
+          status: 206,
+          headers: {
+            "Content-Type": mimeType,
+            "Content-Length": chunkSize.toString(),
+            "Content-Range": `bytes ${start}-${end}/${stat.size}`,
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=31536000, immutable",
+          },
+        });
+      }
+
+      // No range header - return full video with Accept-Ranges
+      const file = await fs.readFile(filePath);
+
+      return new Response(new Uint8Array(file), {
+        headers: {
+          "Content-Type": mimeType,
+          "Content-Length": stat.size.toString(),
+          "Accept-Ranges": "bytes",
+          "Cache-Control": "public, max-age=31536000, immutable",
+        },
+      });
+    }
+
+    // For images, just return the full file
     const file = await fs.readFile(filePath);
-    const ext = path.extname(filePath).toLowerCase();
-    const type =
-      ext === ".png"
-        ? "image/png"
-        : ext === ".webp"
-          ? "image/webp"
-          : ext === ".avif"
-            ? "image/avif"
-            : "image/jpeg";
 
     return new Response(new Uint8Array(file), {
       headers: {
-        "Content-Type": type,
+        "Content-Type": mimeType,
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });

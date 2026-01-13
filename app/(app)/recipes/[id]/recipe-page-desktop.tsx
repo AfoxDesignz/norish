@@ -22,7 +22,7 @@ import IngredientsList from "@/app/(app)/recipes/[id]/components/ingredient-list
 import ActionsMenu from "@/app/(app)/recipes/[id]/components/actions-menu";
 import AddToGroceries from "@/app/(app)/recipes/[id]/components/add-to-groceries-button";
 import WakeLockToggle from "@/app/(app)/recipes/[id]/components/wake-lock-toggle";
-import ImageCarousel, { type CarouselImage } from "@/components/shared/image-carousel";
+import MediaCarousel, { buildMediaItems } from "@/components/shared/media-carousel";
 import SmartMarkdownRenderer from "@/components/shared/smart-markdown-renderer";
 import HeartButton from "@/components/shared/heart-button";
 import DoubleTapContainer from "@/components/shared/double-tap-container";
@@ -48,13 +48,8 @@ export default function RecipePageDesktop() {
   const handleToggleFavorite = () => toggleFavorite(recipe.id);
   const handleRateRecipe = (rating: number) => rateRecipe(recipe.id, rating);
 
-  // Build carousel images from recipe.images with fallback to legacy recipe.image
-  const carouselImages: CarouselImage[] =
-    recipe.images && recipe.images.length > 0
-      ? recipe.images.map((img) => ({ image: img.image, alt: recipe.name ?? "Recipe image" }))
-      : recipe.image
-        ? [{ image: recipe.image, alt: recipe.name ?? "Recipe image" }]
-        : [];
+  // Build media items for MediaCarousel (videos + images)
+  const mediaItems = buildMediaItems(recipe);
 
   return (
     <div className="hidden flex-col space-y-6 px-6 pb-10 md:flex">
@@ -178,13 +173,12 @@ export default function RecipePageDesktop() {
 
         {/* RIGHT column: Image + Steps (stacked) */}
         <div className="col-span-3 flex flex-col gap-6">
-          {/* Hero image carousel - wrapped to match Card styling */}
+          {/* Hero image/video carousel - wrapped to match Card styling */}
           <div className="relative overflow-hidden rounded-2xl shadow-md">
             <DoubleTapContainer onDoubleTap={handleToggleFavorite}>
-              <ImageCarousel
+              <MediaCarousel
                 className="min-h-[400px]"
-                images={carouselImages}
-                recipeName={recipe.name ?? "Recipe"}
+                items={mediaItems}
                 rounded={false}
               />
             </DoubleTapContainer>

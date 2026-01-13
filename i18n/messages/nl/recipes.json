@@ -109,7 +109,11 @@
     "dragToReorder": "Sleep afbeeldingen om te herordenen"
   },
   "carousel": {
-    "noImageAvailable": "Geen afbeelding beschikbaar"
+    "noImageAvailable": "Geen afbeelding beschikbaar",
+    "videoPlayer": {
+      "mute": "Dempen",
+      "unmute": "Geluid aan"
+    }
   },
   "validation": {
     "nameRequired": "Receptnaam is verplicht",

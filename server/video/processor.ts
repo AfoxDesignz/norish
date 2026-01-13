@@ -2,12 +2,19 @@ import type { FullRecipeInsertDTO } from "@/types/dto/recipe";
 
 import { isInstagramUrl, isInstagramImagePost, processInstagramImagePost } from "./instagram";
 
-import { validateVideoLength, getVideoMetadata, downloadVideoAudio } from "@/server/video/yt-dlp";
+import {
+  validateVideoLength,
+  getVideoMetadata,
+  downloadVideoAudio,
+  downloadVideo,
+  getFfmpegPath,
+} from "@/server/video/yt-dlp";
 import { extractRecipeFromVideo } from "@/server/video/normalizer";
 import { cleanupFile } from "@/server/video/cleanup";
 import { videoLogger as log } from "@/server/logger";
 import { isVideoParsingEnabled } from "@/config/server-config-loader";
 import { transcribeAudio } from "@/server/ai/transcriber";
+import { convertToMp4, saveVideoFile } from "@/server/downloader";
 
 export async function processVideoRecipe(
   url: string,
@@ -21,6 +28,7 @@ export async function processVideoRecipe(
   }
 
   let audioPath: string | null = null;
+  let videoPath: string | null = null;
   const isInstagram = isInstagramUrl(url);
 
   try {
@@ -45,6 +53,37 @@ export async function processVideoRecipe(
     await validateVideoLength(url);
     log.debug({ url }, "Video length validated");
 
+    // Download video file for saving
+    let savedVideo: { video: string; duration: number | null } | null = null;
+
+    try {
+      log.info({ url }, "Downloading video file");
+      const downloadedVideo = await downloadVideo(url);
+
+      videoPath = downloadedVideo.filePath;
+
+      // Convert to MP4 if needed
+      const ffmpegPath = getFfmpegPath();
+      const convertResult = await convertToMp4(downloadedVideo.filePath, ffmpegPath);
+
+      videoPath = convertResult.filePath;
+
+      log.info(
+        { method: convertResult.method, converted: convertResult.converted },
+        "Video conversion complete"
+      );
+
+      // Save the video file to the recipe directory
+      savedVideo = await saveVideoFile(videoPath, recipeId, metadata.duration);
+      log.info({ video: savedVideo.video }, "Video saved to recipe directory");
+    } catch (videoDownloadErr) {
+      log.warn(
+        { err: videoDownloadErr },
+        "Failed to download/save video file, continuing with recipe extraction"
+      );
+      // Continue - we can still extract the recipe from audio even if video save fails
+    }
+
     // Download and extract audio - with fallback for Instagram if audio extraction fails
     try {
       audioPath = await downloadVideoAudio(url);
@@ -57,7 +96,14 @@ export async function processVideoRecipe(
           "Audio download failed for Instagram, attempting description-based extraction"
         );
 
-        return await processInstagramImagePost(url, recipeId, metadata, allergies);
+        const result = await processInstagramImagePost(url, recipeId, metadata, allergies);
+
+        // Add video if we managed to save it
+        if (savedVideo) {
+          result.videos = [{ video: savedVideo.video, duration: savedVideo.duration, order: 0 }];
+        }
+
+        return result;
       }
       throw audioError;
     }
@@ -84,6 +130,11 @@ export async function processVideoRecipe(
       );
     }
 
+    // Add video to the recipe if we saved it
+    if (savedVideo) {
+      result.data.videos = [{ video: savedVideo.video, duration: savedVideo.duration, order: 0 }];
+    }
+
     return result.data;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -95,6 +146,10 @@ export async function processVideoRecipe(
     // Always cleanup temporary audio file
     if (audioPath) {
       await cleanupFile(audioPath);
+    }
+    // Cleanup temp video file if it exists and is still in temp dir
+    if (videoPath && videoPath.includes("video-temp")) {
+      await cleanupFile(videoPath);
     }
   }
 }
