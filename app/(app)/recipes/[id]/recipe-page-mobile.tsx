@@ -14,6 +14,7 @@ import ActionsMenu from "@/app/(app)/recipes/[id]/components/actions-menu";
 import AddToGroceries from "@/app/(app)/recipes/[id]/components/add-to-groceries-button";
 import IngredientsList from "@/app/(app)/recipes/[id]/components/ingredient-list";
 import ServingsControl from "@/app/(app)/recipes/[id]/components/servings-control";
+import AmountDisplayToggle from "@/app/(app)/recipes/[id]/components/amount-display-toggle";
 import StepsList from "@/app/(app)/recipes/[id]/components/steps-list";
 import SystemConvertMenu from "@/app/(app)/recipes/[id]/components/system-convert-menu";
 import WakeLockToggle from "@/app/(app)/recipes/[id]/components/wake-lock-toggle";
@@ -169,6 +170,7 @@ export default function RecipePageMobile() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">{t("ingredients")}</h2>
               <div className="flex items-center gap-2">
+                <AmountDisplayToggle />
                 <ServingsControl />
                 {recipe.systemUsed && <SystemConvertMenu />}
               </div>

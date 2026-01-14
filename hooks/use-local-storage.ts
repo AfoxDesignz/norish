@@ -1,76 +1,56 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import { useLocalStorage as useLocalStorageBase } from "usehooks-ts";
 
 /**
- * Generic hook for persisting state to localStorage with SSR safety.
+ * Generic hook for persisting state to localStorage with SSR safety,
+ * cross-tab/cross-component synchronization, and optional validation.
+ *
+ * Wraps usehooks-ts useLocalStorage with validation support.
  *
  * @param key - localStorage key
  * @param defaultValue - Default value when no stored value exists
  * @param validate - Optional validation function to verify stored data shape
- * @returns [value, setValue, clear, isHydrated]
+ * @returns [value, setValue, clear]
  */
 export function useLocalStorage<T>(
   key: string,
   defaultValue: T,
   validate?: (data: unknown) => T | null
-): [T, (value: T | ((prev: T) => T)) => void, () => void, boolean] {
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [value, setValue] = useState<T>(defaultValue);
+): [T, (value: T | ((prev: T) => T)) => void, () => void] {
+  const [rawValue, setRawValue, clearValue] = useLocalStorageBase<T>(key, defaultValue, {
+    initializeWithValue: false, // SSR safety
+  });
 
-  // Hydrate from localStorage on client mount
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      setIsHydrated(true);
+  // Apply validation if provided
+  const value = useMemo(() => {
+    if (!validate) return rawValue;
 
-      return;
-    }
+    const validated = validate(rawValue);
 
-    try {
-      const stored = localStorage.getItem(key);
+    return validated !== null ? validated : defaultValue;
+  }, [rawValue, validate, defaultValue]);
 
-      if (stored) {
-        const parsed = JSON.parse(stored) as unknown;
+  // Wrap setValue to handle functional updates with validated value
+  const setValue = useCallback(
+    (newValue: T | ((prev: T) => T)) => {
+      if (typeof newValue === "function") {
+        setRawValue((prev) => {
+          const validatedPrev = validate ? (validate(prev) ?? defaultValue) : prev;
 
-        if (validate) {
-          const validated = validate(parsed);
-
-          if (validated !== null) {
-            setValue(validated);
-          }
-        } else {
-          setValue(parsed as T);
-        }
+          return (newValue as (prev: T) => T)(validatedPrev);
+        });
+      } else {
+        setRawValue(newValue);
       }
-    } catch {
-      // Invalid JSON or other error - use default
-    }
+    },
+    [setRawValue, validate, defaultValue]
+  );
 
-    setIsHydrated(true);
-  }, [key, validate]);
-
-  // Save to localStorage when value changes (after hydration)
-  useEffect(() => {
-    if (!isHydrated || typeof window === "undefined") return;
-
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-      // localStorage might be full or disabled - silently ignore
-    }
-  }, [key, value, isHydrated]);
-
-  // Clear from localStorage
   const clear = useCallback(() => {
-    if (typeof window === "undefined") return;
+    clearValue();
+  }, [clearValue]);
 
-    try {
-      localStorage.removeItem(key);
-    } catch {
-      // Silently ignore errors
-    }
-    setValue(defaultValue);
-  }, [key, defaultValue]);
-
-  return [value, setValue, clear, isHydrated];
+  return [value, setValue, clear];
 }

@@ -40,7 +40,9 @@
     "prep": "prep",
     "total": "total",
     "planMeal": "Plan meal",
-    "recipeActions": "Recipe actions"
+    "recipeActions": "Recipe actions",
+    "switchToDecimal": "Show decimals",
+    "switchToFraction": "Show fractions"
   },
   "actions": {
     "plan": "Plan",

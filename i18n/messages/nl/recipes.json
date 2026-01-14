@@ -40,7 +40,9 @@
     "prep": "voorb.",
     "total": "totaal",
     "planMeal": "Plannen",
-    "recipeActions": "Recept acties"
+    "recipeActions": "Recept acties",
+    "switchToDecimal": "Toon decimalen",
+    "switchToFraction": "Toon breuken"
   },
   "actions": {
     "plan": "Plan",

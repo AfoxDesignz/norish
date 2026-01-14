@@ -40,7 +40,9 @@
     "prep": "Vorbereitung",
     "total": "gesamt",
     "planMeal": "Mahlzeit planen",
-    "recipeActions": "Rezept-Aktionen"
+    "recipeActions": "Rezept-Aktionen",
+    "switchToDecimal": "Dezimalzahlen anzeigen",
+    "switchToFraction": "Brüche anzeigen"
   },
   "actions": {
     "plan": "Planen",

@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 import AuthorChip from "./components/author-chip";
 import { useRecipeContextRequired } from "./context";
 import ServingsControl from "./components/servings-control";
+import AmountDisplayToggle from "./components/amount-display-toggle";
 
 import { formatMinutesHM, sortTagsWithAllergyPriority, isAllergenTag } from "@/lib/helpers";
 import SystemConvertMenu from "@/app/(app)/recipes/[id]/components/system-convert-menu";
@@ -65,9 +66,9 @@ export default function RecipePageDesktop() {
       </div>
 
       {/* Main content grid: 2 columns */}
-      <div className="grid grid-cols-5 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* LEFT column: Info card + Ingredients card (stacked) */}
-        <div className="col-span-2 flex flex-col gap-6">
+        <div className="md:col-span-1 lg:col-span-2 flex flex-col gap-6">
           {/* Info Card */}
           <Card className="bg-content1 rounded-2xl shadow-md">
             <CardBody className="space-y-4 p-6">
@@ -103,7 +104,7 @@ export default function RecipePageDesktop() {
 
               {/* Meta info row */}
               {(recipe.prepMinutes || recipe.cookMinutes || recipe.totalMinutes !== 0) && (
-                <div className="text-default-500 flex flex-wrap items-center gap-4 text-base">
+                <div className="text-default-500 flex flex-wrap items-center gap-x-4 gap-y-2 text-base">
                   {recipe.prepMinutes && recipe.prepMinutes > 0 && (
                     <span className="flex items-center gap-1">
                       <WrenchScrewdriverIcon className="h-4 w-4" />
@@ -152,9 +153,10 @@ export default function RecipePageDesktop() {
           {/* Ingredients Card (separate) */}
           <Card className="bg-content1 rounded-2xl shadow-md">
             <CardBody className="space-y-4 p-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                 <h2 className="text-lg font-semibold">{t("ingredients")}</h2>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <AmountDisplayToggle />
                   {recipe.servings && <ServingsControl />}
                   {recipe.systemUsed && <SystemConvertMenu />}
                 </div>
@@ -171,8 +173,8 @@ export default function RecipePageDesktop() {
           <NutritionCard />
         </div>
 
-        {/* RIGHT column: Image + Steps (stacked) */}
-        <div className="col-span-3 flex flex-col gap-6">
+          {/* RIGHT column: Image + Steps (stacked) */}
+        <div className="md:col-span-1 lg:col-span-3 flex flex-col gap-6">
           {/* Hero image/video carousel - wrapped to match Card styling */}
           <div className="relative overflow-hidden rounded-2xl shadow-md">
             <DoubleTapContainer onDoubleTap={handleToggleFavorite}>

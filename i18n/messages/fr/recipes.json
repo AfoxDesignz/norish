@@ -34,13 +34,15 @@
     "ingredients": "Ingrédients",
     "steps": "Étapes",
     "addToGroceries": "Ajouter aux courses",
-    "ratingPrompt": "Qu’avez-vous pensé de cette recette ?",
+    "ratingPrompt": "Qu'avez-vous pensé de cette recette ?",
     "notFound": "Recette introuvable",
     "notFoundMessage": "Cette recette n'existe pas ou vous n'avez pas la permission de la consulter.",
     "prep": "préparation",
     "total": "total",
     "planMeal": "Planifier un repas",
-    "recipeActions": "Actions de la recette"
+    "recipeActions": "Actions de la recette",
+    "switchToDecimal": "Afficher en décimales",
+    "switchToFraction": "Afficher en fractions"
   },
   "actions": {
     "plan": "Planifier",
