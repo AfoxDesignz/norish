@@ -76,10 +76,7 @@ export const recipeImportJobOptions: DefaultJobOptions = {
     type: "exponential",
     delay: 2000, // 2s, 4s, 8s
   },
-  removeOnComplete: {
-    age: 3600, // Keep completed jobs for 1 hour
-    count: 1000, // But max 1000 jobs
-  },
+  removeOnComplete: true,
   removeOnFail: true,
 };
 
