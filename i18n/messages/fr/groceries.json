@@ -5,8 +5,10 @@
     "addItems": "Ajouter des articles",
     "viewByStore": "Par magasin",
     "viewByRecipe": "Par recette",
-    "viewMode": "Mode d’affichage",
-    "manageStores": "Gérer les magasins"
+    "viewMode": "Mode d'affichage",
+    "manageStores": "Gérer les magasins",
+    "storeViewOptions": "Options d'affichage par magasin",
+    "groupIngredients": "Grouper les ingrédients"
   },
   "empty": {
     "title": "Votre liste de courses vous attend",
@@ -14,7 +16,9 @@
     "manual": "Articles manuels"
   },
   "item": {
-    "unnamedItem": "Article sans nom"
+    "unnamedItem": "Article sans nom",
+    "fromRecipes": "De {count, plural, one {# recette} other {# recettes}}",
+    "items": "{count, plural, one {# article} other {# articles}}"
   },
   "store": {
     "unsorted": "Non trié",
@@ -44,13 +48,13 @@
     "keepItemsDescription": "Déplacer les articles dans Non trié",
     "deleteItems": "Supprimer les articles",
     "deleteItemsDescription": "Supprimer tous les articles de ce magasin",
-    "noItems": "Ce magasin n’a aucun article.",
+    "noItems": "Ce magasin n'a aucun article.",
     "create": "Créer"
   },
   "panel": {
     "addTitle": "Ajouter un article",
-    "editTitle": "Modifier l’article",
-    "itemName": "Nom de l’article",
+    "editTitle": "Modifier l'article",
+    "itemName": "Nom de l'article",
     "itemNamePlaceholder": "ex. : Lait, Œufs, Pain…",
     "selectStore": "Sélectionner un magasin",
     "noStore": "Aucun magasin",
@@ -59,7 +63,7 @@
     "addAnother": "Ajouter un autre",
     "addRepeat": "+ Ajouter une répétition",
     "storeOptional": "Magasin (optionnel)",
-    "autoDetectFromHistory": "Détection automatique depuis l’historique",
+    "autoDetectFromHistory": "Détection automatique depuis l'historique",
     "autoDetectOrSelect": "Détection automatique ou sélection",
     "placeholder": "ex. : 1 kg de poulet",
     "editPlaceholder": "ex. : lait toutes les semaines",
@@ -68,7 +72,7 @@
     "noIngredients": "Aucun ingrédient.",
     "addSelectedToGroceries": "Ajouter aux courses",
     "ingredientsAdded": "Ingrédients ajoutés à la liste de courses.",
-    "ingredientsFailed": "Échec de l’ajout des ingrédients à la liste de courses.",
+    "ingredientsFailed": "Échec de l'ajout des ingrédients à la liste de courses.",
     "addToGroceries": "Ajouter aux courses"
   }
 }

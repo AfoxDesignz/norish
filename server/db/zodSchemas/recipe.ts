@@ -9,6 +9,7 @@ import {
 } from "./recipe-ingredients";
 import { StepStepSchema } from "./steps";
 import { RecipeImageSchema, RecipeImagesArraySchema } from "./recipe-images";
+import { RecipeVideoSchema, RecipeVideosArraySchema } from "./recipe-videos";
 
 import { measurementSystemEnum, recipes } from "@/server/db/schema";
 
@@ -42,7 +43,6 @@ export const RecipeDashboardSchema = RecipeSelectBaseSchema.omit({
   author: AuthorSchema,
   averageRating: z.number().nullable().optional(),
   ratingCount: z.number().optional(),
-  images: RecipeImagesArraySchema.default([]),
 });
 
 export const FullRecipeSchema = RecipeSelectBaseSchema.extend({
@@ -51,6 +51,7 @@ export const FullRecipeSchema = RecipeSelectBaseSchema.extend({
   tags: z.array(TagNameSchema).default([]),
   author: AuthorSchema,
   images: RecipeImagesArraySchema.default([]),
+  videos: RecipeVideosArraySchema.default([]),
 });
 
 export const FullRecipeInsertSchema = RecipeInsertBaseSchema.extend({
@@ -59,6 +60,7 @@ export const FullRecipeInsertSchema = RecipeInsertBaseSchema.extend({
   tags: z.array(TagNameSchema).default([]),
   steps: z.array(StepStepSchema).default([]),
   images: z.array(RecipeImageSchema).max(10).default([]),
+  videos: z.array(RecipeVideoSchema).default([]),
 });
 
 export const FullRecipeUpdateSchema = RecipeUpdateBaseSchema.extend({
@@ -66,6 +68,7 @@ export const FullRecipeUpdateSchema = RecipeUpdateBaseSchema.extend({
   tags: z.array(TagNameSchema).optional(),
   steps: z.array(StepStepSchema).optional(),
   images: z.array(RecipeImageSchema).max(10).optional(),
+  videos: z.array(RecipeVideoSchema).optional(),
 });
 
 export const measurementSystems = measurementSystemEnum.enumValues;
@@ -73,7 +76,7 @@ export const measurementSystems = measurementSystemEnum.enumValues;
 // tRPC input schemas
 export const RecipeListInputSchema = z.object({
   cursor: z.number().int().nonnegative().default(0),
-  limit: z.number().int().min(1).max(100).default(50),
+  limit: z.number().int().min(1).max(200).default(50),
   search: z.string().optional(),
   searchFields: z
     .array(z.enum(["title", "description", "ingredients", "steps", "tags"]))

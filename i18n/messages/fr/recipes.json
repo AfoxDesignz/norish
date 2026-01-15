@@ -34,13 +34,15 @@
     "ingredients": "Ingrédients",
     "steps": "Étapes",
     "addToGroceries": "Ajouter aux courses",
-    "ratingPrompt": "Qu’avez-vous pensé de cette recette ?",
+    "ratingPrompt": "Qu'avez-vous pensé de cette recette ?",
     "notFound": "Recette introuvable",
     "notFoundMessage": "Cette recette n'existe pas ou vous n'avez pas la permission de la consulter.",
     "prep": "préparation",
     "total": "total",
     "planMeal": "Planifier un repas",
-    "recipeActions": "Actions de la recette"
+    "recipeActions": "Actions de la recette",
+    "switchToDecimal": "Afficher en décimales",
+    "switchToFraction": "Afficher en fractions"
   },
   "actions": {
     "plan": "Planifier",
@@ -106,10 +108,17 @@
     "addImage": "Ajouter une image",
     "uploading": "Téléversement...",
     "uploadFailed": "Échec du téléversement",
-    "dragToReorder": "Glissez les images pour réorganiser"
+    "dragToReorder": "Glissez les images pour réorganiser",
+    "maxImagesReached": "Maximum {max} images autorisées",
+    "maxVideosReached": "Maximum {max} vidéos autorisées",
+    "invalidFileType": "Type de fichier invalide"
   },
   "carousel": {
-    "noImageAvailable": "Aucune image disponible"
+    "noImageAvailable": "Aucune image disponible",
+    "videoPlayer": {
+      "mute": "Couper le son",
+      "unmute": "Activer le son"
+    }
   },
   "validation": {
     "nameRequired": "Le nom de la recette est requis",
@@ -162,10 +171,17 @@
     "imported": "Recette importée",
     "converted": "Mesures converties",
     "convertedDescription": "Recette convertie en unités {system}",
-    "failed": "Échec de l’opération",
+    "failed": "Échec de l'opération",
     "batchImported": "Recettes importées",
-    "batchImportedDescription": "{count} recettes importées depuis l’archive",
+    "batchImportedDescription": "{count} recettes importées depuis l'archive",
     "view": "Voir",
     "open": "Ouvrir"
+  },
+  "tags": {
+    "panel": {
+      "editTitle": "Modifier le tag",
+      "editPlaceholder": "Entrez le nom du tag...",
+      "duplicateTag": "Ce tag existe déjà"
+    }
   }
 }

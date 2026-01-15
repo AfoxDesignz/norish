@@ -33,6 +33,11 @@ export interface NormalizeExtractionOptions {
    * Image candidates from HTML (for HTML-based imports).
    */
   imageCandidates?: string[];
+
+  /**
+   * Recipe ID (for image storage paths).
+   */
+  recipeId?: string;
 }
 
 /**
@@ -98,7 +103,7 @@ export async function normalizeExtractionOutput(
   output: RecipeExtractionOutput,
   options: NormalizeExtractionOptions = {}
 ): Promise<FullRecipeInsertDTO | null> {
-  const { url, image, imageCandidates } = options;
+  const { url, image, imageCandidates, recipeId } = options;
 
   // Build metric version for base normalization
   // The AI schema doesn't include image - it comes from HTML/video metadata
@@ -109,7 +114,7 @@ export async function normalizeExtractionOutput(
     recipeInstructions: output.recipeInstructions.metric,
   };
 
-  const normalized = await normalizeRecipeFromJson(metricVersion);
+  const normalized = await normalizeRecipeFromJson(metricVersion, recipeId);
 
   if (!normalized) {
     aiLogger.warn(

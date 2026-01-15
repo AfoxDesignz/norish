@@ -3,6 +3,7 @@
 import type { FullRecipeInsertDTO, FullRecipeUpdateDTO, MeasurementSystem } from "@/types";
 
 import { useMutation } from "@tanstack/react-query";
+import { addToast } from "@heroui/react";
 
 import { useRecipesQuery } from "./use-recipes-query";
 
@@ -48,7 +49,17 @@ export function useRecipesMutations(): RecipesMutationsResult {
         onSuccess: (recipeId) => {
           addPendingRecipe(recipeId);
         },
-        onError: () => invalidate(),
+        onError: (e) => {
+          addToast({
+            title: "Import Failed",
+            description: e.message,
+            color: "default",
+            shouldShowTimeoutProgress: true,
+            radius: "full",
+          });
+
+          invalidate();
+        },
       }
     );
   };
@@ -60,17 +71,34 @@ export function useRecipesMutations(): RecipesMutationsResult {
         onSuccess: (recipeId) => {
           addPendingRecipe(recipeId);
         },
-        onError: () => invalidate(),
+        onError: (e) => {
+          addToast({
+            title: "Import Failed",
+            description: e.message,
+            color: "default",
+            shouldShowTimeoutProgress: true,
+            radius: "full",
+          });
+
+          invalidate();
+        },
       }
     );
   };
 
   const createRecipe = (input: FullRecipeInsertDTO): void => {
     createMutation.mutate(input, {
-      onSuccess: (recipeId) => {
-        addPendingRecipe(recipeId);
+      onError: (e) => {
+        addToast({
+          title: "Create Failed",
+          description: e.message,
+          color: "default",
+          shouldShowTimeoutProgress: true,
+          radius: "full",
+        });
+
+        invalidate();
       },
-      onError: () => invalidate(),
     });
   };
 
@@ -78,7 +106,17 @@ export function useRecipesMutations(): RecipesMutationsResult {
     updateMutation.mutate(
       { id, data: input },
       {
-        onError: () => invalidate(),
+        onError: (e) => {
+          addToast({
+            title: "Update Failed",
+            description: e.message,
+            color: "default",
+            shouldShowTimeoutProgress: true,
+            radius: "full",
+          });
+
+          invalidate();
+        },
       }
     );
   };
@@ -87,7 +125,17 @@ export function useRecipesMutations(): RecipesMutationsResult {
     deleteMutation.mutate(
       { id },
       {
-        onError: () => invalidate(),
+        onError: (e) => {
+          addToast({
+            title: "Delete Failed",
+            description: e.message,
+            color: "default",
+            shouldShowTimeoutProgress: true,
+            radius: "full",
+          });
+
+          invalidate();
+        },
       }
     );
   };
@@ -113,7 +161,17 @@ export function useRecipesMutations(): RecipesMutationsResult {
       onSuccess: (recipeId) => {
         addPendingRecipe(recipeId);
       },
-      onError: () => invalidate(),
+      onError: (e) => {
+        addToast({
+          title: "Import Failed",
+          description: e.message,
+          color: "default",
+          shouldShowTimeoutProgress: true,
+          radius: "full",
+        });
+
+        invalidate();
+      },
     });
   };
 
@@ -124,7 +182,17 @@ export function useRecipesMutations(): RecipesMutationsResult {
         onSuccess: (recipeId) => {
           addPendingRecipe(recipeId);
         },
-        onError: () => invalidate(),
+        onError: (e) => {
+          addToast({
+            title: "Import Failed",
+            description: e.message,
+            color: "default",
+            shouldShowTimeoutProgress: true,
+            radius: "full",
+          });
+
+          invalidate();
+        },
       }
     );
   };
@@ -136,7 +204,17 @@ export function useRecipesMutations(): RecipesMutationsResult {
         onSuccess: (recipeId) => {
           addPendingRecipe(recipeId);
         },
-        onError: () => invalidate(),
+        onError: (e) => {
+          addToast({
+            title: "Import Failed",
+            description: e.message,
+            color: "default",
+            shouldShowTimeoutProgress: true,
+            radius: "full",
+          });
+
+          invalidate();
+        },
       }
     );
   };

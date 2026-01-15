@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import NextImage from "next/image";
 import { useTranslations } from "next-intl";
 
-import ImageLightbox from "@/components/shared/image-lightbox";
+import ImageLightbox from "./image-lightbox";
 
 export interface CarouselImage {
   image: string;

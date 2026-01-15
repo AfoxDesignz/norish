@@ -7,6 +7,7 @@ export * from "./relations";
 export * from "./steps";
 export * from "./step-images";
 export * from "./recipe-images";
+export * from "./recipe-videos";
 export * from "./households";
 export * from "./household-users";
 export * from "./planned-recipe";

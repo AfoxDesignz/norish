@@ -34,6 +34,7 @@ import { isAIEnabled } from "@/config/server-config-loader";
 export async function extractRecipeFromVideo(
   transcript: string,
   metadata: VideoMetadata,
+  recipeId: string,
   url: string,
   allergies?: string[]
 ): Promise<AIResult<FullRecipeInsertDTO>> {
@@ -102,7 +103,7 @@ export async function extractRecipeFromVideo(
 
     if (metadata.thumbnail) {
       try {
-        thumbnailPath = await downloadImage(metadata.thumbnail);
+        thumbnailPath = await downloadImage(metadata.thumbnail, recipeId);
       } catch (_error) {
         // Continue without image rather than failing
         videoLogger.debug({ url }, "Failed to download video thumbnail");
@@ -113,6 +114,7 @@ export async function extractRecipeFromVideo(
     const normalized = await normalizeExtractionOutput(jsonLd!, {
       url,
       image: thumbnailPath,
+      recipeId,
     });
 
     if (!normalized) {

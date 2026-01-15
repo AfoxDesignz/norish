@@ -14,6 +14,7 @@ import ActionsMenu from "@/app/(app)/recipes/[id]/components/actions-menu";
 import AddToGroceries from "@/app/(app)/recipes/[id]/components/add-to-groceries-button";
 import IngredientsList from "@/app/(app)/recipes/[id]/components/ingredient-list";
 import ServingsControl from "@/app/(app)/recipes/[id]/components/servings-control";
+import AmountDisplayToggle from "@/app/(app)/recipes/[id]/components/amount-display-toggle";
 import StepsList from "@/app/(app)/recipes/[id]/components/steps-list";
 import SystemConvertMenu from "@/app/(app)/recipes/[id]/components/system-convert-menu";
 import WakeLockToggle from "@/app/(app)/recipes/[id]/components/wake-lock-toggle";
@@ -22,7 +23,7 @@ import SmartMarkdownRenderer from "@/components/shared/smart-markdown-renderer";
 import HeartButton from "@/components/shared/heart-button";
 import DoubleTapContainer from "@/components/shared/double-tap-container";
 import StarRating from "@/components/shared/star-rating";
-import ImageCarousel, { type CarouselImage } from "@/components/shared/image-carousel";
+import MediaCarousel, { buildMediaItems } from "@/components/shared/media-carousel";
 import { useFavoritesQuery, useFavoritesMutation } from "@/hooks/favorites";
 import { useRatingQuery, useRatingsMutation } from "@/hooks/ratings";
 import { NutritionSection } from "@/components/recipes/nutrition-card";
@@ -44,24 +45,18 @@ export default function RecipePageMobile() {
   const handleToggleFavorite = () => toggleFavorite(recipe.id);
   const handleRateRecipe = (rating: number) => rateRecipe(recipe.id, rating);
 
-  // Build carousel images from recipe.images with fallback to legacy recipe.image
-  const carouselImages: CarouselImage[] =
-    recipe.images && recipe.images.length > 0
-      ? recipe.images.map((img) => ({ image: img.image, alt: recipe.name ?? "Recipe image" }))
-      : recipe.image
-        ? [{ image: recipe.image, alt: recipe.name ?? "Recipe image" }]
-        : [];
+  // Build media items for MediaCarousel (videos + images)
+  const mediaItems = buildMediaItems(recipe);
 
   return (
     <div className="flex w-full flex-col overflow-x-hidden">
-      {/* Hero Image Carousel */}
+      {/* Hero Image/Video Carousel */}
       <div className="relative w-full overflow-hidden" style={{ height: "18rem" }}>
         <DoubleTapContainer className="h-full w-full" onDoubleTap={handleToggleFavorite}>
-          <ImageCarousel
+          <MediaCarousel
             aspectRatio="4/3"
             className="h-full w-full"
-            images={carouselImages}
-            recipeName={recipe.name ?? "Recipe"}
+            items={mediaItems}
             rounded={false}
           />
         </DoubleTapContainer>
@@ -175,6 +170,7 @@ export default function RecipePageMobile() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">{t("ingredients")}</h2>
               <div className="flex items-center gap-2">
+                <AmountDisplayToggle />
                 <ServingsControl />
                 {recipe.systemUsed && <SystemConvertMenu />}
               </div>

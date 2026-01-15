@@ -1,6 +1,6 @@
 import type { TagDto } from "@/types/dto/tag";
 
-import { eq, inArray, sql } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import z from "zod";
 
 import { db } from "@/server/db/drizzle";
@@ -11,12 +11,16 @@ import { stripHtmlTags } from "@/lib/helpers";
 const TagArraySchema = z.array(TagSelectBaseSchema);
 
 export async function listAllTagNames(): Promise<string[]> {
+  // Only return tags that are actually used by at least one recipe
+  // NOTE: PostgreSQL's SELECT DISTINCT requires ORDER BY expressions to be in the select list
+  const lowerName = sql<string>`lower(${tags.name})`.as("lower_name");
   const rows = await db
-    .select({ name: tags.name })
+    .selectDistinct({ name: tags.name, lowerName })
     .from(tags)
-    .orderBy(sql`lower(${tags.name})`);
+    .innerJoin(recipeTags, eq(tags.id, recipeTags.tagId))
+    .orderBy(lowerName);
 
-  return Array.from(new Set(rows.map((r) => r.name).filter(Boolean)));
+  return rows.map((r) => r.name).filter(Boolean);
 }
 
 function ensureNonEmptyName(name: string): string {
@@ -121,11 +125,16 @@ export async function getOrCreateManyTagsTx(tx: any, names: string[]): Promise<T
 export async function attachTagsToRecipeTx(
   tx: any,
   recipeId: string,
-  tagIds: string[]
+  tagIds: string[],
+  startOrder: number = 0
 ): Promise<void> {
   if (!tagIds.length) return;
 
-  const rows = tagIds.map((tagId: string) => ({ recipeId, tagId }));
+  const rows = tagIds.map((tagId: string, index: number) => ({
+    recipeId,
+    tagId,
+    order: startOrder + index,
+  }));
 
   await tx.insert(recipeTags).values(rows).onConflictDoNothing();
 }
@@ -141,9 +150,28 @@ export async function attachTagsToRecipeByInputTx(
   if (!tagNames.length) return;
 
   const created = await getOrCreateManyTagsTx(tx, tagNames);
-  const ids = created.map((t) => t.id);
 
-  await attachTagsToRecipeTx(tx, recipeId, ids);
+  // Build a map from lowercase tag name to tag id for matching
+  const tagNameToId = new Map<string, string>();
+
+  for (const tag of created) {
+    tagNameToId.set(tag.name.toLowerCase(), tag.id);
+  }
+
+  // Create rows preserving the original order from tagNames
+  const rows = tagNames
+    .map((name, index) => {
+      const tagId = tagNameToId.get(name.toLowerCase());
+
+      if (!tagId) return null;
+
+      return { recipeId, tagId, order: index };
+    })
+    .filter((row): row is { recipeId: string; tagId: string; order: number } => row !== null);
+
+  if (rows.length > 0) {
+    await tx.insert(recipeTags).values(rows).onConflictDoNothing();
+  }
 }
 
 export async function getRecipeTagNames(recipeId: string): Promise<string[]> {
@@ -151,7 +179,8 @@ export async function getRecipeTagNames(recipeId: string): Promise<string[]> {
     .select({ name: tags.name })
     .from(recipeTags)
     .innerJoin(tags, eq(recipeTags.tagId, tags.id))
-    .where(eq(recipeTags.recipeId, recipeId));
+    .where(eq(recipeTags.recipeId, recipeId))
+    .orderBy(asc(recipeTags.order));
 
   return rows.map((r) => r.name);
 }
@@ -161,7 +190,84 @@ export async function getRecipeTagNamesTx(tx: any, recipeId: string): Promise<st
     .select({ name: tags.name })
     .from(recipeTags)
     .innerJoin(tags, eq(recipeTags.tagId, tags.id))
-    .where(eq(recipeTags.recipeId, recipeId));
+    .where(eq(recipeTags.recipeId, recipeId))
+    .orderBy(asc(recipeTags.order));
 
   return rows.map((r: { name: string }) => r.name);
+}
+
+/**
+ * Update a tag's name. Returns the updated tag or null if not found.
+ * If the new name conflicts with an existing tag (case-insensitive), merge them.
+ */
+export async function updateTagName(
+  oldName: string,
+  newName: string
+): Promise<{ merged: boolean; newName: string } | null> {
+  const cleanedOld = stripHtmlTags(oldName);
+  const cleanedNew = ensureNonEmptyName(newName);
+
+  if (cleanedOld.toLowerCase() === cleanedNew.toLowerCase()) {
+    // Same name (case-insensitive), just update the casing
+    await db
+      .update(tags)
+      .set({ name: cleanedNew })
+      .where(eq(sql`lower(${tags.name})`, cleanedOld.toLowerCase()));
+
+    return { merged: false, newName: cleanedNew };
+  }
+
+  return await db.transaction(async (tx) => {
+    // Find the old tag
+    const oldTag = await tx
+      .select()
+      .from(tags)
+      .where(eq(sql`lower(${tags.name})`, cleanedOld.toLowerCase()))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (!oldTag) return null;
+
+    // Check if target name already exists
+    const existingTag = await tx
+      .select()
+      .from(tags)
+      .where(eq(sql`lower(${tags.name})`, cleanedNew.toLowerCase()))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (existingTag) {
+      // Merge: update all recipe_tags to point to existing tag, delete old tag
+      await tx
+        .update(recipeTags)
+        .set({ tagId: existingTag.id })
+        .where(eq(recipeTags.tagId, oldTag.id));
+
+      await tx.delete(tags).where(eq(tags.id, oldTag.id));
+
+      return { merged: true, newName: existingTag.name };
+    } else {
+      // Simple rename
+      await tx.update(tags).set({ name: cleanedNew }).where(eq(tags.id, oldTag.id));
+
+      return { merged: false, newName: cleanedNew };
+    }
+  });
+}
+
+/**
+ * Remove a tag from a specific recipe (not globally).
+ */
+export async function removeTagFromRecipe(recipeId: string, tagName: string): Promise<boolean> {
+  const cleaned = stripHtmlTags(tagName);
+
+  const tag = await findTagByName(cleaned);
+
+  if (!tag) return false;
+
+  const result = await db
+    .delete(recipeTags)
+    .where(sql`${recipeTags.recipeId} = ${recipeId} AND ${recipeTags.tagId} = ${tag.id}`);
+
+  return (result.rowCount ?? 0) > 0;
 }

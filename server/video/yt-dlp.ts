@@ -261,3 +261,93 @@ export async function validateVideoLength(url: string): Promise<void> {
     throw new Error(`Video exceeds maximum length of ${maxTime} (actual: ${actualTime})`);
   }
 }
+
+export interface DownloadedVideo {
+  /** Path to the downloaded video file */
+  filePath: string;
+  /** Original extension from yt-dlp */
+  extension: string;
+}
+
+/**
+ * Download video file from URL using yt-dlp.
+ * Returns the path to the downloaded file in a temp directory.
+ * The caller is responsible for cleanup.
+ */
+export async function downloadVideo(url: string): Promise<DownloadedVideo> {
+  await ensureYtDlpBinary();
+  await fs.mkdir(outputDir, { recursive: true });
+
+  const ytDlpWrap = new YTDlpWrap(ytDlpPath);
+  const timestamp = Date.now();
+  const randomId = Math.random().toString(36).substring(7);
+  // Use a template that yt-dlp will fill in with the actual extension
+  const outputTemplate = path.join(outputDir, `video-${timestamp}-${randomId}.%(ext)s`);
+
+  try {
+    const ffmpegBinary = getFfmpegPath();
+    const ffmpegDir = ffmpegBinary ? path.dirname(ffmpegBinary) : undefined;
+
+    log.debug({ ffmpegDir, ffmpegBinary }, "Using ffmpeg for video download");
+
+    const args = [
+      url,
+      "-o",
+      outputTemplate,
+      // Keep original format to avoid re-encoding during download
+      "-f",
+      "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+      "--extractor-args",
+      "youtube:player_client=default",
+    ];
+
+    // Add ffmpeg location if available
+    if (ffmpegDir) {
+      args.push("--ffmpeg-location", ffmpegDir);
+    }
+
+    await ytDlpWrap.execPromise(args);
+
+    // Find the actual output file (yt-dlp fills in the extension)
+    const basePattern = `video-${timestamp}-${randomId}`;
+    const files = await fs.readdir(outputDir);
+    const downloadedFile = files.find((f) => f.startsWith(basePattern));
+
+    if (!downloadedFile) {
+      throw new Error("Video file not found after download");
+    }
+
+    const filePath = path.join(outputDir, downloadedFile);
+    const extension = path.extname(downloadedFile).toLowerCase();
+
+    // Verify file exists and has content
+    const stats = await fs.stat(filePath);
+
+    if (stats.size === 0) {
+      await fs.unlink(filePath).catch(() => {});
+      throw new Error("Downloaded video file is empty");
+    }
+
+    log.info({ filePath, extension, size: stats.size }, "Video downloaded successfully");
+
+    return { filePath, extension };
+  } catch (error: any) {
+    log.error({ err: error }, "Failed to download video");
+
+    if (error.message?.includes("Unsupported URL")) {
+      throw new Error("Video platform not supported or URL is invalid.");
+    }
+    if (error.message?.includes("Video unavailable") || error.message?.includes("private")) {
+      throw new Error("Video is unavailable or private.");
+    }
+    if (error.message?.includes("HTTP Error 429")) {
+      throw new Error("Rate limited by video platform. Please try again later.");
+    }
+
+    const errorMessage = error.message || "Unknown error";
+
+    throw new Error(`Failed to download video: ${errorMessage}`);
+  }
+}
+
+export { getFfmpegPath };

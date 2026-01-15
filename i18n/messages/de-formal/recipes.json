@@ -40,7 +40,9 @@
     "prep": "Vorbereitung",
     "total": "gesamt",
     "planMeal": "Mahlzeit planen",
-    "recipeActions": "Rezept-Aktionen"
+    "recipeActions": "Rezept-Aktionen",
+    "switchToDecimal": "Dezimalzahlen anzeigen",
+    "switchToFraction": "Brüche anzeigen"
   },
   "actions": {
     "plan": "Planen",
@@ -106,10 +108,17 @@
     "addImage": "Bild hinzufügen",
     "uploading": "Wird hochgeladen...",
     "uploadFailed": "Hochladen fehlgeschlagen",
-    "dragToReorder": "Ziehe Bilder, um sie neu zu ordnen"
+    "dragToReorder": "Ziehe Bilder, um sie neu zu ordnen",
+    "maxImagesReached": "Maximal {max} Bilder erlaubt",
+    "maxVideosReached": "Maximal {max} Videos erlaubt",
+    "invalidFileType": "Ungültiger Dateityp"
   },
   "carousel": {
-    "noImageAvailable": "Kein Bild verfügbar"
+    "noImageAvailable": "Kein Bild verfügbar",
+    "videoPlayer": {
+      "mute": "Stummschalten",
+      "unmute": "Ton einschalten"
+    }
   },
   "validation": {
     "nameRequired": "Rezeptname ist erforderlich",
@@ -167,5 +176,12 @@
     "batchImportedDescription": "{count} Rezepte aus Archiv importiert",
     "view": "Anzeigen",
     "open": "Öffnen"
+  },
+  "tags": {
+    "panel": {
+      "editTitle": "Tag bearbeiten",
+      "editPlaceholder": "Tag-Namen eingeben...",
+      "duplicateTag": "Dieser Tag existiert bereits"
+    }
   }
 }

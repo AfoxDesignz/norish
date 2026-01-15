@@ -97,6 +97,7 @@ function extractInstagramCaption(html: string): string {
  */
 export async function processInstagramImagePost(
   url: string,
+  recipeId: string,
   metadata: VideoMetadata,
   allergies?: string[]
 ): Promise<FullRecipeInsertDTO> {
@@ -130,7 +131,7 @@ export async function processInstagramImagePost(
   }
 
   // Use existing AI parser - it handles plain text fine
-  const result = await extractRecipeWithAI(description, url, allergies);
+  const result = await extractRecipeWithAI(description, recipeId, url, allergies);
 
   if (!result.success) {
     log.warn({ url, error: result.error }, "AI extraction failed for Instagram image post");
@@ -141,7 +142,7 @@ export async function processInstagramImagePost(
 
   if (metadata.thumbnail) {
     try {
-      const imagePath = await downloadImage(metadata.thumbnail);
+      const imagePath = await downloadImage(metadata.thumbnail, recipeId);
 
       recipe.image = imagePath;
       // Also populate the gallery images array for v0.15.0+ gallery support

@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 import AuthorChip from "./components/author-chip";
 import { useRecipeContextRequired } from "./context";
 import ServingsControl from "./components/servings-control";
+import AmountDisplayToggle from "./components/amount-display-toggle";
 
 import { formatMinutesHM, sortTagsWithAllergyPriority, isAllergenTag } from "@/lib/helpers";
 import SystemConvertMenu from "@/app/(app)/recipes/[id]/components/system-convert-menu";
@@ -22,7 +23,7 @@ import IngredientsList from "@/app/(app)/recipes/[id]/components/ingredient-list
 import ActionsMenu from "@/app/(app)/recipes/[id]/components/actions-menu";
 import AddToGroceries from "@/app/(app)/recipes/[id]/components/add-to-groceries-button";
 import WakeLockToggle from "@/app/(app)/recipes/[id]/components/wake-lock-toggle";
-import ImageCarousel, { type CarouselImage } from "@/components/shared/image-carousel";
+import MediaCarousel, { buildMediaItems } from "@/components/shared/media-carousel";
 import SmartMarkdownRenderer from "@/components/shared/smart-markdown-renderer";
 import HeartButton from "@/components/shared/heart-button";
 import DoubleTapContainer from "@/components/shared/double-tap-container";
@@ -48,13 +49,8 @@ export default function RecipePageDesktop() {
   const handleToggleFavorite = () => toggleFavorite(recipe.id);
   const handleRateRecipe = (rating: number) => rateRecipe(recipe.id, rating);
 
-  // Build carousel images from recipe.images with fallback to legacy recipe.image
-  const carouselImages: CarouselImage[] =
-    recipe.images && recipe.images.length > 0
-      ? recipe.images.map((img) => ({ image: img.image, alt: recipe.name ?? "Recipe image" }))
-      : recipe.image
-        ? [{ image: recipe.image, alt: recipe.name ?? "Recipe image" }]
-        : [];
+  // Build media items for MediaCarousel (videos + images)
+  const mediaItems = buildMediaItems(recipe);
 
   return (
     <div className="hidden flex-col space-y-6 px-6 pb-10 md:flex">
@@ -70,9 +66,9 @@ export default function RecipePageDesktop() {
       </div>
 
       {/* Main content grid: 2 columns */}
-      <div className="grid grid-cols-5 gap-6">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         {/* LEFT column: Info card + Ingredients card (stacked) */}
-        <div className="col-span-2 flex flex-col gap-6">
+        <div className="flex flex-col gap-6 md:col-span-1 lg:col-span-2">
           {/* Info Card */}
           <Card className="bg-content1 rounded-2xl shadow-md">
             <CardBody className="space-y-4 p-6">
@@ -108,7 +104,7 @@ export default function RecipePageDesktop() {
 
               {/* Meta info row */}
               {(recipe.prepMinutes || recipe.cookMinutes || recipe.totalMinutes !== 0) && (
-                <div className="text-default-500 flex flex-wrap items-center gap-4 text-base">
+                <div className="text-default-500 flex flex-wrap items-center gap-x-4 gap-y-2 text-base">
                   {recipe.prepMinutes && recipe.prepMinutes > 0 && (
                     <span className="flex items-center gap-1">
                       <WrenchScrewdriverIcon className="h-4 w-4" />
@@ -157,9 +153,10 @@ export default function RecipePageDesktop() {
           {/* Ingredients Card (separate) */}
           <Card className="bg-content1 rounded-2xl shadow-md">
             <CardBody className="space-y-4 p-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
                 <h2 className="text-lg font-semibold">{t("ingredients")}</h2>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <AmountDisplayToggle />
                   {recipe.servings && <ServingsControl />}
                   {recipe.systemUsed && <SystemConvertMenu />}
                 </div>
@@ -177,16 +174,11 @@ export default function RecipePageDesktop() {
         </div>
 
         {/* RIGHT column: Image + Steps (stacked) */}
-        <div className="col-span-3 flex flex-col gap-6">
-          {/* Hero image carousel - wrapped to match Card styling */}
+        <div className="flex flex-col gap-6 md:col-span-1 lg:col-span-3">
+          {/* Hero image/video carousel - wrapped to match Card styling */}
           <div className="relative overflow-hidden rounded-2xl shadow-md">
             <DoubleTapContainer onDoubleTap={handleToggleFavorite}>
-              <ImageCarousel
-                className="min-h-[400px]"
-                images={carouselImages}
-                recipeName={recipe.name ?? "Recipe"}
-                rounded={false}
-              />
+              <MediaCarousel className="min-h-[400px]" items={mediaItems} rounded={false} />
             </DoubleTapContainer>
 
             {/* Heart button - top right (always visible) */}

@@ -152,6 +152,11 @@ const ServerConfigSchema = z.object({
   // Scheduler Configuration
   SCHEDULER_CLEANUP_MONTHS: z.coerce.number().default(3),
 
+  // File Size Limits (in bytes)
+  MAX_AVATAR_FILE_SIZE: z.coerce.number().default(5 * 1024 * 1024), // 5MB
+  MAX_IMAGE_FILE_SIZE: z.coerce.number().default(10 * 1024 * 1024), // 10MB
+  MAX_VIDEO_FILE_SIZE: z.coerce.number().default(100 * 1024 * 1024), // 100MB
+
   // Redis Configuration
   REDIS_URL: z.string().url().default("redis://localhost:6379"),
 

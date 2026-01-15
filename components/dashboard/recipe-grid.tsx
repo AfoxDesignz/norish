@@ -13,9 +13,9 @@ import NoRecipesText from "./no-recipes-text";
 import NoRecipeResults from "./no-recipe-results";
 
 import { useRecipesContext } from "@/context/recipes-context";
-import { useRecipesFiltersContext } from "@/context/recipes-filters-context";
 import { useScrollRestoration } from "@/hooks/use-scroll-restoration";
 import { useContainerColumns } from "@/hooks/use-container-columns";
+import { RecipeDashboardDTO } from "@/types";
 
 // Estimated row height (card height + gap)
 const ESTIMATED_ROW_HEIGHT = 380;
@@ -28,9 +28,16 @@ export default function RecipeGrid() {
     hasMore: _hasMore,
     loadMore,
     pendingRecipeIds,
+    hasAppliedFilters,
+    clearFilters,
+    filterKey,
+    isFavorite,
+    toggleFavorite,
+    deleteRecipe,
+    allergies,
   } = useRecipesContext();
-  const { filters, clearFilters } = useRecipesFiltersContext();
-  const { saveScrollState, getScrollState } = useScrollRestoration(filters);
+
+  const { saveScrollState, getScrollState } = useScrollRestoration(filterKey);
 
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [isLoadedOnce, setIsLoadedOnce] = useState(false);
@@ -74,7 +81,7 @@ export default function RecipeGrid() {
   const virtualizer = useWindowVirtualizer({
     count: rowCount,
     estimateSize: () => ESTIMATED_ROW_HEIGHT,
-    overscan: 3,
+    overscan: 2,
     scrollMargin,
     initialOffset: savedState?.scrollOffset,
     initialMeasurementsCache: savedState?.measurementsCache,
@@ -132,30 +139,40 @@ export default function RecipeGrid() {
     }
   }, [isLoading, recipes.length, isLoadedOnce]);
 
-  // Check for empty states
-  const hasAppliedFilters = useMemo(() => {
-    const hasSearch = filters.rawInput.trim().length > 0;
-    const hasTags = filters.searchTags.length > 0;
-
-    return hasSearch || hasTags;
-  }, [filters.rawInput, filters.searchTags]);
-
   const showEmptyState = !isLoading && displayData.length === 0;
 
   // Render a single item (skeleton or card)
-  const renderItem = useCallback((item: (typeof displayData)[number]) => {
-    if ("isLoading" in item && item.isLoading) {
-      return <RecipeCardSkeleton key={`skeleton-${item.id}`} />;
-    }
+  const renderItem = useCallback(
+    (item: (typeof displayData)[number]) => {
+      if ("isLoading" in item && item.isLoading) {
+        return <RecipeCardSkeleton key={`skeleton-${item.id}`} />;
+      }
 
-    return <RecipeCard key={`recipe-${item.id}`} recipe={item as any} />;
-  }, []);
+      const recipe = item as RecipeDashboardDTO;
+
+      return (
+        <RecipeCard
+          key={`recipe-${recipe.id}`}
+          allergies={allergies}
+          isFavorite={isFavorite(recipe.id)}
+          recipe={recipe}
+          onDelete={deleteRecipe}
+          onToggleFavorite={toggleFavorite}
+        />
+      );
+    },
+    [allergies, isFavorite, deleteRecipe, toggleFavorite]
+  );
 
   // Show skeleton during initial load
   if (showSkeleton) return <RecipeGridSkeleton />;
 
   return (
-    <div ref={containerRef} className="relative flex h-full flex-col">
+    <div
+      ref={containerRef}
+      className="relative flex h-full flex-col"
+      style={{ contentVisibility: "auto", containIntrinsicSize: "0 500px" }}
+    >
       {showEmptyState ? (
         hasAppliedFilters ? (
           <NoRecipeResults onClear={clearFilters} />

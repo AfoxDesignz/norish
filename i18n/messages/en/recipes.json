@@ -40,7 +40,9 @@
     "prep": "prep",
     "total": "total",
     "planMeal": "Plan meal",
-    "recipeActions": "Recipe actions"
+    "recipeActions": "Recipe actions",
+    "switchToDecimal": "Show decimals",
+    "switchToFraction": "Show fractions"
   },
   "actions": {
     "plan": "Plan",
@@ -106,10 +108,17 @@
     "addImage": "Add image",
     "uploading": "Uploading...",
     "uploadFailed": "Upload failed",
-    "dragToReorder": "Drag images to reorder"
+    "dragToReorder": "Drag to reorder",
+    "maxImagesReached": "Maximum {max} images allowed",
+    "maxVideosReached": "Maximum {max} videos allowed",
+    "invalidFileType": "Invalid file type"
   },
   "carousel": {
-    "noImageAvailable": "No image available"
+    "noImageAvailable": "No image available",
+    "videoPlayer": {
+      "mute": "Mute",
+      "unmute": "Unmute"
+    }
   },
   "validation": {
     "nameRequired": "Recipe name is required",
@@ -167,5 +176,12 @@
     "batchImportedDescription": "{count} recipes imported from archive",
     "view": "View",
     "open": "Open"
+  },
+  "tags": {
+    "panel": {
+      "editTitle": "Edit Tag",
+      "editPlaceholder": "Enter tag name...",
+      "duplicateTag": "This tag already exists"
+    }
   }
 }

@@ -85,7 +85,7 @@ async function processImageImportJob(job: Job<ImageImportJobData>): Promise<void
 
     try {
       const imageBytes = Buffer.from(firstFile.data, "base64");
-      const imagePath = await saveImageBytes(imageBytes, firstFile.filename);
+      const imagePath = await saveImageBytes(imageBytes, recipeId);
 
       await addRecipeImages(createdId, [{ image: imagePath, order: 0 }]);
       log.debug({ recipeId: createdId }, "Saved first uploaded image as recipe image");

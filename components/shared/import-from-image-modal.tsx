@@ -17,7 +17,8 @@ import { useTranslations } from "next-intl";
 
 import { useRecipesMutations } from "@/hooks/recipes";
 import { useClipboardImagePaste } from "@/hooks/use-clipboard-image-paste";
-import { ALLOWED_OCR_MIME_SET, MAX_OCR_FILE_SIZE, MAX_OCR_FILES } from "@/types";
+import { useUploadLimitsQuery } from "@/hooks/config";
+import { ALLOWED_OCR_MIME_SET, MAX_OCR_FILES } from "@/types";
 
 interface ImportFromImageModalProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ export default function ImportFromImageModal({ isOpen, onOpenChange }: ImportFro
   const tActions = useTranslations("common.actions");
   const router = useRouter();
   const { importRecipeFromImages } = useRecipesMutations();
+  const { limits } = useUploadLimitsQuery();
   const [files, setFiles] = useState<FilePreview[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,7 +67,7 @@ export default function ImportFromImageModal({ isOpen, onOpenChange }: ImportFro
         }
 
         // Validate file size
-        if (file.size > MAX_OCR_FILE_SIZE) {
+        if (file.size > limits.maxImageSize) {
           addToast({
             title: t("tooLarge"),
             description: t("exceeds", { name: file.name }),
@@ -102,7 +104,7 @@ export default function ImportFromImageModal({ isOpen, onOpenChange }: ImportFro
         return [...prev, ...newFiles];
       });
     },
-    [t]
+    [t, limits.maxImageSize]
   );
 
   useClipboardImagePaste({

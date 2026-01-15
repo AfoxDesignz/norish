@@ -29,6 +29,7 @@ export type { RecipeExtractionOutput };
  */
 export async function extractRecipeWithAI(
   html: string,
+  recipeId: string,
   url?: string,
   allergies?: string[]
 ): Promise<AIResult<FullRecipeInsertDTO>> {
@@ -92,6 +93,7 @@ export async function extractRecipeWithAI(
     const normalized = await normalizeExtractionOutput(jsonLd!, {
       url,
       imageCandidates,
+      recipeId,
     });
 
     if (!normalized) {

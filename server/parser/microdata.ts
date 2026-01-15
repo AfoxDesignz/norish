@@ -33,13 +33,14 @@ export function extractMicrodataRecipes(htmlContent: string): any[] {
 
 export async function tryExtractRecipeFromMicrodata(
   url: string,
-  htmlContent: string
+  htmlContent: string,
+  recipeId: string
 ): Promise<FullRecipeInsertDTO | null> {
   const nodes = extractMicrodataRecipes(htmlContent);
 
   if (!nodes || nodes.length === 0) return null;
 
-  const parsed = await normalizeRecipeFromJson(nodes[0]);
+  const parsed = await normalizeRecipeFromJson(nodes[0], recipeId);
 
   parsed && (parsed.url = url);
 

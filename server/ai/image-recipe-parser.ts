@@ -1,6 +1,8 @@
 import type { ImageImportFile } from "@/types/dto/queue";
 import type { FullRecipeInsertDTO } from "@/types/dto/recipe";
 
+import { randomUUID } from "crypto";
+
 import { generateText, Output } from "ai";
 
 import { getModels, getGenerationSettings } from "./providers";
@@ -109,8 +111,11 @@ export async function extractRecipeFromImages(
 
     aiLogger.debug(getExtractionLogContext(jsonLd!, null), "AI vision response received");
 
+    // Generate recipe ID upfront for image storage paths
+    const recipeId = randomUUID();
+
     // Normalize using shared normalizer (no URL or images for image imports)
-    const normalized = await normalizeExtractionOutput(jsonLd!);
+    const normalized = await normalizeExtractionOutput(jsonLd!, { recipeId });
 
     if (!normalized) {
       aiLogger.error("Failed to normalize recipe from image extraction");

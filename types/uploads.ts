@@ -28,12 +28,6 @@ export const IMAGE_MIME_TO_EXTENSION: Record<string, string> = {
 };
 
 /**
- * Maximum file sizes for uploads
- */
-export const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5MB
-export const MAX_RECIPE_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
-
-/**
  * Error that occurred during archive import (Mela/Mealie/Tandoor) for a specific file
  */
 export type ArchiveImportError = {
@@ -84,6 +78,32 @@ export type AllowedOcrMimeType = (typeof ALLOWED_OCR_MIME_TYPES)[number];
 
 export const ALLOWED_OCR_MIME_SET = new Set<string>(ALLOWED_OCR_MIME_TYPES);
 
-export const MAX_OCR_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
 export const MAX_OCR_FILES = 10;
 export const MAX_RECIPE_PASTE_CHARS = 10_000;
+
+/**
+ * Allowed video MIME types for uploads
+ */
+export const ALLOWED_VIDEO_MIME_TYPES = [
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "video/x-m4v",
+] as const;
+
+export type AllowedVideoMimeType = (typeof ALLOWED_VIDEO_MIME_TYPES)[number];
+
+/**
+ * Set for efficient video MIME type lookup
+ */
+export const ALLOWED_VIDEO_MIME_SET = new Set<string>(ALLOWED_VIDEO_MIME_TYPES);
+
+/**
+ * Map of video MIME type to file extension
+ */
+export const VIDEO_MIME_TO_EXTENSION: Record<string, string> = {
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+  "video/x-m4v": "m4v",
+};

@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import { spawn } from "child_process";
 
 import { v5 as uuidv5 } from "uuid";
 import sharp from "sharp";
@@ -26,13 +27,11 @@ export type ImageCandidate = {
   height?: number;
 };
 
-const RECIPES_DISK_DIR = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes");
-const RECIPES_WEB_PREFIX = "/recipes/images";
+const RECIPES_BASE_DIR = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes");
 
 // Configuration constants
 const MAX_WIDTH = 1280;
 const MAX_HEIGHT = 720;
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const FETCH_TIMEOUT = 30000; // 30 seconds
 const JPEG_QUALITY = 80;
 
@@ -327,8 +326,10 @@ async function saveImageBytesCore(bytes: Buffer, options: SaveImageOptions): Pro
   await ensureDir(options.directory);
 
   // Validate buffer size
-  if (bytes.length > MAX_FILE_SIZE) {
-    throw new Error(`Image too large: ${bytes.length} bytes (max: ${MAX_FILE_SIZE})`);
+  if (bytes.length > SERVER_CONFIG.MAX_IMAGE_FILE_SIZE) {
+    throw new Error(
+      `Image too large: ${bytes.length} bytes (max: ${SERVER_CONFIG.MAX_IMAGE_FILE_SIZE})`
+    );
   }
 
   // Validate it's an image
@@ -404,8 +405,15 @@ async function deleteImageByUrlCore(url: string, options: DeleteImageOptions): P
 
 // --- Main functions ---
 
-export async function downloadImage(url: string): Promise<string> {
-  await ensureDir(RECIPES_DISK_DIR);
+/**
+ * Download an image from URL and save to recipe directory.
+ * Path: uploads/recipes/{recipeId}/{hash}.jpg
+ * URL: /recipes/{recipeId}/{hash}.jpg
+ */
+export async function downloadImage(url: string, recipeId: string): Promise<string> {
+  const recipeDir = path.join(RECIPES_BASE_DIR, recipeId);
+
+  await ensureDir(recipeDir);
 
   // Validate URL
   try {
@@ -430,15 +438,19 @@ export async function downloadImage(url: string): Promise<string> {
   // Check content length if available
   const contentLength = res.headers.get("content-length");
 
-  if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE) {
-    throw new Error(`Image too large: ${contentLength} bytes (max: ${MAX_FILE_SIZE})`);
+  if (contentLength && parseInt(contentLength) > SERVER_CONFIG.MAX_IMAGE_FILE_SIZE) {
+    throw new Error(
+      `Image too large: ${contentLength} bytes (max: ${SERVER_CONFIG.MAX_IMAGE_FILE_SIZE})`
+    );
   }
 
   const arrayBuffer = await res.arrayBuffer();
 
   // Check actual size
-  if (arrayBuffer.byteLength > MAX_FILE_SIZE) {
-    throw new Error(`Image too large: ${arrayBuffer.byteLength} bytes (max: ${MAX_FILE_SIZE})`);
+  if (arrayBuffer.byteLength > SERVER_CONFIG.MAX_IMAGE_FILE_SIZE) {
+    throw new Error(
+      `Image too large: ${arrayBuffer.byteLength} bytes (max: ${SERVER_CONFIG.MAX_IMAGE_FILE_SIZE})`
+    );
   }
 
   let bytes = Buffer.from(new Uint8Array(arrayBuffer));
@@ -459,16 +471,23 @@ export async function downloadImage(url: string): Promise<string> {
 
   const id = uuidFromBytes(bytes);
   const fileName = `${id}.jpg`;
-  const filePath = path.join(RECIPES_DISK_DIR, fileName);
+  const filePath = path.join(recipeDir, fileName);
 
   if (!(await fileExists(filePath))) {
     await fs.writeFile(filePath, bytes);
   }
 
-  return `${RECIPES_WEB_PREFIX}/${fileName}`;
+  return `/recipes/${recipeId}/${fileName}`;
 }
 
-export async function downloadBestImageFromJsonLd(imageField: any): Promise<string | undefined> {
+/**
+ * Download best image from JSON-LD field.
+ * Path: uploads/recipes/{recipeId}/{hash}.jpg
+ */
+export async function downloadBestImageFromJsonLd(
+  imageField: any,
+  recipeId: string
+): Promise<string | undefined> {
   const candidates = normalizeJsonLdImages(imageField);
 
   if (!candidates.length) {
@@ -493,7 +512,7 @@ export async function downloadBestImageFromJsonLd(imageField: any): Promise<stri
     const cand = ordered[i];
 
     try {
-      return await downloadImage(cand.url);
+      return await downloadImage(cand.url, recipeId);
     } catch (_e) {
       // Fail silently and try next
     }
@@ -502,22 +521,84 @@ export async function downloadBestImageFromJsonLd(imageField: any): Promise<stri
   return undefined;
 }
 
-export async function saveImageBytes(bytes: Buffer, _nameHint?: string): Promise<string> {
+/**
+ * Save image bytes to recipe directory.
+ * Path: uploads/recipes/{recipeId}/{hash}.jpg
+ * URL: /recipes/{recipeId}/{hash}.jpg
+ */
+export async function saveImageBytes(bytes: Buffer, recipeId: string): Promise<string> {
   return saveImageBytesCore(bytes, {
-    directory: RECIPES_DISK_DIR,
-    webPrefix: RECIPES_WEB_PREFIX,
+    directory: path.join(RECIPES_BASE_DIR, recipeId),
+    webPrefix: `/recipes/${recipeId}`,
   });
 }
 
+/**
+ * Save step image bytes to recipe steps directory.
+ * Path: uploads/recipes/{recipeId}/steps/{hash}.jpg
+ * URL: /recipes/{recipeId}/steps/{hash}.jpg
+ */
 export async function saveStepImageBytes(bytes: Buffer, recipeId: string): Promise<string> {
   return saveImageBytesCore(bytes, {
-    directory: path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "steps"),
+    directory: path.join(RECIPES_BASE_DIR, recipeId, "steps"),
     webPrefix: `/recipes/${recipeId}/steps`,
   });
 }
 
+/**
+ * Delete recipe image by URL.
+ * URL format: /recipes/{recipeId}/{hash}.jpg
+ */
+export async function deleteImageByUrl(url: string): Promise<void> {
+  return deleteImageByUrlCore(url, {
+    urlPattern: /^\/recipes\/([a-f0-9-]+)\/([^/]+)$/i,
+    buildPath: (recipeId, filename) => path.join(RECIPES_BASE_DIR, recipeId, filename),
+    label: "recipe",
+  });
+}
+
+/**
+ * Delete step image by URL.
+ * URL format: /recipes/{recipeId}/steps/{hash}.jpg
+ */
+export async function deleteStepImageByUrl(url: string): Promise<void> {
+  return deleteImageByUrlCore(url, {
+    urlPattern: /^\/recipes\/([a-f0-9-]+)\/steps\/([^/]+)$/i,
+    buildPath: (recipeId, filename) => path.join(RECIPES_BASE_DIR, recipeId, "steps", filename),
+    label: "step",
+  });
+}
+
+/**
+ * Delete entire recipe directory (all images including steps).
+ */
+export async function deleteRecipeImagesDir(recipeId: string): Promise<void> {
+  const recipeDir = path.join(RECIPES_BASE_DIR, recipeId);
+
+  try {
+    const exists = await fs
+      .access(recipeDir)
+      .then(() => true)
+      .catch(() => false);
+
+    if (!exists) {
+      log.debug({ recipeId, recipeDir }, "Recipe images directory does not exist, skipping");
+
+      return;
+    }
+
+    await fs.rm(recipeDir, { recursive: true, force: true });
+    log.info({ recipeId, recipeDir }, "Deleted recipe images directory");
+  } catch (err) {
+    log.warn({ err, recipeId, recipeDir }, "Could not delete recipe images directory");
+  }
+}
+
+/**
+ * Delete step images directory only.
+ */
 export async function deleteRecipeStepImagesDir(recipeId: string): Promise<void> {
-  const stepImagesDir = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "steps");
+  const stepImagesDir = path.join(RECIPES_BASE_DIR, recipeId, "steps");
 
   try {
     await fs.rm(stepImagesDir, { recursive: true, force: true });
@@ -528,55 +609,15 @@ export async function deleteRecipeStepImagesDir(recipeId: string): Promise<void>
   }
 }
 
-export async function deleteStepImageByUrl(url: string): Promise<void> {
-  return deleteImageByUrlCore(url, {
-    urlPattern: /^\/recipes\/([a-f0-9-]+)\/steps\/([^/]+)$/i,
-    buildPath: (recipeId, filename) =>
-      path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "steps", filename),
-    label: "step",
-  });
-}
-
-// --- Recipe Gallery Image Functions ---
-
-export async function saveRecipeGalleryImageBytes(
-  bytes: Buffer,
-  recipeId: string
-): Promise<string> {
-  return saveImageBytesCore(bytes, {
-    directory: path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "gallery"),
-    webPrefix: `/recipes/${recipeId}/gallery`,
-  });
-}
-
-export async function deleteRecipeGalleryImageByUrl(url: string): Promise<void> {
-  return deleteImageByUrlCore(url, {
-    urlPattern: /^\/recipes\/([a-f0-9-]+)\/gallery\/([^/]+)$/i,
-    buildPath: (recipeId, filename) =>
-      path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "gallery", filename),
-    label: "gallery",
-  });
-}
-
-export async function deleteRecipeGalleryImagesDir(recipeId: string): Promise<void> {
-  const galleryDir = path.join(SERVER_CONFIG.UPLOADS_DIR, "recipes", recipeId, "gallery");
-
-  try {
-    await fs.rm(galleryDir, { recursive: true, force: true });
-    log.info({ recipeId }, "Deleted gallery images directory");
-  } catch (err) {
-    // Ignore errors (directory might not exist)
-    log.warn({ err, recipeId }, "Could not delete gallery images directory");
-  }
-}
-
 /**
  * Download all images from JSON-LD image field, up to maxImages count.
  * Returns array of web URLs for successfully downloaded images.
  * Prioritizes larger images first based on dimensions metadata.
+ * Path: uploads/recipes/{recipeId}/{hash}.jpg
  */
 export async function downloadAllImagesFromJsonLd(
   imageField: any,
+  recipeId: string,
   maxImages: number = 10
 ): Promise<string[]> {
   const candidates = normalizeJsonLdImages(imageField);
@@ -605,7 +646,7 @@ export async function downloadAllImagesFromJsonLd(
     const cand = ordered[i];
 
     try {
-      const webUrl = await downloadImage(cand.url);
+      const webUrl = await downloadImage(cand.url, recipeId);
 
       downloadedUrls.push(webUrl);
     } catch (_e) {
@@ -615,4 +656,346 @@ export async function downloadAllImagesFromJsonLd(
   }
 
   return downloadedUrls;
+}
+
+// --- Video File Helpers ---
+
+function videoMimeFromExt(ext: string): string {
+  const mimes: Record<string, string> = {
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".mov": "video/quicktime",
+    ".mkv": "video/x-matroska",
+    ".avi": "video/x-msvideo",
+  };
+
+  return mimes[ext] || "video/mp4";
+}
+
+export interface ConvertToMp4Result {
+  /** Path to the MP4 file (may be same as input if already MP4) */
+  filePath: string;
+  /** Whether conversion was performed */
+  converted: boolean;
+  /** Method used: 'none', 'remux', 'transcode', 'original' */
+  method: "none" | "remux" | "transcode" | "original";
+}
+
+/**
+ * Convert video to MP4 format if needed.
+ * Strategy: Try remux first (fast, lossless), fallback to transcode, keep original if both fail.
+ */
+export async function convertToMp4(
+  inputPath: string,
+  ffmpegPath: string | null
+): Promise<ConvertToMp4Result> {
+  const ext = path.extname(inputPath).toLowerCase();
+
+  // Already MP4 - no conversion needed
+  if (ext === ".mp4") {
+    log.debug({ inputPath }, "Video is already MP4, no conversion needed");
+
+    return { filePath: inputPath, converted: false, method: "none" };
+  }
+
+  if (!ffmpegPath) {
+    log.warn({ inputPath }, "ffmpeg not available, keeping original format");
+
+    return { filePath: inputPath, converted: false, method: "original" };
+  }
+
+  const dir = path.dirname(inputPath);
+  const baseName = path.basename(inputPath, ext);
+  const outputPath = path.join(dir, `${baseName}.mp4`);
+
+  // Try remux first (fast, lossless copy of streams into MP4 container)
+  try {
+    log.debug({ inputPath, outputPath }, "Attempting video remux to MP4");
+
+    await runFfmpeg(ffmpegPath, [
+      "-i",
+      inputPath,
+      "-c",
+      "copy", // Copy streams without re-encoding
+      "-movflags",
+      "+faststart", // Optimize for web streaming
+      outputPath,
+    ]);
+
+    // Verify output exists and has content
+    const stats = await fs.stat(outputPath);
+
+    if (stats.size > 0) {
+      // Remove original file
+      await fs.unlink(inputPath).catch(() => {});
+      log.info({ inputPath, outputPath, size: stats.size }, "Video remuxed to MP4 successfully");
+
+      return { filePath: outputPath, converted: true, method: "remux" };
+    }
+  } catch (remuxErr) {
+    log.debug({ err: remuxErr }, "Remux failed, trying transcode");
+    // Remove failed output if it exists
+    await fs.unlink(outputPath).catch(() => {});
+  }
+
+  // Fallback to transcode (slower, but handles incompatible codecs)
+  try {
+    log.debug({ inputPath, outputPath }, "Attempting video transcode to MP4");
+
+    await runFfmpeg(ffmpegPath, [
+      "-i",
+      inputPath,
+      "-c:v",
+      "libx264", // Re-encode video to H.264
+      "-preset",
+      "fast", // Balance speed vs compression
+      "-crf",
+      "23", // Quality (lower = better, 23 is good default)
+      "-c:a",
+      "aac", // Re-encode audio to AAC
+      "-b:a",
+      "128k", // Audio bitrate
+      "-movflags",
+      "+faststart",
+      outputPath,
+    ]);
+
+    const stats = await fs.stat(outputPath);
+
+    if (stats.size > 0) {
+      await fs.unlink(inputPath).catch(() => {});
+      log.info({ inputPath, outputPath, size: stats.size }, "Video transcoded to MP4 successfully");
+
+      return { filePath: outputPath, converted: true, method: "transcode" };
+    }
+  } catch (transcodeErr) {
+    log.warn({ err: transcodeErr }, "Transcode failed, keeping original format");
+    await fs.unlink(outputPath).catch(() => {});
+  }
+
+  // Keep original if all conversion attempts failed
+  log.warn({ inputPath }, "All conversion attempts failed, keeping original format");
+
+  return { filePath: inputPath, converted: false, method: "original" };
+}
+
+/**
+ * Run ffmpeg command and return a promise.
+ */
+function runFfmpeg(ffmpegPath: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(ffmpegPath, ["-y", ...args], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stderr = "";
+
+    proc.stderr?.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    proc.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`ffmpeg exited with code ${code}: ${stderr.slice(-500)}`));
+      }
+    });
+
+    proc.on("error", (err) => {
+      reject(err);
+    });
+  });
+}
+
+export interface SavedVideo {
+  /** Web URL path to the video */
+  video: string;
+  /** Video duration in seconds (if known) */
+  duration: number | null;
+}
+
+/**
+ * Save a video file to the recipe directory.
+ * Path: uploads/recipes/{recipeId}/video-{timestamp}.mp4
+ * URL: /recipes/{recipeId}/video-{timestamp}.mp4
+ */
+export async function saveVideoFile(
+  sourcePath: string,
+  recipeId: string,
+  duration?: number
+): Promise<SavedVideo> {
+  const recipeDir = path.join(RECIPES_BASE_DIR, recipeId);
+
+  await ensureDir(recipeDir);
+
+  // Validate file size
+  const stats = await fs.stat(sourcePath);
+
+  if (stats.size > SERVER_CONFIG.MAX_VIDEO_FILE_SIZE) {
+    throw new Error(
+      `Video file too large: ${stats.size} bytes (max: ${SERVER_CONFIG.MAX_VIDEO_FILE_SIZE})`
+    );
+  }
+
+  const ext = path.extname(sourcePath).toLowerCase();
+  const timestamp = Date.now();
+  const fileName = `video-${timestamp}${ext}`;
+  const destPath = path.join(recipeDir, fileName);
+
+  // Copy file to recipe directory
+  await fs.copyFile(sourcePath, destPath);
+
+  log.info({ sourcePath, destPath, size: stats.size }, "Video file saved");
+
+  return {
+    video: `/recipes/${recipeId}/${fileName}`,
+    duration: duration ?? null,
+  };
+}
+
+/**
+ * Get MIME type for a video file extension.
+ */
+export function getVideoMimeType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+
+  return videoMimeFromExt(ext);
+}
+
+/**
+ * Valid video extensions for uploaded videos
+ */
+const ALLOWED_VIDEO_EXTS = new Set([".mp4", ".webm", ".mov", ".m4v"]);
+
+/**
+ * Detect video extension from buffer magic bytes
+ */
+function extFromVideoBuffer(buf: Buffer): string | undefined {
+  if (buf.length < 12) return undefined;
+
+  // MP4/M4V/MOV (ftyp box)
+  if (
+    buf.length >= 12 &&
+    buf[4] === 0x66 &&
+    buf[5] === 0x74 &&
+    buf[6] === 0x79 &&
+    buf[7] === 0x70
+  ) {
+    const brand = buf.slice(8, 12).toString("ascii");
+
+    // Common MP4 brands
+    if (
+      brand === "isom" ||
+      brand === "iso2" ||
+      brand === "mp41" ||
+      brand === "mp42" ||
+      brand === "avc1" ||
+      brand === "M4V " ||
+      brand === "M4VP"
+    ) {
+      return ".mp4";
+    }
+    // QuickTime
+    if (brand === "qt  " || brand === "moov") {
+      return ".mov";
+    }
+
+    // Default to mp4 for ftyp containers
+    return ".mp4";
+  }
+
+  // WebM (EBML header)
+  if (buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3) {
+    return ".webm";
+  }
+
+  return undefined;
+}
+
+/**
+ * Save video bytes to recipe directory.
+ * Path: uploads/recipes/{recipeId}/video-{timestamp}.{ext}
+ * URL: /recipes/{recipeId}/video-{timestamp}.{ext}
+ */
+export async function saveVideoBytes(
+  bytes: Buffer,
+  recipeId: string,
+  originalExt?: string,
+  duration?: number
+): Promise<SavedVideo> {
+  const recipeDir = path.join(RECIPES_BASE_DIR, recipeId);
+
+  await ensureDir(recipeDir);
+
+  // Validate buffer size
+  if (bytes.length > SERVER_CONFIG.MAX_VIDEO_FILE_SIZE) {
+    throw new Error(
+      `Video too large: ${bytes.length} bytes (max: ${SERVER_CONFIG.MAX_VIDEO_FILE_SIZE})`
+    );
+  }
+
+  // Detect extension from magic bytes or use provided
+  let ext = extFromVideoBuffer(bytes);
+
+  if (!ext && originalExt) {
+    const normalizedExt = originalExt.startsWith(".")
+      ? originalExt.toLowerCase()
+      : `.${originalExt.toLowerCase()}`;
+
+    if (ALLOWED_VIDEO_EXTS.has(normalizedExt)) {
+      ext = normalizedExt;
+    }
+  }
+  if (!ext) {
+    ext = ".mp4"; // Default to mp4
+  }
+
+  const timestamp = Date.now();
+  const fileName = `video-${timestamp}${ext}`;
+  const filePath = path.join(recipeDir, fileName);
+
+  await fs.writeFile(filePath, bytes);
+
+  log.info({ recipeId, fileName, size: bytes.length }, "Video bytes saved");
+
+  return {
+    video: `/recipes/${recipeId}/${fileName}`,
+    duration: duration ?? null,
+  };
+}
+
+/**
+ * Delete recipe video by URL.
+ * URL format: /recipes/{recipeId}/video-{timestamp}.{ext}
+ */
+export async function deleteVideoByUrl(url: string): Promise<void> {
+  // Match video URLs: /recipes/{uuid}/video-{timestamp}.{ext}
+  const match = url.match(/^\/recipes\/([a-f0-9-]+)\/(video-[^/]+)$/i);
+
+  if (!match) {
+    throw new Error("Invalid video URL format");
+  }
+
+  const [, recipeId, filename] = match;
+
+  // Validate recipeId is a UUID
+  if (!/^[a-f0-9-]{36}$/i.test(recipeId)) {
+    throw new Error("Invalid recipe ID in URL");
+  }
+
+  // Validate filename pattern
+  if (!/^video-\d+\.[a-zA-Z0-9]+$/.test(filename)) {
+    throw new Error("Invalid video filename in URL");
+  }
+
+  const filePath = path.join(RECIPES_BASE_DIR, recipeId, filename);
+
+  try {
+    await fs.unlink(filePath);
+    log.info({ recipeId, filename }, "Deleted video file");
+  } catch (err) {
+    log.warn({ err, recipeId, filename }, "Could not delete video file");
+    throw err;
+  }
 }

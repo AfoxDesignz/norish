@@ -117,7 +117,6 @@ async function transcribeWithOpenAI(
   const result = await transcribe({
     model: openai.transcription(model),
     audio: audioData,
-    providerOptions: { openai: { language: "en" } },
   });
 
   logAISDKCompletion("OpenAI", result);
@@ -141,7 +140,6 @@ async function transcribeWithGroq(
   const result = await transcribe({
     model: groq.transcription(model),
     audio: audioData,
-    providerOptions: { groq: { language: "en" } },
   });
 
   logAISDKCompletion("Groq", result);
@@ -215,7 +213,6 @@ async function transcribeWithGenericOpenAI(
   const response = await client.audio.transcriptions.create({
     file: createReadStream(audioPath),
     model,
-    language: "en",
     response_format: "json",
   });
 
