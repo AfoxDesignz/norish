@@ -138,8 +138,10 @@ export function GroceriesPage() {
           <div className="flex items-center gap-2">
             {/* Desktop add button: Full text with icon */}
             <Button
-              className="hidden md:flex"
+              className="hidden font-medium md:flex"
               color="primary"
+              radius="full"
+              size="md"
               startContent={<PlusIcon className="h-5 w-5" />}
               onPress={() => setAddGroceryPanelOpen(true)}
             >
