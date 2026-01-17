@@ -15,6 +15,9 @@ export type CalendarMutationsResult = {
     slot: Slot,
     recipeId: string,
     recipeName: string,
+    recipeImage: string | null,
+    servings: number | null,
+    calories: number | null,
     recipeTags?: string[]
   ) => void;
   deletePlannedRecipe: (id: string, date: string) => void;
@@ -22,6 +25,15 @@ export type CalendarMutationsResult = {
   createNote: (date: string, slot: Slot, title: string) => void;
   deleteNote: (id: string, date: string) => void;
   updateNoteDate: (id: string, newDate: string, oldDate: string) => void;
+  updateNoteTitle: (id: string, date: string, slot: Slot, title: string) => void;
+  updateNote: (
+    id: string,
+    oldDate: string,
+    oldSlot: Slot,
+    newDate: string,
+    newSlot: Slot,
+    title: string
+  ) => void;
 };
 
 export function useCalendarMutations(startISO: string, endISO: string): CalendarMutationsResult {
@@ -48,6 +60,9 @@ export function useCalendarMutations(startISO: string, endISO: string): Calendar
     slot: Slot,
     recipeId: string,
     recipeName: string,
+    recipeImage: string | null,
+    servings: number | null,
+    calories: number | null,
     recipeTags?: string[]
   ): void => {
     const allergyWarnings = new Set<string>();
@@ -78,6 +93,9 @@ export function useCalendarMutations(startISO: string, endISO: string): Calendar
               slot,
               date,
               allergyWarnings: [...allergyWarnings],
+              recipeImage,
+              servings,
+              calories,
             };
 
             return { ...prev, [date]: [...arr, item] };
@@ -215,5 +233,20 @@ export function useCalendarMutations(startISO: string, endISO: string): Calendar
     createNote,
     deleteNote,
     updateNoteDate,
+    updateNoteTitle: (id: string, date: string, slot: Slot, title: string) => {
+      deleteNote(id, date);
+      createNote(date, slot, title);
+    },
+    updateNote: (
+      id: string,
+      oldDate: string,
+      _oldSlot: Slot,
+      newDate: string,
+      newSlot: Slot,
+      title: string
+    ) => {
+      deleteNote(id, oldDate);
+      createNote(newDate, newSlot, title);
+    },
   };
 }

@@ -2,6 +2,19 @@
   "page": {
     "title": "Kalender"
   },
+  "mobile": {
+    "today": "Heute",
+    "scrollToToday": "Zu heute springen",
+    "emptySlot": "Tippen Sie + zum Hinzufügen",
+    "nothingPlanned": "Nichts geplant"
+  },
+  "editNote": {
+    "title": "Notiz bearbeiten",
+    "noteLabel": "Notiz",
+    "notePlaceholder": "Notiz eingeben...",
+    "date": "Datum",
+    "slot": "Zeitfenster"
+  },
   "navigation": {
     "previousMonth": "Vorheriger Monat",
     "nextMonth": "Nächster Monat",
@@ -19,9 +32,9 @@
   },
   "timeline": {
     "noItems": "Keine Einträge",
-    "viewGroceries": "Einkaufsliste anzeigen",
+    "addToGroceries": "Zur Einkaufsliste hinzufügen",
     "goToRecipe": "Zum Rezept",
-    "deleteItem": "Eintrag löschen",
+    "deleteItem": "Löschen",
     "itemActions": "Eintrag-Aktionen",
     "viewAllergenWarning": "Allergen-Warnung anzeigen",
     "allergyWarning": "Allergie-Warnung:",

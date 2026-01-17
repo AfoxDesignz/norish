@@ -47,35 +47,37 @@ const DayRow = memo(function DayRow({
   addItemLabel: string;
 }) {
   return (
-    <div className="divide-default-200 divide-y">
-      <div className="bg-background flex flex-col gap-2 px-3 py-3">
-        <div className="flex items-center gap-2">
-          <div className="w-12 shrink-0 md:w-14">
+    <div className="border-default-100 border-b last:border-none">
+      <div className="bg-background hover:bg-default-50/50 flex flex-col gap-3 px-4 py-4 transition-colors">
+        <div className="flex items-center gap-4">
+          <div className="bg-default-50 flex shrink-0 flex-col items-center justify-center rounded-xl px-3 py-2 text-center">
+            <div className="text-default-500 text-xs font-medium tracking-wider uppercase">
+              {weekdayLong.format(date).slice(0, 3)}
+            </div>
             <div
               className={`${
                 isToday ? "text-primary" : "text-foreground"
-              } font-mono text-3xl leading-none font-semibold tabular-nums md:text-4xl`}
+              } font-mono text-2xl leading-none font-bold tracking-tight`}
             >
-              {String(date.getDate()).padStart(2, "0")}
+              {String(date.getDate())}
             </div>
           </div>
 
-          <div className="-ml-1 flex flex-col leading-tight">
-            <div className="text-default-700 text-sm">{weekdayLong.format(date)}</div>
-            <div className="text-default-500 text-sm">{monthLong.format(date)}</div>
+          <div className="flex flex-1 flex-col justify-center">
+            <div className="text-default-900 text-sm font-semibold">{weekdayLong.format(date)}</div>
+            <div className="text-default-500 text-xs">
+              {monthLong.format(date)} {date.getFullYear()}
+            </div>
           </div>
-
-          <div className="flex-1" />
 
           <Dropdown>
             <DropdownTrigger>
               <Button
                 isIconOnly
                 aria-label={addItemLabel}
-                className="min-w-0 bg-transparent p-1 shadow-none data-[hover=true]:bg-transparent"
-                radius="none"
+                className="bg-default-100 text-default-500 hover:text-primary h-8 min-w-8 rounded-full shadow-sm transition-transform active:scale-95"
                 size="sm"
-                variant="light"
+                variant="flat"
               >
                 <PlusIcon className="h-4 w-4" />
               </Button>
@@ -92,23 +94,22 @@ const DayRow = memo(function DayRow({
           </Dropdown>
         </div>
 
-        <div className="bg-default-200 h-px" />
-
-        <div className="flex w-full flex-col">
+        <div className="flex w-full flex-col gap-2 pl-[4.5rem]">
           {items.length === 0 ? (
-            <span className="text-default-400 text-xs">{noItemsLabel}</span>
+            <span className="text-default-400 text-xs italic">{noItemsLabel}</span>
           ) : (
             items.map((it, i) => (
-              <div key={i} className="flex w-full items-center justify-between px-2 py-1.5">
-                <div className="flex min-w-0 items-center gap-2">
-                  <MealIcon slot={it.slot} />
-                  <span
-                    className={`truncate text-xs md:text-sm ${it.itemType === "note" ? "text-default-500 italic" : "text-foreground"}`}
-                    title={it.itemType === "recipe" ? (it.recipeName ?? "") : (it.title ?? "")}
-                  >
-                    {it.itemType === "recipe" ? it.recipeName : it.title}
-                  </span>
-                </div>
+              <div
+                key={i}
+                className="bg-content1 border-default-100 flex w-full items-center gap-3 rounded-lg border px-3 py-2 shadow-sm"
+              >
+                <MealIcon slot={it.slot} />
+                <span
+                  className={`truncate text-sm font-medium ${it.itemType === "note" ? "text-default-500 italic" : "text-foreground"}`}
+                  title={it.itemType === "recipe" ? (it.recipeName ?? "") : (it.title ?? "")}
+                >
+                  {it.itemType === "recipe" ? it.recipeName : it.title}
+                </span>
               </div>
             ))
           )}
@@ -200,7 +201,15 @@ function MiniCalendarContent({
     (dayKey: string, slot: Slot) => {
       if (!recipe) return;
 
-      createPlannedRecipe(dayKey, slot, recipe.id, recipe.name);
+      createPlannedRecipe(
+        dayKey,
+        slot,
+        recipe.id,
+        recipe.name,
+        recipe.image,
+        recipe.servings,
+        recipe.calories ?? null
+      );
       onOpenChange(false);
     },
     [recipe, onOpenChange, createPlannedRecipe]

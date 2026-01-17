@@ -2,6 +2,19 @@
   "page": {
     "title": "Calendrier"
   },
+  "mobile": {
+    "today": "Aujourd'hui",
+    "scrollToToday": "Aller à aujourd'hui",
+    "emptySlot": "Appuyez + pour ajouter",
+    "nothingPlanned": "Rien de prévu"
+  },
+  "editNote": {
+    "title": "Modifier la note",
+    "noteLabel": "Note",
+    "notePlaceholder": "Entrez une note...",
+    "date": "Date",
+    "slot": "Créneau"
+  },
   "navigation": {
     "previousMonth": "Mois précédent",
     "nextMonth": "Mois suivant",
@@ -19,9 +32,9 @@
   },
   "timeline": {
     "noItems": "Aucun article",
-    "viewGroceries": "Voir les épiceries",
+    "addToGroceries": "Ajouter aux courses",
     "goToRecipe": "Aller aux recettes",
-    "deleteItem": "Effacer l'article",
+    "deleteItem": "Supprimer",
     "itemActions": "Actions sur l'article",
     "viewAllergenWarning": "Voir l'avertissement relatif aux allergènes",
     "allergyWarning": "Avertissement concernant les allergies :",

@@ -21,6 +21,9 @@ export async function listPlannedRecipesByUserAndRange(
       date: sql<string>`to_char(${plannedRecipes.date}, 'YYYY-MM-DD')`,
       slot: plannedRecipes.slot,
       recipeName: recipes.name,
+      recipeImage: recipes.image,
+      servings: recipes.servings,
+      calories: recipes.calories,
     })
     .from(plannedRecipes)
     .where(
@@ -33,7 +36,12 @@ export async function listPlannedRecipesByUserAndRange(
     .leftJoin(recipes, eq(recipes.id, plannedRecipes.recipeId))
     .orderBy(desc(plannedRecipes.date));
 
-  return rows as (PlannedRecipeDto & { recipeName: string | null })[];
+  return rows as unknown as (PlannedRecipeDto & {
+    recipeName: string | null;
+    recipeImage: string | null;
+    servings: number | null;
+    calories: number | null;
+  })[];
 }
 
 export async function listPlannedRecipesByUsersAndRange(
@@ -41,7 +49,13 @@ export async function listPlannedRecipesByUsersAndRange(
   startISO: string,
   endISO: string
 ) {
-  if (!userIds.length) return [] as (PlannedRecipeDto & { recipeName: string | null })[];
+  if (!userIds.length)
+    return [] as (PlannedRecipeDto & {
+      recipeName: string | null;
+      recipeImage: string | null;
+      servings: number | null;
+      calories: number | null;
+    })[];
 
   const start = new Date(startISO);
   const end = new Date(endISO);
@@ -53,6 +67,9 @@ export async function listPlannedRecipesByUsersAndRange(
       date: sql<string>`to_char(${plannedRecipes.date}, 'YYYY-MM-DD')`,
       slot: plannedRecipes.slot,
       recipeName: recipes.name,
+      recipeImage: recipes.image,
+      servings: recipes.servings,
+      calories: recipes.calories,
     })
     .from(plannedRecipes)
     .where(
@@ -65,7 +82,12 @@ export async function listPlannedRecipesByUsersAndRange(
     .leftJoin(recipes, eq(recipes.id, plannedRecipes.recipeId))
     .orderBy(desc(plannedRecipes.date));
 
-  return rows as (PlannedRecipeDto & { recipeName: string | null })[];
+  return rows as unknown as (PlannedRecipeDto & {
+    recipeName: string | null;
+    recipeImage: string | null;
+    servings: number | null;
+    calories: number | null;
+  })[];
 }
 
 export async function getPlannedRecipeViewById(id: string): Promise<PlannedRecipeViewDto> {
@@ -76,6 +98,9 @@ export async function getPlannedRecipeViewById(id: string): Promise<PlannedRecip
       date: sql<string>`to_char(${plannedRecipes.date}, 'YYYY-MM-DD')`,
       slot: plannedRecipes.slot,
       recipeName: recipes.name,
+      recipeImage: recipes.image,
+      servings: recipes.servings,
+      calories: recipes.calories,
     })
     .from(plannedRecipes)
     .leftJoin(recipes, eq(recipes.id, plannedRecipes.recipeId))

@@ -2,6 +2,19 @@
   "page": {
     "title": "Agenda"
   },
+  "mobile": {
+    "today": "Vandaag",
+    "scrollToToday": "Ga naar vandaag",
+    "emptySlot": "Tik + om toe te voegen",
+    "nothingPlanned": "Niets gepland"
+  },
+  "editNote": {
+    "title": "Notitie bewerken",
+    "noteLabel": "Notitie",
+    "notePlaceholder": "Voer notitie in...",
+    "date": "Datum",
+    "slot": "Tijdstip"
+  },
   "navigation": {
     "previousMonth": "Vorige maand",
     "nextMonth": "Volgende maand",
@@ -19,9 +32,9 @@
   },
   "timeline": {
     "noItems": "Geen items",
-    "viewGroceries": "Bekijk boodschappen",
+    "addToGroceries": "Toevoegen aan boodschappen",
     "goToRecipe": "Ga naar recept",
-    "deleteItem": "Verwijder item",
+    "deleteItem": "Verwijderen",
     "itemActions": "Item acties",
     "viewAllergenWarning": "Bekijk allergenenwaarschuwing",
     "allergyWarning": "Waarschuwing:",

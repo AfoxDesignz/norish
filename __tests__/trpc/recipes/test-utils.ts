@@ -75,6 +75,7 @@ export function createMockRecipeDashboard(
     prepMinutes: 15,
     cookMinutes: 30,
     totalMinutes: 45,
+    calories: null,
     createdAt: now,
     updatedAt: now,
     tags: [{ name: "dinner" }, { name: "easy" }],

@@ -21,36 +21,62 @@ type MiniRecipesProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   date: Date;
+  slot?: Slot;
 };
 
 // Memoized recipe item to prevent re-renders during scroll
 const MiniRecipeItem = memo(function MiniRecipeItem({
   recipe,
   onPlan,
+  slot,
 }: {
   recipe: RecipeDashboardDTO;
   onPlan: (recipe: RecipeDashboardDTO, slot: Slot) => void;
+  slot?: Slot;
 }) {
   const subtitle = (recipe.description?.trim() || "").slice(0, 140);
 
+  const content = (
+    <div className="hover:bg-default-100 flex cursor-pointer items-start gap-3 rounded-md px-2 py-2">
+      <div className="bg-default-200 relative h-20 w-20 shrink-0 overflow-hidden rounded-md">
+        {recipe.image && (
+          <Image
+            removeWrapper
+            alt={recipe.name}
+            className="h-full w-full object-cover"
+            src={recipe.image}
+          />
+        )}
+      </div>
+      <div className="flex min-w-0 flex-col">
+        <div className="truncate text-base font-medium">{recipe.name}</div>
+        {subtitle && <div className="text-default-500 truncate text-base">{subtitle}</div>}
+      </div>
+    </div>
+  );
+
+  if (slot) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        className="focus-visible:ring-primary cursor-pointer rounded-md outline-none focus-visible:ring-2"
+        onClick={() => onPlan(recipe, slot)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            onPlan(recipe, slot);
+            e.preventDefault();
+          }
+        }}
+      >
+        {content}
+      </div>
+    );
+  }
+
   return (
     <SlotDropdown ariaLabel="Choose slot" onSelectSlot={(slot) => onPlan(recipe, slot)}>
-      <div className="hover:bg-default-100 flex cursor-pointer items-start gap-3 rounded-md px-2 py-2">
-        <div className="bg-default-200 relative h-20 w-20 shrink-0 overflow-hidden rounded-md">
-          {recipe.image && (
-            <Image
-              removeWrapper
-              alt={recipe.name}
-              className="h-full w-full object-cover"
-              src={recipe.image}
-            />
-          )}
-        </div>
-        <div className="flex min-w-0 flex-col">
-          <div className="truncate text-base font-medium">{recipe.name}</div>
-          {subtitle && <div className="text-default-500 truncate text-base">{subtitle}</div>}
-        </div>
-      </div>
+      {content}
     </SlotDropdown>
   );
 });
@@ -62,12 +88,14 @@ const VirtualizedRecipeList = memo(function VirtualizedRecipeList({
   loadMore,
   noRecipesFound,
   onPlan,
+  slot,
 }: {
   recipes: RecipeDashboardDTO[];
   isLoading: boolean;
   loadMore: () => void;
   noRecipesFound: string;
   onPlan: (recipe: RecipeDashboardDTO, slot: Slot) => void;
+  slot?: Slot;
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
   const loadMoreTriggeredRef = useRef(false);
@@ -140,7 +168,7 @@ const VirtualizedRecipeList = memo(function VirtualizedRecipeList({
                 transform: `translateY(${virtualItem.start}px)`,
               }}
             >
-              <MiniRecipeItem recipe={recipe} onPlan={onPlan} />
+              <MiniRecipeItem recipe={recipe} onPlan={onPlan} slot={slot} />
             </div>
           );
         })}
@@ -152,9 +180,11 @@ const VirtualizedRecipeList = memo(function VirtualizedRecipeList({
 function MiniRecipesContent({
   date,
   onOpenChange,
+  slot,
 }: {
   date: Date;
   onOpenChange: (open: boolean) => void;
+  slot?: Slot;
 }) {
   const t = useTranslations("calendar.panel");
   const [rawInput, setRawInput] = useState("");
@@ -193,6 +223,9 @@ function MiniRecipesContent({
         slot,
         recipe.id,
         recipe.name,
+        recipe.image,
+        recipe.servings,
+        recipe.calories ?? null,
         recipe.tags.map((t) => t.name)
       );
       close();
@@ -201,14 +234,21 @@ function MiniRecipesContent({
   );
 
   const handlePlanNote = useCallback(
-    (slot: Slot) => {
+    (targetSlot: Slot) => {
       if (rawInput.trim()) {
-        planNote(dateString, slot, rawInput.trim());
+        planNote(dateString, targetSlot, rawInput.trim());
         close();
       }
     },
     [dateString, rawInput, close, planNote]
   );
+
+  const handleDirectNote = useCallback(() => {
+    if (slot && rawInput.trim()) {
+      planNote(dateString, slot, rawInput.trim());
+      close();
+    }
+  }, [slot, rawInput, dateString, close, planNote]);
 
   if (error) {
     return (
@@ -246,17 +286,30 @@ function MiniRecipesContent({
             initial={{ opacity: 0, height: 0, marginBottom: 0 }}
             transition={{ duration: 0.15, ease: "easeInOut" }}
           >
-            <SlotDropdown ariaLabel="Choose slot for note" onSelectSlot={handlePlanNote}>
+            {slot ? (
               <Button
                 className="w-full justify-center"
                 color="primary"
                 size="sm"
                 startContent={<PlusIcon className="h-4 w-4 shrink-0" />}
                 variant="solid"
+                onPress={handleDirectNote}
               >
                 <span className="truncate">{t("addNote", { input: rawInput })}</span>
               </Button>
-            </SlotDropdown>
+            ) : (
+              <SlotDropdown ariaLabel="Choose slot for note" onSelectSlot={handlePlanNote}>
+                <Button
+                  className="w-full justify-center"
+                  color="primary"
+                  size="sm"
+                  startContent={<PlusIcon className="h-4 w-4 shrink-0" />}
+                  variant="solid"
+                >
+                  <span className="truncate">{t("addNote", { input: rawInput })}</span>
+                </Button>
+              </SlotDropdown>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -267,17 +320,18 @@ function MiniRecipesContent({
         noRecipesFound={t("noRecipesFound")}
         recipes={recipes}
         onPlan={handlePlan}
+        slot={slot}
       />
     </div>
   );
 }
 
-export default function MiniRecipes({ open, onOpenChange, date }: MiniRecipesProps) {
+export default function MiniRecipes({ open, onOpenChange, date, slot }: MiniRecipesProps) {
   const t = useTranslations("calendar.panel");
 
   return (
     <Panel open={open} title={t("addRecipe")} onOpenChange={onOpenChange}>
-      {open && <MiniRecipesContent date={date} onOpenChange={onOpenChange} />}
+      {open && <MiniRecipesContent date={date} onOpenChange={onOpenChange} slot={slot} />}
     </Panel>
   );
 }

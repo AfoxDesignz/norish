@@ -111,7 +111,15 @@ describe("useCalendarMutations", () => {
       });
 
       act(() => {
-        result.current.createPlannedRecipe("2025-01-15", "Breakfast", "recipe-123", "Pancakes");
+        result.current.createPlannedRecipe(
+          "2025-01-15",
+          "Breakfast",
+          "recipe-123",
+          "Pancakes",
+          null,
+          1,
+          100
+        );
       });
 
       await waitFor(() => {
@@ -136,7 +144,15 @@ describe("useCalendarMutations", () => {
       });
 
       act(() => {
-        result.current.createPlannedRecipe("2025-01-15", "Breakfast", "recipe-123", "Pancakes");
+        result.current.createPlannedRecipe(
+          "2025-01-15",
+          "Breakfast",
+          "recipe-123",
+          "Pancakes",
+          null,
+          1,
+          100
+        );
       });
 
       await waitFor(() => {
