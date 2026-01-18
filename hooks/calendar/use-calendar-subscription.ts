@@ -44,6 +44,9 @@ export function useCalendarSubscription() {
             id: plannedRecipe.id,
             recipeId: plannedRecipe.recipeId,
             recipeName: plannedRecipe.recipeName ?? "Unknown",
+            recipeImage: plannedRecipe.recipeImage,
+            servings: plannedRecipe.servings,
+            calories: plannedRecipe.calories,
             slot: plannedRecipe.slot as Slot,
             date: plannedRecipe.date,
             allergyWarnings: plannedRecipe.allergyWarnings,
@@ -102,6 +105,15 @@ export function useCalendarSubscription() {
             recipeName:
               plannedRecipe.recipeName ??
               (existing && existing.itemType === "recipe" ? existing.recipeName : "Unknown"),
+            recipeImage:
+              plannedRecipe.recipeImage ??
+              (existing && existing.itemType === "recipe" ? existing.recipeImage : null),
+            servings:
+              plannedRecipe.servings ??
+              (existing && existing.itemType === "recipe" ? existing.servings : null),
+            calories:
+              plannedRecipe.calories ??
+              (existing && existing.itemType === "recipe" ? existing.calories : null),
             slot: plannedRecipe.slot as Slot,
             date: plannedRecipe.date,
             allergyWarnings:

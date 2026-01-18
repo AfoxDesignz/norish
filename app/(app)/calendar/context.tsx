@@ -8,7 +8,7 @@ import {
   useCalendarSubscription,
   type CalendarData,
 } from "@/hooks/calendar";
-import { Slot, CaldavItemType } from "@/types";
+import { Slot, CaldavItemType, CalendarItemViewDto } from "@/types";
 import { dateKey, startOfMonth, endOfMonth, addMonths } from "@/lib/helpers";
 
 type Ctx = {
@@ -19,11 +19,24 @@ type Ctx = {
     slot: Slot,
     recipeId: string,
     recipeName: string,
+    recipeImage: string | null,
+    servings: number | null,
+    calories: number | null,
     recipeTags?: string[]
   ) => void;
   planNote: (date: string, slot: Slot, title: string) => void;
   deletePlanned: (id: string, date: string, itemType: CaldavItemType) => void;
   updateItemDate: (id: string, oldDate: string, newDate: string, itemType: CaldavItemType) => void;
+  updateItemSlot: (id: string, date: string, newSlot: Slot, itemType: CaldavItemType) => void;
+  updateNoteTitle: (id: string, date: string, slot: Slot, title: string) => void;
+  updateNote: (
+    id: string,
+    oldDate: string,
+    oldSlot: Slot,
+    newDate: string,
+    newSlot: Slot,
+    title: string
+  ) => void;
 };
 
 const CalendarContext = createContext<Ctx | null>(null);
@@ -50,6 +63,8 @@ export function CalendarContextProvider({ children }: { children: ReactNode }) {
     createNote,
     deleteNote,
     updateNoteDate,
+    updateNoteTitle,
+    updateNote,
   } = useCalendarMutations(startISO, endISO);
 
   // Subscribe to WebSocket events (updates query cache via internal cache helpers)
@@ -61,9 +76,21 @@ export function CalendarContextProvider({ children }: { children: ReactNode }) {
       slot: Slot,
       recipeId: string,
       recipeName: string,
+      recipeImage: string | null,
+      servings: number | null,
+      calories: number | null,
       recipeTags?: string[]
     ): void => {
-      createPlannedRecipe(date, slot, recipeId, recipeName, recipeTags);
+      createPlannedRecipe(
+        date,
+        slot,
+        recipeId,
+        recipeName,
+        recipeImage,
+        servings,
+        calories,
+        recipeTags
+      );
     },
     [createPlannedRecipe]
   );
@@ -97,6 +124,39 @@ export function CalendarContextProvider({ children }: { children: ReactNode }) {
     [updatePlannedRecipeDate, updateNoteDate]
   );
 
+  const updateItemSlot = useCallback(
+    (id: string, date: string, newSlot: Slot, itemType: CaldavItemType): void => {
+      // Find item to get details
+      let item: CalendarItemViewDto | undefined;
+      for (const d of Object.keys(calendarData)) {
+        const found = calendarData[d]?.find((i) => i.id === id);
+        if (found) {
+          item = found;
+          break;
+        }
+      }
+
+      if (!item) return;
+
+      if (itemType === "recipe" && item.itemType === "recipe") {
+        deletePlannedRecipe(id, item.date);
+        createPlannedRecipe(
+          date,
+          newSlot,
+          item.recipeId,
+          item.recipeName || "Recipe",
+          item.recipeImage,
+          item.servings ?? null,
+          item.calories ?? null
+        );
+      } else if (itemType === "note" && item.itemType === "note") {
+        deleteNote(id, item.date);
+        createNote(date, newSlot, item.title || "Note");
+      }
+    },
+    [calendarData, deletePlannedRecipe, createPlannedRecipe, deleteNote, createNote]
+  );
+
   const value = useMemo<Ctx>(
     () => ({
       plannedItemsByDate: calendarData,
@@ -105,8 +165,21 @@ export function CalendarContextProvider({ children }: { children: ReactNode }) {
       planNote,
       deletePlanned,
       updateItemDate,
+      updateItemSlot,
+      updateNoteTitle,
+      updateNote,
     }),
-    [calendarData, isLoading, planMeal, planNote, deletePlanned, updateItemDate]
+    [
+      calendarData,
+      isLoading,
+      planMeal,
+      planNote,
+      deletePlanned,
+      updateItemDate,
+      updateItemSlot,
+      updateNoteTitle,
+      updateNote,
+    ]
   );
 
   return <CalendarContext.Provider value={value}>{children}</CalendarContext.Provider>;

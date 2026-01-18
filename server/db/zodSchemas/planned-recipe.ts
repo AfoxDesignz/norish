@@ -13,6 +13,9 @@ export const plannedRecipeViewSchema = createSelectSchema(plannedRecipes)
   })
   .extend({
     recipeName: z.string().nullable(),
+    recipeImage: z.string().nullable(),
+    servings: z.number().nullable(),
+    calories: z.number().nullable(),
     allergyWarnings: z.array(z.string()).optional(),
   });
 

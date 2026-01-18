@@ -406,6 +406,7 @@ export async function listRecipes(
         prepMinutes: true,
         cookMinutes: true,
         totalMinutes: true,
+        calories: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -447,6 +448,7 @@ export async function listRecipes(
       prepMinutes: r.prepMinutes ?? null,
       cookMinutes: r.cookMinutes ?? null,
       totalMinutes: r.totalMinutes ?? null,
+      calories: r.calories ?? null,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
       tags: (r.recipeTags ?? [])
@@ -491,6 +493,7 @@ export async function dashboardRecipe(id: string): Promise<RecipeDashboardDTO | 
       prepMinutes: true,
       cookMinutes: true,
       totalMinutes: true,
+      calories: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -529,6 +532,7 @@ export async function dashboardRecipe(id: string): Promise<RecipeDashboardDTO | 
     prepMinutes: r.prepMinutes ?? null,
     cookMinutes: r.cookMinutes ?? null,
     totalMinutes: r.totalMinutes ?? null,
+    calories: r.calories ?? null,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
     tags: (r.recipeTags ?? [])
