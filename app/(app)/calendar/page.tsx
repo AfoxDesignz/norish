@@ -15,8 +15,10 @@ export default function CalendarPage() {
 
   return (
     <CalendarContextProvider>
-      <div className="flex min-h-0 w-full flex-1 flex-col md:mx-auto md:max-w-7xl md:p-6 lg:p-8">
-        <h1 className="mb-4 shrink-0 text-2xl font-bold">{t("title")}</h1>
+      <div className="flex min-h-0 w-full flex-1 flex-col">
+        <div className="mb-6 flex min-h-10 shrink-0 items-center justify-between">
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
+        </div>
 
         {/* Mobile */}
         <div className="flex min-h-0 w-full flex-1 flex-col md:hidden">
