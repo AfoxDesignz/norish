@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import Image from "next/image";
 
@@ -9,23 +9,83 @@ import { useRecipeContext } from "../context";
 import ImageLightbox from "@/components/shared/image-lightbox";
 import SmartMarkdownRenderer from "@/components/shared/smart-markdown-renderer";
 
-export default function StepsList() {
+type StepsListProps = {
+  autoScrollOnCheck?: boolean;
+};
+
+export default function StepsList({ autoScrollOnCheck = false }: StepsListProps) {
   const { recipe } = useRecipeContext();
   const [done, setDone] = useState<Set<number>>(() => new Set());
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<{ src: string; alt?: string }[]>([]);
   const [lightboxInitialIndex, setLightboxInitialIndex] = useState(0);
+  const [pendingScrollIndex, setPendingScrollIndex] = useState<number | null>(null);
+  const stepRefs = useRef<Map<number, HTMLLIElement | null>>(new Map());
+
+  const filteredSteps = useMemo(() => {
+    return (
+      recipe?.steps
+        .filter((s) => s.systemUsed === recipe.systemUsed)
+        .sort((a, b) => a.order - b.order) ?? []
+    );
+  }, [recipe?.steps, recipe?.systemUsed]);
+
+  const getNextIncompleteStepIndex = (fromIndex: number, doneSet: Set<number>) => {
+    for (let idx = fromIndex + 1; idx < filteredSteps.length; idx++) {
+      const step = filteredSteps[idx];
+
+      if (step.step.trim().startsWith("#")) {
+        continue;
+      }
+
+      if (!doneSet.has(idx)) {
+        return idx;
+      }
+    }
+
+    return null;
+  };
+
+  const scrollToStep = (index: number) => {
+    const target = stepRefs.current.get(index);
+
+    if (!target) {
+      return;
+    }
+
+    const top = target.getBoundingClientRect().top + window.scrollY - 16;
+
+    window.scrollTo({ top, behavior: "smooth" });
+  };
 
   const toggle = (i: number) => {
-    setDone((prev) => {
-      const next = new Set(prev);
+    const next = new Set(done);
+    const isCurrentlyDone = next.has(i);
 
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
+    if (isCurrentlyDone) {
+      next.delete(i);
+      setPendingScrollIndex(null);
+    } else {
+      next.add(i);
 
-      return next;
-    });
+      if (autoScrollOnCheck) {
+        setPendingScrollIndex(getNextIncompleteStepIndex(i, next));
+      }
+    }
+
+    setDone(next);
   };
+
+  useLayoutEffect(() => {
+    if (!autoScrollOnCheck || pendingScrollIndex === null) {
+      return;
+    }
+
+    const targetIndex = pendingScrollIndex;
+
+    setPendingScrollIndex(null);
+    requestAnimationFrame(() => scrollToStep(targetIndex));
+  }, [autoScrollOnCheck, pendingScrollIndex]);
 
   const onKeyToggle = (e: React.KeyboardEvent, i: number) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -49,11 +109,6 @@ export default function StepsList() {
     <>
       <ol className="space-y-3">
         {(() => {
-          const filteredSteps =
-            recipe?.steps
-              .filter((s) => s.systemUsed === recipe.systemUsed)
-              .sort((a, b) => a.order - b.order) ?? [];
-
           let stepNumber = 0;
 
           return filteredSteps.map((s, i) => {
@@ -78,7 +133,16 @@ export default function StepsList() {
             const currentStepNumber = stepNumber;
 
             return (
-              <li key={i}>
+              <li
+                key={i}
+                ref={(node) => {
+                  if (node) {
+                    stepRefs.current.set(i, node);
+                  } else {
+                    stepRefs.current.delete(i);
+                  }
+                }}
+              >
                 <div
                   aria-pressed={isDone}
                   className="group hover:bg-default-100 dark:hover:bg-default-100/10 flex cursor-pointer gap-4 rounded-xl p-3 transition-all duration-200 select-none"
