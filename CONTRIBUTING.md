@@ -255,6 +255,23 @@ New locales are **enabled by default** when added to `DEFAULT_LOCALE_CONFIG`. Yo
 - **Admin UI**: Go to **Settings => Admin => General** to enable/disable locales
 - **Environment variable**: Set `ENABLED_LOCALES=en,nl,your-locale` (comma-separated list)
 
+### 5. Optional: Translate Default Units
+
+If you want to go beyond UI translations, you can also improve default unit names and parsing aliases in `config/units.default.json`.
+
+How to do it:
+
+- Find the unit key you want to translate/improve (for example `tablespoon`, `pinch`, or `gram`).
+- Update `short` per locale.
+- Update `plural` per locale.
+- Add locale-specific parsing aliases to `alternates` (for example common abbreviations or spelling variants).
+- Keep entries lowercase where possible and avoid duplicates that are already covered by `short`/`plural`.
+
+Notes:
+
+- A combination of `alternates`, `short`, and `plural` is used for parsing user input.
+- Keep aliases language-specific and only add forms you actually expect in recipes.
+
 ## License
 
 By contributing to Norish, you agree that your contributions will be licensed under the [AGPL-3.0 License](LICENSE).
