@@ -1,4 +1,3 @@
-import { Button as UIButton } from '@expo/ui/swift-ui';
 import { useThemeColor } from 'heroui-native';
 import React, { useSyncExternalStore } from 'react';
 import { useIntl } from 'react-intl';
@@ -6,7 +5,7 @@ import { useIntl } from 'react-intl';
 import { useMobileLocaleSettings } from '@/context/mobile-i18n-context';
 import { getLocaleSnapshot, subscribeLocaleStore } from '@/lib/i18n/locale-store';
 
-import { ShellMenu } from './menu';
+import { ShellMenu, ShellMenuItem } from './menu';
 
 export function AuthLocaleMenu() {
   const intl = useIntl();
@@ -21,7 +20,7 @@ export function AuthLocaleMenu() {
       color={mutedColor}
     >
       {enabledLocales.map((entry) => (
-        <UIButton
+        <ShellMenuItem
           key={entry.code}
           label={localeNames[entry.code] ?? entry.code}
           systemImage={locale === entry.code ? 'checkmark' : undefined}

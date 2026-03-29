@@ -1,5 +1,3 @@
-import { Button as UIButton, Picker, Text as UIText } from '@expo/ui/swift-ui';
-import { pickerStyle, tag } from '@expo/ui/swift-ui/modifiers';
 import { useRouter } from 'expo-router';
 import { useThemeColor } from 'heroui-native';
 import React, { useSyncExternalStore } from 'react';
@@ -8,7 +6,7 @@ import { useIntl } from 'react-intl';
 import { type AppearanceMode, useAppearancePreference } from '@/context/appearance-preference-context';
 import { useMobileLocaleSettings } from '@/context/mobile-i18n-context';
 import { getLocaleSnapshot, subscribeLocaleStore } from '@/lib/i18n/locale-store';
-import { ShellMenu } from '@/components/shell/menu';
+import { ShellMenu, ShellMenuItem, ShellMenuPicker } from '@/components/shell/menu';
 
 /**
  * Native iOS settings menu for the Recipes tab header.
@@ -31,39 +29,32 @@ export function SettingsMenu() {
       systemImage="gearshape"
       color={mutedColor}
     >
-      {/* Each Picker with pickerStyle('menu') renders as its own sub-menu row
-          with a chevron, opening a secondary flyout of options. */}
-      <Picker
-        key={mode}
+      <ShellMenuPicker
         label={intl.formatMessage({ id: 'navbar.theme.title' })}
         systemImage="circle.lefthalf.filled"
         selection={mode}
         onSelectionChange={(value) => setMode(value as AppearanceMode)}
-        modifiers={[pickerStyle('menu')]}
-      >
-        <UIText modifiers={[tag('system')]}>{intl.formatMessage({ id: 'navbar.theme.system' })}</UIText>
-        <UIText modifiers={[tag('light')]}>{intl.formatMessage({ id: 'navbar.theme.light' })}</UIText>
-        <UIText modifiers={[tag('dark')]}>{intl.formatMessage({ id: 'navbar.theme.dark' })}</UIText>
-      </Picker>
+        options={[
+          { value: 'system', label: intl.formatMessage({ id: 'navbar.theme.system' }) },
+          { value: 'light', label: intl.formatMessage({ id: 'navbar.theme.light' }) },
+          { value: 'dark', label: intl.formatMessage({ id: 'navbar.theme.dark' }) },
+        ]}
+      />
 
       {!isLoading && enabledLocales.length > 1 && (
-        <Picker
-          key={locale}
+        <ShellMenuPicker
           label={localeNames[locale] ?? locale}
           systemImage="globe"
           selection={locale}
           onSelectionChange={(value) => setLocale(value as string)}
-          modifiers={[pickerStyle('menu')]}
-        >
-          {enabledLocales.map((l) => (
-            <UIText key={l.code} modifiers={[tag(l.code)]}>
-              {localeNames[l.code] ?? l.code}
-            </UIText>
-          ))}
-        </Picker>
+          options={enabledLocales.map((l) => ({
+            value: l.code,
+            label: localeNames[l.code] ?? l.code,
+          }))}
+        />
       )}
 
-        <UIButton
+      <ShellMenuItem
         label={intl.formatMessage({ id: 'settings.user.profile.title' })}
         systemImage="person.crop.circle"
         onPress={() => router.push('/(tabs)/profile')}

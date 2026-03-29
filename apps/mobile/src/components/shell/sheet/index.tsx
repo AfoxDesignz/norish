@@ -1,13 +1,10 @@
-import { BottomSheet, Group, Host, RNHostView } from '@expo/ui/swift-ui';
-import {
-  presentationDetents,
-  presentationDragIndicator,
-  type PresentationDetent,
-} from '@expo/ui/swift-ui/modifiers';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Button } from 'heroui-native';
+import { Button, useThemeColor } from 'heroui-native';
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+type PresentationDetent = 'medium' | 'large';
 
 export interface ShellSheetProps {
   /** Whether the sheet is currently presented. */
@@ -37,6 +34,8 @@ export function ShellSheet({
   initialDetent = 'medium',
   children,
 }: ShellSheetProps) {
+  const [sheetBackgroundColor] = useThemeColor(['surface'] as const);
+  const insets = useSafeAreaInsets();
   const [selectedDetent, setSelectedDetent] = React.useState<PresentationDetent>(initialDetent);
 
   React.useEffect(() => {
@@ -45,40 +44,100 @@ export function ShellSheet({
     }
   }, [initialDetent, isPresented]);
 
+  if (Platform.OS === 'ios') {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const swiftUI = require('@expo/ui/swift-ui') as {
+        BottomSheet: React.ComponentType<any>;
+        Group: React.ComponentType<any>;
+        Host: React.ComponentType<any>;
+        RNHostView: React.ComponentType<any>;
+      };
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const modifiers = require('@expo/ui/swift-ui/modifiers') as {
+        presentationDetents: (detents: PresentationDetent[], options: {
+          selection: PresentationDetent;
+          onSelectionChange: (value: PresentationDetent) => void;
+        }) => unknown;
+        presentationDragIndicator: (value: 'visible' | 'hidden') => unknown;
+      };
+
+      const { BottomSheet, Group, Host, RNHostView } = swiftUI;
+      const { presentationDetents, presentationDragIndicator } = modifiers;
+
+      return (
+        <Host matchContents>
+          <BottomSheet
+            isPresented={isPresented}
+            onIsPresentedChange={onIsPresentedChange}
+          >
+            <Group
+              modifiers={[
+                presentationDetents(detents, {
+                  selection: selectedDetent,
+                  onSelectionChange: setSelectedDetent,
+                }),
+                presentationDragIndicator('visible'),
+              ]}
+            >
+              <RNHostView>
+                <View collapsable={false} style={styles.contentRoot}>
+                  <View style={styles.closeRow}>
+                    <Button
+                      isIconOnly
+                      variant="primary"
+                      size="md"
+                      onPress={() => onIsPresentedChange(false)}
+                      className="rounded-full"
+                    >
+                      <Ionicons name="close" size={18} color="#ffffff" />
+                    </Button>
+                  </View>
+                  {children}
+                </View>
+              </RNHostView>
+            </Group>
+          </BottomSheet>
+        </Host>
+      );
+    } catch {
+      // Fall through to the Android-style modal fallback.
+    }
+  }
+
   return (
-    <Host matchContents>
-      <BottomSheet
-        isPresented={isPresented}
-        onIsPresentedChange={onIsPresentedChange}
-      >
-        <Group
-          modifiers={[
-            presentationDetents(detents, {
-              selection: selectedDetent,
-              onSelectionChange: setSelectedDetent,
-            }),
-            presentationDragIndicator('visible'),
+    <Modal
+      visible={isPresented}
+      animationType="slide"
+      transparent
+      onRequestClose={() => onIsPresentedChange(false)}
+    >
+      <Pressable style={styles.androidBackdrop} onPress={() => onIsPresentedChange(false)}>
+        <Pressable
+          style={[
+            styles.androidSheet,
+            {
+              backgroundColor: sheetBackgroundColor,
+              paddingBottom: Math.max(insets.bottom, 12),
+            },
           ]}
+          onPress={() => undefined}
         >
-          <RNHostView>
-            <View collapsable={false} style={styles.contentRoot}>
-              <View style={styles.closeRow}>
-                <Button
-                  isIconOnly
-                  variant="primary"
-                  size="md"
-                  onPress={() => onIsPresentedChange(false)}
-                  className="rounded-full"
-                >
-                  <Ionicons name="close" size={18} color="#ffffff" />
-                </Button>
-              </View>
-              {children}
-            </View>
-          </RNHostView>
-        </Group>
-      </BottomSheet>
-    </Host>
+          <View style={styles.closeRow}>
+            <Button
+              isIconOnly
+              variant="primary"
+              size="md"
+              onPress={() => onIsPresentedChange(false)}
+              className="rounded-full"
+            >
+              <Ionicons name="close" size={18} color="#ffffff" />
+            </Button>
+          </View>
+          <View style={styles.contentRoot}>{children}</View>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -91,5 +150,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     alignItems: 'flex-end',
+  },
+  androidBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    justifyContent: 'flex-end',
+  },
+  androidSheet: {
+    minHeight: '55%',
+    maxHeight: '92%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
 });

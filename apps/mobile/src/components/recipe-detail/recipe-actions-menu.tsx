@@ -1,4 +1,3 @@
-import { Button as UIButton, Divider as UIDivider } from '@expo/ui/swift-ui';
 import * as KeepAwake from 'expo-keep-awake';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Linking, Share } from 'react-native';
@@ -7,7 +6,7 @@ import { useRouter } from 'expo-router';
 
 import type { RecipeDetailContextValue } from '@norish/shared-react/hooks';
 
-import { ShellMenu } from '@/components/shell/menu';
+import { ShellMenu, ShellMenuDivider, ShellMenuItem } from '@/components/shell/menu';
 import { useRecipesContext } from '@/context/recipes-context';
 import { usePermissionsContext } from '@/context/permissions-context';
 
@@ -161,45 +160,45 @@ export function RecipeActionsMenu({ ctx }: RecipeActionsMenuProps) {
       systemImage="ellipsis"
     >
       {/* Core actions */}
-      <UIButton
+      <ShellMenuItem
         label={intl.formatMessage({ id: 'recipes.actions.addToCalendar' })}
         systemImage="calendar.badge.plus"
         onPress={() =>
           Alert.alert('Calendar', 'Meal planning coming soon!')
         }
       />
-      <UIButton
+      <ShellMenuItem
         label={intl.formatMessage({ id: 'recipes.detail.addToGroceries' })}
         systemImage="cart.badge.plus"
         onPress={() =>
           Alert.alert('Groceries', 'Add to groceries coming soon!')
         }
       />
-      <UIButton
+      <ShellMenuItem
         label={intl.formatMessage({ id: 'recipes.actions.share' })}
         systemImage="square.and.arrow.up"
         onPress={handleShare}
       />
       {recipe.url ? (
-        <UIButton
+        <ShellMenuItem
           label={intl.formatMessage({ id: 'recipes.actions.visitOriginal' })}
           systemImage="arrow.up.right.square"
           onPress={handleVisitOriginal}
         />
       ) : null}
 
-      <UIDivider />
+      <ShellMenuDivider />
 
       {/* Edit / management */}
       {canEdit ? (
-        <UIButton
+        <ShellMenuItem
           label={intl.formatMessage({ id: 'recipes.actions.edit' })}
           systemImage="pencil"
           onPress={() => Alert.alert('Edit', 'Recipe editing coming soon!')}
         />
       ) : null}
       {canConvert ? (
-        <UIButton
+        <ShellMenuItem
           label={
             convertingTo != null
               ? `${intl.formatMessage({ id: targetSystem === 'us' ? 'recipes.convert.toUS' : 'recipes.convert.toMetric' })}…`
@@ -209,7 +208,7 @@ export function RecipeActionsMenu({ ctx }: RecipeActionsMenuProps) {
           onPress={handleConvert}
         />
       ) : null}
-      <UIButton
+      <ShellMenuItem
         label={intl.formatMessage({
           id: isScreenKeptOn
             ? 'recipes.actions.screenOn'
@@ -220,10 +219,10 @@ export function RecipeActionsMenu({ ctx }: RecipeActionsMenuProps) {
       />
 
       {/* AI actions — only shown when AI is enabled */}
-      {(isAutoTaggingEnabled || isAIEnabled) && canEdit ? <UIDivider /> : null}
+      {(isAutoTaggingEnabled || isAIEnabled) && canEdit ? <ShellMenuDivider /> : null}
 
       {isAutoTaggingEnabled && canEdit ? (
-        <UIButton
+        <ShellMenuItem
           label={intl.formatMessage({
             id: isAutoTagging
               ? 'recipes.actions.autoTagging'
@@ -234,14 +233,14 @@ export function RecipeActionsMenu({ ctx }: RecipeActionsMenuProps) {
         />
       ) : null}
       {isAIEnabled && canEdit ? (
-        <UIButton
+        <ShellMenuItem
           label={intl.formatMessage({ id: 'recipes.actions.autoCategorize' })}
           systemImage="sparkles"
           onPress={() => triggerAutoCategorize()}
         />
       ) : null}
       {isAIEnabled && canEdit && hasAllergies ? (
-        <UIButton
+        <ShellMenuItem
           label={intl.formatMessage({
             id: isDetectingAllergies
               ? 'recipes.actions.detectingAllergies'
@@ -252,7 +251,7 @@ export function RecipeActionsMenu({ ctx }: RecipeActionsMenuProps) {
         />
       ) : null}
       {isAIEnabled && canEdit ? (
-        <UIButton
+        <ShellMenuItem
           label={intl.formatMessage({
             id: isEstimatingNutrition
               ? 'recipes.actions.estimatingNutrition'
@@ -264,9 +263,9 @@ export function RecipeActionsMenu({ ctx }: RecipeActionsMenuProps) {
       ) : null}
 
       {/* Destructive */}
-      {canDelete ? <UIDivider /> : null}
+      {canDelete ? <ShellMenuDivider /> : null}
       {canDelete ? (
-        <UIButton
+        <ShellMenuItem
           label={intl.formatMessage({ id: 'recipes.deleteModal.title' })}
           systemImage="trash"
           onPress={handleDelete}
