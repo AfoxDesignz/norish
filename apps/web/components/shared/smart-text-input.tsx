@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useRecipeAutocomplete } from "@/hooks/recipes";
 import { Listbox, ListboxItem, Spinner, Textarea, User } from "@heroui/react";
 import { useTranslations } from "next-intl";
@@ -14,14 +14,10 @@ interface SmartTextInputProps {
   onKeyDown?: (e: React.KeyboardEvent) => void;
 }
 
-export default function SmartTextInput({
-  value,
-  onValueChange,
-  placeholder,
-  minRows = 1,
-  onBlur,
-  onKeyDown,
-}: SmartTextInputProps) {
+const SmartTextInput = forwardRef<HTMLTextAreaElement, SmartTextInputProps>(function SmartTextInput(
+  { value, onValueChange, placeholder, minRows = 1, onBlur, onKeyDown },
+  forwardedRef
+) {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteQuery, setAutocompleteQuery] = useState("");
   const [cursorPosition, setCursorPosition] = useState(0);
@@ -32,6 +28,8 @@ export default function SmartTextInput({
   const t = useTranslations("recipes.empty");
 
   const { suggestions, isLoading } = useRecipeAutocomplete(autocompleteQuery, showAutocomplete);
+
+  useImperativeHandle(forwardedRef, () => textareaRef.current, []);
 
   useEffect(() => {
     if (showAutocomplete && containerRef.current) {
@@ -178,4 +176,6 @@ export default function SmartTextInput({
       )}
     </div>
   );
-}
+});
+
+export default SmartTextInput;

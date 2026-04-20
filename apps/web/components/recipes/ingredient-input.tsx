@@ -241,6 +241,7 @@ export default function IngredientInput({
           ingredientPlaceholder={t("placeholder")}
           isLast={index === items.length - 1}
           item={item}
+          textareaRefs={textareaRefs}
           showRemove={items.length > 1 && !!item.text}
           onBlur={() => handleBlur(index)}
           onKeyDown={(e) =>
@@ -269,6 +270,7 @@ interface IngredientRowProps {
   isLast: boolean;
   showRemove: boolean;
   dragConstraintsRef: React.RefObject<HTMLUListElement | null>;
+  textareaRefs: React.RefObject<(HTMLTextAreaElement | null)[]>;
   ingredientPlaceholder: string;
   onValueChange: (value: string) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
@@ -283,6 +285,7 @@ function IngredientRow({
   isLast,
   showRemove,
   dragConstraintsRef,
+  textareaRefs,
   ingredientPlaceholder,
   onValueChange,
   onKeyDown,
@@ -326,6 +329,9 @@ function IngredientRow({
       {/* Input field */}
       <div className="flex-1">
         <SmartTextInput
+          ref={(element) => {
+            textareaRefs.current[index] = element;
+          }}
           minRows={1}
           placeholder={index === 0 ? ingredientPlaceholder : ""}
           value={item.text}

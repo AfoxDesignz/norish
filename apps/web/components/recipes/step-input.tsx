@@ -276,6 +276,7 @@ export default function StepInput({
           isLast={index === items.length - 1}
           item={item}
           recipeId={recipeId}
+          textareaRefs={textareaRefs}
           showRemove={items.length > 1 && (!!item.text || item.images.length > 0)}
           stepNumber={getStepNumber(index)}
           stepPlaceholder={t("stepPlaceholder", { number: index + 1 })}
@@ -314,6 +315,7 @@ interface StepRowProps {
   uploadingIndex: number | null;
   fileInputRefs: React.RefObject<(HTMLInputElement | null)[]>;
   dragConstraintsRef: React.RefObject<HTMLUListElement | null>;
+  textareaRefs: React.RefObject<(HTMLTextAreaElement | null)[]>;
   stepPlaceholder: string;
   stepPlaceholderShort: string;
   onValueChange: (value: string) => void;
@@ -335,6 +337,7 @@ function StepRow({
   uploadingIndex,
   fileInputRefs,
   dragConstraintsRef,
+  textareaRefs,
   stepPlaceholder,
   stepPlaceholderShort,
   onValueChange,
@@ -383,6 +386,9 @@ function StepRow({
 
         <div className="flex flex-1 flex-col gap-2">
           <SmartTextInput
+            ref={(element) => {
+              textareaRefs.current[index] = element;
+            }}
             minRows={2}
             placeholder={index === 0 ? stepPlaceholder : stepPlaceholderShort}
             value={item.text}
