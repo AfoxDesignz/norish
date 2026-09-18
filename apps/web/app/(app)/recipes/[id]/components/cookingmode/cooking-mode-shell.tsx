@@ -56,6 +56,7 @@ export function CookingModeShell({
             displayIngredients={displayIngredients}
             recipe={recipe}
             steps={steps}
+            onStepChange={onStepChange}
           />
         )}
       </div>
