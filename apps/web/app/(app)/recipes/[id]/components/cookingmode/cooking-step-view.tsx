@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { SmartInstruction } from "@/components/recipe/smart-instruction";
 import { StepIngredientsRow } from "@/components/recipes/step-ingredients-row";
 import { BookOpenIcon } from "@heroicons/react/20/solid";
-import { Chip, Surface } from "@heroui/react";
+import { Chip, ScrollShadow, Surface } from "@heroui/react";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 
@@ -232,7 +232,9 @@ export function CookingStepView({
                   isCenter ? "pointer-events-auto" : "pointer-events-none"
                 }`}
               >
-                <div
+                <ScrollShadow
+                  size={64}
+                  hideScrollBar={false}
                   className={`flex min-h-0 w-full flex-1 flex-col [scrollbar-gutter:stable] ${
                     isCenter
                       ? "can-scroll-natively overflow-y-auto"
@@ -255,7 +257,7 @@ export function CookingStepView({
                       </div>
                     ) : null}
 
-                    <div className="text-foreground min-w-0 text-2xl leading-relaxed font-medium md:text-3xl md:leading-relaxed">
+                    <div className="min-w-0 text-2xl font-medium leading-relaxed text-foreground md:text-3xl md:leading-relaxed">
                       <SmartInstruction
                         recipeId={recipe.id}
                         recipeName={recipe.name}
@@ -274,7 +276,7 @@ export function CookingStepView({
 
                     <StepImages step={step} />
                   </motion.div>
-                </div>
+                </ScrollShadow>
               </motion.div>
             </div>
           );
