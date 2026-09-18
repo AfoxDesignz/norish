@@ -233,9 +233,9 @@ export function CookingStepView({
                 }`}
               >
                 <div
-                  className={`flex min-h-0 w-full flex-1 flex-col ${
+                  className={`flex min-h-0 w-full flex-1 flex-col [scrollbar-gutter:stable] ${
                     isCenter
-                      ? "hide-scrollbar can-scroll-natively overflow-y-auto"
+                      ? "can-scroll-natively overflow-y-auto"
                       : "overflow-hidden"
                   }`}
                 >
