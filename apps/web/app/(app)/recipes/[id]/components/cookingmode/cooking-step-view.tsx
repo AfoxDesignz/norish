@@ -235,10 +235,8 @@ export function CookingStepView({
                 <ScrollShadow
                   size={64}
                   hideScrollBar={false}
-                  className={`flex min-h-0 w-full flex-1 flex-col [scrollbar-gutter:stable] ${
-                    isCenter
-                      ? "can-scroll-natively overflow-y-auto"
-                      : "overflow-hidden"
+                  className={`flex min-h-0 w-full flex-1 [scrollbar-gutter:stable] flex-col ${
+                    isCenter ? "can-scroll-natively overflow-y-auto" : "overflow-hidden"
                   }`}
                 >
                   <motion.div
@@ -257,7 +255,7 @@ export function CookingStepView({
                       </div>
                     ) : null}
 
-                    <div className="min-w-0 text-2xl font-medium leading-relaxed text-foreground md:text-3xl md:leading-relaxed">
+                    <div className="text-foreground min-w-0 text-2xl leading-relaxed font-medium md:text-3xl md:leading-relaxed">
                       <SmartInstruction
                         recipeId={recipe.id}
                         recipeName={recipe.name}
