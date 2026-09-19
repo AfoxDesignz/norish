@@ -67,6 +67,7 @@ export default function CookingMode({
   // Ready At is fixed when the Cooking Session begins, not on page load: it
   // is the moment the cook started plus the recipe's total time.
   const [readyAt, setReadyAt] = useState<Date | null>(null);
+  const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(() => new Set());
   const wakeLockOwnedRef = useRef(false);
   const swipeStartRef = useRef<SwipePoint | null>(null);
 
@@ -212,6 +213,8 @@ export default function CookingMode({
     onStepChange: setActiveStep,
     onTimersOpenChange: setAreTimersOpen,
     onViewChange: setActiveView,
+    checkedIngredients,
+    onCheckedIngredientsChange: setCheckedIngredients,
   };
 
   const open = () => {
@@ -220,6 +223,7 @@ export default function CookingMode({
     setActiveView("steps");
     setActiveStep(0);
     setAreTimersOpen(false);
+    setCheckedIngredients(new Set());
     setReadyAt(
       recipe.totalMinutes && recipe.totalMinutes > 0
         ? new Date(Date.now() + recipe.totalMinutes * 60_000)
