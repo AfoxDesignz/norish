@@ -63,6 +63,7 @@ async function swipe(deltaX: number, deltaY: number): Promise<void> {
   // middle flex cell; the dialog's is the last one mounted.
   await page
     .locator("div.min-h-0.flex-1.overflow-hidden")
+    .locator("div.min-h-0.flex-1.overflow-hidden > *")
     .last()
     .evaluate(
       (element, delta) => {
@@ -74,6 +75,18 @@ async function swipe(deltaX: number, deltaY: number): Promise<void> {
         element.dispatchEvent(
           new PointerEvent("pointerdown", { ...options, clientX: startX, clientY: startY })
         );
+        // Dispatch touch events for the new native step navigation listeners
+        try {
+          const touchStart = new Touch({ identifier: 1, target: element, clientX: startX, clientY: startY });
+          element.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, cancelable: true, changedTouches: [touchStart] }));
+        } catch (e) {
+          // Fallback if Touch constructor isn't supported, just pass a mock object
+          element.dispatchEvent(new CustomEvent("touchstart", { bubbles: true, cancelable: true, detail: { clientX: startX, clientY: startY } }));
+          const eStart = new Event("touchstart", { bubbles: true, cancelable: true });
+          (eStart as any).changedTouches = [{ clientX: startX, clientY: startY }];
+          element.dispatchEvent(eStart);
+        }
+
         element.dispatchEvent(
           new PointerEvent("pointerup", {
             ...options,
@@ -81,6 +94,14 @@ async function swipe(deltaX: number, deltaY: number): Promise<void> {
             clientY: startY + delta.y,
           })
         );
+        try {
+          const touchEnd = new Touch({ identifier: 1, target: element, clientX: startX + delta.x, clientY: startY + delta.y });
+          element.dispatchEvent(new TouchEvent("touchend", { bubbles: true, cancelable: true, changedTouches: [touchEnd] }));
+        } catch (e) {
+          const eEnd = new Event("touchend", { bubbles: true, cancelable: true });
+          (eEnd as any).changedTouches = [{ clientX: startX + delta.x, clientY: startY + delta.y }];
+          element.dispatchEvent(eEnd);
+        }
       },
       { x: deltaX, y: deltaY }
     );
@@ -241,6 +262,7 @@ test("cooking mode pages its steps, keeps both swipes, and projects Ready At onl
   // Step one fills the page; the next step peeks, faded, at the bottom edge.
   await expect(dialog.getByText(RECIPE.steps[0]!.step).first()).toBeVisible();
   await expect(dialog.locator('[data-cooking-step-peek="bottom"]')).toContainText("Rest the dough");
+  await expect(dialog.getByText("Rest the dough").first()).toBeVisible();
   await expect(dialog.getByText(/Ready around/)).toBeVisible();
   await expect(dialog.getByText("1 / 3")).toBeVisible();
 
