@@ -76,11 +76,28 @@ async function swipe(deltaX: number, deltaY: number): Promise<void> {
         );
         // Dispatch touch events for the new native step navigation listeners
         try {
-          const touchStart = new Touch({ identifier: 1, target: element, clientX: startX, clientY: startY });
-          element.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, cancelable: true, changedTouches: [touchStart] }));
+          const touchStart = new Touch({
+            identifier: 1,
+            target: element,
+            clientX: startX,
+            clientY: startY,
+          });
+          element.dispatchEvent(
+            new TouchEvent("touchstart", {
+              bubbles: true,
+              cancelable: true,
+              changedTouches: [touchStart],
+            })
+          );
         } catch (e) {
           // Fallback if Touch constructor isn't supported, just pass a mock object
-          element.dispatchEvent(new CustomEvent("touchstart", { bubbles: true, cancelable: true, detail: { clientX: startX, clientY: startY } }));
+          element.dispatchEvent(
+            new CustomEvent("touchstart", {
+              bubbles: true,
+              cancelable: true,
+              detail: { clientX: startX, clientY: startY },
+            })
+          );
           const eStart = new Event("touchstart", { bubbles: true, cancelable: true });
           (eStart as any).changedTouches = [{ clientX: startX, clientY: startY }];
           element.dispatchEvent(eStart);
@@ -94,8 +111,19 @@ async function swipe(deltaX: number, deltaY: number): Promise<void> {
           })
         );
         try {
-          const touchEnd = new Touch({ identifier: 1, target: element, clientX: startX + delta.x, clientY: startY + delta.y });
-          element.dispatchEvent(new TouchEvent("touchend", { bubbles: true, cancelable: true, changedTouches: [touchEnd] }));
+          const touchEnd = new Touch({
+            identifier: 1,
+            target: element,
+            clientX: startX + delta.x,
+            clientY: startY + delta.y,
+          });
+          element.dispatchEvent(
+            new TouchEvent("touchend", {
+              bubbles: true,
+              cancelable: true,
+              changedTouches: [touchEnd],
+            })
+          );
         } catch (e) {
           const eEnd = new Event("touchend", { bubbles: true, cancelable: true });
           (eEnd as any).changedTouches = [{ clientX: startX + delta.x, clientY: startY + delta.y }];
