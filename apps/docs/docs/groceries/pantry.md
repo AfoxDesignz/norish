@@ -36,9 +36,8 @@ shown apart under **In your pantry**.
 There is a feature planned to make ingredients more than just a string.
 This will therefore improve the pantry feature as well. One of these improvements is:
 An ingredient is a base ingredient e.g. Chicken breast. Each base ingredient
-Can have several alternatives e.g. Diced chicken breasts. This will allow the 
+Can have several alternatives e.g. Diced chicken breasts. This will allow the
 pantry to detect alternatives if wanted.
 :::
-
 
 [Aisles](./aisles.md) · [Prices](./prices.md)
