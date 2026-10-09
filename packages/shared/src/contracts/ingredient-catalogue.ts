@@ -36,6 +36,8 @@ export const FLAG_REASONS = [
   "ai-unsure",
   /** AI did not answer in time, or failed. */
   "ai-unavailable",
+  /** The AI provider rejected the configured API key. */
+  "ai-key-rejected",
   /** AI named a food that was merged away before the name could join it. */
   "food-gone",
   /** Minted by the upgrade to the catalogue, which asks no AI. */

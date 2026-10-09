@@ -72,6 +72,7 @@ import {
   refusedImageParameters,
   rememberRefusedImageParameter,
 } from "./image-parameter-fallback";
+import { forgetKeyRejection, noteKeyRejection } from "./key-rejections";
 import { recordModelUse } from "./model-use-ledger";
 import {
   canDegradeToJsonMode,
@@ -350,10 +351,12 @@ export async function generateStructured<T>(options: GenerateOptions<T>): Promis
     });
 
     recordModelUse({ ...use, outcome: "completed", ...(tokens === undefined ? {} : { tokens }) });
+    forgetKeyRejection("ai_config");
 
     return output;
   } catch (error) {
     recordModelUse({ ...use, outcome: "failed" });
+    noteKeyRejection("ai_config", error);
     throw error;
   }
 }
@@ -532,6 +535,7 @@ export async function transcribe(audioPath: string): Promise<string> {
       "Transcription completed"
     );
     recordModelUse({ provider, model, outcome: "completed" });
+    forgetKeyRejection("video_config");
 
     return transcript;
   } catch (error) {
@@ -539,6 +543,7 @@ export async function transcribe(audioPath: string): Promise<string> {
 
     aiLogger.error({ err: error, provider, retryable: aiError.retryable }, "Transcription failed");
     recordModelUse({ provider, model, outcome: "failed" });
+    noteKeyRejection("video_config", error);
 
     throw aiError;
   }
@@ -752,6 +757,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
       "Image generation completed"
     );
     recordModelUse({ provider, model, outcome: "completed" });
+    forgetKeyRejection("image_generation_config");
 
     return { bytes, mediaType: result.image.mediaType };
   } catch (error) {
@@ -771,6 +777,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
       );
     }
     recordModelUse({ provider, model, outcome: "failed" });
+    noteKeyRejection("image_generation_config", error);
 
     throw aiError;
   }
@@ -1059,6 +1066,7 @@ export async function decide<const Q extends DecisionQuestions>(
       outcome: "completed",
       ...(tokens === undefined ? {} : { tokens }),
     });
+    forgetKeyRejection("decision_config");
 
     return result;
   } catch (error) {
@@ -1078,6 +1086,7 @@ export async function decide<const Q extends DecisionQuestions>(
       "Decision failed"
     );
     recordModelUse({ provider: settings.provider, model: settings.model, outcome: "failed" });
+    noteKeyRejection("decision_config", error);
 
     throw aiError;
   }

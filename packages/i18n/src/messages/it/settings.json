@@ -380,6 +380,7 @@
       "unknown-food": "Nessun ingrediente noto condivide una parola con questo nome, quindi l'IA non è stata interpellata.",
       "ai-unsure": "All'IA è stato chiesto se è un ingrediente noto e non era sicura.",
       "ai-unavailable": "L'IA non ha risposto in tempo quando questo nome è stato aggiunto.",
+      "ai-key-rejected": "Il fornitore di IA ha rifiutato la chiave API, quindi l'IA non ha potuto verificare questo nome.",
       "food-gone": "L'IA lo ha associato a un ingrediente unito prima che il nome potesse raggiungerlo.",
       "upgrade": "Non è stato trovato nessun ingrediente noto corrispondente.",
       "seed-ambiguous": "Il catalogo conosce più ingredienti che potrebbero essere questo."

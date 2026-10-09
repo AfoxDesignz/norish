@@ -380,6 +380,7 @@
       "unknown-food": "No known food shares a word with this name, so AI was not asked.",
       "ai-unsure": "AI was asked whether this is a known food and was not sure.",
       "ai-unavailable": "AI did not answer in time when this name was added.",
+      "ai-key-rejected": "The AI provider rejected the API key, so AI could not check this name.",
       "food-gone": "AI matched this to a food that was merged away before the name could join it.",
       "upgrade": "No known food could be matched.",
       "seed-ambiguous": "The catalogue lists several foods this could be."

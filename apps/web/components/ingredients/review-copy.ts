@@ -39,7 +39,10 @@ export function reviewMessage(
     case "distinct":
       return t("aiOutcomes.distinct", { name });
     case "unsure":
-      return t("aiOutcomes.unsure", { name });
+      // A refused key is no doubt about the food: say what actually stopped AI.
+      return outcome.reason === "ai-key-rejected"
+        ? t("flagReasons.ai-key-rejected")
+        : t("aiOutcomes.unsure", { name });
     case "not-flagged":
       return t("aiOutcomes.notFlagged", { name });
   }
