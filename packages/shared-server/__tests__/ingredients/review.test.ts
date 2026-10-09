@@ -295,6 +295,25 @@ describe("asking AI about a flagged Ingredient", () => {
     expect(await suggestionFor(uitjes.ingredientId)).toBeNull();
   });
 
+  it("keeps a waiting suggestion when asking again gets no answer", async () => {
+    await flagged("onion");
+    const red = await flagged("red onion");
+
+    decides("Is a kind of onion", 0.95);
+    await reviewFlaggedWithAI(actor, red.ingredientId);
+    vi.mocked(decide).mockRejectedValue(new Error("Decision Model unreachable"));
+    vi.mocked(generateStructured).mockRejectedValue(new Error("model unreachable"));
+
+    await expect(reviewFlaggedWithAI(actor, red.ingredientId)).resolves.toMatchObject({
+      outcome: "unsure",
+      reason: "ai-unavailable",
+    });
+    expect(await suggestionFor(red.ingredientId)).toMatchObject({
+      kind: "parent",
+      target: "onion",
+    });
+  });
+
   it("asks AI about a name no known food shares a word with, and follows the food it names", async () => {
     // "ui" shares no letters with "onion": rung 3 asked nothing and minted it flagged.
     const onion = await flagged("onion");

@@ -12,6 +12,7 @@
  */
 import type { FlaggedCatalogueIngredient } from "@norish/db/repositories/ingredient-catalogue";
 import type {
+  FlagReason,
   ModelTokenEstimate,
   ReviewOutcome,
   ReviewScope,
@@ -44,6 +45,9 @@ export const REVIEW_BUDGET_MS = 30_000;
 export type { ReviewOutcome };
 
 type Answer = Awaited<ReturnType<typeof askWhatFoodThisIs>>;
+
+/** Why a question got no answer at all: AI off, failing, or its key refused. */
+const NO_ANSWER: readonly FlagReason[] = ["ai-off", "ai-unavailable", "ai-key-rejected"];
 
 /** The food, if the actor may edit it; refused otherwise. */
 async function editableRow(actor: CatalogueActor, ingredientId: string) {
@@ -186,7 +190,8 @@ async function suggest(
   }
   if (answer.kind === "same") return { outcome: "unsure", reason: "food-gone" };
   if (answer.flagged) {
-    await deleteSuggestionFor(ingredientId);
+    // An unsure answer replaces what AI proposed before; no answer leaves it waiting.
+    if (!NO_ANSWER.includes(answer.reason)) await deleteSuggestionFor(ingredientId);
 
     return { outcome: "unsure", reason: answer.reason };
   }
