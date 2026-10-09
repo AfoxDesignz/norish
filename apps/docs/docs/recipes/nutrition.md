@@ -22,7 +22,7 @@ per 100 g of its [ingredient](../groceries/ingredients.md):
   a piece weighs
 - A volume (“1 tsp cumin”, “2 tbsp olive oil”, “1 cup milk”, “100 ml stock”)
   uses its spoon weighs settable in the ingredient panel
-- When the weight is stated in brackets that is used: 
+- When the weight is stated in brackets that is used:
   “1 (15 ounce) can coconut milk”, “1 can (400 g) tomatoes”, “1 tsp (3 g) paprika”.
 - A pinch, a dash or “to taste” is seasoning and never counted.
 
@@ -39,7 +39,7 @@ spoon of it weighs. Open **Settings => Ingredients** and click an ingredient to 
 
 ![An ingredient's nutrition in its panel](/img/screenshots/ingredients-panel-nutrition.png)
 
-The order 
+The order
 
 1. Your (household's) correction.
 2. A food Norish chose for it, where the dataset's usual pick is wrong for
@@ -49,7 +49,7 @@ The order
    code names in CIQUAL, CALNUT or USDA FoodData Central.
 4. A dataset food with the same name. Marked with: **matched by name**.
 5. The nearest more general food that has numbers: “red onion” borrows from
-   “onion”. Marked with: **from onion**, so filing a food under a [parent](../groceries/ingredients.md#the-ingredients-page)
+   “onion”. Marked with: **from onion**, so filing a food under a [parent](../groceries/ingredients.md#where-the-catalogue-comes-from)
    gives it nutritional values as well. A few general foods never lend their numbers, because
    their children differ too much such as: sauces, pure alcohol and fruit.
 

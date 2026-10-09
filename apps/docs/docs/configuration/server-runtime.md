@@ -87,9 +87,9 @@ After the first user signs in, registration is disabled automatically. See
 
 ## Ingredient catalogue
 
-| Variable                        | Description                                                                                                                                                             | Default                                  |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `INGREDIENT_CATALOGUE_URL`      | Where the ingredient catalogue seed is fetched from, nightly and at startup. Empty turns the fetch off                                                                  | The Open Food Facts ingredients taxonomy |
+| Variable                        | Description                                                                                                              | Default                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| `INGREDIENT_CATALOGUE_URL`      | Where the ingredient catalogue seed is fetched from, nightly and at startup. Empty turns the fetch off                   | The Open Food Facts ingredients taxonomy |
 | `INGREDIENT_REVIEW_CONCURRENCY` | How many ingredients are asked at once, from 1 to 50. Lower it when a self-hosted model struggles with parallel requests | `10`                                     |
 
 Norish seeds its catalogue of ingredients from the [Open Food Facts](https://world.openfoodfacts.org) ingredients taxonomy. The ingredient taxonomy is refreshed at midnight every night.

@@ -22,7 +22,7 @@ The following rules are used in order of priority:
 2. **The default set** Norish comes with an icon for the foods the
    catalogue has been seeded with.
 3. **The parent's icon** A food with no icon of its own shows the icon of the
-  parented food e.g.: Red onions is the child of onion so an onion would be shown.
+   parented food e.g.: Red onions is the child of onion so an onion would be shown.
 
 ## Setting an icon
 

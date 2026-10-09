@@ -20,9 +20,9 @@ The ingredient page can be found under: **Settings => Ingredients**
 By default Norish seeds from the: [Open Food Facts](https://world.openfoodfacts.org) ingredients
 taxonomy. This is fetched and refreshed every night.
 
-For new ingredients, we first try  to match it to an existing ingredient accounting for translations, plurals, quantities, units, preparation instructions etc. For example, "finely chopped onions" matches "onion", while "4 el bosui" matches "bosui".
+For new ingredients, we first try to match it to an existing ingredient accounting for translations, plurals, quantities, units, preparation instructions etc. For example, "finely chopped onions" matches "onion", while "4 el bosui" matches "bosui".
 
-Optionally if no match is found AI can be used to determine where the ingredient should land. 
+Optionally if no match is found AI can be used to determine where the ingredient should land.
 These ingredients are than **flagged** for review.
 
 ![The Ingredients page, with a flagged ingredient](/img/screenshots/ingredients-page.png)

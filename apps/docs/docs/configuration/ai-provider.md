@@ -11,7 +11,7 @@ It's mostly used to make life a little easier.
 
 AI enables:
 
-- **AI fallback** When a recipe is not automatically detected by the [scraper](https://github.com/hhursev/recipe-scrapers). 
+- **AI fallback** When a recipe is not automatically detected by the [scraper](https://github.com/hhursev/recipe-scrapers).
 - **Image import** From screenshots or photos.
 - **Video import** For importing from different social media platforms (Instagram, YouTube...)
 - **Recipe Enrichment**: Auto-tagging, allergy indications, categories, nutritional values, ingredient to step linking, and image generation.
@@ -47,11 +47,10 @@ AI_API_KEY: <your-api-key>
 | `AI_MAX_TOKENS`  | Maximum tokens for model responses   | `10000`      |
 | `AI_TIMEOUT_MS`  | Maximum time for an AI response (ms) | `300000`     |
 
-
 ## What an OpenAI-compatible endpoint has to support
 
-Often times **structured output** is requested: This forces an answer in form of a JSON schema. 
-The strictest form is asked first: 
+Often times **structured output** is requested: This forces an answer in form of a JSON schema.
+The strictest form is asked first:
 (`response_format: json_schema`), and falls back on its own to plain JSON mode
 (`response_format: json_object`), carrying the schema in the prompt instead.
 
@@ -64,14 +63,14 @@ auto-tagging, allergy detection, auto-categorization, nutrition estimation*,
 recipe provenance, ingredient linking, and image generation.
 
 :::note
-_*When enough ingredients have nutritional values, the total calories are estimated without AI._
+_\*When enough ingredients have nutritional values, the total calories are estimated without AI._
 :::
 
 ### Automatic enrichment
 
 Under **Settings => Admin => AI**, you can enabled/disabled the different enrichment types.
 
-| Switch                   | What it does automatically                                                                | Default | Decision model Model                                             |
+| Switch                   | What it does automatically                                                                | Default | Decision model Model                                       |
 | ------------------------ | ----------------------------------------------------------------------------------------- | ------- | ---------------------------------------------------------- |
 | **Auto-tagging**         | Adds suggested tags without removing existing ones                                        | Off     | Answers from the predefined list; checks every new tag     |
 | **Allergy detection**    | Adds allergy tags for your household's configured allergies                               | On      | Answers, one question per household allergen               |
@@ -89,7 +88,7 @@ The Decision Model helps in multiple ways:
 - **Checks**: the AI provider answers, any additions are put to the
   Decision Model before it is written.
 - **Recipe Provenance**: the Decision Model always picks the country.
-  In _Only existing cuisines_ mode it also picks the Cuisines from your list. 
+  In _Only existing cuisines_ mode it also picks the Cuisines from your list.
   When _AI can add new cuisines_ is on the AI provider suggests the Cuisines for the decision model.
 - **Auto-tagging**: under _Predefined tags only_ the Decision Model picks from
   the tags listed under `PREDEFINED TAGS:` in the prompt.
@@ -103,17 +102,16 @@ Information you entered yourself, or that the source stated explicitly, outranks
 The following rules apply:
 
 - **Catorization**: Any meal detecxted category stops automatic categorization.
-- **Nutrition estimation** When the source has a complete list of macros no estimation is run. 
+- **Nutrition estimation** When the source has a complete list of macros no estimation is run.
   On an incomplete list the estimation is run regardless. When the source matches nothing and Norish
   has more tan 80% of the database itself the macros are calculated without AI. With less than 80%,
   the facts Norish does have are sent to the provider to estimate the rest.
 - **Recipe provenance** If the source states anything about this the run is skipped.
 - **Ingredient linking** Ingredient linking is done per step line. Any lines you did yourself are ignored.
   [Step ingredients](../recipes/step-ingredients.md#letting-ai-fill-the-gaps).
-- **Image generation** For most sources this will be skipped, if anything is present that will be used.  
+- **Image generation** For most sources this will be skipped, if anything is present that will be used.
 - **Tags and allergy indications** Are different: for these they append but
-never remove what is present.
-
+  never remove what is present.
 
 _A run you request by hand is a deliberate refresh and does replace the current
 categories, the complete nutrition group, or the complete provenance group._
@@ -128,7 +126,6 @@ whether it runs automatically:
 | **Predefined tags only**       | Only the built-in tag list                         |
 | **Predefined + existing tags** | Also tags already used by recipes on this instance |
 | **AI can create new tags**     | Creates new tags when needed                       |
-
 
 ### Cuisine strategy
 
@@ -158,19 +155,19 @@ A self-hoster running a local text model can still point image generation
 somewhere else, or at an Ollama server running an image models.
 Configure it under **Settings => Admin => AI & processing => Image generation**:
 
-| Field              | Notes                                                                                                                                                     |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Image provider** | OpenAI, Google AI, Azure OpenAI, Ollama, LM Studio, or a generic OpenAI-compatible endpoint. |
-| **Endpoint URL**   | For Ollama, LM Studio and generic endpoints; optional custom resource URL for Azure                                                                       |
-| **API key**        | For the cloud providers                                                                                                                                   |
-| **Image model**    | Must be an image model, e.g. `gpt-image-1-mini`, `gemini-2.5-flash-image` or Ollama's `x/z-image-turbo`.             |
+| Field              | Notes                                                                                                    |
+| ------------------ | -------------------------------------------------------------------------------------------------------- |
+| **Image provider** | OpenAI, Google AI, Azure OpenAI, Ollama, LM Studio, or a generic OpenAI-compatible endpoint.             |
+| **Endpoint URL**   | For Ollama, LM Studio and generic endpoints; optional custom resource URL for Azure                      |
+| **API key**        | For the cloud providers                                                                                  |
+| **Image model**    | Must be an image model, e.g. `gpt-image-1-mini`, `gemini-2.5-flash-image` or Ollama's `x/z-image-turbo`. |
 
 When the image provider is the **same** provider as your AI configuration, the
 endpoint and API key fall back to it.
 
 The same image provider draws [ingredient icons](../groceries/ingredient-icons.md)
 when someone uses **Generate with AI** in an ingredient's panel or **Draw icons**
-on the Ingredients page. 
+on the Ingredients page.
 
 ### Decision Model
 
@@ -183,11 +180,11 @@ is supported.
 
 Configure it under **Settings => Admin => AI & processing => Decision model**:
 
-| Field                          | Notes                                                                                                                                                                                                                                                                                                  |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Provider**                   | _Disabled_ or _TypeSafe AI_                                                                                                                                                                                                                                                                            |
-| **API key**                    | From your TypeSafe AI account.                                                                                                                                                                                                                                                                         |
-| **Model**                      | Defaults to `jev-latest` release                                                                                                                                                                                                                                                                       |
+| Field                          | Notes                                                                                                                                                             |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Provider**                   | _Disabled_ or _TypeSafe AI_                                                                                                                                       |
+| **API key**                    | From your TypeSafe AI account.                                                                                                                                    |
+| **Model**                      | Defaults to `jev-latest` release                                                                                                                                  |
 | **Use the decision model for** | _Auto-categorization_, _Auto-tagging_, _Allergy detection_, _Recipe Provenance_, _Grocery linking_, _Validate enrichments_. by default **Everything is selected** |
 
 What it does:
@@ -198,7 +195,7 @@ What it does:
 - **Recipe Provenance** settles the country, and under _Only existing
   cuisines_ the Cuisines, by Decision and has the AI provider write the region
   and the note.
-- **Import triage** __Not changeable__  and always on with a Decision Model. 
+- **Import triage** **Not changeable** and always on with a Decision Model.
   Checks if the source contains a recipe.
 - **Grocery linking** ranks the products the shop has in comparison to the grocery and links
   its pick when that is likelier than the alternatives.
@@ -259,18 +256,17 @@ All prompts norish uses are customisable under the [admin settings](./admin-sett
 Video import downloads the clip with `yt-dlp`, transcribes the audio, and uses
 the AI provider to extract the recipe.
 
-Links from YouTube, Instagram, TikTok, Facebook, Pinterest, 
+Links from YouTube, Instagram, TikTok, Facebook, Pinterest,
 X, Threads, Snapchat, Vimeo, Dailymotion, Douyin, Bilibili, and
 RedNote are recognised as videos.
 
-| Variable                   | Description                                                                                  | Default                                   |
-| -------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `VIDEO_PARSING_ENABLED`    | Enable video parsing                                                                         | `false`                                   |
-| `VIDEO_MAX_LENGTH_SECONDS` | Maximum accepted video length                                                                | `120`                                     |
-| `YT_DLP_VERSION`           | yt-dlp release for development purposes (the Docker image ships its own)                     | `2026.08.19`                              |
-| `YT_DLP_BIN_DIR`           | Folder containing the yt-dlp binary                                                          | `./.runtime/bin` (dev), `/app/bin` (prod) |
-| `YT_DLP_PROXY`             | HTTP/SOCKS proxy URL for yt-dlp downloads                                                    | (empty)                                   |
-
+| Variable                   | Description                                                              | Default                                   |
+| -------------------------- | ------------------------------------------------------------------------ | ----------------------------------------- |
+| `VIDEO_PARSING_ENABLED`    | Enable video parsing                                                     | `false`                                   |
+| `VIDEO_MAX_LENGTH_SECONDS` | Maximum accepted video length                                            | `120`                                     |
+| `YT_DLP_VERSION`           | yt-dlp release for development purposes (the Docker image ships its own) | `2026.08.19`                              |
+| `YT_DLP_BIN_DIR`           | Folder containing the yt-dlp binary                                      | `./.runtime/bin` (dev), `/app/bin` (prod) |
+| `YT_DLP_PROXY`             | HTTP/SOCKS proxy URL for yt-dlp downloads                                | (empty)                                   |
 
 ## Transcription
 

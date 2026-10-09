@@ -6,12 +6,12 @@ description: Store categories.
 
 # Aisles
 
-Aisles are categories within a store. 
+Aisles are categories within a store.
 
 ## Giving a Store its aisles
 
 Open **Manage Stores**, edit a store, and under the colour you find the
-**Aisles**. Type a name and press Enter or the plus to add one, drag the handle to reorder, 
+**Aisles**. Type a name and press Enter or the plus to add one, drag the handle to reorder,
 and press the **X** to remove one.
 
 ![The store editor, with the Store's aisles under the colour picker](/img/screenshots/groceries-aisles-editor.png)
