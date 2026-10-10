@@ -219,7 +219,10 @@ vi.mock("@norish/shared-react/realtime", () => ({
 
 vi.mock("@tanstack/react-query", () => ({
   keepPreviousData: (data: unknown) => data,
-  useQuery: ({ enabled, queryKey }: { enabled?: boolean; queryKey: unknown[] }) => {
+  useQuery: ({ enabled: asked, queryKey }: { enabled?: boolean; queryKey: unknown[] }) => {
+    // As react-query: a query without `enabled` runs.
+    const enabled = asked !== false;
+
     useSyncExternalStore(cache.subscribe, cache.snapshot);
     switch (queryKey[0]) {
       case "ingredients.reviewRound":
@@ -1364,6 +1367,39 @@ describe("IngredientsSettingsContent", () => {
       fireEvent.click(within(shown).getByTestId("ingredient-suggestions-confirm-all"));
     });
     expect(mutations.confirmSuggestions).toHaveBeenCalledWith({ suggestionIds: ["s1", "s2"] });
+  });
+
+  it("still offers what the latest round could not suggest, after a reload", async () => {
+    // No round seen in this tab and nothing waiting: the server's latest round is all there is.
+    report = {
+      jobId: "round-1",
+      mode: "review",
+      finished: true,
+      entries: [
+        {
+          ingredientId: "knaks",
+          name: "Unox Knaks",
+          outcome: "unsure",
+          reason: "ai-unsure",
+          considered: [],
+          englishName: null,
+        },
+      ],
+    };
+    render(<IngredientsSettingsContent />);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("ingredients-suggestions-open"));
+    });
+    const shown = screen.getByRole("dialog", { name: "suggestionsTitle" });
+
+    expect(within(shown).getByTestId("ingredients-review-entry")).toHaveTextContent("Unox Knaks");
+  });
+
+  it("offers nothing for a latest round whose every food was suggested or settled since", () => {
+    report = { jobId: "round-1", mode: "review", finished: true, entries: [] };
+    render(<IngredientsSettingsContent />);
+
+    expect(screen.queryByTestId("ingredients-suggestions-open")).toBeNull();
   });
 
   it("answers hundreds at once in one pass over the lists, not one pass each", async () => {

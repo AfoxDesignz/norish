@@ -34,6 +34,7 @@ import {
   findParentWithAI,
   listReviewableIngredients,
   reviewFlaggedWithAI,
+  withoutSettled,
 } from "@norish/shared-server/ingredients/review";
 import {
   confirmSuggestion,
@@ -564,6 +565,44 @@ describe("what a round of Ask AI picks from", () => {
 
   it("estimates nothing for a round with no foods", async () => {
     await expect(estimateReviewTokens([])).resolves.toEqual([]);
+  });
+
+  it("lists in a finished round's report only the foods still open since", async () => {
+    const knaks = await flaggedAs("Unox Knaks");
+    const settled = await flaggedAs("shallot");
+    const gone = crypto.randomUUID();
+    const unsure = (ingredientId: string) => ({
+      ingredientId,
+      outcome: "unsure" as const,
+      reason: "ai-unsure",
+      considered: [],
+      englishName: null,
+    });
+    const merged = {
+      ingredientId: settled,
+      outcome: "merge" as const,
+      into: "onion",
+      considered: [],
+      englishName: null,
+    };
+    const report = {
+      jobId: "round-1",
+      mode: "review" as const,
+      finished: true,
+      entries: [unsure(knaks), unsure(settled), unsure(gone), merged],
+      waiting: [],
+    };
+
+    await markDistinct(actor, settled);
+
+    // Still flagged stays; kept distinct since, or gone, drops; a suggestion's entry is not the filter's.
+    expect((await withoutSettled(report)).entries).toEqual([unsure(knaks), merged]);
+    // A round still running is shown as it is.
+    expect((await withoutSettled({ ...report, finished: false })).entries).toHaveLength(4);
+    // After Find parents, a food is open while it has no parent, flagged or not.
+    expect(
+      (await withoutSettled({ ...report, mode: "parent" })).entries.map((it) => it.ingredientId)
+    ).toEqual([knaks, settled, settled]);
   });
 });
 

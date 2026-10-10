@@ -37,7 +37,7 @@ import {
 } from "./ingredient-filters-panel";
 import { IngredientList } from "./ingredient-list";
 import { IngredientSearch } from "./ingredient-search";
-import { SuggestionsPanel } from "./suggestions-panel";
+import { SuggestionsPanel, UNSUGGESTED } from "./suggestions-panel";
 import { useIngredientTree } from "./use-ingredient-tree";
 
 /**
@@ -127,10 +127,16 @@ export default function IngredientsSettingsContent() {
   const [round, setRound] = useState<ReviewRound | null>(null);
   const [startedJobId, setStartedJobId] = useState<string | null>(null);
   const [askOpen, setAskOpen] = useState(false);
-  // The last round this tab saw end: what it got no suggestion for rides along with the suggestions.
+  // The last round this tab saw end; before one ends, the instance's latest, which the server finds.
   const [reportJobId, setReportJobId] = useState<string | null>(null);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const { suggestions } = useIngredientSuggestions();
+  // What that round got no suggestion for, and is still open, rides along with the suggestions.
+  const report = useQuery(
+    trpc.ingredients.reviewReport.queryOptions(reportJobId ? { jobId: reportJobId } : {})
+  );
+  const hasUnsuggested =
+    report.data?.entries.some((entry) => UNSUGGESTED.has(entry.outcome)) ?? false;
   const running = round?.finished ? null : (round ?? roundQuery.data ?? null);
   // The dialog is offered while the list holds a flagged food the viewer may edit.
   const hasFlagged = shown.some((item) => item.flagged && item.canEdit);
@@ -155,10 +161,10 @@ export default function IngredientsSettingsContent() {
       void refresh();
       if (!payload.finished) return;
       void queryClient.invalidateQueries({ queryKey: trpc.ingredients.reviewRound.queryKey() });
+      setReportJobId(payload.jobId);
       // What AI suggests opens for whoever asked; everyone else sees the count in the header.
       if (payload.jobId !== startedJobId) return;
       setStartedJobId(null);
-      setReportJobId(payload.jobId);
       setSuggestionsOpen(true);
     },
   });
@@ -203,7 +209,7 @@ export default function IngredientsSettingsContent() {
         <SettingsCard
           actions={
             <>
-              {suggestions.length > 0 || reportJobId ? (
+              {suggestions.length > 0 || hasUnsuggested ? (
                 <Button
                   data-testid="ingredients-suggestions-open"
                   size="sm"

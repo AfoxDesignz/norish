@@ -116,6 +116,8 @@ export type ReviewReportEntry = { ingredientId: string; name?: string } & (
  */
 export interface ReviewReport {
   jobId: string;
+  /** What the round asked: what each flagged food is, or what food each is a kind of. */
+  mode: "review" | "parent";
   finished: boolean;
   entries: ReviewReportEntry[];
   waiting: Array<{ ingredientId: string; name: string }>;

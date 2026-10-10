@@ -14,6 +14,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IngredientReviewJobData } from "@norish/queue/contracts/job-types";
 import {
   findRunningReviewRound,
+  readLatestReviewReport,
   readReviewReport,
   readRoundTokens,
   summarizeReviewRound,
@@ -407,6 +408,7 @@ describe("readReviewReport", () => {
 
     await expect(read()).resolves.toEqual({
       jobId: "round-1",
+      mode: "review",
       finished: false,
       entries: [
         { ingredientId: "a", name: "uitjes", outcome: "merge", into: "onion", ...trace },
@@ -421,6 +423,29 @@ describe("readReviewReport", () => {
 
     // A round the queue has let go is no longer on record.
     queue.getJob.mockResolvedValue(null as never);
+    await expect(read()).resolves.toBeNull();
+  });
+});
+
+describe("readLatestReviewReport", () => {
+  it("reads back the round to have ended last, completed or failed", async () => {
+    const older = { ...fakeJob(["a"]), id: "older", finishedOn: 1 };
+    const newer = { ...fakeJob(["b"]), id: "newer", finishedOn: 2 };
+    const queue = {
+      getJobs: vi.fn(async () => [older, newer]),
+      getJob: vi.fn(async (id: string) => ({
+        ...(id === "newer" ? newer : older),
+        getState: async () => "failed",
+      })),
+    };
+    const read = () =>
+      readLatestReviewReport(queue as unknown as Parameters<typeof readLatestReviewReport>[0]);
+
+    await expect(read()).resolves.toMatchObject({ jobId: "newer", finished: true });
+    expect(queue.getJobs).toHaveBeenCalledWith(["completed", "failed"], 0, 0, false);
+
+    // None kept: nothing to read.
+    queue.getJobs.mockResolvedValue([]);
     await expect(read()).resolves.toBeNull();
   });
 });

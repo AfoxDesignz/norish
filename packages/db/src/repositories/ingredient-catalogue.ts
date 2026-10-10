@@ -230,6 +230,34 @@ export async function findCatalogueIngredientNames(
   return names;
 }
 
+/** Where an Ingredient stands now, as a finished round's report reads it: flagged, and filed under a parent. */
+export interface CatalogueIngredientState {
+  flagged: boolean;
+  parentId: string | null;
+}
+
+/**
+ * Where these Ingredients stand now, by id, any number at once, a thousand
+ * to a query; an id the catalogue no longer holds is left out.
+ */
+export async function findCatalogueIngredientStates(
+  ids: readonly string[]
+): Promise<Map<string, CatalogueIngredientState>> {
+  const unique = Array.from(new Set(ids));
+  const states = new Map<string, CatalogueIngredientState>();
+
+  for (let start = 0; start < unique.length; start += CHUNK) {
+    const rows = await db
+      .select({ id: ingredients.id, flagged: ingredients.flagged, parentId: ingredients.parentId })
+      .from(ingredients)
+      .where(inArray(ingredients.id, unique.slice(start, start + CHUNK)));
+
+    for (const { id, ...state } of rows) states.set(id, state);
+  }
+
+  return states;
+}
+
 /**
  * A Flagged Ingredient as a round of Ask AI picks from them: whose it is, and
  * whether a suggestion waits on it.

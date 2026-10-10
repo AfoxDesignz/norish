@@ -76,6 +76,8 @@ const reviewer = vi.hoisted(() => ({
   findParentWithAI: vi.fn(),
   listReviewableIngredients: vi.fn(async (): Promise<unknown[]> => []),
   estimateReviewTokens: vi.fn(async (): Promise<unknown[]> => []),
+  // What has been settled since is the service's to drop; here every food is still open.
+  withoutSettled: vi.fn(async (report: unknown) => report),
 }));
 
 const reviewQueue = vi.hoisted(() => ({
@@ -667,6 +669,7 @@ describe("a round of Ask AI over flagged Ingredients", () => {
 
     await expect(callerFor().reviewReport({ jobId: "round-1" })).resolves.toEqual({
       jobId: "round-1",
+      mode: "review",
       finished: true,
       entries: [
         {
@@ -681,6 +684,12 @@ describe("a round of Ask AI over flagged Ingredients", () => {
       waiting: [],
     });
     expect(reviewQueue.getJob).toHaveBeenCalledWith("round-1");
+
+    expect(reviewer.withoutSettled).toHaveBeenCalled();
+
+    // Without a job, the round to have ended last.
+    reviewQueue.getJobs.mockResolvedValueOnce([{ id: "round-1", finishedOn: 2 }] as never);
+    await expect(callerFor().reviewReport({})).resolves.toMatchObject({ jobId: "round-1" });
 
     reviewQueue.getJob.mockResolvedValue(null);
     await expect(callerFor().reviewReport({ jobId: "gone" })).resolves.toBeNull();

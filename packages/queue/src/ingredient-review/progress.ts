@@ -134,6 +134,7 @@ export async function readReviewReport(
 
   return {
     jobId,
+    mode: job.data.mode ?? "review",
     finished,
     entries,
     waiting: finished
@@ -142,6 +143,22 @@ export async function readReviewReport(
           answered.has(food.id) ? [] : [{ ingredientId: food.id, name: food.name }]
         ),
   };
+}
+
+/**
+ * The instance's latest round to have ended, read back as `readReviewReport`
+ * reads one, so a page opened after it, or reloaded, still finds what it
+ * could not suggest. Nothing once the queue has let every round go.
+ */
+export async function readLatestReviewReport(
+  queue: Queue<IngredientReviewJobData>
+): Promise<ReviewReport | null> {
+  // The newest of each state, the later of the two.
+  const [latest] = (await queue.getJobs(["completed", "failed"], 0, 0, false)).sort(
+    (a, b) => (b.finishedOn ?? 0) - (a.finishedOn ?? 0)
+  );
+
+  return latest?.id ? await readReviewReport(queue, latest.id) : null;
 }
 
 /** How many of the latest finished rounds are looked through for one that recorded its tokens. */

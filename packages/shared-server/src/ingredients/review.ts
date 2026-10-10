@@ -15,12 +15,14 @@ import type {
   FlagReason,
   ModelTokenEstimate,
   ReviewOutcome,
+  ReviewReport,
   ReviewScope,
   ReviewVerdict,
   SuggestionKind,
 } from "@norish/shared/contracts/ingredient-catalogue";
 import {
   findCatalogueIngredient,
+  findCatalogueIngredientStates,
   listFlaggedCatalogueIngredients,
   setIngredientFlagReason,
 } from "@norish/db/repositories/ingredient-catalogue";
@@ -199,4 +201,34 @@ async function suggest(
   else await deleteSuggestionFor(ingredientId);
 
   return { outcome: "distinct" };
+}
+
+/** The outcomes a round leaves no suggestion behind for, which its report lists. */
+const UNSUGGESTED: ReadonlySet<string> = new Set(["unsure", "skipped", "failed"]);
+
+/**
+ * A finished round's report as it stands now. A food it got no suggestion
+ * for is listed while the question it was asked is still open: still flagged
+ * after a review, still without a parent after a round of Find parents. One
+ * settled since, or gone, drops out. A round still running is as it was.
+ */
+export async function withoutSettled(report: ReviewReport): Promise<ReviewReport> {
+  if (!report.finished) return report;
+
+  const unsuggested = report.entries.filter((entry) => UNSUGGESTED.has(entry.outcome));
+  const states = await findCatalogueIngredientStates(
+    unsuggested.map((entry) => entry.ingredientId)
+  );
+  const open = (ingredientId: string) => {
+    const state = states.get(ingredientId);
+
+    return state !== undefined && (report.mode === "parent" ? !state.parentId : state.flagged);
+  };
+
+  return {
+    ...report,
+    entries: report.entries.filter(
+      (entry) => !UNSUGGESTED.has(entry.outcome) || open(entry.ingredientId)
+    ),
+  };
 }

@@ -20,6 +20,7 @@ import { findRunningIconRound } from "@norish/queue/ingredient-icons/progress";
 import { addIngredientReviewJob } from "@norish/queue/ingredient-review/producer";
 import {
   findRunningReviewRound,
+  readLatestReviewReport,
   readReviewReport,
   readRoundTokens,
 } from "@norish/queue/ingredient-review/progress";
@@ -60,6 +61,7 @@ import {
   findParentWithAI,
   listReviewableIngredients,
   reviewFlaggedWithAI,
+  withoutSettled,
 } from "@norish/shared-server/ingredients/review";
 import {
   confirmSuggestion,
@@ -383,14 +385,21 @@ const reviewRound = authedProcedure.query(() =>
 
 /**
  * A round of Ask AI read back: what it did to each food and how, for the
- * summary the page offers once the round is over. Null once the queue has
- * let the job go.
+ * summary the page offers once the round is over. Without a job, the latest
+ * round to have ended, so the page finds what it could not suggest after a
+ * reload. A food it got no suggestion for and that has been settled since
+ * drops out. Null once the queue has let the job go.
  */
 const reviewReport = authedProcedure
-  .input(z.object({ jobId: z.string().min(1).max(100) }))
-  .query(({ input }): Promise<ReviewReport | null> =>
-    readReviewReport(getQueues().ingredientReview, input.jobId)
-  );
+  .input(z.object({ jobId: z.string().min(1).max(100).optional() }))
+  .query(async ({ input }): Promise<ReviewReport | null> => {
+    const queue = getQueues().ingredientReview;
+    const report = input.jobId
+      ? await readReviewReport(queue, input.jobId)
+      : await readLatestReviewReport(queue);
+
+    return report ? await withoutSettled(report) : null;
+  });
 
 /** The suggestions waiting on the viewer: only those about foods they may edit. */
 const suggestions = authedProcedure.query(({ ctx }) => listSuggestions(actorOf(ctx)));
