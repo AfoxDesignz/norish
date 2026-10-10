@@ -19,6 +19,7 @@ import {
   seedStoreFiling,
   seedSuggestion,
   setParent,
+  settleNamesExcept,
 } from "./ingredient-catalogue-support";
 import { readGroceryNames, readPantryNames, seedRecipeWithIngredients } from "./pantry-support";
 
@@ -420,4 +421,60 @@ test("a food nothing uses can be deleted, and one a grocery uses cannot", async 
     page.getByText("Recipes, groceries or the pantry still use this ingredient")
   ).toBeVisible();
   await expect(ingredientRow("red onion")).toHaveCount(1);
+});
+
+test("cleaning names with AI proposes each food's plain name, which confirmed renames it", async ({
+  ai,
+}) => {
+  const tonijn = await seedCatalogue([
+    {
+      name: "GR TONIJN UIT BLIK",
+      aliases: [{ text: "GR TONIJN UIT BLIK", locale: null }],
+      flagged: true,
+    },
+  ]);
+
+  await settleNamesExcept([tonijn["GR TONIJN UIT BLIK"]!]);
+  ai.control.enqueue({
+    kind: "success",
+    content: JSON.stringify({ plainName: "tonijn uit blik" }),
+  });
+  await page.goto("/settings?tab=ingredients");
+  await page.getByTestId("ingredients-search").fill("tonijn");
+  await expect(ingredientRow("GR TONIJN UIT BLIK")).toBeVisible();
+
+  // The button asks first, saying how many names and about what it costs.
+  await page.getByTestId("ingredients-clean-names").click();
+  const dialog = page.getByTestId("ingredients-clean-names-dialog");
+
+  await expect(dialog.getByTestId("ingredients-clean-names-size")).toContainText(
+    /1 ingredient · about [\d.,]+K? tokens/
+  );
+  await expect(dialog.getByTestId("ingredients-clean-names-models")).toContainText(
+    "generic-openai · test-model"
+  );
+  ai.control.hold();
+  await dialog.getByTestId("ingredients-clean-names-start").click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId("ingredients-round-progress")).toContainText("Asking AI · 0 of 1");
+  ai.control.release();
+
+  // Nothing is renamed until a person confirms: the round ends on its suggestion.
+  const panel = page.getByRole("dialog", { name: "Suggestions" });
+
+  await expect(panel).toBeVisible({ timeout: 30_000 });
+  const suggestion = panel.getByTestId("ingredient-suggestion");
+
+  await expect(suggestion).toHaveAttribute("data-kind", "rename");
+  await expect(suggestion).toContainText("Rename to tonijn uit blik");
+  await expect(suggestion).toContainText("AI read it as “tonijn uit blik”.");
+  await expect(ingredientRow("GR TONIJN UIT BLIK")).toBeVisible();
+
+  await suggestion.getByTestId("ingredient-suggestion-confirm").click();
+  await expect(panel.getByText("Nothing is waiting on you.")).toBeVisible();
+  await panel.getByRole("button", { name: "Close panel" }).click();
+  // Renamed, and a person taking the name cleared the flag.
+  await expect(ingredientRow("tonijn uit blik")).toBeVisible();
+  await expect(ingredientRow("tonijn uit blik").getByTestId("ingredient-flagged")).toHaveCount(0);
+  await expect(readIngredientOf("GR TONIJN UIT BLIK")).resolves.toBe("tonijn uit blik");
 });
