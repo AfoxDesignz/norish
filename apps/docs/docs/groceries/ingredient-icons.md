@@ -32,7 +32,8 @@ opens, and click its icon:
 - **Upload a picture** takes a photo or upload one, when the background can be removed
   it will be removed.
 - **Generate with AI** draws the icon with your server's image provider.
-  [image provider](../configuration/ai-provider.md#image-generation)
+  [image provider](../configuration/ai-provider.md#image-generation). A branded product is
+  drawn as it is sold, without its brand.
 - **Remove icon**
 
 ## Drawing many at once

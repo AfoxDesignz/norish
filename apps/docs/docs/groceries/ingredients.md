@@ -29,6 +29,18 @@ These ingredients are than **flagged** for review.
 
 When an ingredient is linked to a parent ingredient it inherits: filed aisles, macros and ingredient icon.
 
+## Cleaning names
+
+Names from recipes and shops can keep words that are not the food, like “GR TONIJN UIT BLIK”.
+**Clean names with AI** at the top of the ingredient page asks AI for each name without them:
+“tonijn uit blik”. The language and the brand stay. Each new name waits under **Suggestions** until
+you confirm or dismiss it, and a name you dismissed is not proposed again.
+
+![Cleaning names with AI](/img/screenshots/ingredients-clean-names.png)
+
+Server admins can have new ingredients cleaned automatically, see
+[New ingredients](../configuration/ai-provider.md#new-ingredients).
+
 ## Data sources
 
 The catalogue is built on the Open Food Facts ingredients taxonomy, available

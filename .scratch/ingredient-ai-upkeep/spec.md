@@ -44,3 +44,13 @@ The catalogue holds names the Ingredient Words cannot fix ("GR TONIJN UIT BLIK",
 - Web: the Suggestions button shows for a finished round's report after reload; the clean dialog.
 - E2E (`ai` project): a clean round leaves a rename suggestion that confirms into a renamed, unflagged food.
 - Docs: Ingredients page and AI configuration pages, release notes for the Target Version.
+
+## Comments
+
+- 2026-10-10, implemented on rc/0.25.0-beta. Where it differs from or adds to the text above:
+  - Clean names is a third mode (`name`) of the Ask AI round, so it shares the round's queue, progress, Suggestions panel and report. One round runs at a time.
+  - A clean question AI answers with the name unchanged settles the name without a suggestion, so the next round does not ask again.
+  - Automatic upkeep runs on a new `new-ingredients` queue. The resolver announces new foods through a port (`ingredients/minted.ts`) that the queue listens on from startup, because shared-server may not import the queue. Calls with `{ ai: false }` (the upgrade backfill) never announce.
+  - Where a new food's plain name is another food's spelling and a suggestion already waits on the food (a parent from its words, say), the waiting suggestion stays and the name stays unsettled.
+  - The default icon style prompt dropped "brand packaging"; the no-branding rule is in the code-owned composition.
+  - The AI config form has no tests today, so the new picker is covered by the typecheck only.

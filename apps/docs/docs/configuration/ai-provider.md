@@ -96,6 +96,18 @@ The Decision Model helps in multiple ways:
 
 The [Job-queue](./admin-settings.md#job-queue) mentions what models are used.
 
+### New ingredients
+
+**Automatic for new ingredients** runs on every ingredient a recipe, grocery or pantry item adds
+to the catalogue. Both options are off by default.
+
+![Automatic for new ingredients](/img/screenshots/admin-automatic-ingredients.png)
+
+| Option             | What it does                                                                                                            |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| **Clean the name** | [Cleans the name](../groceries/ingredients.md#cleaning-names) right away                                                |
+| **Draw an icon**   | Draws an icon when the ingredient has none to show, not even its parent's. Needs an [image provider](#image-generation) |
+
 ### Existing data
 
 Information you entered yourself, or that the source stated explicitly, outranks automatic enrichment.
@@ -167,7 +179,7 @@ endpoint and API key fall back to it.
 
 The same image provider draws [ingredient icons](../groceries/ingredient-icons.md)
 when someone uses **Generate with AI** in an ingredient's panel or **Draw icons**
-on the Ingredients page.
+on the Ingredients page, and for [new ingredients](#new-ingredients) when that is on.
 
 ### Decision Model
 
