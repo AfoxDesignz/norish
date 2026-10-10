@@ -974,6 +974,14 @@
         "imageGeneration": "Afbeeldingen Genereren",
         "imageGenerationDescription": "Teken een foto van het gerecht voor nieuwe recepten die helemaal geen afbeelding hebben"
       },
+      "automaticIngredients": "Automatisch voor nieuwe ingrediënten",
+      "automaticIngredientsDescription": "Wat AI doet voor een ingrediënt dat een recept, boodschap of voorraaditem aan de catalogus toevoegt. Leden kunnen namen nog steeds zelf opschonen en iconen tekenen.",
+      "automaticIngredientsKinds": {
+        "plainName": "Naam opschonen",
+        "plainNameDescription": "Haal weg wat niet het ingrediënt is, zoals hoeveelheden en verpakkingscodes",
+        "icon": "Icoon tekenen",
+        "iconDescription": "Alleen voor een ingrediënt zonder icoon, ook niet dat van zijn ouder"
+      },
       "tagStrategy": "Tagstrategie",
       "tagStrategyDescription": "Welke tags automatisch taggen mag gebruiken, of het nu automatisch of handmatig draait",
       "tagStrategies": {
@@ -1182,7 +1190,8 @@
         "reading-product": "Read the product page",
         "saving-link": "Save the link",
         "asking-ai": "Ask AI about the food",
-        "drawing-icon": "Het icoon van het voedingsmiddel tekenen"
+        "drawing-icon": "Het icoon van het voedingsmiddel tekenen",
+        "naming": "Naam van het ingrediënt opschonen"
       },
       "queues": {
         "recipe-import": "Recipe import",
@@ -1199,7 +1208,8 @@
         "image-generation": "Afbeeldingen genereren",
         "store-lookup": "Winkelopzoeking",
         "ingredient-review": "AI vragen over ingrediënten",
-        "ingredient-icons": "Ingrediënticonen tekenen"
+        "ingredient-icons": "Ingrediënticonen tekenen",
+        "new-ingredients": "Nieuwe ingrediënten"
       },
       "summary": {
         "failed": "{count} failed"

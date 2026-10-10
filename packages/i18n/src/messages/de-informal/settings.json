@@ -974,6 +974,14 @@
         "imageGeneration": "Bildgenerierung",
         "imageGenerationDescription": "Zeichnet ein Bild des Gerichts für neue Rezepte, die gar kein Bild haben"
       },
+      "automaticIngredients": "Automatisch für neue Zutaten",
+      "automaticIngredientsDescription": "Was die KI für eine Zutat tut, die ein Rezept, ein Einkauf oder ein Vorrat in den Katalog bringt. Mitglieder können Namen weiterhin selbst bereinigen und Symbole zeichnen.",
+      "automaticIngredientsKinds": {
+        "plainName": "Namen bereinigen",
+        "plainNameDescription": "Entfernen, was nicht zum Lebensmittel gehört, etwa Mengen und Packungscodes",
+        "icon": "Symbol zeichnen",
+        "iconDescription": "Nur für eine Zutat ohne Symbol, auch ohne das ihrer übergeordneten Zutat"
+      },
       "tagStrategy": "Tag-Strategie",
       "tagStrategyDescription": "Welche Tags die automatische Verschlagwortung verwenden darf, ob automatisch oder manuell",
       "tagStrategies": {
@@ -1182,7 +1190,8 @@
         "reading-product": "Read the product page",
         "saving-link": "Save the link",
         "asking-ai": "Ask AI about the food",
-        "drawing-icon": "Symbol des Lebensmittels zeichnen"
+        "drawing-icon": "Symbol des Lebensmittels zeichnen",
+        "naming": "Namen der Zutat bereinigen"
       },
       "queues": {
         "recipe-import": "Recipe import",
@@ -1199,7 +1208,8 @@
         "image-generation": "Bildgenerierung",
         "store-lookup": "Geschäftsabfrage",
         "ingredient-review": "KI zu Zutaten fragen",
-        "ingredient-icons": "Zutatensymbole zeichnen"
+        "ingredient-icons": "Zutatensymbole zeichnen",
+        "new-ingredients": "Neue Zutaten"
       },
       "summary": {
         "failed": "{count} failed"

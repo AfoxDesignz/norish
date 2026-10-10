@@ -974,6 +974,14 @@
         "imageGeneration": "Generowanie Obrazów",
         "imageGenerationDescription": "Narysuj zdjęcie potrawy dla nowych przepisów, które nie mają żadnego obrazu"
       },
+      "automaticIngredients": "Automatycznie dla nowych składników",
+      "automaticIngredientsDescription": "Co AI robi z produktem, który przepis, zakup lub produkt ze spiżarni dodaje do katalogu. Członkowie nadal mogą sami porządkować nazwy i rysować ikony.",
+      "automaticIngredientsKinds": {
+        "plainName": "Uporządkuj nazwę",
+        "plainNameDescription": "Usuń to, co nie jest produktem, np. ilości i kody opakowań",
+        "icon": "Narysuj ikonę",
+        "iconDescription": "Tylko dla produktu bez ikony, nawet bez ikony rodzica"
+      },
       "tagStrategy": "Strategia tagów",
       "tagStrategyDescription": "Jakich tagów może używać automatyczne tagowanie, niezależnie od tego, czy działa automatycznie czy ręcznie",
       "tagStrategies": {
@@ -1182,7 +1190,8 @@
         "reading-product": "Read the product page",
         "saving-link": "Save the link",
         "asking-ai": "Ask AI about the food",
-        "drawing-icon": "Narysuj ikonę produktu"
+        "drawing-icon": "Narysuj ikonę produktu",
+        "naming": "Uporządkuj nazwę produktu"
       },
       "queues": {
         "recipe-import": "Recipe import",
@@ -1199,7 +1208,8 @@
         "image-generation": "Generowanie obrazów",
         "store-lookup": "Wyszukiwanie w sklepie",
         "ingredient-review": "Zapytaj AI o składniki",
-        "ingredient-icons": "Rysowanie ikon składników"
+        "ingredient-icons": "Rysowanie ikon składników",
+        "new-ingredients": "Nowe składniki"
       },
       "summary": {
         "failed": "{count} failed"

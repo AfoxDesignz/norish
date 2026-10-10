@@ -974,6 +974,14 @@
         "imageGeneration": "Billedgenerering",
         "imageGenerationDescription": "Tegn et billede af retten til nye opskrifter helt uden billede"
       },
+      "automaticIngredients": "Automatisk for nye ingredienser",
+      "automaticIngredientsDescription": "Hvad AI gør for en fødevare, som en opskrift, en indkøbsvare eller en vare i spisekammeret tilføjer kataloget. Medlemmer kan stadig selv rydde op i navne og tegne ikoner.",
+      "automaticIngredientsKinds": {
+        "plainName": "Ryd op i navnet",
+        "plainNameDescription": "Fjern det, der ikke er fødevaren, som mængder og pakningskoder",
+        "icon": "Tegn et ikon",
+        "iconDescription": "Kun for en fødevare uden ikon, heller ikke dens forælders"
+      },
       "tagStrategy": "Tagstrategi",
       "tagStrategyDescription": "Hvilke tags automatisk tagging må bruge, uanset om den kører automatisk eller manuelt",
       "tagStrategies": {
@@ -1182,7 +1190,8 @@
         "reading-product": "Read the product page",
         "saving-link": "Save the link",
         "asking-ai": "Ask AI about the food",
-        "drawing-icon": "Tegn fødevarens ikon"
+        "drawing-icon": "Tegn fødevarens ikon",
+        "naming": "Ryd op i fødevarens navn"
       },
       "queues": {
         "recipe-import": "Recipe import",
@@ -1199,7 +1208,8 @@
         "image-generation": "Billedgenerering",
         "store-lookup": "Butiksopslag",
         "ingredient-review": "Spørg AI om ingredienser",
-        "ingredient-icons": "Tegn ingrediensikoner"
+        "ingredient-icons": "Tegn ingrediensikoner",
+        "new-ingredients": "Nye ingredienser"
       },
       "summary": {
         "failed": "{count} failed"

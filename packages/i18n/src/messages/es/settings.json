@@ -974,6 +974,14 @@
         "imageGeneration": "Generación de Imágenes",
         "imageGenerationDescription": "Dibuja una foto del plato para recetas nuevas que no tienen ninguna imagen"
       },
+      "automaticIngredients": "Automático para ingredientes nuevos",
+      "automaticIngredientsDescription": "Lo que hace la IA con un alimento que una receta, una compra o un artículo de la despensa añade al catálogo. Los miembros pueden seguir limpiando nombres y dibujando iconos a mano.",
+      "automaticIngredientsKinds": {
+        "plainName": "Limpiar el nombre",
+        "plainNameDescription": "Quitar lo que no es el alimento, como cantidades y códigos de envase",
+        "icon": "Dibujar un icono",
+        "iconDescription": "Solo para un alimento sin icono, ni siquiera el de su padre"
+      },
       "tagStrategy": "Estrategia de etiquetas",
       "tagStrategyDescription": "Qué etiquetas puede usar el etiquetado automático, se ejecute automática o manualmente",
       "tagStrategies": {
@@ -1182,7 +1190,8 @@
         "reading-product": "Read the product page",
         "saving-link": "Save the link",
         "asking-ai": "Ask AI about the food",
-        "drawing-icon": "Dibujar el icono del alimento"
+        "drawing-icon": "Dibujar el icono del alimento",
+        "naming": "Limpiar el nombre del alimento"
       },
       "queues": {
         "recipe-import": "Recipe import",
@@ -1199,7 +1208,8 @@
         "image-generation": "Generación de imágenes",
         "store-lookup": "Consulta de tienda",
         "ingredient-review": "Preguntar a la IA sobre ingredientes",
-        "ingredient-icons": "Dibujar iconos de ingredientes"
+        "ingredient-icons": "Dibujar iconos de ingredientes",
+        "new-ingredients": "Ingredientes nuevos"
       },
       "summary": {
         "failed": "{count} failed"

@@ -974,6 +974,14 @@
         "imageGeneration": "Генерация изображений",
         "imageGenerationDescription": "Нарисовать фото блюда для новых рецептов, у которых нет ни одного изображения"
       },
+      "automaticIngredients": "Автоматически для новых ингредиентов",
+      "automaticIngredientsDescription": "Что ИИ делает с продуктом, который рецепт, покупка или запас добавляет в каталог. Участники по-прежнему могут сами очищать названия и рисовать значки.",
+      "automaticIngredientsKinds": {
+        "plainName": "Очистить название",
+        "plainNameDescription": "Убрать всё, что не является продуктом, например количества и коды упаковки",
+        "icon": "Нарисовать значок",
+        "iconDescription": "Только для продукта без значка, даже без значка родителя"
+      },
       "tagStrategy": "Стратегия тегов",
       "tagStrategyDescription": "Какие теги может использовать автоматическое тегирование, как автоматически, так и вручную",
       "tagStrategies": {
@@ -1182,7 +1190,8 @@
         "reading-product": "Read the product page",
         "saving-link": "Save the link",
         "asking-ai": "Ask AI about the food",
-        "drawing-icon": "Нарисовать значок продукта"
+        "drawing-icon": "Нарисовать значок продукта",
+        "naming": "Очистить название продукта"
       },
       "queues": {
         "recipe-import": "Recipe import",
@@ -1199,7 +1208,8 @@
         "image-generation": "Генерация изображений",
         "store-lookup": "Поиск в магазине",
         "ingredient-review": "Спросить ИИ об ингредиентах",
-        "ingredient-icons": "Рисование значков ингредиентов"
+        "ingredient-icons": "Рисование значков ингредиентов",
+        "new-ingredients": "Новые ингредиенты"
       },
       "summary": {
         "failed": "{count} failed"

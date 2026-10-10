@@ -974,6 +974,14 @@
         "imageGeneration": "Kuvien luonti",
         "imageGenerationDescription": "Piirrä kuva ruoasta uusille resepteille, joilla ei ole lainkaan kuvaa"
       },
+      "automaticIngredients": "Automaattisesti uusille ainesosille",
+      "automaticIngredientsDescription": "Mitä tekoäly tekee ruoka-aineelle, jonka resepti, ostos tai ruokavaraston tuote lisää luetteloon. Jäsenet voivat edelleen siivota nimiä ja piirtää kuvakkeita itse.",
+      "automaticIngredientsKinds": {
+        "plainName": "Siivoa nimi",
+        "plainNameDescription": "Poista se, mikä ei ole ruoka-ainetta, kuten määrät ja pakkauskoodit",
+        "icon": "Piirrä kuvake",
+        "iconDescription": "Vain ruoka-aineelle, jolla ei ole kuvaketta, ei edes yläkäsitteensä"
+      },
       "tagStrategy": "Sallitut tunnisteet",
       "tagStrategyDescription": "Mitä tunnisteita tunnisteiden luonti saa käyttää, ajetaanpa se automaattisesti tai käsin",
       "tagStrategies": {
@@ -1182,7 +1190,8 @@
         "reading-product": "Lue tuotesivu",
         "saving-link": "Tallenna linkki",
         "asking-ai": "Ask AI about the food",
-        "drawing-icon": "Piirrä ruoan kuvake"
+        "drawing-icon": "Piirrä ruoan kuvake",
+        "naming": "Siivoa ruoka-aineen nimi"
       },
       "queues": {
         "recipe-import": "Reseptien tuonti",
@@ -1199,7 +1208,8 @@
         "image-generation": "Kuvien luonti",
         "store-lookup": "Kaupan haku",
         "ingredient-review": "Kysy tekoälyltä ainesosista",
-        "ingredient-icons": "Ainesosien kuvakkeiden piirto"
+        "ingredient-icons": "Ainesosien kuvakkeiden piirto",
+        "new-ingredients": "Uudet ainesosat"
       },
       "summary": {
         "failed": "{count} epäonnistui"

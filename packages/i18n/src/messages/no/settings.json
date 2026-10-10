@@ -974,6 +974,14 @@
         "imageGeneration": "Bildegenerering",
         "imageGenerationDescription": "Tegn et bilde av retten for nye oppskrifter som ikke har noe bilde"
       },
+      "automaticIngredients": "Automatisk for nye ingredienser",
+      "automaticIngredientsDescription": "Hva AI gjør for en matvare som en oppskrift, en innkjøpsvare eller en vare i spiskammeret legger til i katalogen. Medlemmer kan fortsatt rydde opp i navn og tegne ikoner selv.",
+      "automaticIngredientsKinds": {
+        "plainName": "Rydd opp i navnet",
+        "plainNameDescription": "Fjern det som ikke er matvaren, som mengder og pakningskoder",
+        "icon": "Tegn et ikon",
+        "iconDescription": "Bare for en matvare uten ikon, heller ikke forelderens"
+      },
       "tagStrategy": "Taggstrategi",
       "tagStrategyDescription": "Hvilke tagger automatisk tagging kan bruke, enten den kjører automatisk eller manuelt",
       "tagStrategies": {
@@ -1182,7 +1190,8 @@
         "reading-product": "Read the product page",
         "saving-link": "Save the link",
         "asking-ai": "Ask AI about the food",
-        "drawing-icon": "Tegn matvarens ikon"
+        "drawing-icon": "Tegn matvarens ikon",
+        "naming": "Rydd opp i matvarens navn"
       },
       "queues": {
         "recipe-import": "Recipe import",
@@ -1199,7 +1208,8 @@
         "image-generation": "Bildegenerering",
         "store-lookup": "Butikkoppslag",
         "ingredient-review": "Spør AI om ingredienser",
-        "ingredient-icons": "Tegn ingrediensikoner"
+        "ingredient-icons": "Tegn ingrediensikoner",
+        "new-ingredients": "Nye ingredienser"
       },
       "summary": {
         "failed": "{count} failed"

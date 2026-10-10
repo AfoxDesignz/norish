@@ -974,6 +974,14 @@
         "imageGeneration": "Génération d'images",
         "imageGenerationDescription": "Dessine une photo du plat pour les nouvelles recettes qui n'ont aucune image"
       },
+      "automaticIngredients": "Automatique pour les nouveaux ingrédients",
+      "automaticIngredientsDescription": "Ce que l’IA fait pour un aliment qu’une recette, une course ou un article du garde-manger ajoute au catalogue. Les membres peuvent toujours nettoyer les noms et dessiner les icônes eux-mêmes.",
+      "automaticIngredientsKinds": {
+        "plainName": "Nettoyer le nom",
+        "plainNameDescription": "Retirer ce qui n’est pas l’aliment, comme les quantités et les codes d’emballage",
+        "icon": "Dessiner une icône",
+        "iconDescription": "Seulement pour un aliment sans icône, pas même celle de son parent"
+      },
       "tagStrategy": "Stratégie d'étiquetage",
       "tagStrategyDescription": "Quelles étiquettes l'étiquetage automatique peut utiliser, qu'il soit automatique ou manuel",
       "tagStrategies": {
@@ -1182,7 +1190,8 @@
         "reading-product": "Read the product page",
         "saving-link": "Save the link",
         "asking-ai": "Ask AI about the food",
-        "drawing-icon": "Dessiner l’icône de l’aliment"
+        "drawing-icon": "Dessiner l’icône de l’aliment",
+        "naming": "Nettoyer le nom de l’aliment"
       },
       "queues": {
         "recipe-import": "Recipe import",
@@ -1199,7 +1208,8 @@
         "image-generation": "Génération d'images",
         "store-lookup": "Recherche en boutique",
         "ingredient-review": "Demander à l'IA sur les ingrédients",
-        "ingredient-icons": "Dessin des icônes d’ingrédients"
+        "ingredient-icons": "Dessin des icônes d’ingrédients",
+        "new-ingredients": "Nouveaux ingrédients"
       },
       "summary": {
         "failed": "{count} failed"

@@ -144,6 +144,14 @@ export interface IngredientIconsJobData {
 }
 
 /**
+ * Foods one resolution just minted for someone's action, for what the
+ * administrator turned on for new foods: their Plain Name, their icon.
+ */
+export interface NewIngredientsJobData {
+  ingredientIds: string[];
+}
+
+/**
  * One round of Ask AI over Flagged Ingredients (ADR-0037): the foods a person
  * asked about, in the order the page listed them, and who asked, since each
  * food's edit follows the ingredient permission policy for that person. A

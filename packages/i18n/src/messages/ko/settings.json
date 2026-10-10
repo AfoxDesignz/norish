@@ -974,6 +974,14 @@
         "imageGeneration": "이미지 생성",
         "imageGenerationDescription": "이미지가 전혀 없는 새 레시피에 요리 사진을 그려줍니다"
       },
+      "automaticIngredients": "새 재료에 자동 적용",
+      "automaticIngredientsDescription": "레시피, 장보기 항목, 식료품 보관 항목이 카탈로그에 추가하는 식품에 AI가 하는 일입니다. 구성원은 계속 직접 이름을 정리하고 아이콘을 그릴 수 있습니다.",
+      "automaticIngredientsKinds": {
+        "plainName": "이름 정리",
+        "plainNameDescription": "분량, 포장 코드처럼 식품이 아닌 부분을 지웁니다",
+        "icon": "아이콘 그리기",
+        "iconDescription": "상위 항목의 아이콘도 없는 식품에만 그립니다"
+      },
       "tagStrategy": "태그 전략",
       "tagStrategyDescription": "자동 또는 수동 실행 여부와 관계없이 자동 태그 지정이 사용할 수 있는 태그",
       "tagStrategies": {
@@ -1182,7 +1190,8 @@
         "reading-product": "Read the product page",
         "saving-link": "Save the link",
         "asking-ai": "Ask AI about the food",
-        "drawing-icon": "식품 아이콘 그리기"
+        "drawing-icon": "식품 아이콘 그리기",
+        "naming": "식품 이름 정리"
       },
       "queues": {
         "recipe-import": "Recipe import",
@@ -1199,7 +1208,8 @@
         "image-generation": "이미지 생성",
         "store-lookup": "매장 조회",
         "ingredient-review": "AI에게 재료 묻기",
-        "ingredient-icons": "재료 아이콘 그리기"
+        "ingredient-icons": "재료 아이콘 그리기",
+        "new-ingredients": "새 재료"
       },
       "summary": {
         "failed": "{count} failed"

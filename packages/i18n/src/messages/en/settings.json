@@ -974,6 +974,14 @@
         "imageGeneration": "Image generation",
         "imageGenerationDescription": "Draw a picture of the dish for new recipes that have no image at all"
       },
+      "automaticIngredients": "Automatic for new ingredients",
+      "automaticIngredientsDescription": "What AI does for a food that a recipe, grocery or pantry item adds to the catalogue. Members can still clean names and draw icons by hand.",
+      "automaticIngredientsKinds": {
+        "plainName": "Clean the name",
+        "plainNameDescription": "Take off what is not the food, such as amounts and pack codes",
+        "icon": "Draw an icon",
+        "iconDescription": "Only for a food with no icon to show, not even its parent's"
+      },
       "tagStrategy": "Tag strategy",
       "tagStrategyDescription": "Which tags auto-tagging may use, whether it runs automatically or manually",
       "tagStrategies": {
@@ -1182,7 +1190,8 @@
         "reading-product": "Read the product page",
         "saving-link": "Save the link",
         "asking-ai": "Ask AI about the food",
-        "drawing-icon": "Draw the food's icon"
+        "drawing-icon": "Draw the food's icon",
+        "naming": "Clean the food's name"
       },
       "queues": {
         "recipe-import": "Recipe import",
@@ -1199,7 +1208,8 @@
         "image-generation": "Image generation",
         "store-lookup": "Store lookup",
         "ingredient-review": "Ask AI about ingredients",
-        "ingredient-icons": "Draw ingredient icons"
+        "ingredient-icons": "Draw ingredient icons",
+        "new-ingredients": "New ingredients"
       },
       "summary": {
         "failed": "{count} failed"
