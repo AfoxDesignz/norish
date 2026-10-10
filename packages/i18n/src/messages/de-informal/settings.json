@@ -430,7 +430,8 @@
       "readAs": "Die KI las es als „{name}“.",
       "compared": "Verglichen mit: {names}.",
       "comparedNothing": "Es gab kein bekanntes Lebensmittel zum Vergleich.",
-      "fromWords": "Based on name."
+      "fromWords": "Based on name.",
+      "noFood": "Die KI hat in diesem Namen kein Lebensmittel gefunden."
     },
     "addAlias": "Übersetzung hinzufügen",
     "removeAlias": "{alias} entfernen",
@@ -569,11 +570,18 @@
     "standaloneOnly": "Ohne übergeordnete Zutat oder Sorten",
     "findParent": "Übergeordnete Zutat mit KI finden",
     "findParentsAll": "Übergeordnete Zutaten mit KI finden",
+    "cleanNames": {
+      "open": "Namen mit KI bereinigen",
+      "title": "Namen mit KI bereinigen",
+      "intro": "Die KI liest jeden Namen und entfernt, was nicht zum Lebensmittel gehört, etwa Mengen, Packungscodes und Werbewörter. Sprache und Marke bleiben erhalten. Nichts ändert sich, bis du einen Vorschlag bestätigst.",
+      "start": "Namen bereinigen"
+    },
     "suggestion": {
       "merge": "{name} mit {into} zusammenführen",
       "parent": "{name} unter {of} einordnen",
       "distinct": "{name} als eigene Zutat behalten",
-      "filedFromName": "{name} filed under {of}"
+      "filedFromName": "{name} filed under {of}",
+      "rename": "{name} in {to} umbenennen"
     },
     "suggestionsTitle": "KI-Vorschläge",
     "suggestionsEmpty": "Nichts wartet auf dich.",
@@ -589,12 +597,14 @@
     "proposal": {
       "merge": "Merge into {into}",
       "parent": "File under {of}",
-      "distinct": "Food of its own"
+      "distinct": "Food of its own",
+      "rename": "In {to} umbenennen"
     },
     "skippedReasons": {
       "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
-      "notFound": "No longer exists"
+      "notFound": "No longer exists",
+      "settled": "Name steht bereits fest, oder ein Vorschlag wartet"
     },
     "icon": {
       "change": "Symbol ändern",
@@ -1116,7 +1126,10 @@
       "imageGenerationStylePlaceholder": "Prompt für den Bildstil...",
       "ingredientIconStyle": "Zutatensymbol-Stil-Prompt",
       "ingredientIconStyleDescription": "Wird an das Bildmodell gesendet, wenn ein Zutatensymbol gezeichnet wird, mit dem Namen des Lebensmittels und dem, wovon es eine Art ist, danach angehängt. Bestimmt den Stil aller gezeichneten Symbole.",
-      "ingredientIconStylePlaceholder": "Prompt für den Stil der Zutatensymbole..."
+      "ingredientIconStylePlaceholder": "Prompt für den Stil der Zutatensymbole...",
+      "ingredientPlainName": "Prompt zum Bereinigen von Zutatennamen",
+      "ingredientPlainNameDescription": "Wird an das Sprachmodell gesendet, wenn die KI den Namen einer Zutat bereinigt, mit dem Namen und seinen anderen Schreibweisen dahinter. Legt fest, was von einem Namen entfernt wird und was bleibt.",
+      "ingredientPlainNamePlaceholder": "Prompt zum Bereinigen von Zutatennamen..."
     },
     "unsavedChanges": "Ungespeicherte Änderungen",
     "jsonEditor": {

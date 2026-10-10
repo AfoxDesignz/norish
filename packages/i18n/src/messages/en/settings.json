@@ -430,7 +430,8 @@
       "readAs": "AI read it as “{name}”.",
       "compared": "Compared with: {names}.",
       "comparedNothing": "There was no known food to compare it with.",
-      "fromWords": "Based on name."
+      "fromWords": "Based on name.",
+      "noFood": "AI found no food in this name."
     },
     "addAlias": "Add a translation",
     "removeAlias": "Remove {alias}",
@@ -569,11 +570,18 @@
     "standaloneOnly": "Without parent or kinds",
     "findParent": "Find parent with AI",
     "findParentsAll": "Find parents with AI",
+    "cleanNames": {
+      "open": "Clean names with AI",
+      "title": "Clean names with AI",
+      "intro": "AI reads each name and takes off what is not the food, such as amounts, pack codes and marketing words. It keeps the language and the brand. Nothing changes until you confirm a suggestion.",
+      "start": "Clean names"
+    },
     "suggestion": {
       "merge": "Merge {name} into {into}",
       "parent": "File {name} under {of}",
       "distinct": "Keep {name} as a food of its own",
-      "filedFromName": "{name} filed under {of}"
+      "filedFromName": "{name} filed under {of}",
+      "rename": "Rename {name} to {to}"
     },
     "suggestionsTitle": "Suggestions",
     "suggestionsEmpty": "Nothing is waiting on you.",
@@ -589,12 +597,14 @@
     "proposal": {
       "merge": "Merge into {into}",
       "parent": "File under {of}",
-      "distinct": "Food of its own"
+      "distinct": "Food of its own",
+      "rename": "Rename to {to}"
     },
     "skippedReasons": {
       "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
-      "notFound": "No longer exists"
+      "notFound": "No longer exists",
+      "settled": "Name already settled, or a suggestion waits"
     },
     "icon": {
       "change": "Change the icon",
@@ -1116,7 +1126,10 @@
       "imageGenerationStylePlaceholder": "Prompt for the image style...",
       "ingredientIconStyle": "Ingredient icon style prompt",
       "ingredientIconStyleDescription": "Sent to the image model when an ingredient's icon is drawn, with the food's name and what it is a kind of appended after it. Sets the look every drawn icon shares.",
-      "ingredientIconStylePlaceholder": "Prompt for the ingredient icon style..."
+      "ingredientIconStylePlaceholder": "Prompt for the ingredient icon style...",
+      "ingredientPlainName": "Ingredient name cleaning prompt",
+      "ingredientPlainNameDescription": "Sent to the language model when AI cleans an ingredient's name, with the name and its other spellings appended after it. Says what to take off a name and what to keep.",
+      "ingredientPlainNamePlaceholder": "Prompt for cleaning ingredient names..."
     },
     "unsavedChanges": "Unsaved changes",
     "jsonEditor": {

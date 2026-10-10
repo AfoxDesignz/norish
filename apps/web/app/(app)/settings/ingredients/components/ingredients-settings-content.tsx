@@ -28,6 +28,7 @@ import { useRealtimeSubscription } from "@norish/shared-react/realtime";
 
 import type { IngredientFilters } from "./ingredient-filters-panel";
 import { AskAIRoundModal } from "./ask-ai-round-modal";
+import { CleanNamesModal } from "./clean-names-modal";
 import DataSourcesCard from "./data-sources-card";
 import { DrawIconsControl, useIconRound } from "./draw-icons-control";
 import {
@@ -127,6 +128,7 @@ export default function IngredientsSettingsContent() {
   const [round, setRound] = useState<ReviewRound | null>(null);
   const [startedJobId, setStartedJobId] = useState<string | null>(null);
   const [askOpen, setAskOpen] = useState(false);
+  const [cleanOpen, setCleanOpen] = useState(false);
   // The last round this tab saw end; before one ends, the instance's latest, which the server finds.
   const [reportJobId, setReportJobId] = useState<string | null>(null);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
@@ -179,7 +181,16 @@ export default function IngredientsSettingsContent() {
         jobId: started.jobId,
         done: 0,
         total: started.total,
-        counts: { merge: 0, parent: 0, distinct: 0, unsure: 0, skipped: 0, failed: 0 },
+        counts: {
+          merge: 0,
+          parent: 0,
+          distinct: 0,
+          unsure: 0,
+          rename: 0,
+          plain: 0,
+          skipped: 0,
+          failed: 0,
+        },
         pending: started.pending,
         finished: false,
       });
@@ -200,6 +211,10 @@ export default function IngredientsSettingsContent() {
   // The server picks the foods for the scope, however many: the dialog closes once the round is on.
   const askAIAboutFlagged = async (scope: ReviewScope) => {
     if (await startAndWatch({ mode: "review", scope })) setAskOpen(false);
+  };
+  // Likewise every food whose name is not settled, for its Plain Name.
+  const cleanNames = async () => {
+    if (await startAndWatch({ mode: "name" })) setCleanOpen(false);
   };
 
   return (
@@ -248,6 +263,17 @@ export default function IngredientsSettingsContent() {
                 </AIButton>
               ) : null}
               <DrawIconsControl round={iconRound} />
+              {isAIEnabled && !running ? (
+                <AIButton
+                  data-testid="ingredients-clean-names"
+                  isDisabled={startRound.isPending}
+                  size="sm"
+                  variant="tertiary"
+                  onPress={() => setCleanOpen(true)}
+                >
+                  {t("cleanNames.open")}
+                </AIButton>
+              ) : null}
               {isAIEnabled && hasFlagged && !running ? (
                 <AIButton
                   data-testid="ingredients-ask-ai-all"
@@ -327,11 +353,17 @@ export default function IngredientsSettingsContent() {
           onClose={() => setAskOpen(false)}
           onStart={(scope) => void askAIAboutFlagged(scope)}
         />
+        <CleanNamesModal
+          isOpen={cleanOpen}
+          isStarting={startRound.isPending}
+          onClose={() => setCleanOpen(false)}
+          onStart={() => void cleanNames()}
+        />
         <SuggestionsPanel
           jobId={reportJobId}
-          round={running}
           open={suggestionsOpen}
           reviewing={reviewing}
+          round={running}
           onChanged={refresh}
           onClose={() => setSuggestionsOpen(false)}
         />

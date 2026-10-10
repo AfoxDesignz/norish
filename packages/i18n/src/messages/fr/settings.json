@@ -430,7 +430,8 @@
       "readAs": "L'IA l'a lu comme « {name} ».",
       "compared": "Comparé avec : {names}.",
       "comparedNothing": "Aucun aliment connu avec lequel le comparer.",
-      "fromWords": "Based on name."
+      "fromWords": "Based on name.",
+      "noFood": "L’IA n’a trouvé aucun aliment dans ce nom."
     },
     "addAlias": "Ajouter une traduction",
     "removeAlias": "Supprimer {alias}",
@@ -569,11 +570,18 @@
     "standaloneOnly": "Sans parent ni sortes",
     "findParent": "Trouver le parent avec l’IA",
     "findParentsAll": "Trouver les parents avec l’IA",
+    "cleanNames": {
+      "open": "Nettoyer les noms avec l’IA",
+      "title": "Nettoyer les noms avec l’IA",
+      "intro": "L’IA lit chaque nom et retire ce qui n’est pas l’aliment, comme les quantités, les codes d’emballage et les mots publicitaires. Elle garde la langue et la marque. Rien ne change tant que vous ne confirmez pas une suggestion.",
+      "start": "Nettoyer les noms"
+    },
     "suggestion": {
       "merge": "Fusionner {name} avec {into}",
       "parent": "Classer {name} sous {of}",
       "distinct": "Garder {name} comme aliment à part entière",
-      "filedFromName": "{name} filed under {of}"
+      "filedFromName": "{name} filed under {of}",
+      "rename": "Renommer {name} en {to}"
     },
     "suggestionsTitle": "Suggestions de l'IA",
     "suggestionsEmpty": "Rien ne vous attend.",
@@ -589,12 +597,14 @@
     "proposal": {
       "merge": "Merge into {into}",
       "parent": "File under {of}",
-      "distinct": "Food of its own"
+      "distinct": "Food of its own",
+      "rename": "Renommer en {to}"
     },
     "skippedReasons": {
       "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
-      "notFound": "No longer exists"
+      "notFound": "No longer exists",
+      "settled": "Nom déjà fixé, ou une suggestion attend"
     },
     "icon": {
       "change": "Changer l’icône",
@@ -1116,7 +1126,10 @@
       "imageGenerationStylePlaceholder": "Prompt pour le style d'image...",
       "ingredientIconStyle": "Prompt de style des icônes d'ingrédients",
       "ingredientIconStyleDescription": "Envoyé au modèle d'image quand l'icône d'un ingrédient est dessinée, avec le nom de l'aliment et ce dont il est une sorte ajoutés après. Définit le rendu partagé par toutes les icônes dessinées.",
-      "ingredientIconStylePlaceholder": "Prompt pour le style des icônes d'ingrédients..."
+      "ingredientIconStylePlaceholder": "Prompt pour le style des icônes d'ingrédients...",
+      "ingredientPlainName": "Prompt de nettoyage des noms d’ingrédients",
+      "ingredientPlainNameDescription": "Envoyé au modèle de langage quand l’IA nettoie le nom d’un ingrédient, avec le nom et ses autres graphies ajoutés à la suite. Indique ce qu’il faut retirer d’un nom et ce qu’il faut garder.",
+      "ingredientPlainNamePlaceholder": "Prompt de nettoyage des noms d’ingrédients..."
     },
     "unsavedChanges": "Modifications non enregistrées",
     "jsonEditor": {

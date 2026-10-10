@@ -54,11 +54,12 @@ export function isFlagReason(value: unknown): value is FlagReason {
 
 /**
  * What AI may propose for an Ingredient (ADR-0037): that it is another food
- * (`merge`), a kind of another food (`parent`), or a food of its own
- * (`distinct`). AI never makes the edit itself; a person confirms or
- * dismisses the suggestion.
+ * (`merge`), a kind of another food (`parent`), a food of its own
+ * (`distinct`), or that its name is better as its Plain Name (`rename`). AI
+ * never makes the edit itself; a person confirms or dismisses the
+ * suggestion.
  */
-export const SUGGESTION_KINDS = ["merge", "parent", "distinct"] as const;
+export const SUGGESTION_KINDS = ["merge", "parent", "distinct", "rename"] as const;
 
 export type SuggestionKind = (typeof SUGGESTION_KINDS)[number];
 
@@ -106,9 +107,17 @@ export type ReviewReportEntry = { ingredientId: string; name?: string } & (
   | ({ outcome: "parent"; of: string } & ReviewTrace)
   | ({ outcome: "distinct" } & ReviewTrace)
   | ({ outcome: "unsure"; reason: string } & ReviewTrace)
-  | { outcome: "skipped"; reason: "not-flagged" | "forbidden" | "not-found" }
+  | PlainNameEntry
+  | { outcome: "skipped"; reason: "not-flagged" | "forbidden" | "not-found" | "settled" }
   | { outcome: "failed"; error: string }
 );
+
+/**
+ * What a round of Clean names came to for one food, beyond a merge: a
+ * rename to its Plain Name waiting on a person, or its name already plain,
+ * which settles it.
+ */
+export type PlainNameEntry = { outcome: "rename"; to: string } | { outcome: "plain" };
 
 /**
  * A round of Ask AI read back: what it came to for each food, in the order it
@@ -116,12 +125,15 @@ export type ReviewReportEntry = { ingredientId: string; name?: string } & (
  */
 export interface ReviewReport {
   jobId: string;
-  /** What the round asked: what each flagged food is, or what food each is a kind of. */
-  mode: "review" | "parent";
+  /** What the round asked: what each flagged food is, what food each is a kind of, or its Plain Name. */
+  mode: ReviewMode;
   finished: boolean;
   entries: ReviewReportEntry[];
   waiting: Array<{ ingredientId: string; name: string }>;
 }
+
+/** What a round of Ask AI asks of each food: what it is, what it is a kind of, or its Plain Name. */
+export type ReviewMode = "review" | "parent" | "name";
 
 /**
  * Which flagged foods a round of Ask AI asks about: every one the asker may
@@ -171,3 +183,12 @@ export type IconScope = (typeof ICON_SCOPES)[number];
 
 /** How many icons each scope of a Draw icons round would draw, for the asker. */
 export type IconScopeSummary = Record<IconScope, number>;
+
+/**
+ * What a round of Clean names would ask about, for the asker: how many foods
+ * whose names are not settled, and the tokens a food takes.
+ */
+export interface NameScopeSummary {
+  foods: number;
+  tokens: ReviewTokenEstimate;
+}

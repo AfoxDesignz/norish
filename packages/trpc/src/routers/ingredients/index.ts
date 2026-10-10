@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { CatalogueActor, CatalogueRefusal } from "@norish/shared-server/ingredients/catalogue";
 import type {
   IconScopeSummary,
+  NameScopeSummary,
   ReviewReport,
   ReviewScopeSummary,
 } from "@norish/shared/contracts/ingredient-catalogue";
@@ -55,6 +56,10 @@ import {
 } from "@norish/shared-server/ingredients/nutrition/corrections";
 import { resolveIngredientNutrition } from "@norish/shared-server/ingredients/nutrition/ingredient-nutrition";
 import { spoonMeasureFor } from "@norish/shared-server/ingredients/nutrition/spoon-measure";
+import {
+  estimateCleanTokens,
+  listNameableIngredients,
+} from "@norish/shared-server/ingredients/plain-names";
 import { findIngredientFor } from "@norish/shared-server/ingredients/resolver";
 import {
   estimateReviewTokens,
@@ -305,8 +310,9 @@ async function namedFoods(ids: readonly string[]): Promise<{ id: string; name: s
 /**
  * Ask AI about the flagged Ingredients the asker may edit, every one or only
  * those no suggestion waits on (`scope`), which the server picks, however
- * many there are; or what food each Ingredient on the page is a kind of
- * (`mode: "parent"`). One job, a step per food, that keeps going after the
+ * many there are; what food each Ingredient on the page is a kind of
+ * (`mode: "parent"`); or the Plain Name of every food the asker may edit
+ * whose name is not settled (`mode: "name"`), which the server picks too. One job, a step per food, that keeps going after the
  * tab is closed. Each food's edit follows `edit` on that food, checked again
  * by the round as it reaches it, so a food the asker may no longer edit is
  * passed over rather than refused here. Answers the job the page watches the
@@ -317,6 +323,7 @@ const reviewAllWithAI = authedProcedure
     z.discriminatedUnion("mode", [
       z.object({ mode: z.literal("review"), scope: z.enum(REVIEW_SCOPES) }),
       z.object({ mode: z.literal("parent"), ingredientIds: z.array(z.uuid()).min(1) }),
+      z.object({ mode: z.literal("name") }),
     ])
   )
   .mutation(async ({ ctx, input }) => {
@@ -328,7 +335,9 @@ const reviewAllWithAI = authedProcedure
             id,
             name,
           }))
-        : await namedFoods(input.ingredientIds);
+        : input.mode === "name"
+          ? await listNameableIngredients(actorOf(ctx))
+          : await namedFoods(input.ingredientIds);
 
     log.info(
       {
@@ -375,6 +384,25 @@ const reviewScope = authedProcedure.query(async ({ ctx }): Promise<ReviewScopeSu
     tokens: measured
       ? { basis: "measured", ...measured }
       : { basis: "prompt", models: await estimateReviewTokens(foods.map((food) => food.name)) },
+  };
+});
+
+/**
+ * What a round of Clean names would ask about, for the asker: how many foods
+ * whose names are not settled they may edit, and about how many tokens a
+ * food's question takes, measured or counted from the prompt as for Ask AI.
+ */
+const nameScope = authedProcedure.query(async ({ ctx }): Promise<NameScopeSummary> => {
+  await assertAIEnabled();
+
+  const foods = await listNameableIngredients(actorOf(ctx));
+  const measured = await readRoundTokens(getQueues().ingredientReview, "name");
+
+  return {
+    foods: foods.length,
+    tokens: measured
+      ? { basis: "measured", ...measured }
+      : { basis: "prompt", models: await estimateCleanTokens(foods.map((food) => food.name)) },
   };
 });
 
@@ -768,6 +796,7 @@ export const ingredientsRouter = router({
   findParentWithAI: findParentWithAI_,
   reviewAllWithAI,
   reviewScope,
+  nameScope,
   reviewRound,
   reviewReport,
   suggestions,

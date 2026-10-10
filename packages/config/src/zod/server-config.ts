@@ -151,6 +151,7 @@ export const PromptsConfigSchema = z.object({
   imageGenerationBrief: z.string().optional(),
   imageGenerationStyle: z.string().optional(),
   ingredientIconStyle: z.string().optional(),
+  ingredientPlainName: z.string().optional(),
   isOverridden: z.boolean().optional(),
 });
 

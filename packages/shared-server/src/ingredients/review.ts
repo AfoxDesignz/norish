@@ -99,6 +99,13 @@ export async function listReviewableIngredients(
 /** How many of a round's foods the estimate reads, spread over them: enough to even out their names. */
 const ESTIMATE_SAMPLE = 5;
 
+/** A few of a round's names, spread over them, for an estimate to read. */
+export function estimateSample(names: readonly string[]): string[] {
+  const every = Math.max(1, Math.floor(names.length / ESTIMATE_SAMPLE));
+
+  return names.filter((_, index) => index % every === 0).slice(0, ESTIMATE_SAMPLE);
+}
+
 /**
  * About how many tokens one food's question takes on each model it asks,
  * counted from what would be sent for a few of these names, before any round
@@ -107,10 +114,9 @@ const ESTIMATE_SAMPLE = 5;
 export async function estimateReviewTokens(
   names: readonly string[]
 ): Promise<ModelTokenEstimate[]> {
-  const every = Math.max(1, Math.floor(names.length / ESTIMATE_SAMPLE));
-  const sample = names.filter((_, index) => index % every === 0).slice(0, ESTIMATE_SAMPLE);
-
-  return estimateQuestionTokens(sample.map((text) => ({ text, bare: stripPreparation(text) })));
+  return estimateQuestionTokens(
+    estimateSample(names).map((text) => ({ text, bare: stripPreparation(text) }))
+  );
 }
 
 /** Ask AI about a Flagged Ingredient, and record what it proposes. */
@@ -209,8 +215,9 @@ const UNSUGGESTED: ReadonlySet<string> = new Set(["unsure", "skipped", "failed"]
 /**
  * A finished round's report as it stands now. A food it got no suggestion
  * for is listed while the question it was asked is still open: still flagged
- * after a review, still without a parent after a round of Find parents. One
- * settled since, or gone, drops out. A round still running is as it was.
+ * after a review, still without a parent after a round of Find parents, its
+ * name still unsettled after Clean names. One settled since, or gone, drops
+ * out. A round still running is as it was.
  */
 export async function withoutSettled(report: ReviewReport): Promise<ReviewReport> {
   if (!report.finished) return report;
@@ -222,7 +229,16 @@ export async function withoutSettled(report: ReviewReport): Promise<ReviewReport
   const open = (ingredientId: string) => {
     const state = states.get(ingredientId);
 
-    return state !== undefined && (report.mode === "parent" ? !state.parentId : state.flagged);
+    if (!state) return false;
+
+    switch (report.mode) {
+      case "parent":
+        return !state.parentId;
+      case "name":
+        return !state.nameSettled;
+      default:
+        return state.flagged;
+    }
   };
 
   return {

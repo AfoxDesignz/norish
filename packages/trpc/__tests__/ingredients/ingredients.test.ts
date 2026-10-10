@@ -80,6 +80,11 @@ const reviewer = vi.hoisted(() => ({
   withoutSettled: vi.fn(async (report: unknown) => report),
 }));
 
+const plainNames = vi.hoisted(() => ({
+  listNameableIngredients: vi.fn(async (): Promise<unknown[]> => []),
+  estimateCleanTokens: vi.fn(async (): Promise<unknown[]> => []),
+}));
+
 const reviewQueue = vi.hoisted(() => ({
   add: vi.fn(async () => ({ id: "round-1" })),
   getJobs: vi.fn(async () => []),
@@ -115,6 +120,7 @@ vi.mock("@norish/shared-server/media/ingredient-icon", async (original) => ({
 }));
 vi.mock("@norish/db/repositories/ingredient-suggestions", () => suggestionsRepo);
 vi.mock("@norish/shared-server/ingredients/review", () => reviewer);
+vi.mock("@norish/shared-server/ingredients/plain-names", () => plainNames);
 vi.mock("@norish/shared-server/ai/enrichment/ingredient-icon-drawer", () => drawer);
 vi.mock("@norish/shared-server/config/server-config-loader", () => policy);
 vi.mock("@norish/shared-server/ingredients/resolver", () => import("../mocks/ingredient-resolver"));
@@ -597,6 +603,40 @@ describe("a round of Ask AI over flagged Ingredients", () => {
     expect(ingredientsRealtime.published).toHaveLength(1);
   });
 
+  it("cleans the names of the foods the server picks, as a round of its own", async () => {
+    plainNames.listNameableIngredients.mockResolvedValueOnce([{ id: UIEN, name: "GR UIEN" }]);
+
+    await expect(callerFor().reviewAllWithAI({ mode: "name" })).resolves.toEqual({
+      jobId: "round-1",
+      total: 1,
+      pending: [UIEN],
+    });
+    expect(reviewQueue.add).toHaveBeenCalledExactlyOnceWith(
+      "review",
+      expect.objectContaining({ mode: "name", ingredients: [{ id: UIEN, name: "GR UIEN" }] })
+    );
+    expect(reviewer.listReviewableIngredients).not.toHaveBeenCalled();
+  });
+
+  it("says how many names a round of Clean names would ask about, and what a food takes", async () => {
+    plainNames.listNameableIngredients.mockResolvedValueOnce([
+      { id: UIEN, name: "GR UIEN" },
+      { id: ONION, name: "onion" },
+    ]);
+    plainNames.estimateCleanTokens.mockResolvedValueOnce([
+      { provider: "openai", model: "gpt-5.6-luna", perFood: 200 },
+    ]);
+
+    await expect(callerFor().nameScope()).resolves.toEqual({
+      foods: 2,
+      tokens: {
+        basis: "prompt",
+        models: [{ provider: "openai", model: "gpt-5.6-luna", perFood: 200 }],
+      },
+    });
+    expect(plainNames.estimateCleanTokens).toHaveBeenCalledWith(["GR UIEN", "onion"]);
+  });
+
   it("asks about nothing without a food", async () => {
     await expect(
       callerFor().reviewAllWithAI({ mode: "parent", ingredientIds: [] })
@@ -626,7 +666,16 @@ describe("a round of Ask AI over flagged Ingredients", () => {
       jobId: "round-1",
       done: 0,
       total: 2,
-      counts: { merge: 0, parent: 0, distinct: 0, unsure: 0, skipped: 0, failed: 0 },
+      counts: {
+        merge: 0,
+        parent: 0,
+        distinct: 0,
+        unsure: 0,
+        rename: 0,
+        plain: 0,
+        skipped: 0,
+        failed: 0,
+      },
       pending: [UIEN, ONION],
       finished: false,
     });

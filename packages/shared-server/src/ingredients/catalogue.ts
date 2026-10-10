@@ -405,6 +405,8 @@ async function renameIngredientIn(
   );
 
   if (!renamed) throw new CatalogueEditError("not-found");
+  // A person's own name settles it: a rename AI proposed is moot.
+  await deleteSuggestionFor(ingredientId, tx, "rename");
   await insertCatalogueAlias(tx, {
     ingredientId,
     text: cleaned,

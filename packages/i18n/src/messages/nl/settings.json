@@ -430,7 +430,8 @@
       "readAs": "AI las het als “{name}”.",
       "compared": "Vergeleken met: {names}.",
       "comparedNothing": "Er was geen bekend ingrediënt om het mee te vergelijken.",
-      "fromWords": "Op basis van de naam."
+      "fromWords": "Op basis van de naam.",
+      "noFood": "AI vond geen ingrediënt in deze naam."
     },
     "addAlias": "Vertaling toevoegen",
     "removeAlias": "{alias} verwijderen",
@@ -569,11 +570,18 @@
     "standaloneOnly": "Zonder ouder of soorten",
     "findParent": "Ouder zoeken met AI",
     "findParentsAll": "Ouders zoeken met AI",
+    "cleanNames": {
+      "open": "Namen opschonen met AI",
+      "title": "Namen opschonen met AI",
+      "intro": "AI leest elke naam en haalt weg wat niet het ingrediënt is, zoals hoeveelheden, verpakkingscodes en reclamewoorden. De taal en het merk blijven staan. Er verandert niets tot je een suggestie bevestigt.",
+      "start": "Namen opschonen"
+    },
     "suggestion": {
       "merge": "{name} samenvoegen met {into}",
       "parent": "{name} plaatsen onder {of}",
       "distinct": "{name} houden als eigen ingrediënt",
-      "filedFromName": "{name} geplaatst onder {of}"
+      "filedFromName": "{name} geplaatst onder {of}",
+      "rename": "{name} hernoemen naar {to}"
     },
     "suggestionsTitle": "Voorstellen",
     "suggestionsEmpty": "Er wacht niets op je.",
@@ -589,12 +597,14 @@
     "proposal": {
       "merge": "Samenvoegen met {into}",
       "parent": "Plaatsen onder {of}",
-      "distinct": "Eigen ingrediënt"
+      "distinct": "Eigen ingrediënt",
+      "rename": "Hernoemen naar {to}"
     },
     "skippedReasons": {
       "notFlagged": "Niet meer gemarkeerd",
       "forbidden": "Niet van jou om te bewerken",
-      "notFound": "Bestaat niet meer"
+      "notFound": "Bestaat niet meer",
+      "settled": "Naam staat al vast, of er wacht een suggestie"
     },
     "icon": {
       "change": "Icoon wijzigen",
@@ -1116,7 +1126,10 @@
       "imageGenerationStylePlaceholder": "Prompt voor de afbeeldingsstijl...",
       "ingredientIconStyle": "Ingrediënticoonstijl Prompt",
       "ingredientIconStyleDescription": "Wordt naar het afbeeldingsmodel gestuurd als een ingrediënt een icoon krijgt, met de naam van het voedingsmiddel en waar het een soort van is erachter. Bepaalt de stijl die elk getekend icoon deelt.",
-      "ingredientIconStylePlaceholder": "Prompt voor de stijl van ingrediënticonen..."
+      "ingredientIconStylePlaceholder": "Prompt voor de stijl van ingrediënticonen...",
+      "ingredientPlainName": "Prompt voor het opschonen van ingrediëntnamen",
+      "ingredientPlainNameDescription": "Wordt naar het taalmodel gestuurd als AI de naam van een ingrediënt opschoont, met de naam en de andere schrijfwijzen erachter. Zegt wat er van een naam af moet en wat blijft.",
+      "ingredientPlainNamePlaceholder": "Prompt voor het opschonen van ingrediëntnamen..."
     },
     "unsavedChanges": "Niet-opgeslagen wijzigingen",
     "jsonEditor": {

@@ -430,7 +430,8 @@
       "readAs": "AI odczytało to jako „{name}”.",
       "compared": "Porównano z: {names}.",
       "comparedNothing": "Nie było znanego produktu do porównania.",
-      "fromWords": "Based on name."
+      "fromWords": "Based on name.",
+      "noFood": "AI nie znalazło w tej nazwie żadnego produktu spożywczego."
     },
     "addAlias": "Dodaj tłumaczenie",
     "removeAlias": "Usuń {alias}",
@@ -569,11 +570,18 @@
     "standaloneOnly": "Bez rodzica i rodzajów",
     "findParent": "Znajdź rodzica z AI",
     "findParentsAll": "Znajdź rodziców z AI",
+    "cleanNames": {
+      "open": "Uporządkuj nazwy z AI",
+      "title": "Uporządkuj nazwy z AI",
+      "intro": "AI czyta każdą nazwę i usuwa to, co nie jest produktem spożywczym, np. ilości, kody opakowań i słowa reklamowe. Zachowuje język i markę. Nic się nie zmieni, dopóki nie potwierdzisz sugestii.",
+      "start": "Uporządkuj nazwy"
+    },
     "suggestion": {
       "merge": "Połącz {name} z {into}",
       "parent": "Przypisz {name} do {of}",
       "distinct": "Zachowaj {name} jako osobny produkt",
-      "filedFromName": "{name} filed under {of}"
+      "filedFromName": "{name} filed under {of}",
+      "rename": "Zmień nazwę {name} na {to}"
     },
     "suggestionsTitle": "Sugestie AI",
     "suggestionsEmpty": "Nic na Ciebie nie czeka.",
@@ -589,12 +597,14 @@
     "proposal": {
       "merge": "Merge into {into}",
       "parent": "File under {of}",
-      "distinct": "Food of its own"
+      "distinct": "Food of its own",
+      "rename": "Zmień nazwę na {to}"
     },
     "skippedReasons": {
       "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
-      "notFound": "No longer exists"
+      "notFound": "No longer exists",
+      "settled": "Nazwa jest już ustalona albo czeka sugestia"
     },
     "icon": {
       "change": "Zmień ikonę",
@@ -1116,7 +1126,10 @@
       "imageGenerationStylePlaceholder": "Prompt dla stylu obrazu...",
       "ingredientIconStyle": "Prompt stylu ikon składników",
       "ingredientIconStyleDescription": "Wysyłany do modelu obrazów, gdy rysowana jest ikona składnika, z dopisaną po nim nazwą produktu i tym, czego jest rodzajem. Określa wygląd wspólny dla wszystkich rysowanych ikon.",
-      "ingredientIconStylePlaceholder": "Prompt dla stylu ikon składników..."
+      "ingredientIconStylePlaceholder": "Prompt dla stylu ikon składników...",
+      "ingredientPlainName": "Prompt porządkowania nazw składników",
+      "ingredientPlainNameDescription": "Wysyłany do modelu językowego, gdy AI porządkuje nazwę składnika; nazwa i jej inne zapisy są dołączane po nim. Mówi, co usunąć z nazwy, a co zostawić.",
+      "ingredientPlainNamePlaceholder": "Prompt porządkowania nazw składników..."
     },
     "unsavedChanges": "Niezapisane zmiany",
     "jsonEditor": {

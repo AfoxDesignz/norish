@@ -430,7 +430,8 @@
       "readAs": "AI가 “{name}”(으)로 읽었습니다.",
       "compared": "비교 대상: {names}.",
       "comparedNothing": "비교할 알려진 식품이 없었습니다.",
-      "fromWords": "Based on name."
+      "fromWords": "Based on name.",
+      "noFood": "AI가 이 이름에서 식품을 찾지 못했습니다."
     },
     "addAlias": "번역 추가",
     "removeAlias": "{alias} 제거",
@@ -569,11 +570,18 @@
     "standaloneOnly": "상위 항목과 종류가 없는 것",
     "findParent": "AI로 상위 항목 찾기",
     "findParentsAll": "AI로 상위 항목 찾기",
+    "cleanNames": {
+      "open": "AI로 이름 정리",
+      "title": "AI로 이름 정리",
+      "intro": "AI가 각 이름을 읽고 분량, 포장 코드, 광고 문구처럼 식품이 아닌 부분을 지웁니다. 언어와 브랜드는 그대로 둡니다. 제안을 확인하기 전까지는 아무것도 바뀌지 않습니다.",
+      "start": "이름 정리"
+    },
     "suggestion": {
       "merge": "{name}을(를) {into}에 병합",
       "parent": "{name}을(를) {of} 아래로 분류",
       "distinct": "{name}을(를) 별개의 식재료로 유지",
-      "filedFromName": "{name} filed under {of}"
+      "filedFromName": "{name} filed under {of}",
+      "rename": "{name}의 이름을 {to}(으)로 변경"
     },
     "suggestionsTitle": "AI 제안",
     "suggestionsEmpty": "대기 중인 항목이 없습니다.",
@@ -589,12 +597,14 @@
     "proposal": {
       "merge": "Merge into {into}",
       "parent": "File under {of}",
-      "distinct": "Food of its own"
+      "distinct": "Food of its own",
+      "rename": "{to}(으)로 이름 변경"
     },
     "skippedReasons": {
       "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
-      "notFound": "No longer exists"
+      "notFound": "No longer exists",
+      "settled": "이름이 이미 확정되었거나 제안이 대기 중입니다"
     },
     "icon": {
       "change": "아이콘 변경",
@@ -1116,7 +1126,10 @@
       "imageGenerationStylePlaceholder": "이미지 스타일을 위한 프롬프트...",
       "ingredientIconStyle": "재료 아이콘 스타일 프롬프트",
       "ingredientIconStyleDescription": "재료 아이콘을 그릴 때 이미지 모델로 전송되며, 그 뒤에 식품 이름과 그것이 어떤 종류인지가 덧붙여집니다. 그려지는 모든 아이콘이 공유하는 스타일을 정합니다.",
-      "ingredientIconStylePlaceholder": "재료 아이콘 스타일을 위한 프롬프트..."
+      "ingredientIconStylePlaceholder": "재료 아이콘 스타일을 위한 프롬프트...",
+      "ingredientPlainName": "재료 이름 정리 프롬프트",
+      "ingredientPlainNameDescription": "AI가 재료 이름을 정리할 때 언어 모델에 보내며, 그 뒤에 이름과 다른 표기가 붙습니다. 이름에서 무엇을 지우고 무엇을 남길지 정합니다.",
+      "ingredientPlainNamePlaceholder": "재료 이름 정리 프롬프트..."
     },
     "unsavedChanges": "저장되지 않은 변경사항",
     "jsonEditor": {

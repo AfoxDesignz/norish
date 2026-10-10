@@ -1,5 +1,6 @@
 import type { Job } from "bullmq";
 
+import type { ReviewMode } from "@norish/shared/contracts/ingredient-catalogue";
 import type {
   RecipeEnrichmentKind,
   RecipeEnrichmentOrigin,
@@ -152,8 +153,8 @@ export interface IngredientIconsJobData {
 export interface IngredientReviewJobData {
   /** The foods, by id and by name, so the job monitor reads "uitjes" rather than an id. */
   ingredients: Array<{ id: string; name: string }>;
-  /** What is asked: what each flagged food is (the default), or what food each is a kind of. */
-  mode?: "review" | "parent";
+  /** What is asked: what each flagged food is (the default), what food each is a kind of, or its Plain Name. */
+  mode?: ReviewMode;
   actor: {
     userId: string;
     householdUserIds: string[] | null;

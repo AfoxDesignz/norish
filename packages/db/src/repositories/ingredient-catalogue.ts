@@ -230,10 +230,11 @@ export async function findCatalogueIngredientNames(
   return names;
 }
 
-/** Where an Ingredient stands now, as a finished round's report reads it: flagged, and filed under a parent. */
+/** Where an Ingredient stands now, as a finished round's report reads it: flagged, filed under a parent, named for good. */
 export interface CatalogueIngredientState {
   flagged: boolean;
   parentId: string | null;
+  nameSettled: boolean;
 }
 
 /**
@@ -248,7 +249,12 @@ export async function findCatalogueIngredientStates(
 
   for (let start = 0; start < unique.length; start += CHUNK) {
     const rows = await db
-      .select({ id: ingredients.id, flagged: ingredients.flagged, parentId: ingredients.parentId })
+      .select({
+        id: ingredients.id,
+        flagged: ingredients.flagged,
+        parentId: ingredients.parentId,
+        nameSettled: ingredients.nameSettled,
+      })
       .from(ingredients)
       .where(inArray(ingredients.id, unique.slice(start, start + CHUNK)));
 
@@ -337,7 +343,13 @@ export async function renameCatalogueIngredient(
 ): Promise<{ id: string } | null> {
   const [row] = await tx
     .update(ingredients)
-    .set({ name, flagged: false, flagReason: null, version: sql`${ingredients.version} + 1` })
+    .set({
+      name,
+      flagged: false,
+      flagReason: null,
+      nameSettled: true,
+      version: sql`${ingredients.version} + 1`,
+    })
     .where(eq(ingredients.id, id))
     .returning({ id: ingredients.id });
 
@@ -461,4 +473,112 @@ export async function isIngredientInUse(tx: DbTransaction, id: string): Promise<
  */
 export async function deleteCatalogueIngredient(tx: DbTransaction, id: string): Promise<void> {
   await tx.delete(ingredients).where(eq(ingredients.id, id));
+}
+
+/**
+ * The foods a round of Clean names may ask about: none from the seed, whose
+ * names are the catalogue's own, none whose name is settled, and none a
+ * suggestion waits on. Nothing here decides which the asker may edit.
+ */
+export async function listUnsettledNameIngredients(): Promise<
+  Array<CatalogueOwner & { id: string; name: string }>
+> {
+  return db
+    .select({ id: ingredients.id, name: ingredients.name, ownerId: ingredients.ownerId })
+    .from(ingredients)
+    .leftJoin(ingredientSuggestions, eq(ingredientSuggestions.ingredientId, ingredients.id))
+    .where(
+      and(
+        isNull(ingredients.offId),
+        eq(ingredients.nameSettled, false),
+        isNull(ingredientSuggestions.id)
+      )
+    )
+    .orderBy(asc(sql`lower(${ingredients.name})`), asc(ingredients.id));
+}
+
+/** One Ingredient as a Plain Name question reads it: its name, whose it is, and whether the name is settled. */
+export async function findIngredientNaming(
+  id: string
+): Promise<(CatalogueOwner & { name: string; nameSettled: boolean; suggested: boolean }) | null> {
+  const [row] = await db
+    .select({
+      name: ingredients.name,
+      ownerId: ingredients.ownerId,
+      nameSettled: ingredients.nameSettled,
+      suggested: sql<boolean>`${ingredientSuggestions.id} is not null`,
+    })
+    .from(ingredients)
+    .leftJoin(ingredientSuggestions, eq(ingredientSuggestions.ingredientId, ingredients.id))
+    .where(eq(ingredients.id, id))
+    .limit(1);
+
+  return row ?? null;
+}
+
+/**
+ * The Ingredient a name already belongs to, other than `exceptId`: one of
+ * its spellings folds the same, or it is named so.
+ */
+export async function findIngredientHolding(
+  text: string,
+  fold: string,
+  exceptId: string
+): Promise<{ id: string; name: string } | null> {
+  const [row] = await db
+    .select({ id: ingredients.id, name: ingredients.name })
+    .from(ingredients)
+    .leftJoin(
+      ingredientAliases,
+      and(eq(ingredientAliases.ingredientId, ingredients.id), eq(ingredientAliases.fold, fold))
+    )
+    .where(
+      and(
+        sql`${ingredients.id} <> ${exceptId}`,
+        or(
+          sql`${ingredientAliases.id} is not null`,
+          sql`lower(${ingredients.name}) = lower(${text})`
+        )
+      )
+    )
+    .limit(1);
+
+  return row ?? null;
+}
+
+/**
+ * Settle an Ingredient's name, under `plain` where one is given: the name
+ * becomes a spelling too, as a person's rename's does, while the flag stays
+ * as it was, since a tidier name says nothing about whether the food is a
+ * duplicate. Only while the name is not settled yet, so a person's rename in
+ * the meantime is the last word; a name another Ingredient took meanwhile
+ * leaves it as it was. Whether it was settled.
+ */
+export async function settleIngredientName(
+  id: string,
+  plain?: { text: string; fold: string }
+): Promise<boolean> {
+  return await db.transaction(async (tx) => {
+    const free = sql`not exists (select 1 from ${ingredients} o where o.id <> ${id} and lower(o.name) = lower(${plain?.text ?? ""}))`;
+    const [row] = await tx
+      .update(ingredients)
+      .set({
+        nameSettled: true,
+        ...(plain ? { name: plain.text } : {}),
+        version: sql`${ingredients.version} + 1`,
+      })
+      .where(
+        and(eq(ingredients.id, id), eq(ingredients.nameSettled, false), ...(plain ? [free] : []))
+      )
+      .returning({ id: ingredients.id });
+
+    if (row && plain) {
+      await tx
+        .insert(ingredientAliases)
+        .values({ text: plain.text, fold: plain.fold, ingredientId: id, ownerId: null })
+        .onConflictDoNothing();
+    }
+
+    return row !== undefined;
+  });
 }

@@ -13,6 +13,7 @@ import { twMerge } from "tailwind-merge";
 import type {
   ReviewScope,
   ReviewScopeSummary,
+  ReviewTokenEstimate,
 } from "@norish/shared/contracts/ingredient-catalogue";
 
 /** The scopes, the gap first: the foods AI has given no answer for yet. */
@@ -21,6 +22,52 @@ const SCOPES: readonly ReviewScope[] = ["unsuggested", "flagged"];
 /** How many foods a scope holds. */
 function countOf(summary: ReviewScopeSummary, scope: ReviewScope): number {
   return scope === "flagged" ? summary.flagged : summary.unsuggested;
+}
+
+/**
+ * How a round's tokens split between the models it asks, for `count` foods,
+ * and one line on what the numbers are based on: the last round where one
+ * was measured, the prompt otherwise, which leaves out a model's reasoning.
+ */
+export function RoundTokens({
+  count,
+  tokens,
+  testId,
+}: {
+  count: number;
+  tokens: ReviewTokenEstimate;
+  testId: string;
+}) {
+  const t = useTranslations("settings.ingredients");
+  const format = useFormatter();
+
+  return (
+    <>
+      {tokens.models.length > 0 ? (
+        <dl className="mt-4 flex flex-col gap-1 text-xs" data-testid={`${testId}-models`}>
+          {tokens.models.map((use) => (
+            <div
+              key={`${use.provider}/${use.model}`}
+              className="flex items-baseline justify-between gap-3"
+            >
+              <dt className="min-w-0 truncate font-mono">{`${use.provider} · ${use.model}`}</dt>
+              <dd className="text-foreground shrink-0 tabular-nums">
+                {t("askAIRound.modelTokens", {
+                  tokens: format.number(count * use.perFood, {
+                    notation: "compact",
+                    maximumFractionDigits: 1,
+                  }),
+                })}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      <p className="mt-2 text-xs" data-testid={`${testId}-tokens`}>
+        {tokens.basis === "measured" ? t("askAIRound.basisMeasured") : t("askAIRound.basisPrompt")}
+      </p>
+    </>
+  );
 }
 
 /**
@@ -118,30 +165,7 @@ export function AskAIRoundModal({
                     );
                   })}
                 </RadioGroup>
-                {models.length > 0 ? (
-                  // How the chosen round's tokens split between the models it asks.
-                  <dl
-                    className="mt-4 flex flex-col gap-1 text-xs"
-                    data-testid="ingredients-ask-ai-models"
-                  >
-                    {models.map((use) => (
-                      <div
-                        key={`${use.provider}/${use.model}`}
-                        className="flex items-baseline justify-between gap-3"
-                      >
-                        <dt className="min-w-0 truncate font-mono">{`${use.provider} · ${use.model}`}</dt>
-                        <dd className="text-foreground shrink-0 tabular-nums">
-                          {t("askAIRound.modelTokens", { tokens: compact(count * use.perFood) })}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                ) : null}
-                <p className="mt-2 text-xs" data-testid="ingredients-ask-ai-tokens">
-                  {summary.tokens.basis === "measured"
-                    ? t("askAIRound.basisMeasured")
-                    : t("askAIRound.basisPrompt")}
-                </p>
+                <RoundTokens count={count} testId="ingredients-ask-ai" tokens={summary.tokens} />
               </>
             ) : isError ? (
               <p className="text-danger mt-4">{t("errors.unknown")}</p>

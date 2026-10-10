@@ -430,7 +430,8 @@
       "readAs": "AI læste det som “{name}”.",
       "compared": "Sammenlignet med: {names}.",
       "comparedNothing": "Der var ingen kendt fødevare at sammenligne med.",
-      "fromWords": "Based on name."
+      "fromWords": "Based on name.",
+      "noFood": "AI fandt ingen fødevare i dette navn."
     },
     "addAlias": "Tilføj en oversættelse",
     "removeAlias": "Fjern {alias}",
@@ -569,11 +570,18 @@
     "standaloneOnly": "Uden forælder eller slags",
     "findParent": "Find forælder med AI",
     "findParentsAll": "Find forældre med AI",
+    "cleanNames": {
+      "open": "Ryd navne op med AI",
+      "title": "Ryd navne op med AI",
+      "intro": "AI læser hvert navn og fjerner det, der ikke er fødevaren, som mængder, pakningskoder og reklameord. Sproget og mærket bevares. Intet ændres, før du bekræfter et forslag.",
+      "start": "Ryd navne op"
+    },
     "suggestion": {
       "merge": "Flet {name} sammen med {into}",
       "parent": "Placer {name} under {of}",
       "distinct": "Behold {name} som en fødevare for sig",
-      "filedFromName": "{name} filed under {of}"
+      "filedFromName": "{name} filed under {of}",
+      "rename": "Omdøb {name} til {to}"
     },
     "suggestionsTitle": "AI-forslag",
     "suggestionsEmpty": "Intet venter på dig.",
@@ -589,12 +597,14 @@
     "proposal": {
       "merge": "Merge into {into}",
       "parent": "File under {of}",
-      "distinct": "Food of its own"
+      "distinct": "Food of its own",
+      "rename": "Omdøb til {to}"
     },
     "skippedReasons": {
       "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
-      "notFound": "No longer exists"
+      "notFound": "No longer exists",
+      "settled": "Navnet er allerede fastlagt, eller et forslag venter"
     },
     "icon": {
       "change": "Skift ikonet",
@@ -1116,7 +1126,10 @@
       "imageGenerationStylePlaceholder": "Prompt til billedstilen...",
       "ingredientIconStyle": "Prompt til stil for ingrediensikoner",
       "ingredientIconStyleDescription": "Sendes til billedmodellen, når en ingrediens får tegnet et ikon, med fødevarens navn og hvad den er en slags af tilføjet bagefter. Bestemmer det udseende, alle tegnede ikoner deler.",
-      "ingredientIconStylePlaceholder": "Prompt til stilen for ingrediensikoner..."
+      "ingredientIconStylePlaceholder": "Prompt til stilen for ingrediensikoner...",
+      "ingredientPlainName": "Prompt til oprydning af ingrediensnavne",
+      "ingredientPlainNameDescription": "Sendes til sprogmodellen, når AI rydder op i en ingrediens’ navn, med navnet og dets andre stavemåder tilføjet efter. Siger, hvad der skal fjernes fra et navn, og hvad der skal blive.",
+      "ingredientPlainNamePlaceholder": "Prompt til oprydning af ingrediensnavne..."
     },
     "unsavedChanges": "Ugemte ændringer",
     "jsonEditor": {

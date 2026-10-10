@@ -430,7 +430,8 @@
       "readAs": "ИИ прочитал это как «{name}».",
       "compared": "Сравнивалось с: {names}.",
       "comparedNothing": "Не было известного продукта для сравнения.",
-      "fromWords": "Based on name."
+      "fromWords": "Based on name.",
+      "noFood": "ИИ не нашёл в этом названии продукта."
     },
     "addAlias": "Добавить перевод",
     "removeAlias": "Удалить {alias}",
@@ -569,11 +570,18 @@
     "standaloneOnly": "Без родителя и видов",
     "findParent": "Найти родителя с ИИ",
     "findParentsAll": "Найти родителей с ИИ",
+    "cleanNames": {
+      "open": "Очистить названия с ИИ",
+      "title": "Очистить названия с ИИ",
+      "intro": "ИИ читает каждое название и убирает всё, что не является продуктом: количества, коды упаковки и рекламные слова. Язык и марка сохраняются. Ничего не изменится, пока вы не подтвердите предложение.",
+      "start": "Очистить названия"
+    },
     "suggestion": {
       "merge": "Объединить {name} с {into}",
       "parent": "Отнести {name} к {of}",
       "distinct": "Оставить {name} отдельным продуктом",
-      "filedFromName": "{name} filed under {of}"
+      "filedFromName": "{name} filed under {of}",
+      "rename": "Переименовать {name} в {to}"
     },
     "suggestionsTitle": "Предложения ИИ",
     "suggestionsEmpty": "Ничего не ждёт вашего решения.",
@@ -589,12 +597,14 @@
     "proposal": {
       "merge": "Merge into {into}",
       "parent": "File under {of}",
-      "distinct": "Food of its own"
+      "distinct": "Food of its own",
+      "rename": "Переименовать в {to}"
     },
     "skippedReasons": {
       "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
-      "notFound": "No longer exists"
+      "notFound": "No longer exists",
+      "settled": "Название уже закреплено, или ждёт предложение"
     },
     "icon": {
       "change": "Изменить значок",
@@ -1116,7 +1126,10 @@
       "imageGenerationStylePlaceholder": "Промпт для стиля изображения...",
       "ingredientIconStyle": "Промпт стиля значков ингредиентов",
       "ingredientIconStyleDescription": "Отправляется модели изображений, когда рисуется значок ингредиента; после него добавляются название продукта и то, разновидностью чего он является. Задаёт вид, общий для всех нарисованных значков.",
-      "ingredientIconStylePlaceholder": "Промпт для стиля значков ингредиентов..."
+      "ingredientIconStylePlaceholder": "Промпт для стиля значков ингредиентов...",
+      "ingredientPlainName": "Промпт очистки названий ингредиентов",
+      "ingredientPlainNameDescription": "Отправляется языковой модели, когда ИИ очищает название ингредиента; после него добавляются название и его другие написания. Говорит, что убрать из названия, а что оставить.",
+      "ingredientPlainNamePlaceholder": "Промпт очистки названий ингредиентов..."
     },
     "unsavedChanges": "Несохранённые изменения",
     "jsonEditor": {

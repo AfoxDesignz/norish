@@ -30,6 +30,9 @@ const reviewer = vi.hoisted(() => ({ reviewFlaggedWithAI: vi.fn(), findParentWit
 const realtime = vi.hoisted(() => ({ publish: vi.fn(async () => undefined) }));
 
 vi.mock("@norish/shared-server/ingredients/review", () => reviewer);
+const plainNames = vi.hoisted(() => ({ cleanNameWithAI: vi.fn() }));
+
+vi.mock("@norish/shared-server/ingredients/plain-names", () => plainNames);
 vi.mock("@norish/config/env-config-server", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@norish/config/env-config-server")>();
 
@@ -81,11 +84,21 @@ function published(event: string) {
 }
 
 const trace = { considered: ["onion", "shallot"], englishName: "onion" };
-const ZERO = { merge: 0, parent: 0, distinct: 0, unsure: 0, skipped: 0, failed: 0 };
+const ZERO = {
+  merge: 0,
+  parent: 0,
+  distinct: 0,
+  unsure: 0,
+  rename: 0,
+  plain: 0,
+  skipped: 0,
+  failed: 0,
+};
 
 beforeEach(() => {
   reviewer.reviewFlaggedWithAI.mockReset();
   reviewer.findParentWithAI.mockReset();
+  plainNames.cleanNameWithAI.mockReset();
   realtime.publish.mockClear();
 });
 
@@ -107,6 +120,30 @@ describe("processIngredientReviewJob", () => {
     expect(published("changed")).toEqual([{ ingredientIds: ["red", "onions"] }]);
     expect(published("review").at(-1)).toMatchObject({
       counts: { parent: 1, merge: 1 },
+      finished: true,
+    });
+  });
+
+  it("asks each food for its Plain Name in a round of Clean names, counting renames and plain names", async () => {
+    plainNames.cleanNameWithAI
+      .mockResolvedValueOnce({ outcome: "rename", to: "tonijn uit blik" })
+      .mockResolvedValueOnce({ outcome: "plain" })
+      .mockResolvedValueOnce({ outcome: "skipped", reason: "settled" });
+    const job = fakeJob(["tonijn", "salt", "settled"]);
+
+    (job.data as { mode?: "name" }).mode = "name";
+    await processIngredientReviewJob(job);
+
+    expect(reviewer.reviewFlaggedWithAI).not.toHaveBeenCalled();
+    expect(plainNames.cleanNameWithAI.mock.calls).toEqual([
+      [actor, "tonijn"],
+      [actor, "salt"],
+      [actor, "settled"],
+    ]);
+    // A rename waiting and a name settled are worth announcing; a food passed over is not.
+    expect(published("changed")).toEqual([{ ingredientIds: ["tonijn", "salt"] }]);
+    expect(published("review").at(-1)).toMatchObject({
+      counts: { rename: 1, plain: 1, skipped: 1 },
       finished: true,
     });
   });
@@ -533,5 +570,22 @@ describe("readRoundTokens", () => {
     });
     await expect(queueOf(old).read()).resolves.toBeNull();
     await expect(queueOf().read()).resolves.toBeNull();
+  });
+
+  it("measures Clean names over its own rounds, and Ask AI over the others", async () => {
+    const review = finishedRound(
+      [{ outcome: "distinct", ...trace }],
+      [{ model: "gpt-5.6-luna", tokens: 3553 }]
+    );
+    const named = {
+      ...finishedRound([{ outcome: "plain" }], [{ model: "gpt-5.6-luna", tokens: 120 }]),
+      data: { ingredients: [], actor, mode: "name" },
+    };
+    const queue = { getJobs: vi.fn(async () => [named, review]) };
+    const read = (mode: "review" | "name") =>
+      readRoundTokens(queue as unknown as Parameters<typeof readRoundTokens>[0], mode);
+
+    await expect(read("name")).resolves.toMatchObject({ models: [{ perFood: 120 }] });
+    await expect(read("review")).resolves.toMatchObject({ models: [{ perFood: 3553 }] });
   });
 });

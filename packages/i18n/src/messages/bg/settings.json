@@ -430,7 +430,8 @@
       "readAs": "ИИ го прочете като „{name}“.",
       "compared": "Сравнено с: {names}.",
       "comparedNothing": "Нямаше позната храна за сравнение.",
-      "fromWords": "Based on name."
+      "fromWords": "Based on name.",
+      "noFood": "ИИ не намери храна в това име."
     },
     "addAlias": "Добави превод",
     "removeAlias": "Премахни {alias}",
@@ -569,11 +570,18 @@
     "standaloneOnly": "Без родител или видове",
     "findParent": "Намери родител с ИИ",
     "findParentsAll": "Намери родители с ИИ",
+    "cleanNames": {
+      "open": "Изчисти имената с ИИ",
+      "title": "Изчисти имената с ИИ",
+      "intro": "ИИ чете всяко име и премахва това, което не е храната, като количества, кодове на опаковки и рекламни думи. Запазва езика и марката. Нищо не се променя, докато не потвърдите предложение.",
+      "start": "Изчисти имената"
+    },
     "suggestion": {
       "merge": "Обедини {name} с {into}",
       "parent": "Класирай {name} под {of}",
       "distinct": "Запази {name} като самостоятелна храна",
-      "filedFromName": "{name} filed under {of}"
+      "filedFromName": "{name} filed under {of}",
+      "rename": "Преименувай {name} на {to}"
     },
     "suggestionsTitle": "Предложения от ИИ",
     "suggestionsEmpty": "Нищо не чака вашето решение.",
@@ -589,12 +597,14 @@
     "proposal": {
       "merge": "Merge into {into}",
       "parent": "File under {of}",
-      "distinct": "Food of its own"
+      "distinct": "Food of its own",
+      "rename": "Преименувай на {to}"
     },
     "skippedReasons": {
       "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
-      "notFound": "No longer exists"
+      "notFound": "No longer exists",
+      "settled": "Името вече е уточнено или чака предложение"
     },
     "icon": {
       "change": "Смени иконата",
@@ -1116,7 +1126,10 @@
       "imageGenerationStylePlaceholder": "Промпт за стила на изображението...",
       "ingredientIconStyle": "Промпт за стила на иконите на съставките",
       "ingredientIconStyleDescription": "Изпраща се на модела за изображения, когато се рисува икона на съставка, с името на храната и какъв вид е тя след него. Определя вида, общ за всички нарисувани икони.",
-      "ingredientIconStylePlaceholder": "Промпт за стила на иконите на съставките..."
+      "ingredientIconStylePlaceholder": "Промпт за стила на иконите на съставките...",
+      "ingredientPlainName": "Промпт за изчистване на имена на съставки",
+      "ingredientPlainNameDescription": "Изпраща се до езиковия модел, когато ИИ изчиства името на съставка, като името и другите му изписвания се добавят след него. Казва какво да се премахне от име и какво да остане.",
+      "ingredientPlainNamePlaceholder": "Промпт за изчистване на имена на съставки..."
     },
     "unsavedChanges": "Незапазени промени",
     "jsonEditor": {

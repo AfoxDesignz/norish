@@ -4,7 +4,8 @@
  * A round of Ask AI over Flagged Ingredients (ADR-0037), one job for however
  * many foods a person asked about, one step per food. Each food is asked the
  * question the Ingredients page's own Ask AI asks, a few at once, and a sure
- * answer is left as a suggestion for a person to confirm. The round's count
+ * answer is left as a suggestion for a person to confirm. A round of Clean
+ * names asks each food for its Plain Name instead, and leaves a rename. The round's count
  * follows over the socket as answers come, and the changes are announced
  * together once every food is answered, so the suggestions arrive as one. The round outlives the tab that started it. A food no
  * longer flagged, or one the asker may not edit, is passed over, and a food
@@ -21,6 +22,7 @@ import type { IngredientReviewJobData } from "@norish/queue/contracts/job-types"
 import type { ReviewOutcome } from "@norish/shared-server/ingredients/review";
 import { SERVER_CONFIG } from "@norish/config/env-config-server";
 import { CatalogueEditError } from "@norish/shared-server/ingredients/catalogue";
+import { cleanNameWithAI } from "@norish/shared-server/ingredients/plain-names";
 import { findParentWithAI, reviewFlaggedWithAI } from "@norish/shared-server/ingredients/review";
 import { createLogger } from "@norish/shared-server/logger";
 import { ingredients } from "@norish/shared-server/realtime/ingredients";
@@ -51,6 +53,10 @@ async function ask(
   ingredientId: string
 ): Promise<ReviewStepDetail> {
   try {
+    if (job.data.mode === "name") {
+      return { ingredientId, ...(await cleanNameWithAI(job.data.actor, ingredientId)) };
+    }
+
     const outcome: ReviewOutcome =
       job.data.mode === "parent"
         ? await findParentWithAI(job.data.actor, ingredientId)

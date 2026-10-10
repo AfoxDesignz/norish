@@ -26,11 +26,7 @@ export function reviewTrace(
 }
 
 /** What to tell the viewer about an AI review, in their words: what it now suggests. */
-export function reviewMessage(
-  t: Translate,
-  name: string,
-  outcome: ReviewOutcome | Exclude<ReviewReportEntry, { outcome: "skipped" | "failed" }>
-): string {
+export function reviewMessage(t: Translate, name: string, outcome: ReviewOutcome): string {
   switch (outcome.outcome) {
     case "merge":
       return t("aiOutcomes.merge", { name, into: outcome.into });
@@ -45,34 +41,6 @@ export function reviewMessage(
         : t("aiOutcomes.unsure", { name });
     case "not-flagged":
       return t("aiOutcomes.notFlagged", { name });
-  }
-}
-
-/**
- * One food of a round's report, in the viewer's words: what AI suggested
- * for it, and how it got there where it was asked at all.
- */
-export function reportEntryCopy(
-  t: Translate,
-  entry: ReviewReportEntry
-): { message: string; detail: string | null } {
-  const name = entry.name ?? entry.ingredientId;
-
-  switch (entry.outcome) {
-    case "skipped":
-      return {
-        message:
-          entry.reason === "not-flagged"
-            ? t("aiOutcomes.skippedNotFlagged", { name })
-            : entry.reason === "forbidden"
-              ? t("aiOutcomes.skippedForbidden", { name })
-              : t("aiOutcomes.skippedNotFound", { name }),
-        detail: null,
-      };
-    case "failed":
-      return { message: t("aiOutcomes.failed", { name }), detail: entry.error };
-    default:
-      return { message: reviewMessage(t, name, entry), detail: reviewTrace(t, entry) };
   }
 }
 
@@ -94,6 +62,8 @@ export function suggestionMessage(
         : t("suggestion.parent", { name, of: target });
     case "distinct":
       return t("suggestion.distinct", { name });
+    case "rename":
+      return t("suggestion.rename", { name, to: suggestion.proposedName ?? "" });
   }
 }
 
@@ -112,15 +82,19 @@ export function suggestionProposal(
       return t("proposal.parent", { of: target });
     case "distinct":
       return t("proposal.distinct");
+    case "rename":
+      return t("proposal.rename", { to: suggestion.proposedName ?? "" });
   }
 }
 
 /** Why a round passed a food over, without the food's name. */
 export function skippedReason(
   t: Translate,
-  reason: "not-flagged" | "forbidden" | "not-found"
+  reason: Extract<ReviewReportEntry, { outcome: "skipped" }>["reason"]
 ): string {
   switch (reason) {
+    case "settled":
+      return t("skippedReasons.settled");
     case "not-flagged":
       return t("skippedReasons.notFlagged");
     case "forbidden":
@@ -131,9 +105,12 @@ export function skippedReason(
 }
 
 /**
- * How a suggestion came about: what AI tried, or that the words of the name
- * alone gave it.
+ * How a suggestion came about: what AI tried, what it read the name as when
+ * asked for its Plain Name, or that the words of the name alone gave it.
  */
 export function suggestionTrace(t: Translate, suggestion: IngredientSuggestion): string {
-  return suggestion.source === "words" ? t("aiTrace.fromWords") : reviewTrace(t, suggestion);
+  if (suggestion.source === "words") return t("aiTrace.fromWords");
+  if (suggestion.proposedName) return t("aiTrace.readAs", { name: suggestion.proposedName });
+
+  return reviewTrace(t, suggestion);
 }

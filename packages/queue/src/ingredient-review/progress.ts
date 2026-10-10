@@ -11,6 +11,7 @@ import type { Job, Queue } from "bullmq";
 import type { IngredientReviewJobData } from "@norish/queue/contracts/job-types";
 import type {
   ModelTokenEstimate,
+  ReviewMode,
   ReviewReport,
   ReviewReportEntry,
 } from "@norish/shared/contracts/ingredient-catalogue";
@@ -38,6 +39,8 @@ const COUNTED: Record<Exclude<ReviewStepDetail["outcome"], never>, keyof ReviewC
   parent: "parent",
   distinct: "distinct",
   unsure: "unsure",
+  rename: "rename",
+  plain: "plain",
   skipped: "skipped",
   failed: "failed",
 };
@@ -77,6 +80,8 @@ export function summarizeReviewRound(
     parent: 0,
     distinct: 0,
     unsure: 0,
+    rename: 0,
+    plain: 0,
     skipped: 0,
     failed: 0,
   };
@@ -166,17 +171,21 @@ const MEASURED_ROUNDS = 10;
 
 /**
  * About how many tokens a food's question took on each model in the latest
- * finished round that recorded them, as the providers reported them: each
- * model's tokens over the foods the round asked about, since a food passed
- * over asked nothing. Null where no round the queue still holds recorded
- * any: one from before Norish counted tokens, or none kept at all.
+ * finished round of `mode` that recorded them, as the providers reported
+ * them: each model's tokens over the foods the round asked about, since a
+ * food passed over asked nothing. Null where no round the queue still holds
+ * recorded any: one from before Norish counted tokens, or none kept at all.
+ * Review and Find parents ask the one question; Clean names asks another.
  */
 export async function readRoundTokens(
-  queue: Queue<IngredientReviewJobData>
+  queue: Queue<IngredientReviewJobData>,
+  mode: ReviewMode = "review"
 ): Promise<{ foods: number; models: ModelTokenEstimate[] } | null> {
   const jobs = await queue.getJobs(["completed"], 0, MEASURED_ROUNDS - 1, false);
+  const asks = (job: { data: IngredientReviewJobData }) =>
+    (job.data.mode === "name") === (mode === "name");
 
-  for (const job of jobs) {
+  for (const job of jobs.filter(asks)) {
     const attempts = readStepProgress(job.progress)?.attempts ?? [];
     const asked = settledSteps(job.progress).filter((step) => step.outcome !== "skipped").length;
     const byModel = new Map<string, { provider: string; model: string; tokens: number }>();

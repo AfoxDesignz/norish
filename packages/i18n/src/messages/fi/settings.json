@@ -430,7 +430,8 @@
       "readAs": "Tekoäly luki sen nimellä ”{name}”.",
       "compared": "Verrattiin: {names}.",
       "comparedNothing": "Ei ollut tunnettua ruoka-ainetta, johon verrata.",
-      "fromWords": "Based on name."
+      "fromWords": "Based on name.",
+      "noFood": "Tekoäly ei löytänyt tästä nimestä ruoka-ainetta."
     },
     "addAlias": "Lisää käännös",
     "removeAlias": "Poista {alias}",
@@ -569,11 +570,18 @@
     "standaloneOnly": "Ilman yläkäsitettä tai lajeja",
     "findParent": "Etsi yläkäsite tekoälyllä",
     "findParentsAll": "Etsi yläkäsitteet tekoälyllä",
+    "cleanNames": {
+      "open": "Siivoa nimet tekoälyllä",
+      "title": "Siivoa nimet tekoälyllä",
+      "intro": "Tekoäly lukee jokaisen nimen ja poistaa siitä sen, mikä ei ole ruoka-ainetta, kuten määrät, pakkauskoodit ja mainossanat. Kieli ja merkki säilyvät. Mikään ei muutu ennen kuin vahvistat ehdotuksen.",
+      "start": "Siivoa nimet"
+    },
     "suggestion": {
       "merge": "Yhdistä {name} kohteeseen {into}",
       "parent": "Luokittele {name} kohteen {of} alle",
       "distinct": "Pidä {name} omana ainesosanaan",
-      "filedFromName": "{name} filed under {of}"
+      "filedFromName": "{name} filed under {of}",
+      "rename": "Nimeä {name} uudelleen: {to}"
     },
     "suggestionsTitle": "Tekoälyn ehdotukset",
     "suggestionsEmpty": "Mikään ei odota sinua.",
@@ -589,12 +597,14 @@
     "proposal": {
       "merge": "Merge into {into}",
       "parent": "File under {of}",
-      "distinct": "Food of its own"
+      "distinct": "Food of its own",
+      "rename": "Nimeä uudelleen: {to}"
     },
     "skippedReasons": {
       "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
-      "notFound": "No longer exists"
+      "notFound": "No longer exists",
+      "settled": "Nimi on jo vahvistettu, tai ehdotus odottaa"
     },
     "icon": {
       "change": "Vaihda kuvake",
@@ -1116,7 +1126,10 @@
       "imageGenerationStylePlaceholder": "Kehote kuvan tyylille...",
       "ingredientIconStyle": "Ainesosakuvakkeiden tyylikehote",
       "ingredientIconStyleDescription": "Lähetetään kuvamallille, kun ainesosalle piirretään kuvake, ja sen perään liitetään ruoan nimi ja se, minkä lajia se on. Määrää ilmeen, joka on yhteinen kaikille piirretyille kuvakkeille.",
-      "ingredientIconStylePlaceholder": "Kehote ainesosakuvakkeiden tyylille..."
+      "ingredientIconStylePlaceholder": "Kehote ainesosakuvakkeiden tyylille...",
+      "ingredientPlainName": "Ainesosien nimien siivouskehote",
+      "ingredientPlainNameDescription": "Lähetetään kielimallille, kun tekoäly siivoaa ainesosan nimen, ja nimi sekä sen muut kirjoitusasut lisätään perään. Kertoo, mitä nimestä poistetaan ja mitä jätetään.",
+      "ingredientPlainNamePlaceholder": "Kehote ainesosien nimien siivoamiseen..."
     },
     "unsavedChanges": "Tallentamattomia muutoksia",
     "jsonEditor": {

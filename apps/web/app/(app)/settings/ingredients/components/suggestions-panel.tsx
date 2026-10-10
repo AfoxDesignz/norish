@@ -384,7 +384,9 @@ export function SuggestionsPanel({
                 ? skippedReason(t, entry.reason)
                 : entry.outcome === "failed"
                   ? entry.error
-                  : reviewTrace(t, entry)}
+                  : entry.reason === "no-food"
+                    ? t("aiTrace.noFood")
+                    : reviewTrace(t, entry)}
             </p>
           </div>
         );
