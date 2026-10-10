@@ -1,0 +1,46 @@
+# Ingredient AI upkeep
+
+Status: ready-for-agent
+
+## Problem Statement
+
+The catalogue holds names the Ingredient Words cannot fix ("GR TONIJN UIT BLIK", "heaped cups plain flour"), and the only remedy is renaming them by hand, one at a time. A catalogue may also hold products ("Unox Knaks"), and nothing in the icon request the code owns stops a drawn icon from carrying a brand. An administrator who wants new foods tidied and drawn has to come back and run rounds by hand. Once the Suggestions panel of an Ask AI round is closed and the page reloaded, the list of foods AI was unsure about, passed over or failed on is gone.
+
+## Solution
+
+1. **Unbranded product icons.** The code-owned composition of every icon request says that a food which is a product is drawn as it is sold, in its pack's shape, with no logo, text, brand colours or trademark shape. It holds whatever style the administrator sets, for copyright as much as for looks. The default style prompt drops its "brand packaging" ban, which now contradicts this. Instances that never edited the prompt pick up the new default.
+2. **The round's report stays.** The header's Suggestions button also shows while the instance's latest finished round has foods it got no suggestion for. That round is read from the server rather than from the tab that started it, so a reload or another member's tab finds it. Rows for foods since unflagged or deleted drop out. The report lasts until the next round replaces it or job retention removes the job.
+3. **Clean names with AI.** A header button on the Ingredients page opens a dialog with a count and a token estimate. It starts a round, a third mode of the Ask AI round, that asks AI for the **Plain Name** of each food that:
+   - is not from the seed,
+   - has no settled name,
+   - has no suggestion waiting.
+
+   AI sees the food's name and its spellings. A different plain name becomes a rename suggestion in the Suggestions panel. A plain name another food already spells becomes a merge suggestion into that food. Confirming a rename renames the food (the old name stays a spelling) and clears its flag. Confirming or dismissing settles the name. One round runs at a time.
+4. **Automatic for new ingredients.** Admin → AI processing → AI config gets a multi-select under "Automatic recipe enrichment": **Automatic for new ingredients**, with "Clean the name" and "Draw an icon". The second is offered only when image generation is configured. Both are off by default and follow the AI switch.
+   - **Clean the name** runs a background job after a food is minted by someone's action (recipe save or import, grocery, recurring grocery, pantry). It renames the food directly to its plain name, settles the name, and leaves the flag. If another food already spells that name, it leaves a merge suggestion instead.
+   - **Draw an icon** draws a new food that would show no icon at all (no own icon, none shipped, nothing to borrow), flagged or not. When cleaning is on too, it draws after the clean.
+   - The upgrade backfill, the seed and the recheck never trigger either.
+
+**Settled name.** A food's name is settled once AI gave it its plain name, or a person renamed it, confirmed a proposed name or dismissed one. The recheck's `adoptPlainName` never renames a settled food, and no clean round asks about it.
+
+## Decisions
+
+- No branding is code-owned (composition), never the administrator's prompt.
+- A product is drawn as sold, blank, even though a blank carton reads the same for milk, cream and juice.
+- Plain Name keeps the language, the brand and variant markers: see `CONTEXT.md`.
+- AI never changes an existing food alone; cleaning a new food is part of minting (ADR-0037, amended 2026-10-10).
+- A dismissed clean sticks. Ask AI's own behaviour is unchanged.
+- Only foods with nothing to show are drawn automatically: no Decision Model call, no drawing a red onion when onion fits.
+
+## Out of scope
+
+- A per-food "clean" button in the Ingredient panel (renaming by hand covers it).
+- Redrawing the shipped icon set.
+- Changing how Ask AI treats dismissed suggestions.
+
+## Testing
+
+- Unit: composition text, plain-name answer handling (same name → no suggestion, taken spelling → merge), confirm/dismiss settling, recheck skipping settled names, the auto-clean/auto-draw triggers firing only for action mints, the setting gating.
+- Web: the Suggestions button shows for a finished round's report after reload; the clean dialog.
+- E2E (`ai` project): a clean round leaves a rename suggestion that confirms into a renamed, unflagged food.
+- Docs: Ingredients page and AI configuration pages, release notes for the Target Version.
