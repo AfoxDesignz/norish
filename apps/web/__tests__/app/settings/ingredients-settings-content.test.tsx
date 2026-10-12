@@ -30,6 +30,7 @@ type Item = {
     locale?: string | null;
     seeded?: boolean;
     canRemove: boolean;
+    inUse?: boolean;
   }>;
 };
 
@@ -611,6 +612,19 @@ describe("IngredientsSettingsContent", () => {
     expect(within(theirs).queryByTestId("ingredient-alias-move")).toBeNull();
     // Adding a spelling is open to everyone.
     expect(within(theirs).getByTestId("ingredient-alias-input")).toBeInTheDocument();
+  });
+
+  it("keeps the cross off a spelling something uses, which may still be moved", async () => {
+    items = [
+      { ...onion, aliases: [{ id: "a-onion", text: "onion", canRemove: true, inUse: true }] },
+    ];
+    render(<IngredientsSettingsContent />);
+    const opened = await open("onion");
+
+    await showSpellings(opened);
+
+    expect(within(opened).queryByRole("button", { name: "removeAlias" })).toBeNull();
+    expect(within(opened).getByTestId("ingredient-alias-move")).toBeInTheDocument();
   });
 
   it("marks a flagged food distinct", async () => {

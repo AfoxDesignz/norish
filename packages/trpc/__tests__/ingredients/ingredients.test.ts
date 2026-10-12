@@ -1084,7 +1084,16 @@ describe("the list", () => {
           ownIcon: false,
           canEdit: false,
           // An English viewer sees the household's own spelling; the Dutch one is counted.
-          aliases: [{ id: ALIAS, text: "onions", locale: null, seeded: false, canRemove: true }],
+          aliases: [
+            {
+              id: ALIAS,
+              text: "onions",
+              locale: null,
+              seeded: false,
+              canRemove: true,
+              inUse: false,
+            },
+          ],
           hiddenSpellings: 1,
         },
       ],
@@ -1095,13 +1104,21 @@ describe("the list", () => {
   it("lists every spelling of one Ingredient on request", async () => {
     withPolicy("household");
     catalogue.listCatalogueAliasesOf.mockResolvedValue([
-      { id: ALIAS, text: "onions", ownerId: HOUSEMATE },
+      { id: ALIAS, text: "onions", ownerId: HOUSEMATE, inUse: true },
       { id: "seeded-alias", text: "ui", ownerId: null, locale: "nl", seeded: true },
     ]);
 
+    // A spelling something points at keeps canRemove, which moving it needs, and says it is in use.
     await expect(callerFor().spellings({ ingredientId: ONION })).resolves.toEqual([
-      { id: ALIAS, text: "onions", locale: null, seeded: false, canRemove: true },
-      { id: "seeded-alias", text: "ui", locale: "nl", seeded: true, canRemove: false },
+      { id: ALIAS, text: "onions", locale: null, seeded: false, canRemove: true, inUse: true },
+      {
+        id: "seeded-alias",
+        text: "ui",
+        locale: "nl",
+        seeded: true,
+        canRemove: false,
+        inUse: false,
+      },
     ]);
   });
 });

@@ -477,7 +477,7 @@ function IngredientPanelContent({
         ) : (
           spelling.text
         )}
-        {spelling.canRemove ? (
+        {spelling.canRemove && !spelling.inUse ? (
           <button
             aria-label={
               pendingRemoval

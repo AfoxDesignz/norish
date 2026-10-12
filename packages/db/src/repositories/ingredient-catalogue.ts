@@ -46,7 +46,21 @@ export interface CatalogueAlias {
   ownerId: string | null;
   locale?: string | null;
   seeded?: boolean;
+  /** Whether a recipe line, grocery, recurring grocery or Pantry Ingredient points at it. */
+  inUse?: boolean;
 }
+
+/**
+ * Whether anything points at the spelling a read of `ingredient_aliases`
+ * is on. Qualified by hand: a single-table select renders its columns bare,
+ * and a bare `id` inside the subquery would be the referencing row's own.
+ */
+const aliasInUse = sql<boolean>`(${or(
+  ...[recipeIngredients, groceries, recurringGroceries, pantryIngredients].map(
+    (table) =>
+      sql`exists (select 1 from ${table} where ${table.ingredientAliasId} = ${ingredientAliases}.${sql.identifier("id")})`
+  )
+)})`;
 
 /** Who owns a row of the catalogue, which is what the edit policy is asked about. */
 export interface CatalogueOwner {
@@ -152,6 +166,7 @@ export async function listCatalogueIngredients(query: {
       ownerId: ingredientAliases.ownerId,
       locale: ingredientAliases.locale,
       seeded: ingredientAliases.seeded,
+      inUse: aliasInUse,
       ingredientId: ingredientAliases.ingredientId,
     })
     .from(ingredientAliases)
@@ -181,6 +196,7 @@ export async function listCatalogueAliasesOf(ingredientId: string): Promise<Cata
       ownerId: ingredientAliases.ownerId,
       locale: ingredientAliases.locale,
       seeded: ingredientAliases.seeded,
+      inUse: aliasInUse,
     })
     .from(ingredientAliases)
     .where(eq(ingredientAliases.ingredientId, ingredientId))
