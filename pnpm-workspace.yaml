@@ -62,6 +62,11 @@ overrides:
   "@trpc/client": 11.18.0
   "@trpc/server": 11.18.0
   "@trpc/tanstack-react-query": 11.18.0
+  # Security floors for transitive packages whose parents pin an old range:
+  # protobufjs via testcontainers' dockerode, shell-quote via mobile's
+  # react-devtools-core. Drop each once its parent resolves past the floor.
+  "protobufjs@<7.6.5": ^7.6.5
+  "shell-quote@<1.9.0": ^1.9.0
   zod: 4.4.3
 
 onlyBuiltDependencies:
