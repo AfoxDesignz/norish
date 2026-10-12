@@ -3,7 +3,7 @@
 ##############################
 # Base image (minimal, no pnpm needed at runtime)
 ##############################
-FROM node:22-alpine3.21 AS base
+FROM node:22-alpine3.24 AS base
 
 # Security: upgrade all packages to latest versions to fix CVEs
 RUN apk upgrade --no-cache && \
