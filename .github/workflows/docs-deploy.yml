@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "apps/docs/**"
+      # The docs read the product's colour tokens from here.
+      - "tooling/tailwind/heroui-theme.css"
       - ".github/workflows/docs-deploy.yml"
   workflow_dispatch:
 
