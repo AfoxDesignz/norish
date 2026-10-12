@@ -311,6 +311,8 @@ export const markGroceryDoneProcedure = authedProcedure
       protect: true,
       tags: ["Groceries"],
       summary: "Mark a grocery as done",
+      description:
+        "Send the grocery's current `version` from the list. If it no longer matches, nothing changes and the response has `stale: true`: fetch the list again and retry.",
       errorResponses: {
         401: "Missing or invalid API credentials",
         404: "Grocery not found",
@@ -351,6 +353,8 @@ export const markGroceryUndoneProcedure = authedProcedure
       protect: true,
       tags: ["Groceries"],
       summary: "Mark a grocery as not done",
+      description:
+        "Send the grocery's current `version` from the list. If it no longer matches, nothing changes and the response has `stale: true`: fetch the list again and retry.",
       errorResponses: {
         401: "Missing or invalid API credentials",
         404: "Grocery not found",
@@ -391,6 +395,8 @@ export const deleteGroceryProcedure = authedProcedure
       protect: true,
       tags: ["Groceries"],
       summary: "Delete a grocery",
+      description:
+        "Send the grocery's current `version` from the list. If it no longer matches, nothing changes and the response has `stale: true`: fetch the list again and retry.",
       errorResponses: {
         401: "Missing or invalid API credentials",
         404: "Grocery not found",
@@ -430,6 +436,8 @@ export const assignGroceryToStoreProcedure = authedProcedure
       protect: true,
       tags: ["Groceries"],
       summary: "Assign a grocery to a store",
+      description:
+        "Send the grocery's current `version` from the list; a stale version changes nothing and returns `stale: true`. A `storeId` of `null` removes the store. With `savePreference` (on by default) the same ingredient goes to this store next time.",
       errorResponses: {
         401: "Missing or invalid API credentials",
         404: "Grocery or store not found",
