@@ -376,3 +376,9 @@ The version currently being worked toward: the editable docs carry its label, an
 
 **Release Checkpoint**:
 The maintainer-chosen committed Git boundary for a release, recorded as provenance in its release notes. Executing it freezes the outgoing docs version and advances the editable docs to the next Target Version (ADR-0010).
+
+**Public API**:
+The HTTP surface an API key reaches, under `/api/v1`: a deliberately small subset of what the app can do, not the app's own data API.
+
+**API Reference**:
+The docs page that describes the Public API. It is generated from the code, never written by hand, and frozen with each docs version so a release's docs show that release's API.
