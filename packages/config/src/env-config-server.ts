@@ -257,7 +257,9 @@ const ServerConfigSchema = z.object({
 
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 export const INTERNAL_PARSER_API_HOST = "127.0.0.1";
-export const INTERNAL_PARSER_API_PORT = 8001;
+// The browser E2E boots several servers side by side and gives each parser its
+// own port; the parser's dev script reads the same variable.
+export const INTERNAL_PARSER_API_PORT = Number(process.env.PARSER_API_PORT) || 8001;
 export const INTERNAL_PARSER_API_URL = `http://${INTERNAL_PARSER_API_HOST}:${INTERNAL_PARSER_API_PORT}`;
 
 export function buildInternalParserApiUrl(pathname: string): string {
