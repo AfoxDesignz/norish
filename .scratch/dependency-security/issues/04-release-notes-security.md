@@ -1,6 +1,6 @@
 # 04 — Security section in the 0.25.0 release notes
 
-Status: ready-for-agent
+Status: resolved
 Target version: 0.25.0-beta
 Blocked by: 01, 02
 
@@ -22,3 +22,7 @@ The test-only and mobile criticals (ticket 03) stay out: they never reached a se
 
 - [ ] Section and upgrade note written, in the glossary's vocabulary.
 - [ ] `apps/docs` builds.
+
+## Comments
+
+- 2026-10-12: Done. `## Security` is a one-off beside ADR-0010's section list, as the spec asks.

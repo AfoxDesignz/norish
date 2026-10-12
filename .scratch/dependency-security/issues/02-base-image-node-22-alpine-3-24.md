@@ -1,6 +1,6 @@
 # 02 — Base image on a maintained Alpine
 
-Status: ready-for-agent
+Status: resolved
 Target version: 0.25.0-beta
 Blocked by: none
 
@@ -15,3 +15,7 @@ Spec: `.scratch/dependency-security/spec.md`
 - [ ] The image builds.
 - [ ] Booted against Postgres and Redis, `node -v` prints 22.23.x, the app serves the login page, an image upload is resized (sharp/vips), and `ffmpeg -version` and a database query work.
 - [ ] `pnpm lint`, `pnpm test:run`, `pnpm build` pass.
+
+## Comments
+
+- 2026-10-12: Done. No `apk` renames (`libc6-compat` is provided by gcompat, `pkgconfig` by pkgconf). Booted against Postgres and Redis: node v22.23.3, Alpine 3.24.2, ffmpeg 8.1.2, `/login` 200, sign-up plus a DB query, an 1800×1350 upload stored at 960×720.

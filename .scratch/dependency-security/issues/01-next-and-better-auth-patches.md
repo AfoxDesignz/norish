@@ -1,6 +1,6 @@
 # 01 — Next.js and Better Auth security patches
 
-Status: ready-for-agent
+Status: resolved
 Target version: 0.25.0-beta
 Blocked by: none
 
@@ -21,3 +21,9 @@ In the `pnpm-workspace.yaml` catalog: `next` 16.3.2 → 16.3.8; `better-auth`, `
 - [ ] Test: the auth-error page shows the `account_not_linked` message for that code.
 - [ ] Auth E2E specs pass; password sign-in and an already-linked provider sign-in work as before.
 - [ ] `pnpm lint`, `pnpm test:run`, `pnpm i18n:check`, `pnpm build`, `pnpm deps:cycles`, `pnpm format:check` pass.
+
+## Comments
+
+- 2026-10-12: Done. The adapter also decrypts the user joined onto an account lookup: a sign-in through an already-linked provider reads the user that way, past the email branch.
+- 2026-10-12: `account_not_linked` reads "This email is already in use." (Mike). Better Auth also returns that code for an OIDC user whose provider omits `email_verified`, so the copy names no sign-in method.
+- 2026-10-12: next 16.3.8 wants sharp ^0.35.4, so shared-server and ingredient-icons moved to ^0.35.5 to keep one sharp (and one libvips) in the image.
