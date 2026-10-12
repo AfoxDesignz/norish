@@ -2,12 +2,13 @@
 sidebar_position: 1
 title: API reference
 description: The Norish public HTTP API under /api/v1.
-hide_table_of_contents: true
 ---
 
-import ApiReference from "@site/src/components/ApiReference";
+import ApiReference, { apiToc } from "@site/src/components/ApiReference";
 
 import spec from "./openapi.json";
+
+export const toc = apiToc(spec);
 
 # API reference
 
