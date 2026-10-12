@@ -13,13 +13,20 @@ type Screenful = {
   title: string;
   body: string;
   /** The two captures of one screen: the wide one, and the same on a phone. */
-  web: "dashboard-web" | "recipe-web" | "cooking-web" | "calendar-web" | "groceries-web";
+  web:
+    | "dashboard-web"
+    | "recipe-web"
+    | "cooking-web"
+    | "calendar-web"
+    | "groceries-web"
+    | "pantry-web";
   mobile:
     | "dashboard-mobile"
     | "recipe-mobile"
     | "cooking-mobile"
     | "calendar-mobile"
-    | "groceries-mobile";
+    | "groceries-mobile"
+    | "pantry-mobile";
   alt: string;
 };
 
@@ -57,7 +64,14 @@ const screens: Screenful[] = [
     body: "Groceries that went into store 'Y' will go into store 'Y' the next time you need it. When doing groceries with your partner split up, the list stays in sync in realtime.",
     web: "groceries-web",
     mobile: "groceries-mobile",
-    alt: "A Norish grocery list under one shop, sorted by aisle and priced from the shop's own pages, with a weekly item due today",
+    alt: "A Norish grocery list under one shop, sorted by aisle, with tonight's Chicken Cacciatore on it",
+  },
+  {
+    title: "Know what is in the cupboard",
+    body: "Keep a pantry of what you already have. When you add a recipe to your groceries, Norish leaves those ingredients off the list, even when the recipe names them in another language.",
+    web: "pantry-web",
+    mobile: "pantry-mobile",
+    alt: "The Norish Pantry: the foods the household already has, each with its icon",
   },
 ];
 
