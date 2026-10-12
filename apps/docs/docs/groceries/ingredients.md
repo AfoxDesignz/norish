@@ -32,11 +32,14 @@ When an ingredient is linked to a parent ingredient it inherits: filed aisles, m
 ## Cleaning names
 
 Names from recipes and shops can keep words that are not the food, like “GR TONIJN UIT BLIK”.
-**Clean names with AI** at the top of the ingredient page asks AI for each name without them:
-“tonijn uit blik”. The language and the brand stay. Each new name waits under **Suggestions** until
-you confirm or dismiss it, and a name you dismissed is not proposed again.
+**Fix catalogue** at the top of the ingredient page asks AI for each name without them: “tonijn
+uit blik”. The language and the brand stay. Each new name waits under **Suggestions** until you
+confirm or dismiss it, and a name you dismissed is not proposed again.
 
-![Cleaning names with AI](/img/screenshots/ingredients-clean-names.png)
+The same dialog checks flagged ingredients, in the same round if you tick both. A flagged
+ingredient that turns out to be a food of its own gets its name cleaned in that check.
+
+![Fix catalogue](/img/screenshots/ingredients-clean-names.png)
 
 Server admins can have new ingredients cleaned automatically, see
 [New ingredients](../configuration/ai-provider.md#new-ingredients).
