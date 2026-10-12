@@ -13,7 +13,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("auth error page", () => {
-  it("tells a password user to sign in with their password", async () => {
+  it("says the email is already in use when a provider cannot be linked", async () => {
     render(
       <NextIntlClientProvider locale="en" messages={{ auth }}>
         <AuthErrorPage />
