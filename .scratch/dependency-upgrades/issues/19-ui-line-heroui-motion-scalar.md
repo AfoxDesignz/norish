@@ -1,7 +1,7 @@
 # 19 — The UI line: HeroUI, React Aria, Motion 14 and Scalar 0.12
 
 Status: ready-for-agent
-Blocked by: 01 (React 19.3)
+Blocked by: 26 (React 19.3)
 Target release: 0.26.0-beta
 
 Spec: `.scratch/dependency-upgrades/spec.md`

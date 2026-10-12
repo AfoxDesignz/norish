@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Blocked by: 01, 02, 03 (the gate fails until they land). The mobile allowlist follows the decision in 23.
-Target release: 0.25.0-beta (it is CI-only), or first thing in 0.26
+Target release: 0.26.0-beta (first in the cycle)
 
 Spec: `.scratch/dependency-upgrades/spec.md`
 
@@ -54,4 +54,5 @@ Nothing in the repo updates dependencies or reports advisories today: no Renovat
 ## Comments
 
 - Filed 2026-10-12 with the spec.
+- 2026-10-12 — Moved to 0.26 when the maintainer limited 0.25 to safe fixes; its `strictDepBuilds` and release-age settings change how installs behave, which is not a release-candidate change.
 - The image scan belongs with ticket 16, which makes the image's dependencies come from the lockfile in the first place.

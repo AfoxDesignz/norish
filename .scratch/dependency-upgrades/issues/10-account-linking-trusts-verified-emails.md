@@ -1,8 +1,8 @@
 # 10 — Account linking trusts only verified emails
 
-Status: ready-for-human
+Status: needs-triage
 Blocked by: 02
-Target release: 0.26.0-beta (0.25 if the decision is quick)
+Target release: 0.26.0-beta
 
 Spec: `.scratch/dependency-upgrades/spec.md`
 

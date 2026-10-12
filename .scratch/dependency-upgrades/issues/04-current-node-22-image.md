@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Blocked by: None — can start immediately
-Target release: 0.25.0-beta
+Target release: 0.25.0-beta (safe fixes only; open question 1 in the spec)
 
 Spec: `.scratch/dependency-upgrades/spec.md`
 
@@ -16,30 +16,44 @@ The production image is built `FROM node:22-alpine3.21`. That tag was last pushe
 
 Changes:
 
-- **Base image.** `docker/Dockerfile` moves to `node:22-alpine3.24` (22.23.3 at research time) in both `FROM` lines that use it. `.nvmrc` moves to the same version.
+- **Base image.** `docker/Dockerfile` moves to **`node:22.23.3-alpine3.24`**, pinned to the exact tag for the release candidate, on both `FROM` lines that use it. `.nvmrc` moves to 22.23.3.
 - **Everything that names the Node version agrees with it:**
   - `.devcontainer/default/Dockerfile`;
   - `.github/workflows/_docker-build.yml`;
   - `CONTRIBUTING.md`, which still says 22.22.0.
-- **`@types/node` `^22.20.5`** in the catalog, replacing `^25.9.5`. The 25.x types accept Node 23–25 APIs that fail at runtime on Node 22, so the types should follow the runtime major (`^24` with ticket 15). The vitest and vite peer ranges accept both.
-- **Alpine packages on 3.24.** Re-check the packages the image installs (`libc6-compat`, `vips-dev`, `ffmpeg`, and the Python 3.14 install through uv).
-- **Settle the libvips question while you're in there.**
-  - sharp 0.35 ships a prebuilt libvips and has no install script.
-  - The image sets `SHARP_IGNORE_GLOBAL_LIBVIPS=0`, which sharp reads as truthy, so it should be using the prebuilt one.
-  - Run `node -e "console.log(require('sharp').versions)"` inside the container and record the output in this ticket's comments.
-  - If it reports the prebuilt libvips, then `vips-dev` and the variable are dead weight: remove them in this PR, or file the removal.
+- **Nothing else changes.** `@types/node` stays where it is; it moves with the runtime major in ticket 15.
+
+**This is the riskiest 0.25 change**, because Alpine moves from 3.21 to 3.24 underneath:
+
+- ffmpeg (video imports);
+- the libraries the image installs (`libc6-compat`, `vips-dev`);
+- the Python 3.14 install through uv.
+
+Hence the full image smoke test below.
+
+**Fallback.**
+
+- If the smoke test shows an OS-level regression, try `node:22.23.3-alpine3.23`.
+- If that regresses too, record why and defer the ticket to 0.26. The cost is that the image keeps missing Node's security releases until then.
+
+**Record, don't change: which libvips sharp loads.**
+
+- sharp 0.35 ships a prebuilt libvips and has no install script.
+- The image sets `SHARP_IGNORE_GLOBAL_LIBVIPS=0`, which sharp reads as truthy, so it should be using the prebuilt one.
+- Run `node -e "console.log(require('sharp').versions)"` inside the container and record the output in the comments.
+- Removing `vips-dev` and the variable, if they are dead weight, belongs to ticket 15.
 
 ## Acceptance criteria
 
-- [ ] **Node version.** `docker run … node --version` prints v22.23.3 (or the newest 22.x at implementation time).
+- [ ] **Node version.** `docker run … node --version` prints v22.23.3.
 - [ ] **Consistency.** `.nvmrc`, the devcontainer, the CI workflows and `CONTRIBUTING.md` name the same version.
-- [ ] **Types.** `@types/node` is `^22.x` in the catalog. A strict `tsc --noEmit` on packages/db, which type-checks for real, passes.
 - [ ] **Image smoke.**
   - `pnpm docker:build` succeeds and the container starts.
   - `/api/v1/health` is OK.
   - A video import works (ffmpeg, yt-dlp).
-  - An image upload works (sharp, HEIC).
+  - An image upload works, including HEIC (sharp, heic-convert).
   - A URL import through the parser works (Python).
+  - A Norish archive export and import round trip works.
 - [ ] **libvips.** The `sharp.versions` output is recorded in the comments.
 - [ ] **E2E.** `pnpm test:e2e` passes.
 - [ ] **Release notes.** A bullet under `## Fixes and Improvements`: "The Docker image now runs Node.js 22.23 (security fixes)."
@@ -47,6 +61,7 @@ Changes:
 ## Comments
 
 - Filed 2026-10-12 with the spec.
+- 2026-10-12 — Narrowed for the safe-fixes-only 0.25: exact tag pinned, the `@types/node` change and the libvips clean-up moved to ticket 15.
 - Sources:
   - the Docker Hub tags API for `library/node`;
   - `versions.json` from nodejs/docker-node;

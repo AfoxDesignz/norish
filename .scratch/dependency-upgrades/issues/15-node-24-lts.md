@@ -15,7 +15,8 @@ Move the runtime to Node 24.
 **Changes:**
 
 - **Base image.** `docker/Dockerfile` moves to `node:24-alpine3.24` (24.21.0 at research time, pushed 2026-09-18) on both `FROM` lines.
-- **`@types/node` `^24.19.2`** in the catalog.
+- **`@types/node` `^24.19.2`** in the catalog (it is `^25.9.5` today). The types should follow the runtime major: 25.x accepts Node 25 APIs that fail at runtime on Node 22 or 24.
+- **The libvips clean-up.** Ticket 04 records which libvips sharp loads in the image. If it is sharp's prebuilt one, remove `vips-dev` and `SHARP_IGNORE_GLOBAL_LIBVIPS` from `docker/Dockerfile` here, as dead weight.
 - **Every file that names the Node version:**
   - `.nvmrc`;
   - `.devcontainer/default/Dockerfile`;

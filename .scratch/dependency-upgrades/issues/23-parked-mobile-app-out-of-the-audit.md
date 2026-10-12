@@ -1,6 +1,6 @@
 # 23 — The parked mobile app stops counting against the audit
 
-Status: ready-for-human
+Status: needs-triage
 Blocked by: None — can start immediately
 Target release: 0.26.0-beta
 

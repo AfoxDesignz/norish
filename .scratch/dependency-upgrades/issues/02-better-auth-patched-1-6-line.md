@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Blocked by: None — can start immediately
-Target release: 0.25.0-beta (a backport to 0.24 is open question 2 in the spec)
+Target release: 0.25.0-beta (safe fixes only; a backport to 0.24 is open question 2 in the spec)
 
 Spec: `.scratch/dependency-upgrades/spec.md`
 
