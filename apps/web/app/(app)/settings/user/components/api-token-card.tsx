@@ -60,7 +60,7 @@ export default function ApiKeyCard() {
       >
         <a
           className="text-accent inline-flex items-center gap-2 self-start text-sm font-medium hover:underline"
-          href="/api/docs"
+          href="https://docs.norish.dev/reference/api"
           rel="noopener noreferrer"
           target="_blank"
         >

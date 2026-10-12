@@ -30,9 +30,6 @@ catalogs:
     '@heroui/styles':
       specifier: 3.2.4
       version: 3.2.4
-    '@scalar/nextjs-api-reference':
-      specifier: ^0.11.16
-      version: 0.11.16
     '@tailwindcss/postcss':
       specifier: ^4.3.3
       version: 4.3.3
@@ -517,9 +514,6 @@ importers:
       '@norish/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@scalar/nextjs-api-reference':
-        specifier: 'catalog:'
-        version: 0.11.16(next@16.3.2(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(@types/node@25.9.5)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
       '@serwist/turbopack':
         specifier: ^9.5.12
         version: 9.5.12(@swc/helpers@0.5.23)(esbuild@0.28.2)(next@16.3.2(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(@types/node@25.9.5)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
@@ -4324,33 +4318,6 @@ packages:
 
   '@rtsao/scc@1.1.0':
     resolution: {integrity: sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==}
-
-  '@scalar/client-side-rendering@0.3.9':
-    resolution: {integrity: sha512-Gg+VLhreiWHmHN0i9uatEoIxzsr0FaJoq0x+PkypmFgZFniD477DVCAnmWqx+KXlpFg0VtDanDHARIJXZ1fIeQ==}
-    engines: {node: '>=22'}
-
-  '@scalar/helpers@0.11.1':
-    resolution: {integrity: sha512-Knwbe0IYqFk0PPDoOKLasqglBHfyf9/zwWWqFsSNi/AtdjM29wSZXN6p8DFid6iB5B9epYH9YiSgJ6tpD00TEw==}
-    engines: {node: '>=22'}
-
-  '@scalar/nextjs-api-reference@0.11.16':
-    resolution: {integrity: sha512-IiRzCflR7JeERPK5y7/+aBtnOnVJ8uYlca5ZItVgVsSTw4tCCdMNYUNiCAHmWso/Zq1LxTKMeq6DlToT5IoCLg==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      next: ^15.0.0 || ^16.0.0
-      react: ^19.0.0
-
-  '@scalar/schemas@0.8.3':
-    resolution: {integrity: sha512-cTjgiJxXFXMqXlFZafXOyTOKm1lUfbDTbe9La+dPcQPe6q0zXAiVtys0IKILQWNrjXPidY0eaB9Va/rd16bfxw==}
-    engines: {node: '>=22'}
-
-  '@scalar/types@0.18.2':
-    resolution: {integrity: sha512-q7fGMn0IygdLbYk9W4quM0w1caHDfL9FIxsYXNsgIep6uuO0T/t4BOStyf0qyzQ3pjt0B7rWFxO//EM9I7F/Tw==}
-    engines: {node: '>=22'}
-
-  '@scalar/validation@0.6.3':
-    resolution: {integrity: sha512-j3s9XPv8Wo1EG5/naBi4XGF0uXYQ2A3QZNI0NKWgCMxRHVrDJGlZEYymcHDHY7fquRm73P8U3c8xqJqB5yad6w==}
-    engines: {node: '>=20'}
 
   '@schummar/icu-type-parser@1.21.5':
     resolution: {integrity: sha512-bXHSaW5jRTmke9Vd0h5P7BtWZG9Znqb8gSDxZnxaGSJnGwPLDPfS+3g0BKzeWqzgZPsIVZkM7m2tbo18cm5HBw==}
@@ -8632,11 +8599,6 @@ packages:
   nanoid@3.3.18:
     resolution: {integrity: sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
-    hasBin: true
-
-  nanoid@5.1.11:
-    resolution: {integrity: sha512-v+KEsUv2ps74PaSKv0gHTxTCgMXOIfBEbaqa6w6ISIGC7ZsvHN4N9oJ8d4cmf0n5oTzQz2SLmThbQWhjd/8eKg==}
-    engines: {node: ^18 || >=20}
     hasBin: true
 
   nanostores@1.5.2:
@@ -14059,34 +14021,6 @@ snapshots:
 
   '@rtsao/scc@1.1.0': {}
 
-  '@scalar/client-side-rendering@0.3.9':
-    dependencies:
-      '@scalar/schemas': 0.8.3
-      '@scalar/types': 0.18.2
-      '@scalar/validation': 0.6.3
-
-  '@scalar/helpers@0.11.1': {}
-
-  '@scalar/nextjs-api-reference@0.11.16(next@16.3.2(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(@types/node@25.9.5)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)':
-    dependencies:
-      '@scalar/client-side-rendering': 0.3.9
-      next: 16.3.2(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(@types/node@25.9.5)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      react: 19.2.3
-
-  '@scalar/schemas@0.8.3':
-    dependencies:
-      '@scalar/helpers': 0.11.1
-      '@scalar/validation': 0.6.3
-
-  '@scalar/types@0.18.2':
-    dependencies:
-      '@scalar/helpers': 0.11.1
-      nanoid: 5.1.11
-      type-fest: 5.8.0
-      zod: 4.4.3
-
-  '@scalar/validation@0.6.3': {}
-
   '@schummar/icu-type-parser@1.21.5': {}
 
   '@serwist/build@9.5.12(browserslist@4.28.6)(typescript@6.0.3)':
@@ -18991,8 +18925,6 @@ snapshots:
   nanoid@3.3.11: {}
 
   nanoid@3.3.18: {}
-
-  nanoid@5.1.11: {}
 
   nanostores@1.5.2: {}
 
