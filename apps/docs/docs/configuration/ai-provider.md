@@ -197,6 +197,7 @@ Configure it under **Settings => Admin => AI & processing => Decision model**:
 | **Provider**                   | _Disabled_ or _TypeSafe AI_                                                                                                                                       |
 | **API key**                    | From your TypeSafe AI account.                                                                                                                                    |
 | **Model**                      | Defaults to `jev-latest` release                                                                                                                                  |
+| **Endpoint URL**               | Optional. A proxy, gateway or self-hosted server that speaks TypeSafe's API; leave empty for `https://api.typesafe.ai/v1`                                         |
 | **Use the decision model for** | _Auto-categorization_, _Auto-tagging_, _Allergy detection_, _Recipe Provenance_, _Grocery linking_, _Validate enrichments_. by default **Everything is selected** |
 
 What it does:
