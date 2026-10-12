@@ -244,13 +244,16 @@ test("overwriting redoes the supplied recipe instead of deferring to it", async 
     timeout: 30_000,
   });
 
+  // The two runs finish in either order, so both are waited for.
   await expect
-    .poll(async () => readStoredCategories("Bulk Supplied Stew"), {
-      timeout: 60_000,
-      intervals: [1_000, 2_000, 5_000],
-    })
-    .toEqual(["Dinner"]);
-  expect(await readStoredCategories("Bulk Gap Stew")).toEqual(["Dinner"]);
+    .poll(
+      async () => [
+        await readStoredCategories("Bulk Supplied Stew"),
+        await readStoredCategories("Bulk Gap Stew"),
+      ],
+      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toEqual([["Dinner"], ["Dinner"]]);
   expect(ai.control.requestCount).toBe(2);
 });
 
