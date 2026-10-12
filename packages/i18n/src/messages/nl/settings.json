@@ -557,6 +557,17 @@
       "empty": "Voer een naam in",
       "unknown": "Er ging iets mis. Probeer het opnieuw."
     },
+    "uses": {
+      "show": "Toon waar",
+      "title": "Waar {name} gebruikt wordt",
+      "recipes": "Recepten",
+      "groceries": "Boodschappen",
+      "done": "afgevinkt",
+      "repeats": "herhaalt",
+      "pantry": "In de voorraadkast",
+      "elsewhere": "{count, plural, one {Nog # keer} other {Nog # keer}} in recepten of lijsten die je niet kunt openen",
+      "none": "Niets gebruikt het meer"
+    },
     "keepAlias": "{alias} behouden",
     "reportOutcomes": {
       "parent": "Onder een ouder geplaatst",

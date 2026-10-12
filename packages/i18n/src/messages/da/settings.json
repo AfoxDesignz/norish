@@ -557,6 +557,17 @@
       "empty": "Indtast et navn",
       "unknown": "Noget gik galt. Prøv igen."
     },
+    "uses": {
+      "show": "Vis hvor",
+      "title": "Hvor {name} bruges",
+      "recipes": "Opskrifter",
+      "groceries": "Indkøb",
+      "done": "købt",
+      "repeats": "gentages",
+      "pantry": "I spisekammeret",
+      "elsewhere": "{count, plural, one {# brug mere} other {# brug mere}} i opskrifter eller lister, du ikke kan åbne",
+      "none": "Intet bruger den længere"
+    },
     "keepAlias": "Behold {alias}",
     "reportOutcomes": {
       "parent": "Under en forælder",

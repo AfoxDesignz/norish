@@ -557,6 +557,17 @@
       "empty": "Introduce un nombre",
       "unknown": "Algo salió mal. Inténtalo de nuevo."
     },
+    "uses": {
+      "show": "Ver dónde",
+      "title": "Dónde se usa {name}",
+      "recipes": "Recetas",
+      "groceries": "Compras",
+      "done": "hecho",
+      "repeats": "se repite",
+      "pantry": "En la despensa",
+      "elsewhere": "{count, plural, one {# uso más} other {# usos más}} en recetas o listas que no puedes abrir",
+      "none": "Ya nada lo usa"
+    },
     "keepAlias": "Conservar {alias}",
     "reportOutcomes": {
       "parent": "Bajo un padre",

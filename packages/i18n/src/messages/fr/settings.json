@@ -557,6 +557,17 @@
       "empty": "Saisissez un nom",
       "unknown": "Une erreur s'est produite. Réessayez."
     },
+    "uses": {
+      "show": "Voir où",
+      "title": "Où {name} est utilisé",
+      "recipes": "Recettes",
+      "groceries": "Courses",
+      "done": "fait",
+      "repeats": "se répète",
+      "pantry": "Dans le garde-manger",
+      "elsewhere": "{count, plural, one {# autre utilisation} other {# autres utilisations}} dans des recettes ou listes que vous ne pouvez pas ouvrir",
+      "none": "Plus rien ne l'utilise"
+    },
     "keepAlias": "Garder {alias}",
     "reportOutcomes": {
       "parent": "Rangé sous un parent",

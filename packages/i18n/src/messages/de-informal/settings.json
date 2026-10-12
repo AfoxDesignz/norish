@@ -557,6 +557,17 @@
       "empty": "Gib einen Namen ein",
       "unknown": "Etwas ist schiefgelaufen. Versuch es erneut."
     },
+    "uses": {
+      "show": "Zeigen, wo",
+      "title": "Wo {name} verwendet wird",
+      "recipes": "Rezepte",
+      "groceries": "Einkäufe",
+      "done": "erledigt",
+      "repeats": "wiederholt sich",
+      "pantry": "Im Vorrat",
+      "elsewhere": "{count, plural, one {# weitere Verwendung} other {# weitere Verwendungen}} in Rezepten oder Listen, die du nicht öffnen kannst",
+      "none": "Nichts verwendet es mehr"
+    },
     "keepAlias": "{alias} behalten",
     "reportOutcomes": {
       "parent": "Unter eine übergeordnete Zutat gestellt",

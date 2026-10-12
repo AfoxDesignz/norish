@@ -5,6 +5,7 @@
  */
 import { useSyncExternalStore } from "react";
 import IngredientsSettingsContent from "@/app/(app)/settings/ingredients/components/ingredients-settings-content";
+import { showActionToast } from "@/lib/ui/action-toast";
 import { showSafeErrorToast } from "@/lib/ui/safe-error-toast";
 import { toast } from "@heroui/react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
@@ -123,6 +124,8 @@ const nameScope = {
 let report: unknown = null;
 /** What AI suggests, waiting on a person, as `suggestions` answers. */
 let suggestions: unknown[] = [];
+/** What `uses` answers: where the open food is still used. */
+let uses: unknown = undefined;
 /** What `get` answers for a food the list no longer lists. */
 let ownItem: unknown = undefined;
 /** What `kinds` answers per parent, for the rows folded out under it. */
@@ -162,6 +165,9 @@ vi.mock("@/app/providers/trpc-provider", () => ({
       },
       spellings: {
         queryOptions: (input: unknown) => ({ queryKey: ["ingredients.spellings", input] }),
+      },
+      uses: {
+        queryOptions: (input: unknown) => ({ queryKey: ["ingredients.uses", input] }),
       },
       saveDraft: { mutationOptions: () => ({ name: "saveDraft" }) },
       uploadIcon: { mutationOptions: () => ({ name: "uploadIcon" }) },
@@ -249,6 +255,8 @@ vi.mock("@tanstack/react-query", () => ({
         return { data: enabled ? nameScope : undefined, isFetching: false, isPending: false };
       case "ingredients.get":
         return { data: enabled ? ownItem : undefined, isFetching: false, isPending: false };
+      case "ingredients.uses":
+        return { data: enabled ? uses : undefined, isFetching: false, isPending: false };
       case "ingredients.suggestions":
         return { data: suggestions, isFetching: false, isPending: false };
       case "ingredients.reviewReport":
@@ -292,6 +300,7 @@ vi.mock("next-intl", () => ({
 }));
 
 vi.mock("@/lib/ui/safe-error-toast", () => ({ showSafeErrorToast: vi.fn() }));
+vi.mock("@/lib/ui/action-toast", () => ({ showActionToast: vi.fn() }));
 /** Whether the instance has AI: with it off, nothing on the page offers it. */
 const permissions = vi.hoisted(() => ({ isAIEnabled: true, canDrawImages: false }));
 
@@ -481,6 +490,7 @@ describe("IngredientsSettingsContent", () => {
     listInputs.length = 0;
     items = [onion, salt];
     everySpelling = [];
+    uses = undefined;
     runningRound = null;
     iconScope = undefined;
     iconRound = null;
@@ -688,7 +698,7 @@ describe("IngredientsSettingsContent", () => {
   });
 
   it("shows a refused edit undone, and says why", async () => {
-    mutations.remove.mockRejectedValueOnce(new Error("ingredient-in-use"));
+    mutations.remove.mockRejectedValueOnce(new Error("forbidden"));
     render(<IngredientsSettingsContent />);
     const opened = await open("onion");
 
@@ -703,10 +713,47 @@ describe("IngredientsSettingsContent", () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["ingredients"] });
     expect(showSafeErrorToast).toHaveBeenCalledWith(
       expect.objectContaining({
-        description: "errors.ingredient-in-use",
+        description: "errors.forbidden",
         context: "ingredients:delete",
       })
     );
+  });
+
+  it("opens where a food is still used from the toast of a refused delete", async () => {
+    mutations.remove.mockRejectedValueOnce(new Error("ingredient-in-use"));
+    uses = {
+      recipes: [{ id: "r1", name: "Saté" }],
+      groceries: [{ name: "onions", done: true, recurring: false }],
+      pantry: true,
+      elsewhere: 2,
+    };
+    render(<IngredientsSettingsContent />);
+    const opened = await open("onion");
+
+    await act(async () => {
+      fireEvent.click(within(opened).getByTestId("ingredient-delete"));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("ingredient-delete-confirm"));
+    });
+
+    expect(showSafeErrorToast).not.toHaveBeenCalled();
+    const [, options] = vi.mocked(showActionToast).mock.calls[0]!;
+
+    expect(options.description).toBe("errors.ingredient-in-use");
+    await act(async () => {
+      options.action.onPress();
+    });
+
+    const where = screen.getByTestId("ingredient-uses");
+
+    expect(within(where).getByRole("link", { name: "Saté" })).toHaveAttribute(
+      "href",
+      "/recipes/r1"
+    );
+    expect(where).toHaveTextContent("onions · done");
+    expect(where).toHaveTextContent("pantry");
+    expect(where).toHaveTextContent("elsewhere");
   });
 
   it("adds a household's own spelling, staged until Save", async () => {

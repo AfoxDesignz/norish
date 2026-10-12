@@ -17,7 +17,10 @@ import type {
 import type { SpoonMeasure } from "@norish/shared/lib/spoon-measure";
 import { assertAIEnabled } from "@norish/auth/permissions";
 import { SERVER_CONFIG } from "@norish/config/env-config-server";
-import { findCatalogueIngredientNames } from "@norish/db/repositories/ingredient-catalogue";
+import {
+  findCatalogueIngredientNames,
+  listIngredientUses,
+} from "@norish/db/repositories/ingredient-catalogue";
 import { addIngredientIconsJob } from "@norish/queue/ingredient-icons/producer";
 import { findRunningIconRound } from "@norish/queue/ingredient-icons/progress";
 import { addIngredientReviewJob } from "@norish/queue/ingredient-review/producer";
@@ -220,6 +223,13 @@ const get = authedProcedure
 const spellings = authedProcedure
   .input(z.object({ ingredientId: z.uuid() }))
   .query(({ ctx, input }) => listSpellings(actorOf(ctx), input.ingredientId));
+
+/** Where an Ingredient is still used, for the panel a refused delete opens. */
+const uses = authedProcedure
+  .input(z.object({ ingredientId: z.uuid() }))
+  .query(({ ctx, input }) =>
+    listIngredientUses({ ...actorOf(ctx), userIds: ctx.userIds }, input.ingredientId)
+  );
 
 const addAlias = authedProcedure
   .input(z.object({ ingredientId: z.uuid(), text: ingredientName }))
@@ -801,6 +811,7 @@ export const ingredientsRouter = router({
   kinds,
   get,
   spellings,
+  uses,
   addAlias,
   rename,
   markDistinct,

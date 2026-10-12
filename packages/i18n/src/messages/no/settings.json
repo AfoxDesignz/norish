@@ -557,6 +557,17 @@
       "empty": "Skriv inn et navn",
       "unknown": "Noe gikk galt. Prøv igjen."
     },
+    "uses": {
+      "show": "Vis hvor",
+      "title": "Hvor {name} brukes",
+      "recipes": "Oppskrifter",
+      "groceries": "Handleliste",
+      "done": "kjøpt",
+      "repeats": "gjentas",
+      "pantry": "I spiskammeret",
+      "elsewhere": "{count, plural, one {# bruk til} other {# bruk til}} i oppskrifter eller lister du ikke kan åpne",
+      "none": "Ingenting bruker den lenger"
+    },
     "keepAlias": "Behold {alias}",
     "reportOutcomes": {
       "parent": "Under en forelder",

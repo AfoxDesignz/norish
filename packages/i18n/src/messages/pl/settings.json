@@ -557,6 +557,17 @@
       "empty": "Wpisz nazwę",
       "unknown": "Coś poszło nie tak. Spróbuj ponownie."
     },
+    "uses": {
+      "show": "Pokaż gdzie",
+      "title": "Gdzie używany jest {name}",
+      "recipes": "Przepisy",
+      "groceries": "Zakupy",
+      "done": "kupione",
+      "repeats": "powtarza się",
+      "pantry": "W spiżarni",
+      "elsewhere": "{count, plural, one {Jeszcze # użycie} few {Jeszcze # użycia} many {Jeszcze # użyć} other {Jeszcze # użycia}} w przepisach lub listach, których nie możesz otworzyć",
+      "none": "Nic już tego nie używa"
+    },
     "keepAlias": "Zachowaj {alias}",
     "reportOutcomes": {
       "parent": "Pod rodzicem",

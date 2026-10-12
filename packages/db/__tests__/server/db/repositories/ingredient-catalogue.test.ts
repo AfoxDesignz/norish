@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   listCatalogueAliasesOf,
   listCatalogueIngredients,
+  listIngredientUses,
 } from "@norish/db/repositories/ingredient-catalogue";
 import * as schema from "@norish/db/schema";
 import { parseIngredientSearch } from "@norish/shared/lib/ingredient-search";
@@ -148,5 +149,19 @@ describe("ingredient uses", () => {
       false,
       true,
     ]);
+  });
+
+  it("lists the uses the viewer may see, a recipe once, and counts the rest", async () => {
+    expect(
+      await listIngredientUses(
+        { userId: me.id, userIds: [me.id], householdUserIds: null, isServerAdmin: false },
+        chickenId
+      )
+    ).toEqual({
+      recipes: [{ id: recipeId, name: "Saté" }],
+      groceries: [{ name: "kipfilet met de hand", done: true, recurring: false }],
+      pantry: true,
+      elsewhere: 1,
+    });
   });
 });

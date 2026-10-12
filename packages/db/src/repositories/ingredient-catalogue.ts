@@ -13,8 +13,12 @@ import {
   ingredientSuggestions,
   pantryIngredients,
   recipeIngredients,
+  recipes,
   recurringGroceries,
 } from "@norish/db/schema";
+
+import type { RecipeListContext } from "./recipes";
+import { buildOwnerPolicyCondition } from "./recipes";
 
 /**
  * The catalogue of Ingredients as the Ingredients page reads and edits it
@@ -477,6 +481,81 @@ export async function isIngredientInUse(tx: DbTransaction, id: string): Promise<
   );
 
   return [...references, ...byIngredient].some((rows) => rows.length > 0);
+}
+
+/** Where an Ingredient is used, as one viewer may see it. */
+export interface IngredientUses {
+  /** The recipes the viewer may open with a line naming it. */
+  recipes: Array<{ id: string; name: string }>;
+  /** The household's groceries and recurring groceries naming it. */
+  groceries: Array<{ name: string | null; done: boolean; recurring: boolean }>;
+  /** Whether the household keeps it in the Pantry. */
+  pantry: boolean;
+  /** The uses the viewer may not see: other households' lists, recipes they cannot open. */
+  elsewhere: number;
+}
+
+/**
+ * Everything `isIngredientInUse` counts, listed for a viewer: recipes under
+ * the recipe view policy, groceries and the Pantry for their household, and
+ * how many uses are someone else's.
+ */
+export async function listIngredientUses(
+  viewer: RecipeListContext & { userIds: readonly string[] },
+  ingredientId: string
+): Promise<IngredientUses> {
+  const spellings = db
+    .select({ id: ingredientAliases.id })
+    .from(ingredientAliases)
+    .where(eq(ingredientAliases.ingredientId, ingredientId));
+  const ours = (table: typeof groceries | typeof recurringGroceries | typeof pantryIngredients) =>
+    or(inArray(table.ingredientAliasId, spellings), eq(table.ingredientId, ingredientId));
+  const household = (userId: AnyPgColumn) => sql<boolean>`${inArray(userId, [...viewer.userIds])}`;
+  const openable = (await buildOwnerPolicyCondition(viewer, recipes.userId, "view")) ?? sql`true`;
+
+  const [lines, groceryRows, recurringRows, pantryRows] = await Promise.all([
+    db
+      .select({ id: recipes.id, name: recipes.name, visible: sql<boolean>`${openable}` })
+      .from(recipeIngredients)
+      .innerJoin(recipes, eq(recipes.id, recipeIngredients.recipeId))
+      .where(inArray(recipeIngredients.ingredientAliasId, spellings))
+      .orderBy(asc(sql`lower(${recipes.name})`)),
+    db
+      .select({
+        name: groceries.name,
+        done: groceries.isDone,
+        visible: household(groceries.userId),
+      })
+      .from(groceries)
+      .where(ours(groceries))
+      .orderBy(asc(groceries.isDone), asc(sql`lower(${groceries.name})`)),
+    db
+      .select({ name: recurringGroceries.name, visible: household(recurringGroceries.userId) })
+      .from(recurringGroceries)
+      .where(ours(recurringGroceries)),
+    db
+      .select({ visible: household(pantryIngredients.userId) })
+      .from(pantryIngredients)
+      .where(ours(pantryIngredients)),
+  ]);
+  // A recipe naming the food on several lines is listed once.
+  const openRecipes = new Map(lines.filter((line) => line.visible).map((line) => [line.id, line]));
+
+  return {
+    recipes: [...openRecipes.values()].map(({ id, name }) => ({ id, name })),
+    groceries: [
+      ...groceryRows
+        .filter((row) => row.visible)
+        .map(({ name, done }) => ({ name, done, recurring: false })),
+      ...recurringRows
+        .filter((row) => row.visible)
+        .map(({ name }) => ({ name, done: false, recurring: true })),
+    ],
+    pantry: pantryRows.some((row) => row.visible),
+    elsewhere: [...lines, ...groceryRows, ...recurringRows, ...pantryRows].filter(
+      (row) => !row.visible
+    ).length,
+  };
 }
 
 /**
