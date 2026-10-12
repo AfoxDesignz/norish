@@ -229,7 +229,13 @@ test("the cook pill stays reachable at full scroll and covers neither nav nor ti
 
   // A running timer first, so the corner the dock rises into is occupied.
   // Both page trees render the chip; only the phone tree's copy is visible.
-  const timerChip = page.getByText("40 minutes").locator("visible=true").first();
+  // The chip exists only once the timer keywords arrive; before that
+  // "40 minutes" is plain step text, and clicking it ticks the step off.
+  const timerChip = page
+    .locator("[data-slot=chip]")
+    .filter({ hasText: /^40 minutes$/ })
+    .locator("visible=true")
+    .first();
 
   await expect(async () => {
     await timerChip.scrollIntoViewIfNeeded();
