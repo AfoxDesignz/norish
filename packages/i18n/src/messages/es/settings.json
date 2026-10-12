@@ -1082,6 +1082,8 @@
       "apiKeyPlaceholder": "Introduce la clave API...",
       "apiKeyDescription": "Obtén una clave desde tu cuenta en typesafe.ai",
       "model": "Modelo de decisión",
+      "endpoint": "URL del endpoint",
+      "endpointDescription": "Para un proxy o gateway; déjalo vacío en caso contrario.",
       "uses": "Usar el modelo de decisión para",
       "usesPlaceholder": "Nada",
       "useNames": {

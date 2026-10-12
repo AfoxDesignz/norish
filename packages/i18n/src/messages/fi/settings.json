@@ -1082,6 +1082,8 @@
       "apiKeyPlaceholder": "Syötä API-avain...",
       "apiKeyDescription": "Hae avain typesafe.ai-tililtäsi",
       "model": "Päätösmalli",
+      "endpoint": "Päätepisteen URL-osoite",
+      "endpointDescription": "Välityspalvelimelle tai yhdyskäytävälle; jätä muuten tyhjäksi.",
       "uses": "Käytä päätösmallia seuraaviin",
       "usesPlaceholder": "Ei mihinkään",
       "useNames": {

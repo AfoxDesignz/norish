@@ -1082,6 +1082,8 @@
       "apiKeyPlaceholder": "Saisir la clé API...",
       "apiKeyDescription": "Obtenez une clé depuis votre compte sur typesafe.ai",
       "model": "Modèle de décision",
+      "endpoint": "URL du endpoint",
+      "endpointDescription": "Pour un proxy ou une passerelle ; laissez vide sinon.",
       "uses": "Utiliser le modèle de décision pour",
       "usesPlaceholder": "Rien",
       "useNames": {

@@ -1082,6 +1082,8 @@
       "apiKeyPlaceholder": "API 키 입력...",
       "apiKeyDescription": "typesafe.ai 계정에서 키를 발급받으세요",
       "model": "결정 모델",
+      "endpoint": "엔드포인트 URL",
+      "endpointDescription": "프록시나 게이트웨이용입니다. 그 외에는 비워 두세요.",
       "uses": "결정 모델을 사용할 기능",
       "usesPlaceholder": "없음",
       "useNames": {

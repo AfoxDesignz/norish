@@ -1082,6 +1082,8 @@
       "apiKeyPlaceholder": "Wprowadź klucz API...",
       "apiKeyDescription": "Klucz uzyskasz na swoim koncie w typesafe.ai",
       "model": "Model decyzyjny",
+      "endpoint": "Adres URL endpointu",
+      "endpointDescription": "Dla proxy lub bramki; w przeciwnym razie zostaw puste.",
       "uses": "Używaj modelu decyzyjnego do",
       "usesPlaceholder": "Nic",
       "useNames": {

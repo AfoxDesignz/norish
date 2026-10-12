@@ -1082,6 +1082,8 @@
       "apiKeyPlaceholder": "Введите API-ключ...",
       "apiKeyDescription": "Получите ключ в своём аккаунте на typesafe.ai",
       "model": "Модель решений",
+      "endpoint": "URL эндпоинта",
+      "endpointDescription": "Для прокси или шлюза; иначе оставьте пустым.",
       "uses": "Использовать модель решений для",
       "usesPlaceholder": "Ничего",
       "useNames": {

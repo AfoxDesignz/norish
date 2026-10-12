@@ -1082,6 +1082,8 @@
       "apiKeyPlaceholder": "Voer API-sleutel in...",
       "apiKeyDescription": "Haal een sleutel op in je account op typesafe.ai",
       "model": "Beslismodel",
+      "endpoint": "Endpoint URL",
+      "endpointDescription": "Voor een proxy of gateway; laat anders leeg.",
       "uses": "Gebruik het Beslismodel voor",
       "usesPlaceholder": "Niets",
       "useNames": {

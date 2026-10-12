@@ -1082,6 +1082,8 @@
       "apiKeyPlaceholder": "Skriv inn API-nøkkel...",
       "apiKeyDescription": "Hent en nøkkel fra kontoen din på typesafe.ai",
       "model": "Beslutningsmodell",
+      "endpoint": "Endepunkt-URL",
+      "endpointDescription": "For en proxy eller gateway; la ellers feltet stå tomt.",
       "uses": "Bruk beslutningsmodellen til",
       "usesPlaceholder": "Ingenting",
       "useNames": {
