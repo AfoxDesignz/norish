@@ -16,6 +16,7 @@ type SystemConvertMenuProps = {
 export default function SystemConvertMenu({ compact = false }: SystemConvertMenuProps) {
   const { isAvailable, options, currentSystem, isConverting, convertTo } = useSystemConversion();
   const t = useTranslations("recipes.convert");
+  const tSystem = useTranslations("recipes.measurementSystem");
 
   if (!isAvailable) {
     return null;
@@ -23,7 +24,7 @@ export default function SystemConvertMenu({ compact = false }: SystemConvertMenu
   return (
     <Dropdown>
       <Button
-        className={`bg-surface-secondary text-foreground capitalize transition-opacity duration-150 data-[hovered=true]:opacity-80 ${
+        className={`bg-surface-secondary text-foreground transition-opacity duration-150 data-[hovered=true]:opacity-80 ${
           compact ? "h-8 min-w-14 px-2 text-xs" : "min-w-16"
         }`}
         isDisabled={isConverting}
@@ -35,7 +36,7 @@ export default function SystemConvertMenu({ compact = false }: SystemConvertMenu
         ) : (
           <ArrowsRightLeftIcon className="h-4 w-4" />
         )}
-        {currentSystem}
+        {tSystem(currentSystem)}
       </Button>
 
       <Dropdown.Popover className="bg-overlay z-[1300]">

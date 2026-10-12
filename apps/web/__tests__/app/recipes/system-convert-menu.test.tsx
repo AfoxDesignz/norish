@@ -6,12 +6,16 @@ import "@testing-library/jest-dom";
 import SystemConvertMenu from "@/app/(app)/recipes/[id]/components/system-convert-menu";
 
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: (namespace: string) => (key: string) => `${namespace}.${key}`,
+}));
+
+const recipeState = vi.hoisted(() => ({
+  recipe: { id: "r1", systemUsed: "metric", recipeIngredients: [] as unknown[] },
 }));
 
 vi.mock("@/app/(app)/recipes/[id]/context", () => ({
   useRecipeContextRequired: () => ({
-    recipe: { id: "r1", systemUsed: "metric", recipeIngredients: [] } as any,
+    recipe: recipeState.recipe as any,
     convertingTo: null,
     startConversion: () => {},
   }),
@@ -51,11 +55,20 @@ vi.mock("@heroicons/react/20/solid", () => ({
 describe("SystemConvertMenu", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    recipeState.recipe = { id: "r1", systemUsed: "metric", recipeIngredients: [] };
   });
 
   it("does not render when no conversion options available", () => {
     render(<SystemConvertMenu />);
 
-    expect(screen.queryByText("metric")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("names the recipe's system in the reader's language, not by its stored value", () => {
+    recipeState.recipe = { id: "r1", systemUsed: "us", recipeIngredients: [{ id: "i1" }] };
+
+    render(<SystemConvertMenu />);
+
+    expect(screen.getAllByRole("button")[0]).toHaveTextContent("recipes.measurementSystem.us");
   });
 });
