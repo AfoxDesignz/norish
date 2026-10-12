@@ -6,7 +6,7 @@ description: The image beside an ingredient.
 
 # Ingredient icons
 
-Ingredients can have a **icon**. These icons show on:
+Ingredients can have an **icon**. These icons show on:
 
 - **Recipe page** Beside the ingredient lines;
 - **Recipe editor** As soon as a name matches a food;
@@ -41,7 +41,7 @@ opens, and click its icon:
 The **Draw icons** button at the top of the ingredient page draws missing icons.
 This can be done under the following options:
 
-- **Only foods with no icon at all**, Default. A food that borrows from it's
+- **Only foods with no icon at all**, Default. A food that borrows from its
   parent's will be skipped as well.
 - **Every food without its own icon**, which also redraws foods that show a pre-generated
   or the parent's icon.

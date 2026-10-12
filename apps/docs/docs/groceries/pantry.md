@@ -7,7 +7,7 @@ description: In stock ingredients.
 # Pantry
 
 The **Pantry** is the foods your household have in stock.
-Can be gound under the **Groceries page** and toggling the switch at the top.
+Can be found under the **Groceries page** and toggling the switch at the top.
 
 ![The Pantry page, with olive oil on the list](/img/screenshots/groceries-pantry-page.png)
 
@@ -19,7 +19,7 @@ under **In your pantry**. Press the box icon on any other line to
 add it to your pantry. By default items in your pantry are not added
 to your groceries.
 
-The pantry does account for translations
+The pantry does account for translations.
 
 ## What the pantry is not
 
