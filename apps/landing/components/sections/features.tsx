@@ -96,7 +96,7 @@ const groups: Group[] = [
       },
       {
         title: "Pantry",
-        body: "Keep track of what is already in the cupboard. Adding a recipe to your groceries leaves those ingredients off the list.",
+        body: "Keep track of what is already on the shelf. Adding a recipe to your groceries leaves those ingredients off the list.",
       },
       {
         title: "Ingredient catalogue",

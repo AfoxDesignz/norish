@@ -67,8 +67,8 @@ const screens: Screenful[] = [
     alt: "A Norish grocery list under one shop, sorted by aisle, with tonight's Chicken Cacciatore on it",
   },
   {
-    title: "Know what is in the cupboard",
-    body: "Keep a pantry of what you already have. When you add a recipe to your groceries, Norish leaves those ingredients off the list, even when the recipe names them in another language.",
+    title: "Keep track of what is in your inventory",
+    body: "Keep a pantry of what you already have. When you add a recipe to your groceries, your inventory stays off the list, even when the recipe names them in another language.",
     web: "pantry-web",
     mobile: "pantry-mobile",
     alt: "The Norish Pantry: the foods the household already has, each with its icon",
