@@ -18,6 +18,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SiteAuthTokenDecryptedDto } from "@norish/shared/contracts/dto/site-auth-tokens";
 import { fetchRenderedPage, renderPage } from "@norish/api/parser/fetch";
+import { SERVER_CONFIG } from "@norish/config/env-config-server";
 
 const { mockGetBrowser, mockNewContext, mockNewPage, mockGoto, mockContent, mockClose } =
   vi.hoisted(() => {
@@ -122,7 +123,7 @@ describe("fetchRenderedPage – rendered-page contract", () => {
     const [url, options] = mockGoto.mock.calls[0] as [string, { timeout?: number }];
 
     expect(url).toBe("https://example.com/recipe");
-    expect(options.timeout).toBeGreaterThan(0);
+    expect(options.timeout).toBe(SERVER_CONFIG.OBSCURA_NAVIGATION_TIMEOUT_MS);
   });
 
   it("supplies no browser identity of its own", async () => {

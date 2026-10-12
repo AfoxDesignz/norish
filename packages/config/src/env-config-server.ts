@@ -222,6 +222,8 @@ const ServerConfigSchema = z.object({
     .string()
     .min(1, "OBSCURA_ENDPOINT is required for web scraping")
     .default("ws://obscura:9222"),
+  // How long a URL import waits for the page's `load` event in Obscura.
+  OBSCURA_NAVIGATION_TIMEOUT_MS: z.coerce.number().int().positive().default(45000),
 
   PARSER_API_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
 
