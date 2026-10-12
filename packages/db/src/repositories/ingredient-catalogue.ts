@@ -477,8 +477,10 @@ export async function deleteCatalogueIngredient(tx: DbTransaction, id: string): 
 
 /**
  * The foods a round of Clean names may ask about: none from the seed, whose
- * names are the catalogue's own, none whose name is settled, and none a
- * suggestion waits on. Nothing here decides which the asker may edit.
+ * names are the catalogue's own, none whose name is settled, none a
+ * suggestion waits on, and none flagged, whose name the flag's own question
+ * asks for once it finds a food of its own. Nothing here decides which the
+ * asker may edit.
  */
 export async function listUnsettledNameIngredients(): Promise<
   Array<CatalogueOwner & { id: string; name: string }>
@@ -491,6 +493,7 @@ export async function listUnsettledNameIngredients(): Promise<
       and(
         isNull(ingredients.offId),
         eq(ingredients.nameSettled, false),
+        eq(ingredients.flagged, false),
         isNull(ingredientSuggestions.id)
       )
     )

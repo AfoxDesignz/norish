@@ -394,19 +394,23 @@
     "markDistinct": "Oznacz jako odrębny",
     "summary": "{spellings, plural, one {# tłumaczenie} few {# tłumaczenia} other {# tłumaczeń}}{kinds, plural, =0 {} one {, # rodzaj} few {, # rodzaje} many {, # rodzajów} other {, # rodzaju}}{parent, select, none {} other {, nadrzędny: {parent}}}",
     "askAI": "Zapytaj AI",
-    "askAIAll": "Zapytaj AI o oznaczone składniki",
+    "fixCatalogue": "Popraw katalog",
     "askAIRound": {
-      "intro": "AI odczytuje każdą nazwę i porównuje ją z produktami, które zna Norish. Nic się nie zmieni, dopóki nie potwierdzisz sugestii.",
-      "scopeLabel": "Które składniki",
+      "intro": "AI sprawdza, gdzie pasują oznaczone składniki, i poprawia niespójne nazwy. Nic się nie zmieni, dopóki nie potwierdzisz sugestii.",
+      "scopeLabel": "Co poprawić",
       "scopes": {
-        "unsuggested": "Tylko te bez sugestii",
-        "flagged": "Wszystkie oznaczone składniki"
+        "unsuggested": "Sprawdź oznaczone składniki",
+        "suggested": "Sprawdź sugestie ponownie",
+        "name": "Uporządkuj nazwy"
+      },
+      "hints": {
+        "unsuggested": "Szuka duplikatów, składników podrzędnych lub unikalnych.",
+        "suggested": "Ponownie sprawdza oznaczone składniki.",
+        "name": "Czyści nazwy składników, zostawiając sam składnik. Oznaczone składniki są uwzględniane, jeśli powyższe pole jest zaznaczone."
       },
       "scopeSize": "{count, plural, =0 {Brak składników} one {# składnik · około {tokens} tokenów} few {# składniki · około {tokens} tokenów} many {# składników · około {tokens} tokenów} other {# składnika · około {tokens} tokenów}}",
-      "replaces": "Zastępuje oczekujące już sugestie.",
       "modelTokens": "około {tokens} tokenów",
-      "basisMeasured": "Na podstawie zużycia w ostatniej rundzie.",
-      "basisPrompt": "Oszacowano na podstawie promptu, więc rzeczywista liczba będzie pewnie wyższa."
+      "basisMeasured": "Na podstawie zużycia w ostatniej rundzie."
     },
     "roundProgress": "Pytanie AI · {done, number} z {total, number}",
     "roundSection": {
@@ -570,12 +574,6 @@
     "standaloneOnly": "Bez rodzica i rodzajów",
     "findParent": "Znajdź rodzica z AI",
     "findParentsAll": "Znajdź rodziców z AI",
-    "cleanNames": {
-      "open": "Uporządkuj nazwy z AI",
-      "title": "Uporządkuj nazwy z AI",
-      "intro": "AI czyta każdą nazwę i usuwa to, co nie jest produktem spożywczym, np. ilości, kody opakowań i słowa reklamowe. Zachowuje język i markę. Nic się nie zmieni, dopóki nie potwierdzisz sugestii.",
-      "start": "Uporządkuj nazwy"
-    },
     "suggestion": {
       "merge": "Połącz {name} z {into}",
       "parent": "Przypisz {name} do {of}",
@@ -975,7 +973,7 @@
         "imageGenerationDescription": "Narysuj zdjęcie potrawy dla nowych przepisów, które nie mają żadnego obrazu"
       },
       "automaticIngredients": "Automatycznie dla nowych składników",
-      "automaticIngredientsDescription": "Co AI robi z produktem, który przepis, zakup lub produkt ze spiżarni dodaje do katalogu. Członkowie nadal mogą sami porządkować nazwy i rysować ikony.",
+      "automaticIngredientsDescription": "Co się dzieje, gdy do katalogu trafiają nowe składniki.",
       "automaticIngredientsKinds": {
         "plainName": "Uporządkuj nazwę",
         "plainNameDescription": "Usuń to, co nie jest produktem, np. ilości i kody opakowań",

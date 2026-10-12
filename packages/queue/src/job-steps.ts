@@ -24,6 +24,8 @@ export interface JobStepEvent {
   endedAt?: number;
   /** Small JSON-able summary recorded when the step completed */
   detail?: unknown;
+  /** The model requests the step made, where a job counts them per step as well as per attempt */
+  models?: ModelUse[];
 }
 
 export interface JobAttemptTimeline {

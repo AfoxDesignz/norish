@@ -394,19 +394,23 @@
     "markDistinct": "Marcar como distinto",
     "summary": "{spellings, plural, one {# tradução} other {# traduções}}{kinds, plural, =0 {} one {, # tipo} other {, # tipos}}{parent, select, none {} other {, pai: {parent}}}",
     "askAI": "Perguntar à IA",
-    "askAIAll": "Perguntar à IA sobre ingredientes sinalizados",
+    "fixCatalogue": "Corrigir catálogo",
     "askAIRound": {
-      "intro": "A IA lê cada nome e o compara com os alimentos que o Norish conhece. Nada muda até você confirmar uma sugestão.",
-      "scopeLabel": "Quais ingredientes",
+      "intro": "A IA verifica onde os ingredientes sinalizados se encaixam e corrige nomes inconsistentes. Nada muda até você confirmar uma sugestão.",
+      "scopeLabel": "O que corrigir",
       "scopes": {
-        "unsuggested": "Só os que não têm sugestão",
-        "flagged": "Todos os ingredientes sinalizados"
+        "unsuggested": "Verificar ingredientes sinalizados",
+        "suggested": "Verificar sugestões de novo",
+        "name": "Limpar nomes"
+      },
+      "hints": {
+        "unsuggested": "Procura duplicatas, ingredientes filhos ou únicos.",
+        "suggested": "Verifica de novo os ingredientes sinalizados.",
+        "name": "Limpa os nomes dos ingredientes para deixar só o ingrediente. Os ingredientes sinalizados entram se a caixa acima estiver marcada."
       },
       "scopeSize": "{count, plural, =0 {Nenhum ingrediente} one {# ingrediente · cerca de {tokens} tokens} other {# ingredientes · cerca de {tokens} tokens}}",
-      "replaces": "Substitui as sugestões que já estão esperando.",
       "modelTokens": "cerca de {tokens} tokens",
-      "basisMeasured": "Com base no que a última rodada usou.",
-      "basisPrompt": "Estimado a partir do prompt, então o número real provavelmente é maior."
+      "basisMeasured": "Com base no que a última rodada usou."
     },
     "roundProgress": "Perguntando à IA · {done, number} de {total, number}",
     "roundSection": {
@@ -570,12 +574,6 @@
     "standaloneOnly": "Sem pai nem tipos",
     "findParent": "Encontrar pai com IA",
     "findParentsAll": "Encontrar pais com IA",
-    "cleanNames": {
-      "open": "Limpar nomes com IA",
-      "title": "Limpar nomes com IA",
-      "intro": "A IA lê cada nome e tira o que não é o alimento, como quantidades, códigos de embalagem e palavras de propaganda. Mantém o idioma e a marca. Nada muda até você confirmar uma sugestão.",
-      "start": "Limpar nomes"
-    },
     "suggestion": {
       "merge": "Mesclar {name} com {into}",
       "parent": "Classificar {name} em {of}",
@@ -975,7 +973,7 @@
         "imageGenerationDescription": "Desenhe uma foto do prato para receitas novas que não têm nenhuma imagem"
       },
       "automaticIngredients": "Automático para ingredientes novos",
-      "automaticIngredientsDescription": "O que a IA faz com um alimento que uma receita, uma compra ou um item da despensa adiciona ao catálogo. Os membros ainda podem limpar nomes e desenhar ícones manualmente.",
+      "automaticIngredientsDescription": "O que acontece quando novos ingredientes são adicionados ao catálogo.",
       "automaticIngredientsKinds": {
         "plainName": "Limpar o nome",
         "plainNameDescription": "Tirar o que não é o alimento, como quantidades e códigos de embalagem",

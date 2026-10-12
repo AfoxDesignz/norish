@@ -1,8 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import type { IngredientReviewJobData } from "@norish/queue/contracts/job-types";
 import type { CatalogueActor, CatalogueRefusal } from "@norish/shared-server/ingredients/catalogue";
 import type {
+  FixPart,
   IconScopeSummary,
   NameScopeSummary,
   ReviewReport,
@@ -77,7 +79,7 @@ import {
 import { trpcLogger as log } from "@norish/shared-server/logger";
 import { ICON_FILE_PATTERN } from "@norish/shared-server/media/ingredient-icon";
 import { ICON_PICTURE_MIME_TYPES } from "@norish/shared/contracts";
-import { ICON_SCOPES, REVIEW_SCOPES } from "@norish/shared/contracts/ingredient-catalogue";
+import { FIX_PARTS, ICON_SCOPES } from "@norish/shared/contracts/ingredient-catalogue";
 import {
   INGREDIENT_SEARCH_FIELDS,
   INGREDIENT_SEARCH_MATCHES,
@@ -300,6 +302,25 @@ const findParentWithAI_ = authedProcedure
     });
   });
 
+/** The foods each part of Fix catalogue holds for the actor, flagged ones first, with the question each is asked. */
+async function fixFoods(
+  actor: CatalogueActor,
+  parts: readonly FixPart[]
+): Promise<IngredientReviewJobData["ingredients"]> {
+  const flagged =
+    parts.includes("unsuggested") || parts.includes("suggested")
+      ? await listReviewableIngredients(actor)
+      : [];
+  const names = parts.includes("name") ? await listNameableIngredients(actor) : [];
+
+  return [
+    ...flagged
+      .filter((food) => parts.includes(food.suggested ? "suggested" : "unsuggested"))
+      .map(({ id, name }) => ({ id, name, mode: "review" as const })),
+    ...names.map(({ id, name }) => ({ id, name, mode: "name" as const })),
+  ];
+}
+
 /** These Ingredients by id and by name, so the job monitor's input reads as foods, not ids. */
 async function namedFoods(ids: readonly string[]): Promise<{ id: string; name: string }[]> {
   const names = await findCatalogueIngredientNames(ids);
@@ -308,12 +329,14 @@ async function namedFoods(ids: readonly string[]): Promise<{ id: string; name: s
 }
 
 /**
- * Ask AI about the flagged Ingredients the asker may edit, every one or only
- * those no suggestion waits on (`scope`), which the server picks, however
- * many there are; what food each Ingredient on the page is a kind of
- * (`mode: "parent"`); or the Plain Name of every food the asker may edit
- * whose name is not settled (`mode: "name"`), which the server picks too. One job, a step per food, that keeps going after the
- * tab is closed. Each food's edit follows `edit` on that food, checked again
+ * Fix catalogue (`mode: "fix"`): ask AI about the parts of the catalogue the
+ * asker picked, any of them together, which the server fills however many
+ * foods they hold: the flagged Ingredients the asker may edit that no
+ * suggestion waits on, those that have one, asked again, and the Plain Name
+ * of every unflagged food whose name is not settled. Or what food each
+ * Ingredient on the page is a kind of (`mode: "parent"`). No food is in two
+ * parts; a flagged food AI calls its own is asked its Plain Name next. One job, a step per food, that keeps
+ * going after the tab is closed. Each food's edit follows `edit` on that food, checked again
  * by the round as it reaches it, so a food the asker may no longer edit is
  * passed over rather than refused here. Answers the job the page watches the
  * round by, over `onReview`, and the foods it waits on.
@@ -321,30 +344,27 @@ async function namedFoods(ids: readonly string[]): Promise<{ id: string; name: s
 const reviewAllWithAI = authedProcedure
   .input(
     z.discriminatedUnion("mode", [
-      z.object({ mode: z.literal("review"), scope: z.enum(REVIEW_SCOPES) }),
+      z.object({ mode: z.literal("fix"), parts: z.array(z.enum(FIX_PARTS)).min(1) }),
       z.object({ mode: z.literal("parent"), ingredientIds: z.array(z.uuid()).min(1) }),
-      z.object({ mode: z.literal("name") }),
     ])
   )
   .mutation(async ({ ctx, input }) => {
     await assertAIEnabled();
 
     const foods =
-      input.mode === "review"
-        ? (await listReviewableIngredients(actorOf(ctx), input.scope)).map(({ id, name }) => ({
-            id,
-            name,
-          }))
-        : input.mode === "name"
-          ? await listNameableIngredients(actorOf(ctx))
-          : await namedFoods(input.ingredientIds);
+      input.mode === "fix"
+        ? await fixFoods(actorOf(ctx), input.parts)
+        : (await namedFoods(input.ingredientIds)).map((food) => ({
+            ...food,
+            mode: "parent" as const,
+          }));
 
     log.info(
       {
         userId: ctx.user.id,
         count: foods.length,
         mode: input.mode,
-        ...(input.mode === "review" ? { scope: input.scope } : {}),
+        ...(input.mode === "fix" ? { parts: input.parts } : {}),
       },
       "Starting a round of Ask AI over Ingredients"
     );
@@ -354,7 +374,6 @@ const reviewAllWithAI = authedProcedure
 
     const jobId = await addIngredientReviewJob(getQueues().ingredientReview, {
       ingredients: foods,
-      mode: input.mode,
       actor: {
         userId: ctx.user.id,
         householdUserIds: ctx.householdUserIds ? [...ctx.householdUserIds] : null,
@@ -366,8 +385,8 @@ const reviewAllWithAI = authedProcedure
   });
 
 /**
- * What a round of Ask AI over the flagged Ingredients would ask about, for
- * the asker: how many each scope holds, and about how many tokens a food's
+ * What a round of Fix catalogue would ask about the flagged Ingredients, for
+ * the asker: how many each part holds, and about how many tokens a food's
  * question takes. Measured over the latest finished round where the queue
  * still holds one that recorded its tokens; counted from the prompt
  * otherwise.
@@ -378,9 +397,11 @@ const reviewScope = authedProcedure.query(async ({ ctx }): Promise<ReviewScopeSu
   const foods = await listReviewableIngredients(actorOf(ctx));
   const measured = await readRoundTokens(getQueues().ingredientReview);
 
+  const suggested = foods.filter((food) => food.suggested).length;
+
   return {
-    flagged: foods.length,
-    unsuggested: foods.filter((food) => !food.suggested).length,
+    unsuggested: foods.length - suggested,
+    suggested,
     tokens: measured
       ? { basis: "measured", ...measured }
       : { basis: "prompt", models: await estimateReviewTokens(foods.map((food) => food.name)) },

@@ -39,6 +39,7 @@ import {
   setParent,
 } from "./catalogue";
 import { ingredientChanges } from "./changes";
+import { proposeMergeForTakenName } from "./plain-names";
 
 /** One suggestion as the page shows it: both foods, and how AI got there. */
 export interface IngredientSuggestionItem {
@@ -155,8 +156,16 @@ export async function confirmSuggestion(
     case "rename":
       if (!suggestion.proposedName) throw new CatalogueEditError("not-found");
 
-      // A person taking the name is their own rename: the flag goes and the name is settled.
-      return await renameIngredient(actor, ingredientId, suggestion.proposedName);
+      try {
+        // A person taking the name is their own rename: the flag goes and the name is settled.
+        return await renameIngredient(actor, ingredientId, suggestion.proposedName);
+      } catch (error) {
+        // Taken since it was proposed: the refusal still says so, and a merge waits instead.
+        if (error instanceof CatalogueEditError && error.refusal === "name-taken") {
+          await proposeMergeForTakenName(ingredientId, suggestion.proposedName);
+        }
+        throw error;
+      }
   }
 }
 

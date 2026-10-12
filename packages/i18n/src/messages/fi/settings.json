@@ -394,19 +394,23 @@
     "markDistinct": "Merkitse erilliseksi",
     "summary": "{spellings, plural, one {# käännös} other {# käännöstä}}{kinds, plural, =0 {} one {, # laji} other {, # lajia}}{parent, select, none {} other {, yläkäsite: {parent}}}",
     "askAI": "Kysy tekoälyltä",
-    "askAIAll": "Kysy tekoälyltä merkityistä ainesosista",
+    "fixCatalogue": "Korjaa luettelo",
     "askAIRound": {
-      "intro": "Tekoäly lukee jokaisen nimen ja vertaa sitä Norishin tuntemiin elintarvikkeisiin. Mikään ei muutu ennen kuin vahvistat ehdotuksen.",
-      "scopeLabel": "Mitkä ainesosat",
+      "intro": "Tekoäly selvittää, minne merkityt ainesosat kuuluvat, ja korjaa epäyhtenäiset nimet. Mikään ei muutu ennen kuin vahvistat ehdotuksen.",
+      "scopeLabel": "Mitä korjataan",
       "scopes": {
-        "unsuggested": "Vain ne, joilla ei ole ehdotusta",
-        "flagged": "Kaikki merkityt ainesosat"
+        "unsuggested": "Tarkista merkityt ainesosat",
+        "suggested": "Tarkista ehdotukset uudelleen",
+        "name": "Siivoa nimet"
+      },
+      "hints": {
+        "unsuggested": "Etsii kaksoiskappaleita, ala-ainesosia tai ainutlaatuisia.",
+        "suggested": "Tarkistaa merkityt ainesosat uudelleen.",
+        "name": "Siistii ainesosien nimet pelkäksi ainesosaksi. Merkityt ainesosat ovat mukana, jos yllä oleva valintaruutu on valittuna."
       },
       "scopeSize": "{count, plural, =0 {Ei ainesosia} one {# ainesosa · noin {tokens} tokenia} other {# ainesosaa · noin {tokens} tokenia}}",
-      "replaces": "Korvaa jo odottavat ehdotukset.",
       "modelTokens": "noin {tokens} tokenia",
-      "basisMeasured": "Edellisen kierroksen käytön mukaan.",
-      "basisPrompt": "Arvioitu kehotteen perusteella, joten todellinen määrä on todennäköisesti suurempi."
+      "basisMeasured": "Edellisen kierroksen käytön mukaan."
     },
     "roundProgress": "Kysytään tekoälyltä · {done, number}/{total, number}",
     "roundSection": {
@@ -570,12 +574,6 @@
     "standaloneOnly": "Ilman yläkäsitettä tai lajeja",
     "findParent": "Etsi yläkäsite tekoälyllä",
     "findParentsAll": "Etsi yläkäsitteet tekoälyllä",
-    "cleanNames": {
-      "open": "Siivoa nimet tekoälyllä",
-      "title": "Siivoa nimet tekoälyllä",
-      "intro": "Tekoäly lukee jokaisen nimen ja poistaa siitä sen, mikä ei ole ruoka-ainetta, kuten määrät, pakkauskoodit ja mainossanat. Kieli ja merkki säilyvät. Mikään ei muutu ennen kuin vahvistat ehdotuksen.",
-      "start": "Siivoa nimet"
-    },
     "suggestion": {
       "merge": "Yhdistä {name} kohteeseen {into}",
       "parent": "Luokittele {name} kohteen {of} alle",
@@ -975,7 +973,7 @@
         "imageGenerationDescription": "Piirrä kuva ruoasta uusille resepteille, joilla ei ole lainkaan kuvaa"
       },
       "automaticIngredients": "Automaattisesti uusille ainesosille",
-      "automaticIngredientsDescription": "Mitä tekoäly tekee ruoka-aineelle, jonka resepti, ostos tai ruokavaraston tuote lisää luetteloon. Jäsenet voivat edelleen siivota nimiä ja piirtää kuvakkeita itse.",
+      "automaticIngredientsDescription": "Mitä tapahtuu, kun luetteloon lisätään uusia ainesosia.",
       "automaticIngredientsKinds": {
         "plainName": "Siivoa nimi",
         "plainNameDescription": "Poista se, mikä ei ole ruoka-ainetta, kuten määrät ja pakkauskoodit",

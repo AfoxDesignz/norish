@@ -90,10 +90,14 @@ export async function estimateCleanTokens(names: readonly string[]): Promise<Mod
  * Ask for one food's Plain Name, and record what it proposes: a rename, or a
  * merge into the food that already spells it. A name already plain is
  * settled, so no later round asks again. Follows `edit` on the Ingredient.
+ * `afterReview` asks of a flagged food the round just called a food of its
+ * own: the rename or merge replaces that waiting "distinct", and confirming
+ * it clears the flag all the same.
  */
 export async function cleanNameWithAI(
   actor: CatalogueActor,
-  ingredientId: string
+  ingredientId: string,
+  { afterReview = false }: { afterReview?: boolean } = {}
 ): Promise<PlainNameOutcome> {
   const [row, policy] = await Promise.all([
     findIngredientNaming(ingredientId),
@@ -104,7 +108,9 @@ export async function cleanNameWithAI(
   if (!mayEditIngredientRow(policy.edit, actor, row.ownerId)) {
     throw new CatalogueEditError("forbidden");
   }
-  if (row.nameSettled || row.suggested) return { outcome: "skipped", reason: "settled" };
+  if (row.nameSettled || (row.suggested && !afterReview)) {
+    return { outcome: "skipped", reason: "settled" };
+  }
 
   const plain = await askPlainName(ingredientId, row.name);
 
@@ -129,6 +135,32 @@ export async function cleanNameWithAI(
   return holder
     ? { outcome: "merge", into: holder.name, ...NO_TRACE }
     : { outcome: "rename", to: plain };
+}
+
+/**
+ * A proposed rename another food took the name of since, most likely a rename
+ * from the same round: the food holding it is this one, so a merge into it
+ * waits on a person instead. Answers whether one does; nothing changes where
+ * no other food holds the name.
+ */
+export async function proposeMergeForTakenName(
+  ingredientId: string,
+  plain: string
+): Promise<boolean> {
+  const holder = await holderOf(ingredientId, plain);
+
+  if (!holder) return false;
+  await upsertIngredientSuggestion({
+    ingredientId,
+    kind: "merge",
+    targetId: holder.id,
+    englishName: null,
+    considered: [],
+    proposedName: plain,
+  });
+  await ingredientChanges().changed([ingredientId]);
+
+  return true;
 }
 
 /**

@@ -394,19 +394,23 @@
     "markDistinct": "Markeer als apart",
     "summary": "{spellings, plural, one {# vertaling} other {# vertalingen}}{kinds, plural, =0 {} one {, # soort} other {, # soorten}}{parent, select, none {} other {, hoofdingrediënt: {parent}}}",
     "askAI": "Vraag AI",
-    "askAIAll": "Vraag AI over gemarkeerde ingrediënten",
+    "fixCatalogue": "Catalogus verbeteren",
     "askAIRound": {
-      "intro": "AI leest elke naam en vergelijkt die met de voedingsmiddelen die Norish kent. Er verandert niets tot je een voorstel bevestigt.",
-      "scopeLabel": "Welke ingrediënten",
+      "intro": "AI zoekt uit waar gemarkeerde ingrediënten horen en verbetert inconsistente namen. Er verandert niets tot je een voorstel bevestigt.",
+      "scopeLabel": "Wat verbeteren",
       "scopes": {
-        "unsuggested": "Alleen die zonder voorstel",
-        "flagged": "Alle gemarkeerde ingrediënten"
+        "unsuggested": "Gemarkeerde ingrediënten nakijken",
+        "suggested": "Voorstellen opnieuw nakijken",
+        "name": "Namen opschonen"
+      },
+      "hints": {
+        "unsuggested": "Zoekt naar dubbelen, subingrediënten of unieke ingrediënten.",
+        "suggested": "Kijkt gemarkeerde ingrediënten opnieuw na.",
+        "name": "Schoont ingrediëntnamen op tot alleen het ingrediënt. Gemarkeerde ingrediënten doen mee als het vakje hierboven is aangevinkt."
       },
       "scopeSize": "{count, plural, =0 {Geen ingrediënten} one {# ingrediënt · ongeveer {tokens} tokens} other {# ingrediënten · ongeveer {tokens} tokens}}",
-      "replaces": "Vervangt de voorstellen die al klaarstaan.",
       "modelTokens": "ongeveer {tokens} tokens",
-      "basisMeasured": "Op basis van wat de vorige ronde gebruikte.",
-      "basisPrompt": "Geschat op basis van de prompt, dus in werkelijkheid waarschijnlijk meer."
+      "basisMeasured": "Op basis van wat de vorige ronde gebruikte."
     },
     "roundProgress": "AI wordt gevraagd · {done, number} van {total, number}",
     "roundSection": {
@@ -570,12 +574,6 @@
     "standaloneOnly": "Zonder ouder of soorten",
     "findParent": "Ouder zoeken met AI",
     "findParentsAll": "Ouders zoeken met AI",
-    "cleanNames": {
-      "open": "Namen opschonen met AI",
-      "title": "Namen opschonen met AI",
-      "intro": "AI leest elke naam en haalt weg wat niet het ingrediënt is, zoals hoeveelheden, verpakkingscodes en reclamewoorden. De taal en het merk blijven staan. Er verandert niets tot je een suggestie bevestigt.",
-      "start": "Namen opschonen"
-    },
     "suggestion": {
       "merge": "{name} samenvoegen met {into}",
       "parent": "{name} plaatsen onder {of}",
@@ -975,7 +973,7 @@
         "imageGenerationDescription": "Teken een foto van het gerecht voor nieuwe recepten die helemaal geen afbeelding hebben"
       },
       "automaticIngredients": "Automatisch voor nieuwe ingrediënten",
-      "automaticIngredientsDescription": "Wat AI doet voor een ingrediënt dat een recept, boodschap of voorraaditem aan de catalogus toevoegt. Leden kunnen namen nog steeds zelf opschonen en iconen tekenen.",
+      "automaticIngredientsDescription": "Wat er gebeurt als er nieuwe ingrediënten aan de catalogus worden toegevoegd.",
       "automaticIngredientsKinds": {
         "plainName": "Naam opschonen",
         "plainNameDescription": "Haal weg wat niet het ingrediënt is, zoals hoeveelheden en verpakkingscodes",

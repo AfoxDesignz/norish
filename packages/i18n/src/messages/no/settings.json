@@ -394,19 +394,23 @@
     "markDistinct": "Marker som egen",
     "summary": "{spellings, plural, one {# oversettelse} other {# oversettelser}}{kinds, plural, =0 {} one {, # type} other {, # typer}}{parent, select, none {} other {, overordnet: {parent}}}",
     "askAI": "Spør AI",
-    "askAIAll": "Spør AI om merkede ingredienser",
+    "fixCatalogue": "Rett opp katalogen",
     "askAIRound": {
-      "intro": "AI leser hvert navn og sammenligner det med matvarene Norish kjenner. Ingenting endres før du bekrefter et forslag.",
-      "scopeLabel": "Hvilke ingredienser",
+      "intro": "AI finner ut hvor merkede ingredienser hører hjemme, og retter opp uensartede navn. Ingenting endres før du bekrefter et forslag.",
+      "scopeLabel": "Hva som skal rettes",
       "scopes": {
-        "unsuggested": "Bare de uten forslag",
-        "flagged": "Alle merkede ingredienser"
+        "unsuggested": "Sjekk merkede ingredienser",
+        "suggested": "Sjekk forslag på nytt",
+        "name": "Rydd opp i navn"
+      },
+      "hints": {
+        "unsuggested": "Ser etter duplikater, underingredienser eller unike.",
+        "suggested": "Sjekker merkede ingredienser på nytt.",
+        "name": "Renser ingrediensnavn til bare ingrediensen. Merkede ingredienser er med hvis avkrysningsboksen over er huket av."
       },
       "scopeSize": "{count, plural, =0 {Ingen ingredienser} one {# ingrediens · omtrent {tokens} tokens} other {# ingredienser · omtrent {tokens} tokens}}",
-      "replaces": "Erstatter forslagene som allerede venter.",
       "modelTokens": "omtrent {tokens} tokens",
-      "basisMeasured": "Basert på hva forrige runde brukte.",
-      "basisPrompt": "Anslått ut fra prompten, så det faktiske antallet er trolig høyere."
+      "basisMeasured": "Basert på hva forrige runde brukte."
     },
     "roundProgress": "Spør AI · {done, number} av {total, number}",
     "roundSection": {
@@ -570,12 +574,6 @@
     "standaloneOnly": "Uten forelder eller typer",
     "findParent": "Finn forelder med AI",
     "findParentsAll": "Finn foreldre med AI",
-    "cleanNames": {
-      "open": "Rydd opp i navn med AI",
-      "title": "Rydd opp i navn med AI",
-      "intro": "AI leser hvert navn og fjerner det som ikke er matvaren, som mengder, pakningskoder og reklameord. Språket og merket beholdes. Ingenting endres før du bekrefter et forslag.",
-      "start": "Rydd opp i navn"
-    },
     "suggestion": {
       "merge": "Slå sammen {name} med {into}",
       "parent": "Plasser {name} under {of}",
@@ -975,7 +973,7 @@
         "imageGenerationDescription": "Tegn et bilde av retten for nye oppskrifter som ikke har noe bilde"
       },
       "automaticIngredients": "Automatisk for nye ingredienser",
-      "automaticIngredientsDescription": "Hva AI gjør for en matvare som en oppskrift, en innkjøpsvare eller en vare i spiskammeret legger til i katalogen. Medlemmer kan fortsatt rydde opp i navn og tegne ikoner selv.",
+      "automaticIngredientsDescription": "Hva som skjer når nye ingredienser legges til i katalogen.",
       "automaticIngredientsKinds": {
         "plainName": "Rydd opp i navnet",
         "plainNameDescription": "Fjern det som ikke er matvaren, som mengder og pakningskoder",

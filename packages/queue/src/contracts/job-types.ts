@@ -159,10 +159,13 @@ export interface NewIngredientsJobData {
  * a session.
  */
 export interface IngredientReviewJobData {
-  /** The foods, by id and by name, so the job monitor reads "uitjes" rather than an id. */
-  ingredients: Array<{ id: string; name: string }>;
-  /** What is asked: what each flagged food is (the default), what food each is a kind of, or its Plain Name. */
-  mode?: ReviewMode;
+  /**
+   * The foods, by id and by name, so the job monitor reads "uitjes" rather
+   * than an id, and what is asked of each: what a flagged food is, what food
+   * it is a kind of, or its Plain Name. One round may ask a food's flag and
+   * another food's name.
+   */
+  ingredients: Array<{ id: string; name: string; mode: ReviewMode }>;
   actor: {
     userId: string;
     householdUserIds: string[] | null;

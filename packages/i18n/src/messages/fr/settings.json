@@ -394,19 +394,23 @@
     "markDistinct": "Marquer comme distinct",
     "summary": "{spellings, plural, one {# traduction} other {# traductions}}{kinds, plural, =0 {} one {, # sorte} other {, # sortes}}{parent, select, none {} other {, parent: {parent}}}",
     "askAI": "Demander à l'IA",
-    "askAIAll": "Demander à l'IA pour les ingrédients signalés",
+    "fixCatalogue": "Corriger le catalogue",
     "askAIRound": {
-      "intro": "L'IA lit chaque nom et le compare aux aliments que Norish connaît. Rien ne change tant que vous n'avez pas confirmé une suggestion.",
-      "scopeLabel": "Quels ingrédients",
+      "intro": "L'IA vérifie où vont les ingrédients signalés et corrige les noms incohérents. Rien ne change tant que vous n'avez pas confirmé une suggestion.",
+      "scopeLabel": "Que corriger",
       "scopes": {
-        "unsuggested": "Seulement ceux sans suggestion",
-        "flagged": "Tous les ingrédients signalés"
+        "unsuggested": "Vérifier les ingrédients signalés",
+        "suggested": "Revérifier les suggestions",
+        "name": "Nettoyer les noms"
+      },
+      "hints": {
+        "unsuggested": "Cherche les doublons, les ingrédients enfants ou uniques.",
+        "suggested": "Revérifie les ingrédients signalés.",
+        "name": "Réduit les noms d'ingrédients à l'ingrédient seul. Les ingrédients signalés sont inclus si la case ci-dessus est cochée."
       },
       "scopeSize": "{count, plural, =0 {Aucun ingrédient} one {# ingrédient · environ {tokens} tokens} other {# ingrédients · environ {tokens} tokens}}",
-      "replaces": "Remplace les suggestions déjà en attente.",
       "modelTokens": "environ {tokens} tokens",
-      "basisMeasured": "D'après la consommation de la dernière série.",
-      "basisPrompt": "Estimé d'après le prompt, le nombre réel sera donc probablement plus élevé."
+      "basisMeasured": "D'après la consommation de la dernière série."
     },
     "roundProgress": "Interrogation de l'IA · {done, number} sur {total, number}",
     "roundSection": {
@@ -570,12 +574,6 @@
     "standaloneOnly": "Sans parent ni sortes",
     "findParent": "Trouver le parent avec l’IA",
     "findParentsAll": "Trouver les parents avec l’IA",
-    "cleanNames": {
-      "open": "Nettoyer les noms avec l’IA",
-      "title": "Nettoyer les noms avec l’IA",
-      "intro": "L’IA lit chaque nom et retire ce qui n’est pas l’aliment, comme les quantités, les codes d’emballage et les mots publicitaires. Elle garde la langue et la marque. Rien ne change tant que vous ne confirmez pas une suggestion.",
-      "start": "Nettoyer les noms"
-    },
     "suggestion": {
       "merge": "Fusionner {name} avec {into}",
       "parent": "Classer {name} sous {of}",
@@ -975,7 +973,7 @@
         "imageGenerationDescription": "Dessine une photo du plat pour les nouvelles recettes qui n'ont aucune image"
       },
       "automaticIngredients": "Automatique pour les nouveaux ingrédients",
-      "automaticIngredientsDescription": "Ce que l’IA fait pour un aliment qu’une recette, une course ou un article du garde-manger ajoute au catalogue. Les membres peuvent toujours nettoyer les noms et dessiner les icônes eux-mêmes.",
+      "automaticIngredientsDescription": "Ce qui se passe quand de nouveaux ingrédients sont ajoutés au catalogue.",
       "automaticIngredientsKinds": {
         "plainName": "Nettoyer le nom",
         "plainNameDescription": "Retirer ce qui n’est pas l’aliment, comme les quantités et les codes d’emballage",

@@ -500,11 +500,6 @@ describe("what a round of Ask AI picks from", () => {
       { id: uien, name: "uien", suggested: true },
       { id: knaks, name: "Unox Knaks", suggested: false },
     ]);
-    // Only those no suggestion waits on, for a round over the gap.
-    expect((await listReviewableIngredients(actor, "unsuggested")).map((food) => food.id)).toEqual([
-      bulbs,
-      knaks,
-    ]);
     // A server admin may edit every food, the ones nobody owns included.
     expect(
       (await listReviewableIngredients({ ...actor, isServerAdmin: true })).map((food) => food.id)
@@ -587,7 +582,6 @@ describe("what a round of Ask AI picks from", () => {
     };
     const report = {
       jobId: "round-1",
-      mode: "review" as const,
       finished: true,
       entries: [unsure(knaks), unsure(settled), unsure(gone), merged],
       waiting: [],
@@ -599,9 +593,11 @@ describe("what a round of Ask AI picks from", () => {
     expect((await withoutSettled(report)).entries).toEqual([unsure(knaks), merged]);
     // A round still running is shown as it is.
     expect((await withoutSettled({ ...report, finished: false })).entries).toHaveLength(4);
-    // After Find parents, a food is open while it has no parent, flagged or not.
+    // Asked what it is a kind of, a food is open while it has no parent, flagged or not.
+    const parents = report.entries.map((entry) => ({ ...entry, mode: "parent" as const }));
+
     expect(
-      (await withoutSettled({ ...report, mode: "parent" })).entries.map((it) => it.ingredientId)
+      (await withoutSettled({ ...report, entries: parents })).entries.map((it) => it.ingredientId)
     ).toEqual([knaks, settled, settled]);
   });
 });

@@ -394,19 +394,23 @@
     "markDistinct": "Segna come distinto",
     "summary": "{spellings, plural, one {# traduzione} other {# traduzioni}}{kinds, plural, =0 {} one {, # tipo} other {, # tipi}}{parent, select, none {} other {, genitore: {parent}}}",
     "askAI": "Chiedi all'IA",
-    "askAIAll": "Chiedi all'IA degli ingredienti segnalati",
+    "fixCatalogue": "Correggi catalogo",
     "askAIRound": {
-      "intro": "L'IA legge ogni nome e lo confronta con gli alimenti che Norish conosce. Non cambia nulla finché non confermi un suggerimento.",
-      "scopeLabel": "Quali ingredienti",
+      "intro": "L'IA verifica dove vanno gli ingredienti segnalati e corregge i nomi incoerenti. Non cambia nulla finché non confermi un suggerimento.",
+      "scopeLabel": "Cosa correggere",
       "scopes": {
-        "unsuggested": "Solo quelli senza suggerimento",
-        "flagged": "Tutti gli ingredienti segnalati"
+        "unsuggested": "Controlla ingredienti segnalati",
+        "suggested": "Ricontrolla i suggerimenti",
+        "name": "Pulisci i nomi"
+      },
+      "hints": {
+        "unsuggested": "Cerca duplicati, ingredienti figli o unici.",
+        "suggested": "Ricontrolla gli ingredienti segnalati.",
+        "name": "Riduce i nomi degli ingredienti al solo ingrediente. Gli ingredienti segnalati sono inclusi se la casella sopra è selezionata."
       },
       "scopeSize": "{count, plural, =0 {Nessun ingrediente} one {# ingrediente · circa {tokens} token} other {# ingredienti · circa {tokens} token}}",
-      "replaces": "Sostituisce i suggerimenti già in attesa.",
       "modelTokens": "circa {tokens} token",
-      "basisMeasured": "In base a quanto usato nell'ultimo giro.",
-      "basisPrompt": "Stimato dal prompt, quindi il numero reale sarà probabilmente più alto."
+      "basisMeasured": "In base a quanto usato nell'ultimo giro."
     },
     "roundProgress": "Richiesta all'IA · {done, number} di {total, number}",
     "roundSection": {
@@ -570,12 +574,6 @@
     "standaloneOnly": "Senza genitore né tipi",
     "findParent": "Trova il genitore con l’IA",
     "findParentsAll": "Trova i genitori con l’IA",
-    "cleanNames": {
-      "open": "Pulisci i nomi con l’IA",
-      "title": "Pulisci i nomi con l’IA",
-      "intro": "L’IA legge ogni nome e toglie ciò che non è l’alimento, come quantità, codici di confezione e parole pubblicitarie. Mantiene la lingua e la marca. Non cambia nulla finché non confermi un suggerimento.",
-      "start": "Pulisci i nomi"
-    },
     "suggestion": {
       "merge": "Unisci {name} a {into}",
       "parent": "Classifica {name} sotto {of}",
@@ -975,7 +973,7 @@
         "imageGenerationDescription": "Disegna una foto del piatto per le nuove ricette che non hanno alcuna immagine"
       },
       "automaticIngredients": "Automatico per i nuovi ingredienti",
-      "automaticIngredientsDescription": "Cosa fa l’IA per un alimento che una ricetta, una spesa o un articolo della dispensa aggiunge al catalogo. I membri possono comunque pulire i nomi e disegnare le icone a mano.",
+      "automaticIngredientsDescription": "Cosa succede quando vengono aggiunti nuovi ingredienti al catalogo.",
       "automaticIngredientsKinds": {
         "plainName": "Pulisci il nome",
         "plainNameDescription": "Togli ciò che non è l’alimento, come quantità e codici di confezione",

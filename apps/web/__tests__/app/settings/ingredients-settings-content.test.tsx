@@ -102,8 +102,8 @@ let iconScope: { bare: number; unowned: number } | undefined = undefined;
 let iconRound: unknown = null;
 /** What a round would ask about, across the catalogue, as `reviewScope` answers. */
 const scope = {
-  flagged: 3,
   unsuggested: 2,
+  suggested: 1,
   tokens: {
     basis: "measured" as const,
     foods: 20,
@@ -909,7 +909,7 @@ describe("IngredientsSettingsContent", () => {
       mode: "parent",
       ingredientIds: ["onion"],
     });
-    expect(screen.queryByTestId("ingredients-ask-ai-dialog")).toBeNull();
+    expect(screen.queryByTestId("ingredients-fix-catalogue-dialog")).toBeNull();
     // Unflagged, the row still shows its turn in the round.
     expect(within(row("onion")).getByTestId("ingredient-reviewing")).toBeInTheDocument();
   });
@@ -1093,31 +1093,31 @@ describe("IngredientsSettingsContent", () => {
     expect(invalidateQueries).toHaveBeenCalled();
   });
 
-  it("asks which flagged foods first, then asks AI about them as one round, and watches it", async () => {
+  it("asks what to fix first, then asks AI about the flagged foods and the names as one round, and watches it", async () => {
     render(<IngredientsSettingsContent />);
 
-    fireEvent.click(screen.getByTestId("ingredients-ask-ai-all"));
+    fireEvent.click(screen.getByTestId("ingredients-fix-catalogue"));
 
     // Nothing is asked yet: a dialog says what a round would cover, across the catalogue.
-    const dialog = screen.getByTestId("ingredients-ask-ai-dialog");
+    const dialog = screen.getByTestId("ingredients-fix-catalogue-dialog");
 
     expect(mutations.reviewAllWithAI).not.toHaveBeenCalled();
-    expect(within(dialog).getByTestId("ingredients-ask-ai-tokens")).toBeInTheDocument();
+    expect(within(dialog).getByTestId("ingredients-fix-catalogue-models")).toBeInTheDocument();
     await act(async () => {
-      fireEvent.click(within(dialog).getByTestId("ingredients-ask-ai-start"));
+      fireEvent.click(within(dialog).getByTestId("ingredients-fix-catalogue-start"));
     });
 
-    // The server picks the foods for the scope; the page waits on the ones it names.
+    // The server picks the foods for the parts; the page waits on the ones it names.
     expect(mutations.reviewAllWithAI).toHaveBeenCalledExactlyOnceWith({
-      mode: "review",
-      scope: "unsuggested",
+      mode: "fix",
+      parts: ["unsuggested", "name"],
     });
-    expect(screen.queryByTestId("ingredients-ask-ai-dialog")).toBeNull();
+    expect(screen.queryByTestId("ingredients-fix-catalogue-dialog")).toBeNull();
     expect(mutations.reviewWithAI).not.toHaveBeenCalled();
     // The row shows its turn, and the header how far the round has come, in place of the button.
     expect(within(row("onion")).getByTestId("ingredient-reviewing")).toBeInTheDocument();
     expect(screen.getByTestId("ingredients-round-progress")).toHaveTextContent("roundProgress");
-    expect(screen.queryByTestId("ingredients-ask-ai-all")).toBeNull();
+    expect(screen.queryByTestId("ingredients-fix-catalogue")).toBeNull();
 
     // By the time the round ends, AI's suggestions are waiting.
     suggestions = [
@@ -1255,7 +1255,7 @@ describe("IngredientsSettingsContent", () => {
     render(<IngredientsSettingsContent />);
 
     expect(within(row("onion")).getByTestId("ingredient-reviewing")).toBeInTheDocument();
-    expect(screen.queryByTestId("ingredients-ask-ai-all")).toBeNull();
+    expect(screen.queryByTestId("ingredients-fix-catalogue")).toBeNull();
     // Its progress opens what it has done so far, and, folded, what it has still to ask.
     fireEvent.click(screen.getByTestId("ingredients-round-progress"));
     const panel = screen.getByRole("dialog", { name: "suggestionsTitle" });
@@ -1276,7 +1276,7 @@ describe("IngredientsSettingsContent", () => {
     expect(toast).not.toHaveBeenCalled();
     expect(screen.queryByTestId("ingredient-reviewing")).toBeNull();
     expect(screen.queryByTestId("ingredients-round-progress")).toBeNull();
-    expect(screen.getByTestId("ingredients-ask-ai-all")).toBeEnabled();
+    expect(screen.getByTestId("ingredients-fix-catalogue")).toBeEnabled();
   });
 
   it("reads what a round has written down as it goes, not only when it ends", () => {
@@ -1326,7 +1326,7 @@ describe("IngredientsSettingsContent", () => {
     try {
       render(<IngredientsSettingsContent />);
 
-      expect(screen.queryByTestId("ingredients-ask-ai-all")).toBeNull();
+      expect(screen.queryByTestId("ingredients-fix-catalogue")).toBeNull();
       const opened = await open("onion");
 
       expect(within(opened).getByTestId("ingredient-flag-notice")).toBeInTheDocument();
@@ -1384,36 +1384,26 @@ describe("IngredientsSettingsContent", () => {
     expect(mutations.confirmSuggestions).toHaveBeenCalledWith({ suggestionIds: ["s1", "s2"] });
   });
 
-  it("asks before cleaning names with AI, then cleans every unsettled one as one round", async () => {
+  it("cleans every unsettled name as one round when Fix catalogue is pointed at the names alone", async () => {
     render(<IngredientsSettingsContent />);
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("ingredients-clean-names"));
-    });
-    const dialog = screen.getByTestId("ingredients-clean-names-dialog");
+    fireEvent.click(screen.getByTestId("ingredients-fix-catalogue"));
+    const dialog = screen.getByTestId("ingredients-fix-catalogue-dialog");
 
-    expect(within(dialog).getByTestId("ingredients-clean-names-size")).toHaveTextContent(
-      "askAIRound.scopeSize"
+    fireEvent.click(
+      within(dialog).getByRole("checkbox", { name: "askAIRound.scopes.unsuggested" })
     );
     await act(async () => {
-      fireEvent.click(within(dialog).getByTestId("ingredients-clean-names-start"));
+      fireEvent.click(within(dialog).getByTestId("ingredients-fix-catalogue-start"));
     });
 
-    // The server picks the foods; the round runs in place of the buttons that start one.
-    expect(mutations.reviewAllWithAI).toHaveBeenCalledExactlyOnceWith({ mode: "name" });
-    expect(screen.queryByTestId("ingredients-clean-names-dialog")).toBeNull();
+    // The server picks the foods; the round runs in place of the button that starts one.
+    expect(mutations.reviewAllWithAI).toHaveBeenCalledExactlyOnceWith({
+      mode: "fix",
+      parts: ["name"],
+    });
+    expect(screen.queryByTestId("ingredients-fix-catalogue-dialog")).toBeNull();
     expect(screen.getByTestId("ingredients-round-progress")).toBeInTheDocument();
-    expect(screen.queryByTestId("ingredients-clean-names")).toBeNull();
-  });
-
-  it("offers no cleaning while AI is off", () => {
-    permissions.isAIEnabled = false;
-    try {
-      render(<IngredientsSettingsContent />);
-
-      expect(screen.queryByTestId("ingredients-clean-names")).toBeNull();
-    } finally {
-      permissions.isAIEnabled = true;
-    }
+    expect(screen.queryByTestId("ingredients-fix-catalogue")).toBeNull();
   });
 
   it("proposes a cleaner name, which confirmed names the food and clears its flag at once", async () => {
@@ -1445,7 +1435,6 @@ describe("IngredientsSettingsContent", () => {
     // No round seen in this tab and nothing waiting: the server's latest round is all there is.
     report = {
       jobId: "round-1",
-      mode: "review",
       finished: true,
       entries: [
         {
@@ -1468,7 +1457,7 @@ describe("IngredientsSettingsContent", () => {
   });
 
   it("offers nothing for a latest round whose every food was suggested or settled since", () => {
-    report = { jobId: "round-1", mode: "review", finished: true, entries: [] };
+    report = { jobId: "round-1", finished: true, entries: [] };
     render(<IngredientsSettingsContent />);
 
     expect(screen.queryByTestId("ingredients-suggestions-open")).toBeNull();
@@ -1513,9 +1502,9 @@ describe("IngredientsSettingsContent", () => {
       ],
     };
     render(<IngredientsSettingsContent />);
-    fireEvent.click(screen.getByTestId("ingredients-ask-ai-all"));
+    fireEvent.click(screen.getByTestId("ingredients-fix-catalogue"));
     await act(async () => {
-      fireEvent.click(screen.getByTestId("ingredients-ask-ai-start"));
+      fireEvent.click(screen.getByTestId("ingredients-fix-catalogue-start"));
     });
     act(() => {
       review.onEvent?.({
@@ -1553,11 +1542,11 @@ describe("IngredientsSettingsContent", () => {
     expect(screen.getByRole("dialog", { name: "suggestionsTitle" })).toBeInTheDocument();
   });
 
-  it("offers no AI round where nothing on screen is flagged", () => {
+  it("offers Fix catalogue where nothing on screen is flagged, since names may still want cleaning", () => {
     items = [salt];
     render(<IngredientsSettingsContent />);
 
-    expect(screen.queryByTestId("ingredients-ask-ai-all")).toBeNull();
+    expect(screen.getByTestId("ingredients-fix-catalogue")).toBeEnabled();
   });
 
   it("keeps the panel of a food a filter no longer lists, and closes it once merged away", async () => {

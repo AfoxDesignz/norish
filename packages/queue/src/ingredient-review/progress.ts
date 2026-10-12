@@ -139,7 +139,6 @@ export async function readReviewReport(
 
   return {
     jobId,
-    mode: job.data.mode ?? "review",
     finished,
     entries,
     waiting: finished
@@ -171,32 +170,38 @@ const MEASURED_ROUNDS = 10;
 
 /**
  * About how many tokens a food's question took on each model in the latest
- * finished round of `mode` that recorded them, as the providers reported
- * them: each model's tokens over the foods the round asked about, since a
+ * finished round that asked it of a food and recorded them, as the providers
+ * reported them: each model's tokens over the foods that were asked, since a
  * food passed over asked nothing. Null where no round the queue still holds
- * recorded any: one from before Norish counted tokens, or none kept at all.
- * Review and Find parents ask the one question; Clean names asks another.
+ * recorded any: one from before Norish counted tokens per food, or none kept
+ * at all. Review and Find parents ask the one question; Clean names asks
+ * another, and a round may ask both, each of its own foods.
  */
 export async function readRoundTokens(
   queue: Queue<IngredientReviewJobData>,
   mode: ReviewMode = "review"
 ): Promise<{ foods: number; models: ModelTokenEstimate[] } | null> {
   const jobs = await queue.getJobs(["completed"], 0, MEASURED_ROUNDS - 1, false);
-  const asks = (job: { data: IngredientReviewJobData }) =>
-    (job.data.mode === "name") === (mode === "name");
 
-  for (const job of jobs.filter(asks)) {
+  for (const job of jobs) {
     const attempts = readStepProgress(job.progress)?.attempts ?? [];
-    const asked = settledSteps(job.progress).filter((step) => step.outcome !== "skipped").length;
     const byModel = new Map<string, { provider: string; model: string; tokens: number }>();
+    let asked = 0;
 
-    for (const use of attempts[attempts.length - 1]?.models ?? []) {
-      if (use.tokens === undefined) continue;
-      const key = `${use.provider}\u0000${use.model}`;
-      const seen = byModel.get(key) ?? { provider: use.provider, model: use.model, tokens: 0 };
+    for (const step of attempts[attempts.length - 1]?.timeline ?? []) {
+      const detail = step.detail as Partial<ReviewStepDetail> | undefined;
 
-      seen.tokens += use.tokens;
-      byModel.set(key, seen);
+      if (!detail?.ingredientId || detail.outcome === "skipped") continue;
+      if ((detail.mode === "name") !== (mode === "name")) continue;
+      asked += 1;
+      for (const use of step.models ?? []) {
+        if (use.tokens === undefined) continue;
+        const key = `${use.provider}\u0000${use.model}`;
+        const seen = byModel.get(key) ?? { provider: use.provider, model: use.model, tokens: 0 };
+
+        seen.tokens += use.tokens;
+        byModel.set(key, seen);
+      }
     }
 
     if (byModel.size === 0 || asked === 0) continue;

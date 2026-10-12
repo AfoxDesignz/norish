@@ -16,7 +16,6 @@ import type {
   ModelTokenEstimate,
   ReviewOutcome,
   ReviewReport,
-  ReviewScope,
   ReviewVerdict,
   SuggestionKind,
 } from "@norish/shared/contracts/ingredient-catalogue";
@@ -77,23 +76,17 @@ async function ask(ingredientId: string, name: string, trace: AskTrace): Promise
 
 /**
  * The Flagged Ingredients the actor may edit, by name, each saying whether a
- * suggestion waits on it: what a round of Ask AI over `scope` asks about,
- * every one or only those no suggestion waits on.
+ * suggestion waits on it: what a round of Fix catalogue asks about.
  */
 export async function listReviewableIngredients(
-  actor: CatalogueActor,
-  scope: ReviewScope = "flagged"
+  actor: CatalogueActor
 ): Promise<FlaggedCatalogueIngredient[]> {
   const [rows, policy] = await Promise.all([
     listFlaggedCatalogueIngredients(),
     getIngredientPermissionPolicy(),
   ]);
 
-  return rows.filter(
-    (row) =>
-      mayEditIngredientRow(policy.edit, actor, row.ownerId) &&
-      (scope === "flagged" || !row.suggested)
-  );
+  return rows.filter((row) => mayEditIngredientRow(policy.edit, actor, row.ownerId));
 }
 
 /** How many of a round's foods the estimate reads, spread over them: enough to even out their names. */
@@ -226,12 +219,12 @@ export async function withoutSettled(report: ReviewReport): Promise<ReviewReport
   const states = await findCatalogueIngredientStates(
     unsuggested.map((entry) => entry.ingredientId)
   );
-  const open = (ingredientId: string) => {
+  const open = ({ ingredientId, mode }: ReviewReport["entries"][number]) => {
     const state = states.get(ingredientId);
 
     if (!state) return false;
 
-    switch (report.mode) {
+    switch (mode) {
       case "parent":
         return !state.parentId;
       case "name":
@@ -243,8 +236,6 @@ export async function withoutSettled(report: ReviewReport): Promise<ReviewReport
 
   return {
     ...report,
-    entries: report.entries.filter(
-      (entry) => !UNSUGGESTED.has(entry.outcome) || open(entry.ingredientId)
-    ),
+    entries: report.entries.filter((entry) => !UNSUGGESTED.has(entry.outcome) || open(entry)),
   };
 }

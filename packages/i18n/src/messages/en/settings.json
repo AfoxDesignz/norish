@@ -394,19 +394,23 @@
     "markDistinct": "Mark distinct",
     "summary": "{spellings, plural, one {# translation} other {# translations}}{kinds, plural, =0 {} one {, # kind} other {, # kinds}}{parent, select, none {} other {, parent: {parent}}}",
     "askAI": "Ask AI",
-    "askAIAll": "Ask AI about flagged ingredients",
+    "fixCatalogue": "Fix catalogue",
     "askAIRound": {
-      "intro": "AI reads each name and compares it with the foods Norish knows. Nothing changes until you confirm a suggestion.",
-      "scopeLabel": "Which ingredients",
+      "intro": "AI checks where flagged ingredients belong and fixes inconsistent names. Nothing changes until you confirm a suggestion.",
+      "scopeLabel": "What to fix",
       "scopes": {
-        "unsuggested": "Only those without a suggestion",
-        "flagged": "Every flagged ingredient"
+        "unsuggested": "Check flagged ingredients",
+        "suggested": "Recheck suggestions",
+        "name": "Clean names"
+      },
+      "hints": {
+        "unsuggested": "Looks for duplicates, a child ingredient or unique.",
+        "suggested": "Rechecks flagged ingredients.",
+        "name": "Cleans ingredient names to just the ingredient. Flagged ingredients are included if the above checkbox is checked."
       },
       "scopeSize": "{count, plural, =0 {No ingredients} one {# ingredient · about {tokens} tokens} other {# ingredients · about {tokens} tokens}}",
-      "replaces": "Replaces the suggestions already waiting.",
       "modelTokens": "about {tokens} tokens",
-      "basisMeasured": "Based on what the last round used.",
-      "basisPrompt": "Estimated from the prompt, so the real count is likely higher."
+      "basisMeasured": "Based on what the last round used."
     },
     "roundProgress": "Asking AI · {done, number} of {total, number}",
     "roundSection": {
@@ -570,12 +574,6 @@
     "standaloneOnly": "Without parent or kinds",
     "findParent": "Find parent with AI",
     "findParentsAll": "Find parents with AI",
-    "cleanNames": {
-      "open": "Clean names with AI",
-      "title": "Clean names with AI",
-      "intro": "AI reads each name and takes off what is not the food, such as amounts, pack codes and marketing words. It keeps the language and the brand. Nothing changes until you confirm a suggestion.",
-      "start": "Clean names"
-    },
     "suggestion": {
       "merge": "Merge {name} into {into}",
       "parent": "File {name} under {of}",
@@ -975,7 +973,7 @@
         "imageGenerationDescription": "Draw a picture of the dish for new recipes that have no image at all"
       },
       "automaticIngredients": "Automatic for new ingredients",
-      "automaticIngredientsDescription": "What AI does for a food that a recipe, grocery or pantry item adds to the catalogue. Members can still clean names and draw icons by hand.",
+      "automaticIngredientsDescription": "What happens when new ingredients are added to the catalogue.",
       "automaticIngredientsKinds": {
         "plainName": "Clean the name",
         "plainNameDescription": "Take off what is not the food, such as amounts and pack codes",
