@@ -14,6 +14,8 @@ Ingredients can have an **icon**. These icons show on:
 - **[Pantry](./pantry.md)**;
 - **[Ingredients](./ingredients.md)** page and an ingredient's panel.
 
+![A recipe's ingredient lines, each with the icon of its food](/img/screenshots/ingredient-icons-recipe.png)
+
 ## What icon is used
 
 The following rules are used in order of priority:
