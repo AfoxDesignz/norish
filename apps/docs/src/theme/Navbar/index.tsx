@@ -46,8 +46,6 @@ export default function Navbar() {
       >
         <Link aria-label="Norish docs home" className="flex shrink-0 items-center gap-3" to="/">
           <img alt="Norish" height={26} src="/img/logo.svg" width={97} />
-          <span className="bg-separator h-5 w-px" />
-          <span className="text-muted text-sm font-medium">Docs</span>
         </Link>
 
         <div className="ml-auto flex items-center gap-1">
