@@ -195,3 +195,17 @@ html[data-theme="dark"] {
   bottom: -1.5rem;
   width: clamp(96px, 17%, 150px);
 }
+
+/* The API reference (Scalar) on the docs background, in Norish green and the docs fonts. */
+.scalar-app {
+  --scalar-background-1: var(--ifm-background-color);
+  --scalar-color-accent: var(--ifm-color-primary);
+  --scalar-background-accent: color-mix(in oklch, var(--ifm-color-primary) 12%, transparent);
+  --scalar-font: var(--ifm-font-family-base);
+  --scalar-font-code: var(--ifm-font-family-monospace);
+}
+
+/* Scalar's stylesheet paints body with its own background; keep the docs one. */
+body {
+  background-color: var(--ifm-background-color);
+}

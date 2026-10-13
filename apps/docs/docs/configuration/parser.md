@@ -33,10 +33,11 @@ network.
 
 ## Settings
 
-| Variable                | Description                               | Default             |
-| ----------------------- | ----------------------------------------- | ------------------- |
-| `OBSCURA_ENDPOINT`      | Obscura CDP endpoint used to render pages | `ws://obscura:9222` |
-| `PARSER_API_TIMEOUT_MS` | Parser API timeout in milliseconds        | `15000`             |
+| Variable                        | Description                                                    | Default             |
+| ------------------------------- | -------------------------------------------------------------- | ------------------- |
+| `OBSCURA_ENDPOINT`              | Obscura CDP endpoint used to render pages                      | `ws://obscura:9222` |
+| `OBSCURA_NAVIGATION_TIMEOUT_MS` | How long a URL import waits for the page to load, milliseconds | `45000`             |
+| `PARSER_API_TIMEOUT_MS`         | Parser API timeout in milliseconds                             | `15000`             |
 
 The default addresses the `obscura` service shipped in the Quick start compose.
 Point `OBSCURA_ENDPOINT` at any reachable Obscura CDP server if you would rather
@@ -46,6 +47,10 @@ that can reach it can drive the browser.
 
 Norish starts fine without a reachable Obscura; URL imports are what fail, and
 they say so.
+
+A page counts as loaded once its images, scripts and trackers have finished
+too, not just the recipe. If a slow site fails to import with a timeout, raise
+`OBSCURA_NAVIGATION_TIMEOUT_MS`.
 
 ## Content detection
 

@@ -1,44 +1,31 @@
 ---
 sidebar_position: 3
 title: Pantry
-description: Tell Norish what you alerady have at home, and a recipe's staples stay off your grocery list unless you ask for them.
+description: In stock ingredients.
 ---
 
 # Pantry
 
-The **Pantry** defineswhat is already in the the house. Groceries
-listed in the pantry won't be added to the grocery list unless
-explicitly marked.
+The **Pantry** is the foods your household have in stock.
+Can be found under the **Groceries page** and toggling the switch at the top.
 
-## Filling your pantry
+![The Pantry page, with olive oil on the list](/img/screenshots/groceries-pantry-page.png)
 
-On the **Groceries** page, open the menu next to **Add Item** and choose
-**Pantry**. Type a name and press Enter or the plus to add it, and press the
-**X** to take one out. The pantry is case insensitive.
+Each food is translated automatically if available. Press a food to open the
+[ingredient](./ingredients.md) panel. Here you can edit an ingredient, add translations etc.
 
-![The Pantry panel, with a few names in it](/img/screenshots/groceries-pantry-panel.png)
+When you add a recipe to your groceries, the foods in your pantry are
+under **In your pantry**. Press the box icon on any other line to
+add it to your pantry. By default items in your pantry are not added
+to your groceries.
 
-## Adding a recipe
+The pantry does account for translations.
 
-When you add a recipe to your groceries, the ingredients you have at home are
-shown apart under **In your pantry**.
+## What the pantry is not
 
-![The add-to-groceries panel, with olive oil under "In your pantry"](/img/screenshots/groceries-pantry-section.png)
-
-## What Norish does not do
-
-- An ingredient is in the pantry only when its name **is** a pantry name:
-  "olive oil" in the pantry does not catch "extra virgin olive oil" in a
-  recipe, and "salt" is never mistaken for "salted butter".
-- Pantry names carry no amounts and no expiry dates.
-
-:::note
-There is a feature planned to make ingredients more than just a string.
-This will therefore improve the pantry feature as well. One of these improvements is:
-An ingredient is a base ingredient e.g. Chicken breast. Each base ingredient
-Can have several alternatives e.g. Diced chicken breasts. This will allow the 
-pantry to detect alternatives if wanted.
-:::
-
-
-[Aisles](./aisles.md) · [Prices](./prices.md)
+- “salt” in the pantry is never mistaken for “salted butter”: they are two
+  ingredients.
+- The pantry is not an inventory: no amounts, no expiry dates, and no record of
+  having run out. A food that ran out is simply on the list.
+- Only adding a recipe to your groceries looks at the pantry. Anything you type
+  on the grocery list yourself is added as usual.

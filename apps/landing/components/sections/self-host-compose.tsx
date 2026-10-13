@@ -34,7 +34,7 @@ function buildCompose(masterKey: string) {
       - db_data:/var/lib/postgresql/data
 
   redis:
-    image: redis:8.6.2
+    image: redis:8.10.1
     volumes:
       - redis_data:/data
 

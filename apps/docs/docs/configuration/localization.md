@@ -1,12 +1,12 @@
 ---
 sidebar_position: 5
 title: Localization
-description: Set the default locale and which languages are available in Norish.
+description: Locales available in Norish.
 ---
 
 # Localization
 
-Norish ships with translations for these languages:
+Norish ships with translations for the following languages:
 
 | Flag | Language           |     Code      |
 | :--: | ------------------ | :-----------: |
@@ -25,6 +25,7 @@ Norish ships with translations for these languages:
 |  🇧🇷  | Português (Brasil) |    `pt-BR`    |
 |  🇧🇬  | Български          |     `bg`      |
 |  🇫🇮  | Suomi              |     `fi`      |
+|  🇺🇦  | Українська         |     `uk`      |
 
 You can set the instance default and restrict which locales are available:
 

@@ -1,6 +1,6 @@
 {
   "name": "@norish/web",
-  "version": "0.24.0-beta",
+  "version": "0.25.0-beta",
   "private": true,
   "type": "module",
   "scripts": {
@@ -44,7 +44,6 @@
     "@norish/shared-server": "workspace:*",
     "@norish/trpc": "workspace:*",
     "@norish/ui": "workspace:*",
-    "@scalar/nextjs-api-reference": "catalog:",
     "@serwist/turbopack": "^9.5.12",
     "@tanstack/query-persist-client-core": "^5.101.4",
     "@tanstack/react-query": "catalog:",
