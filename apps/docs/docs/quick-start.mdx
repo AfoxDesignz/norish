@@ -6,6 +6,7 @@ sidebar_position: 2
 description: Get a working Norish instance running with Docker Compose in a couple of minutes.
 ---
 
+import { DocLinkCard, LinkCardGrid } from "@site/src/components/LinkCard";
 import QuickStartCompose from "@site/src/components/QuickStartCompose";
 
 # Quick start
@@ -56,10 +57,12 @@ your owner account right away. You can also use OIDC, GitHub, or Google — see
 
 ## Next steps
 
-- [Authentication](./configuration/authentication.md) — password, OIDC, GitHub, Google
-- [AI provider](./configuration/ai-provider.md) — enable recipe AI, video, and image import
-- [Server & runtime](./configuration/server-runtime.md) — logging, uploads, trusted origins, limits
-- [Admin settings](./configuration/admin-settings.md) — what you can change from the UI
+<LinkCardGrid>
+  <DocLinkCard doc="configuration/authentication" />
+  <DocLinkCard doc="configuration/ai-provider" />
+  <DocLinkCard doc="configuration/server-runtime" />
+  <DocLinkCard doc="configuration/admin-settings" />
+</LinkCardGrid>
 
 :::tip Production template
 A fuller, commented template lives in the repository at
