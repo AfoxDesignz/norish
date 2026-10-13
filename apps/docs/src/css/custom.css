@@ -232,6 +232,44 @@
     border-radius: 0.75rem;
   }
 
+  /* A screenshot (see Screenshot.tsx): half its pixel size, no taller than the cap, centred. */
+  .markdown .shot {
+    --shot-cap: 28rem;
+    display: block;
+    width: min(100%, var(--shot-width), calc(var(--shot-cap) * var(--shot-ratio)));
+    margin-inline: auto;
+    border-radius: 0.75rem;
+    cursor: zoom-in;
+    outline-offset: 3px;
+  }
+
+  .markdown .shot img {
+    display: block;
+    width: 100%;
+    border: 1px solid var(--border);
+  }
+
+  /* Two or more in one paragraph share a row at one height; on a phone they stack. */
+  .markdown .shot + .shot {
+    margin-top: 0.75rem;
+  }
+
+  @media (min-width: 40rem) {
+    .markdown p:has(> .shot + .shot) {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .markdown p:has(> .shot + .shot) > .shot {
+      flex: var(--shot-ratio) 1 0;
+      min-width: 0;
+      max-width: calc(var(--shot-cap) * var(--shot-ratio));
+      margin: 0;
+    }
+  }
+
   /* Badges in a row (shields.io) stay inline and unrounded. */
   .markdown a img {
     display: inline-block;

@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import React from "react";
+import Screenshot from "@site/src/components/Screenshot";
 import MDXComponents from "@theme-original/MDXComponents";
 
 export default {
@@ -10,4 +11,5 @@ export default {
       <table {...props} />
     </div>
   ),
+  img: Screenshot,
 };
