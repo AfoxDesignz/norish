@@ -3,7 +3,6 @@ import React from "react";
 import Link from "@docusaurus/Link";
 import { useDocById, useLayoutDoc } from "@docusaurus/plugin-content-docs/client";
 import { ArrowRightIcon, ArrowUpRightIcon } from "@heroicons/react/24/outline";
-import { buttonVariants } from "@heroui/react";
 import clsx from "clsx";
 
 /** A page link drawn as a card: an optional eyebrow, the title, a line or two of description. */
@@ -71,37 +70,4 @@ export function DocLinkCard({
 
 export function LinkCardGrid({ children }: { children: ReactNode }) {
   return <div className="my-6 grid gap-3 sm:grid-cols-2">{children}</div>;
-}
-
-/** A button to another docs page, by id, so it follows the version being read. */
-export function DocButton({ doc, label }: { doc: string; label: string }) {
-  const { path } = useLayoutDoc(doc)!;
-
-  return (
-    <Link className={buttonVariants({ variant: "primary" })} to={path}>
-      {label}
-      <ArrowRightIcon className="size-4" />
-    </Link>
-  );
-}
-
-/**
- * A secondary button to anywhere. Buttons take their label as a prop: text
- * between MDX tags becomes a paragraph and breaks the row.
- */
-export function LinkButton({
-  href,
-  label,
-  icon,
-}: {
-  href: string;
-  label: string;
-  icon?: ReactNode;
-}) {
-  return (
-    <Link className={buttonVariants({ variant: "secondary" })} to={href}>
-      {icon}
-      {label}
-    </Link>
-  );
 }

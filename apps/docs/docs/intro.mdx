@@ -4,6 +4,8 @@ title: Introduction
 slug: /
 sidebar_position: 1
 sidebar_label: Introduction
+# The logo below is the page heading.
+hide_title: true
 description: Norish is a real-time, household-first recipe app for planning meals, sharing groceries, and cooking together.
 ---
 
@@ -20,30 +22,18 @@ import BrowserMockup from "@site/src/components/BrowserMockup";
 import { Feature, FeatureGrid } from "@site/src/components/FeatureGrid";
 import GitHubIcon from "@site/src/components/GitHubIcon";
 import Languages from "@site/src/components/Languages";
-import LinkCard, {
-  DocButton,
-  DocLinkCard,
-  LinkButton,
-  LinkCardGrid,
-} from "@site/src/components/LinkCard";
+import LinkCard, { DocLinkCard, LinkCardGrid } from "@site/src/components/LinkCard";
 import PhoneMockup from "@site/src/components/PhoneMockup";
 
-# Norish
+<h1>
+  <img alt="Norish" className="h-14 w-auto" src="/img/logo.svg" />
+</h1>
 
 Norish is a real-time, open-source recipe management app.
 
-<div className="my-6 flex flex-wrap gap-2">
-  <DocButton doc="quick-start" label="Quick start" />
-  <LinkButton
-    href="https://github.com/norish-recipes/Norish"
-    icon={<GitHubIcon className="size-4" />}
-    label="GitHub"
-  />
-</div>
-
-[![License](https://img.shields.io/badge/license-AGPL--3.0-22c55e?style=for-the-badge)](https://github.com/norish-recipes/Norish/blob/main/LICENSE)
-[![Docker Pulls](https://img.shields.io/docker/pulls/norishapp/norish?style=for-the-badge&logo=docker)](https://hub.docker.com/r/norishapp/norish)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/mikevanes)
+<LinkCardGrid>
+  <DocLinkCard doc="quick-start" eyebrow="Run it" className="sm:col-span-2" />
+</LinkCardGrid>
 
 <div className="heroMockup">
   <BrowserMockup base="dashboard-web" alt="The Norish dashboard" />
