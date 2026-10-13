@@ -72,7 +72,17 @@ export default function Footer() {
 
       <div className="border-border mx-auto mt-12 flex max-w-[90rem] flex-col gap-2 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-muted/70 text-xs">
-          © {new Date().getFullYear()} Norish is released under the AGPL-3.0 License.
+          © {new Date().getFullYear()} Norish is released under the AGPL-3.0 License. Docs built
+          with{" "}
+          <a
+            className="hover:text-foreground underline-offset-2 transition-colors hover:underline"
+            href="https://docusaurus.io"
+            rel="noreferrer"
+            target="_blank"
+          >
+            Docusaurus
+          </a>
+          .
         </p>
         <p className="text-muted/70 text-xs">Built for people who love to cook.</p>
       </div>
