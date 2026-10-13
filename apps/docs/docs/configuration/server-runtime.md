@@ -94,6 +94,6 @@ After the first user signs in, registration is disabled automatically. See
 
 Norish seeds its catalogue of ingredients from the [Open Food Facts](https://world.openfoodfacts.org) ingredients taxonomy. The ingredient taxonomy is refreshed at midnight every night.
 
-On a server without internet, serve a copy of `ingredients.txt` from a local mirror and point `INGREDIENT_CATALOGUE_URL` at it, or set it empty. Full functionallity will remain.
+On a server without internet, serve a copy of `ingredients.txt` from a local mirror and point `INGREDIENT_CATALOGUE_URL` at it, or leave it empty. Full functionallity will remain.
 
 The taxonomy is available under the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/1-0/). Downloadable under: **Settings => Ingredients => Data sources**.
