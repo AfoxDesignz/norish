@@ -1,7 +1,7 @@
 ---
 sidebar_position: 7
 title: Admin settings
-description: Settings admin and the server owner may manage.
+description: What the server owner and admins can change from the UI.
 ---
 
 # Admin settings

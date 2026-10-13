@@ -59,8 +59,6 @@ opens over the fresh chip, prefilled with the whole line. Answer it, or ignore
 it — clicking on or pressing Escape keeps the whole line, so attaching several
 lines in a row costs nothing extra.
 
-![The ask: an amount entry opens over a freshly attached chip](/img/screenshots/editor-amount-ask.png)
-
 Each chip can be set to how much of its line the step uses — half, a third, a
 quarter, or an exact amount when the line has one: **Amount…** on a chip of a
 five-egg line takes **3**, and the step reads _3 eggs_, leaving the other two
@@ -69,4 +67,5 @@ keep scaling with servings; a line with no amount is set as a share directly.
 A tap removes a chip. What readers see on the recipe page comes from these
 chips; the whole story is on [Step ingredients](./step-ingredients.md).
 
+![The ask: an amount entry opens over a freshly attached chip](/img/screenshots/editor-amount-ask.png)
 ![Amount entry on a chip beneath a step](/img/screenshots/editor-amount-entry.png)

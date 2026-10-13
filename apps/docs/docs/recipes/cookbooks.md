@@ -21,10 +21,9 @@ Under **All** the list holds both kinds (recipes + cookbooks). Its menu offers a
 
 There are two ways to add recipes to a cookbook. Via a recipe page using in the quick actions panel. The add panel shows all available cookbooks.
 
-![The cookbook membership panel on a recipe](/img/screenshots/cookbooks-panel.png)
-
 The other way is to swipe left (or using the three dots) on a cookbook and click the plus icon.
 
+![The cookbook membership panel on a recipe](/img/screenshots/cookbooks-panel.png)
 ![Adding several recipes to a cookbook at once](/img/screenshots/cookbooks-add-recipes.png)
 
 At the end if a recipe page there is a card showing all cookbooks the recipe is placed into.

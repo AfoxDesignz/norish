@@ -1,6 +1,31 @@
+import path from "node:path";
 import type * as Preset from "@docusaurus/preset-classic";
-import type { Config } from "@docusaurus/types";
-import { themes as prismThemes } from "prism-react-renderer";
+import type { Config, Plugin } from "@docusaurus/types";
+import tailwindcss from "@tailwindcss/postcss";
+
+// The docs wear the product's own HeroUI v3 + Tailwind v4 look, so Docusaurus's
+// Infima stylesheet is swapped for ours: Infima's unlayered rules would outrank
+// every Tailwind utility and HeroUI component style. Every component a reader
+// sees is our own, under src/theme.
+function norishTheme(): Plugin {
+  return {
+    name: "norish-theme",
+    configurePostCss(options) {
+      options.plugins.unshift(tailwindcss());
+      return options;
+    },
+    configureWebpack(_config, _isServer, { currentBundler }) {
+      return {
+        plugins: [
+          new currentBundler.instance.NormalModuleReplacementPlugin(
+            /infima[\\/]dist[\\/]css[\\/]default[\\/]default\.css$/,
+            path.resolve(__dirname, "src/css/custom.css")
+          ),
+        ],
+      };
+    },
+  };
+}
 
 // Norish documentation site — https://docs.norish.dev
 // Hosted on Cloudflare Pages, isolated from the monorepo workspace.
@@ -28,6 +53,7 @@ const config: Config = {
   },
 
   themes: ["@docusaurus/theme-mermaid"],
+  plugins: [norishTheme],
 
   i18n: {
     defaultLocale: "en",
@@ -53,9 +79,6 @@ const config: Config = {
           },
         },
         blog: false,
-        theme: {
-          customCss: "./src/css/custom.css",
-        },
       } satisfies Preset.Options,
     ],
   ],
@@ -66,71 +89,13 @@ const config: Config = {
       defaultMode: "light",
       respectPrefersColorScheme: true,
     },
-    navbar: {
-      // The logo is a full "Norish" wordmark, so no separate title text.
-      logo: {
-        alt: "Norish",
-        src: "img/logo.svg",
-        href: "/",
-        width: 104,
-        height: 28,
-      },
-      items: [
-        {
-          type: "docsVersionDropdown",
-          position: "right",
-        },
-        {
-          href: "https://norish.dev",
-          label: "norish.dev",
-          position: "right",
-        },
-        {
-          href: "https://github.com/norish-recipes/Norish",
-          label: "GitHub",
-          position: "right",
-        },
-      ],
+    // Mermaid can't read CSS variables, so the diagrams take its own calm greys.
+    mermaid: {
+      theme: { light: "neutral", dark: "dark" },
+      options: { fontFamily: '"Inter Variable", system-ui, sans-serif' },
     },
-    footer: {
-      style: "dark",
-      links: [
-        {
-          title: "Docs",
-          items: [
-            { label: "Introduction", to: "/" },
-            { label: "Quick start", to: "/quick-start" },
-            { label: "Authentication", to: "/configuration/authentication" },
-            { label: "API reference", to: "/reference/api" },
-          ],
-        },
-        {
-          title: "Project",
-          items: [
-            { label: "Website", href: "https://norish.dev" },
-            { label: "GitHub", href: "https://github.com/norish-recipes/Norish" },
-            { label: "Docker Hub", href: "https://hub.docker.com/r/norishapp/norish" },
-          ],
-        },
-        {
-          title: "Community",
-          items: [
-            {
-              label: "Issues",
-              href: "https://github.com/norish-recipes/Norish/issues",
-            },
-            {
-              label: "Buy Me a Coffee",
-              href: "https://buymeacoffee.com/mikevanes",
-            },
-          ],
-        },
-      ],
-      copyright: `Copyright © ${new Date().getFullYear()} Norish. Built with Docusaurus.`,
-    },
+    // Token colours come from CSS variables in custom.css, not a Prism theme.
     prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
       additionalLanguages: ["bash", "yaml", "json", "docker"],
     },
   } satisfies Preset.ThemeConfig,

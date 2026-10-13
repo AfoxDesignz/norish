@@ -1,14 +1,14 @@
 ---
 sidebar_position: 1
 title: Authentication
-description: Configure how users sign in to Norish — password, OIDC, GitHub, and Google.
+description: Authentication providers
 ---
 
 # Authentication
 
-Norish supports password auth, OIDC, and the GitHub and Google OAuth providers.
-You configure **one** provider to bootstrap the first sign-in; everything else
-can be managed later from **Settings → Admin**.
+Norish supports password auth, OIDC, GitHub and Google OAuth providers.
+You configure **one** provider using ENV variables to bootstrap the first sign-in. Everything else
+can be managed using the **Settings => Admin**.
 
 ## First user
 
@@ -16,9 +16,7 @@ The first user to sign in becomes the **server owner** and **server admin**.
 After that first sign-in:
 
 - User registration is disabled automatically.
-- Ongoing auth providers and policies are managed in **Settings → Admin**.
-
-So before starting Norish, configure exactly one of the providers below.
+- Ongoing auth providers and policies are managed in **Settings => Admin**.
 
 ## Callback URLs
 
@@ -33,18 +31,15 @@ host with your `AUTH_URL`):
 
 ## Password auth
 
-Email & password sign-in, no external identity provider required. It's a safe,
-fully supported option for production — not just local testing. It is enabled
-automatically when no other provider is configured; set `PASSWORD_AUTH_ENABLED`
-explicitly to force it on or off.
+Email & password sign-in is the default login method when no other provider is configured.
 
-| Variable                | Description                          | Default |
-| ----------------------- | ------------------------------------ | ------- |
-| `PASSWORD_AUTH_ENABLED` | Enable email/password auth bootstrap | Auto    |
+| Variable                | Description                | Default |
+| ----------------------- | -------------------------- | ------- |
+| `PASSWORD_AUTH_ENABLED` | Enable email/password auth | Auto    |
 
 ## OIDC
 
-Connect any OpenID Connect provider (Authentik, Keycloak, Auth0, Zitadel, …).
+Connect any OpenID Connect compatible provider (Authentik, PocketId, KeyCloack, …).
 
 ```yaml title="docker-compose.yml (environment)"
 OIDC_NAME: NoraId
@@ -64,8 +59,8 @@ OIDC_WELLKNOWN: https://auth.example.com/.well-known/openid-configuration
 
 ### OIDC claim mapping
 
-Optionally map OIDC group claims to the server admin role and to household
-auto-join. These are only used when claim mapping is enabled.
+Optionally map OIDC group claims to the server admin role and to enable household
+auto-join.
 
 | Variable                      | Description                                      | Default             |
 | ----------------------------- | ------------------------------------------------ | ------------------- |
@@ -77,8 +72,8 @@ auto-join. These are only used when claim mapping is enabled.
 
 ## GitHub
 
-Create an OAuth app at **GitHub → Settings → Developer settings → OAuth Apps**
-and use the GitHub callback URL above.
+[Register a new OAuth app on GitHub](https://github.com/settings/applications/new)
+(**Settings => Developer settings => OAuth Apps**) and use the GitHub callback URL above.
 
 | Variable               | Description                | Default |
 | ---------------------- | -------------------------- | ------- |
@@ -87,7 +82,8 @@ and use the GitHub callback URL above.
 
 ## Google
 
-Create an OAuth client in the Google Cloud console and use the Google callback
+Create an OAuth client under [Credentials in the Google Cloud console](https://console.cloud.google.com/apis/credentials)
+(**Create credentials => OAuth client ID**, type **Web application**) and use the Google callback
 URL above.
 
 | Variable               | Description                | Default |
@@ -97,5 +93,5 @@ URL above.
 
 :::info Public URL
 OAuth callbacks need Norish to know its public URL. Make sure `AUTH_URL` is set
-correctly — see [Server & runtime](./server-runtime.md).
+correctly see [Server & runtime](./server-runtime.md).
 :::

@@ -24,8 +24,7 @@ The following items can be hidden:
 - **Recipe timers**, the automatic timer detection in recipe steps;
 - **Ingredient icons**, The ingredient icons [Ingredient icons](../groceries/ingredient-icons.md).
 
+Hiding items does not change the data stored.
+
 ![The Hidden Items control in user settings](/img/screenshots/hidden-items-settings.png)
-
-Hiding items does not change the data stored:
-
 ![A recipe page with Recipe Provenance, Nutrition Information and notes hidden](/img/screenshots/hidden-items-recipe.jpg)
