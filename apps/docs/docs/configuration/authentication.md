@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: Authentication
-description: Configure how users sign in to Norish — password, OIDC, GitHub, and Google.
+description: Configure how users sign in to Norish with a password, OIDC, GitHub, or Google.
 ---
 
 # Authentication

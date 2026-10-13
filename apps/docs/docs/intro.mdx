@@ -8,6 +8,8 @@ description: Norish is a real-time, household-first recipe app for planning meal
 ---
 
 import BrowserMockup from "@site/src/components/BrowserMockup";
+import GitHubIcon from "@site/src/components/GitHubIcon";
+import LinkCard, { DocLinkCard, LinkCardGrid } from "@site/src/components/LinkCard";
 import PhoneMockup from "@site/src/components/PhoneMockup";
 
 # Norish
@@ -63,18 +65,27 @@ the server owner and admin.
 
 ## Where to next
 
-- **Run it** → [Quick start](./quick-start.mdx)
-- **Sign-in** → [Authentication](./configuration/authentication.md)
-- **AI features** → [AI provider](./configuration/ai-provider.md)
-- **Configure it** → [Server & runtime](./configuration/server-runtime.md) and [Admin settings](./configuration/admin-settings.md)
-- **Build against it** → [API reference](./reference/api.mdx)
-- **Contribute** → [Development setup](./development/setup.md)
+<LinkCardGrid>
+  <DocLinkCard doc="quick-start" eyebrow="Run it" className="sm:col-span-2" />
+  <DocLinkCard doc="configuration/authentication" eyebrow="Sign-in" />
+  <DocLinkCard doc="configuration/ai-provider" eyebrow="AI features" />
+  <DocLinkCard doc="configuration/server-runtime" eyebrow="Configure it" />
+  <DocLinkCard doc="configuration/admin-settings" eyebrow="Configure it" />
+  <DocLinkCard doc="reference/api" eyebrow="Build against it" />
+  <DocLinkCard doc="development/setup" eyebrow="Contribute" />
+</LinkCardGrid>
 
 ## Community apps and extensions
 
-- [Norish Quick Import Extension](https://github.com/AfoxDesignz/Norish-Quick-Import-Extension)
-  is a community-maintained browser extension for quickly importing recipes into
-  Norish. It is not maintained by the Norish team.
+<LinkCardGrid>
+  <LinkCard
+    href="https://github.com/AfoxDesignz/Norish-Quick-Import-Extension"
+    eyebrow="Browser extension"
+    icon={<GitHubIcon className="text-muted size-4.5" />}
+    title="Norish Quick Import Extension"
+    description="Quickly import recipes into Norish. Maintained by the community, not the Norish team."
+  />
+</LinkCardGrid>
 
 ## FOSS alternatives
 
