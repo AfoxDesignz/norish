@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import React from "react";
+import clsx from "clsx";
 
 export function FeatureGrid({ children }: { children: ReactNode }) {
   return <div className="my-6 grid gap-3 sm:grid-cols-2">{children}</div>;
@@ -10,13 +11,15 @@ export function Feature({
   icon,
   title,
   children,
+  className,
 }: {
   icon: ReactNode;
   title: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="bg-background/50 flex gap-4 rounded-3xl p-5">
+    <div className={clsx("bg-background/50 flex gap-4 rounded-3xl p-5", className)}>
       <span className="bg-accent-soft text-accent grid size-10 flex-none place-items-center rounded-full [&_svg]:size-5">
         {icon}
       </span>

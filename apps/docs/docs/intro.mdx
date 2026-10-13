@@ -13,11 +13,13 @@ import {
   CalendarDaysIcon,
   ChartPieIcon,
   DevicePhoneMobileIcon,
+  LanguageIcon,
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import BrowserMockup from "@site/src/components/BrowserMockup";
 import { Feature, FeatureGrid } from "@site/src/components/FeatureGrid";
 import GitHubIcon from "@site/src/components/GitHubIcon";
+import Languages from "@site/src/components/Languages";
 import LinkCard, {
   DocButton,
   DocLinkCard,
@@ -59,26 +61,26 @@ The whole instance is live, an import someone makes will automatically show up f
 ## Core features
 
 <FeatureGrid>
-  <Feature icon={<ArrowDownTrayIcon />} title="Import from anywhere">
-    A link imports on its own. With an AI provider, so do videos from TikTok, Reels and Shorts, and
-    photos of a recipe.
+  <Feature className="sm:col-span-2" icon={<ArrowDownTrayIcon />} title="Import from any source">
+    Importing works regardless of source, websites, videos, images or plain text.
   </Feature>
   <Feature icon={<CalendarDaysIcon />} title="Plan and shop">
-    Plan meals on a calendar that syncs over CalDAV, and share one grocery list, recurring items
-    included.
+    Plan your week, and make a grocery list.
   </Feature>
-  <Feature icon={<ChartPieIcon />} title="Know what's in it">
-    Nutrition worked out from the ingredients, metric and US conversion, and with AI, allergy
-    warnings.
+  <Feature icon={<ChartPieIcon />} title="Macro calculation">
+    Nutrition can be worked out from the ingredients, metric and US conversion, allergy warnings.
   </Feature>
-  <Feature icon={<BoltIcon />} title="Live for the whole household">
-    Recipes, groceries and plans update for everyone the moment anyone changes them.
+  <Feature icon={<BoltIcon />} title="Synced in real time">
+    Recipes, groceries and mealplans update for everyone in realtime.
   </Feature>
-  <Feature icon={<DevicePhoneMobileIcon />} title="On every screen">
-    Made for phones first, in light or dark, usable offline, in 15 languages.
+  <Feature icon={<DevicePhoneMobileIcon />} title="Mobile first">
+    Made to use on your phone, even when offline.
   </Feature>
-  <Feature icon={<ShieldCheckIcon />} title="Your server, your rules">
-    Sign in with a password, OIDC, GitHub or Google. Admins set permissions and settings in the app.
+  <Feature icon={<ShieldCheckIcon />} title="SSO and Password auth">
+    Sign in with a password, OIDC, GitHub or Google.
+  </Feature>
+  <Feature icon={<LanguageIcon />} title="Multi-language">
+    <Languages />
   </Feature>
 </FeatureGrid>
 
@@ -110,8 +112,6 @@ AI feature speed can vary by provider, model, and region.
 </LinkCardGrid>
 
 ## FOSS alternatives
-
-Norish is not the only open-source recipe app. A couple worth checking out:
 
 <LinkCardGrid>
   <LinkCard
