@@ -1,36 +1,42 @@
 ---
 sidebar_position: 1
 title: Importing recipes
-description: Importing recipes into Norish
+description: Import a recipe from a link, text, photos or another app.
 ---
 
 # Importing recipes
 
-The most important feature in Norish is the abillity to import
-a recipe regardless of source.
-
 ## From a link
 
-If norish has the permissions to view your clipboard it can auto-detect when
-an URL is in it and request to import it. This works on any page. This feature
-is limited to chromeium based browsers. Safari and Firefox only
-work when pasting, this can be in the search bar on the dedicated modal.
+**Add Recipe => URL** asks for the address of a recipe page. A link on your
+clipboard is filled in for you, so you copy the address, open the dialog and
+press **Import**.
+
+You can also paste a link in the dashboard search bar. Norish checks whether
+the page holds a recipe and imports it.
+
+In Chromium-based browsers, Norish can offer to import a copied link on any
+page once you allow clipboard access. Safari and Firefox don't allow this, so
+paste the link there instead.
 
 ![Norish asking to import a copied link](/img/screenshots/import-clipboard-prompt.png)
 
-**Add Recipe => URL** asks for the address of a recipe page. A link already on
-your clipboard is prefilled, so the usual round trip is: copy the
-address, open the dialog, press **Import**.
+Video links from YouTube, Instagram, TikTok and other sites import too when
+[video import](../configuration/ai-provider.md#video-import) is set up.
 
-**Dashboard => Search bar** Paste any URL in the dashboards searchbar and Norish
-will check of that URL is a recipe and attempt to import it.
+## From pasted text or photos
 
-## From pasted text or a photo
-
-- **Add Recipe => Paste** takes a recipe as plain text or in [JSON-LD](https://schema.org/Recipe) format.
-- **Add Recipe => Image** turns an image into a recipe, Norish can combine up to 10 images into a single recipe. 
+- **Add Recipe => Paste** takes a recipe as plain text or as
+  [JSON-LD](https://schema.org/Recipe).
+- **Add Recipe => Image** reads a recipe from photos or screenshots, up to 10
+  images into one recipe.
 
 :::note
-Using free text or a images requires an AI provider setup.
-If no AI provider is setup the import from image option does not show.
+Plain text and images need an [AI provider](../configuration/ai-provider.md).
+Without one, the Image option is hidden.
 :::
+
+## From another app
+
+Exports from Mela, Paprika, Mealie, Tandoor and Recipe Keeper import as a
+whole, see [Recipe Archive](./recipe-archive.md#importing-an-archive).

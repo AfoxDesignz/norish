@@ -22,7 +22,7 @@ import type { Slot } from "@norish/shared/contracts";
 import { dateKey, eachDayOfInterval } from "@norish/shared/lib/helpers";
 
 import type { PlannedItemDisplay } from "./types";
-import { landOnDay, settleLanding } from "../land-on-day";
+import { hasReachedDay, landOnDay, settleLanding } from "../land-on-day";
 import { usePrependAnchorRestore } from "../use-prepend-anchor-restore";
 import { TimelineDaySection } from "./timeline-day-section";
 import { TimelineDragOverlay } from "./timeline-drag-overlay";
@@ -120,6 +120,7 @@ export function MobileTimeline({ onAddItem, onNoteClick, onRecipeClick }: Mobile
 
   // Track if we've scrolled to today and if we've triggered expand
   const hasScrolledRef = useRef(false);
+  const hasLandedRef = useRef(false);
   const hasTriggeredExpandPastRef = useRef(false);
   const hasTriggeredExpandFutureRef = useRef(false);
 
@@ -200,6 +201,10 @@ export function MobileTimeline({ onAddItem, onNoteClick, onRecipeClick }: Mobile
   // Infinite scroll: trigger expandRange when near the edges
   useEffect(() => {
     if (virtualItems.length === 0 || !hasScrolledRef.current) return;
+    if (!hasLandedRef.current) {
+      if (!hasReachedDay(virtualItems, todayIndex)) return;
+      hasLandedRef.current = true;
+    }
 
     const firstItem = virtualItems[0];
     const lastItem = virtualItems[virtualItems.length - 1];
@@ -232,7 +237,15 @@ export function MobileTimeline({ onAddItem, onNoteClick, onRecipeClick }: Mobile
     if (!isNearEnd) {
       hasTriggeredExpandFutureRef.current = false;
     }
-  }, [virtualItems, allDays.length, isLoadingMore, expandRange, virtualizer, captureAnchor]);
+  }, [
+    virtualItems,
+    allDays.length,
+    isLoadingMore,
+    expandRange,
+    virtualizer,
+    captureAnchor,
+    todayIndex,
+  ]);
 
   const handleScrollToToday = useCallback(() => {
     virtualizer.scrollToIndex(todayIndex, { align: "start", behavior: "smooth" });

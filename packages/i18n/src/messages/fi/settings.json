@@ -62,7 +62,7 @@
     },
     "archiveImport": {
       "title": "Tuo reseptiarkisto",
-      "description": "Tuo reseptejä, jotka on viety Norishista, Melasta, Paprikasta, Mealiesta tai Tandoorista."
+      "description": "Tuo reseptejä, jotka on viety Norishista, Melasta, Paprikasta, Mealiesta, Tandoorista tai Recipe Keeperistä."
     },
     "archiveExport": {
       "title": "Vie reseptiarkisto",

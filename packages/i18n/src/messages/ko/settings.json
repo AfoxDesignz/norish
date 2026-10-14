@@ -62,7 +62,7 @@
     },
     "archiveImport": {
       "title": "레시피 아카이브 가져오기",
-      "description": "Norish, Mela, Paprika, Mealie 또는 Tandoor에서 내보낸 레시피를 가져옵니다."
+      "description": "Norish, Mela, Paprika, Mealie, Tandoor 또는 Recipe Keeper에서 내보낸 레시피를 가져옵니다."
     },
     "archiveExport": {
       "title": "레시피 아카이브 내보내기",

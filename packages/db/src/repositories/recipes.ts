@@ -1,5 +1,18 @@
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { and, asc, desc, eq, ilike, inArray, isNull, like, lte, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNull,
+  like,
+  lte,
+  notInArray,
+  or,
+  sql,
+} from "drizzle-orm";
 import z from "zod";
 
 import type { RecipePermissionPolicy } from "@norish/config/zod/server-config";
@@ -200,17 +213,24 @@ export async function recipeExistsByUrlForPolicy(
 /**
  * Check if a recipe already exists within a household context.
  * First checks by URL (if provided), then falls back to exact title match.
+ * A title match never crosses URLs: where both recipes carry one and they
+ * differ, they are two recipes sharing a name. Nor is a title ever matched
+ * to one of `notByName`: an archive import passes the recipes it already
+ * wrote, so it never overwrites its own recipes by name (ADR-0022).
  * Returns the existing recipe ID if found, null otherwise.
  */
 export async function findExistingRecipe(
   userIds: string[],
   url: string | null | undefined,
-  title: string
+  title: string,
+  notByName: readonly string[] = []
 ): Promise<string | null> {
+  const trimmedUrl = url?.trim();
+
   // First try to find by URL if provided (most reliable)
-  if (url && url.trim()) {
+  if (trimmedUrl) {
     const byUrl = await db.query.recipes.findFirst({
-      where: and(inArray(recipes.userId, userIds), eq(recipes.url, url.trim())),
+      where: and(inArray(recipes.userId, userIds), eq(recipes.url, trimmedUrl)),
       columns: { id: true },
     });
 
@@ -226,7 +246,17 @@ export async function findExistingRecipe(
 
   if (trimmedTitle) {
     const byTitle = await db.query.recipes.findFirst({
-      where: and(inArray(recipes.userId, userIds), ilike(recipes.name, trimmedTitle)),
+      where: and(
+        inArray(recipes.userId, userIds),
+        ilike(recipes.name, trimmedTitle),
+        // Any URL a stored recipe carries here differs from this one, or the
+        // URL lookup above would have found it.
+        trimmedUrl ? or(isNull(recipes.url), eq(recipes.url, "")) : undefined,
+        // ponytail: one bound parameter per recipe already written, so a run
+        // of tens of thousands of recipes nears Postgres's parameter limit;
+        // a temporary table is the way past it.
+        notByName.length > 0 ? notInArray(recipes.id, [...notByName]) : undefined
+      ),
       columns: { id: true },
     });
 

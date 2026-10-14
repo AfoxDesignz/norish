@@ -65,6 +65,12 @@ vi.mock("@norish/db/repositories/favorites", () => ({
   addFavorite: vi.fn(),
 }));
 
+vi.mock("@norish/db/repositories/cookbooks", () => ({
+  findOwnCookbookIdByTitle: vi.fn(),
+  createCookbook: vi.fn(),
+  addRecipeToCookbook: vi.fn(),
+}));
+
 vi.mock("@norish/db/repositories/cuisines", () => ({
   listCuisines: vi.fn().mockResolvedValue([]),
 }));
@@ -90,6 +96,13 @@ vi.mock("@norish/shared-server/archive/mealie-parser", () => ({
 vi.mock("@norish/shared-server/archive/tandoor-parser", () => ({
   extractTandoorRecipes: vi.fn(),
   parseTandoorRecipeToDTO: vi.fn(),
+}));
+
+vi.mock("@norish/shared-server/archive/recipe-keeper-parser", () => ({
+  readRecipeKeeperHtml: vi.fn().mockResolvedValue(null),
+  countRecipeKeeperRecipes: vi.fn(),
+  extractRecipeKeeperRecipes: vi.fn(),
+  parseRecipeKeeperRecipeToDTO: vi.fn(),
 }));
 
 vi.mock("@norish/shared-server/archive/paprika-parser", () => ({

@@ -22,7 +22,7 @@ import { useWindowSize } from "usehooks-ts";
 import type { Slot } from "@norish/shared/contracts";
 import { dateKey, eachDayOfInterval } from "@norish/shared/lib/helpers";
 
-import { landOnDay, settleLanding } from "../land-on-day";
+import { hasReachedDay, landOnDay, settleLanding } from "../land-on-day";
 import { usePrependAnchorRestore } from "../use-prepend-anchor-restore";
 import { DesktopDayCard } from "./desktop-day-card";
 import { DesktopDragOverlay } from "./desktop-drag-overlay";
@@ -146,6 +146,7 @@ export function DesktopTimeline({ onAddItem, onNoteClick, onRecipeClick }: Deskt
 
   // Track if we've scrolled to today and if we've triggered expand
   const hasScrolledRef = useRef(false);
+  const hasLandedRef = useRef(false);
   const hasTriggeredExpandPastRef = useRef(false);
   const hasTriggeredExpandFutureRef = useRef(false);
 
@@ -213,6 +214,10 @@ export function DesktopTimeline({ onAddItem, onNoteClick, onRecipeClick }: Deskt
   // Infinite scroll: trigger expandRange when near the edges
   useEffect(() => {
     if (virtualItems.length === 0 || !hasScrolledRef.current) return;
+    if (!hasLandedRef.current) {
+      if (!hasReachedDay(virtualItems, todayRowIndex)) return;
+      hasLandedRef.current = true;
+    }
 
     const firstItem = virtualItems[0];
     const lastItem = virtualItems[virtualItems.length - 1];
@@ -245,7 +250,15 @@ export function DesktopTimeline({ onAddItem, onNoteClick, onRecipeClick }: Deskt
     if (!isNearEnd) {
       hasTriggeredExpandFutureRef.current = false;
     }
-  }, [virtualItems, rows.length, isLoadingMore, expandRange, virtualizer, captureAnchor]);
+  }, [
+    virtualItems,
+    rows.length,
+    isLoadingMore,
+    expandRange,
+    virtualizer,
+    captureAnchor,
+    todayRowIndex,
+  ]);
 
   const handleScrollToToday = useCallback(() => {
     virtualizer.scrollToIndex(todayRowIndex, { align: "start", behavior: "smooth" });

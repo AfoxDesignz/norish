@@ -17,10 +17,12 @@ import {
   addRecipeToCookbook,
   createCookbook,
   deleteCookbookById,
+  findOwnCookbookIdByTitle,
   getCookbookForViewer,
   listCookbookMemberIds,
   listCookbooks,
   listCookbooksForRecipe,
+  listCookbookTitlesByRecipeIds,
   listEditableCookbooks,
   removeRecipeFromCookbook,
   updateCookbook,
@@ -298,6 +300,34 @@ describe("cookbook repository", () => {
       // Two readers, two honest counts for the same cookbook (ADR-0027).
       expect((await getCookbookForViewer(viewer(strangerId), cookbook.id))?.memberCount).toBe(1);
       expect((await getCookbookForViewer(viewer(ownerId), cookbook.id))?.memberCount).toBe(1);
+    });
+  });
+
+  describe("archive titles", () => {
+    it("finds the user's own cookbook by title, whatever its case and spacing", async () => {
+      const dolci = await createCookbook({ userId: ownerId, title: "Dolci " });
+
+      await createCookbook({ userId: strangerId, title: "Kerst" });
+
+      expect(await findOwnCookbookIdByTitle(ownerId, "  DOLCI")).toBe(dolci.id);
+      // Another user's cookbook is never the importer's own.
+      expect(await findOwnCookbookIdByTitle(ownerId, "Kerst")).toBeNull();
+    });
+
+    it("lists the titles of the cookbooks a reader can see that hold each recipe", async () => {
+      await setPolicy({ view: "owner", edit: "owner", delete: "owner" });
+      const recipe = await createTestRecipe(ownerId, { name: "Tiramisù" });
+      const dolci = await createCookbook({ userId: ownerId, title: "Dolci" });
+      const kerst = await createCookbook({ userId: ownerId, title: "Kerst" });
+      const hidden = await createCookbook({ userId: strangerId, title: "Theirs" });
+
+      for (const cookbook of [dolci, kerst, hidden]) {
+        await addRecipeToCookbook(cookbook.id, recipe.id);
+      }
+
+      const titles = await listCookbookTitlesByRecipeIds(viewer(ownerId), [recipe.id]);
+
+      expect(titles.get(recipe.id)).toEqual(["Dolci", "Kerst"]);
     });
   });
 

@@ -119,6 +119,25 @@ describe("DevicePreferencesProvider", () => {
     await waitFor(() => expect(screen.getByTestId("state")).toHaveTextContent("phone:recipe:true"));
   });
 
+  it("keeps a change whose write is still on its way over a profile read that lands first", async () => {
+    let land!: () => void;
+
+    write.mockReturnValueOnce(new Promise((resolve) => (land = () => resolve({ success: true }))));
+    renderProvider(seed());
+    act(() => setView("recipe"));
+    await waitFor(() => expect(write).toHaveBeenCalled());
+
+    // A background read (the Cache Warmer's) started after the change and
+    // answers with the server's copy from before it, plus a change made since
+    // on another screen of this kind.
+    act(() => storeProfile({ phone: { groceryViewMode: "store", groceryGroupSimilar: false } }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("state")).toHaveTextContent("phone:recipe:false")
+    );
+    await act(async () => land());
+  });
+
   it("Offline, settles on the saved profile over a page the service worker saved earlier", () => {
     connectivity.isOffline = true;
     storeProfile({ phone: { groceryViewMode: "recipe" } }, AN_HOUR_AGO);

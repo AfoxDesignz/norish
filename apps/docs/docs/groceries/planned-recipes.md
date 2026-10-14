@@ -1,21 +1,20 @@
 ---
 sidebar_position: 6
 title: Planned recipes
-description: Planning a recipe in Norish.
+description: What happens after you plan a recipe.
 ---
 
 # Planned recipes
 
-When you plan a recipe, from the calendar, the **Today** section or a recipe's
-**Add to calendar**. Norish automatically opens the groceries panel.
-This can be customised under: **Settings => User => Preferences => After planning a
-recipe**:
+When you plan a recipe from the calendar, the **Today** section or a recipe's
+**Add to calendar**, Norish opens the groceries panel. Change this under
+**Settings => User => Preferences => After planning a recipe**:
 
-- **Nothing**: just plan the recipe.
-- **Open groceries panel** (the default): opens the groceries panel.
-- **Add ingredients to groceries**: The recipes ingredients are automatically
-  added to your groceries. Items in your [pantry](./pantry.md) are kept off.
+- **Nothing**: only plan the recipe.
+- **Open groceries panel**: the default.
+- **Add ingredients to groceries**: add the ingredients right away, except what
+  is in your [pantry](./pantry.md).
 
-The choice is saved with on your account, so it is the same on every device.
+The setting is saved on your account, so it applies to every device.
 
 ![After planning a recipe, in Preferences](/img/screenshots/settings-after-planning.png)

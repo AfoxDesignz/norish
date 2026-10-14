@@ -81,7 +81,8 @@ export async function listStoresByUserIds(userIds: string[]): Promise<StoreDto[]
     .select()
     .from(stores)
     .where(inArray(stores.userId, userIds))
-    .orderBy(stores.sortOrder);
+    // Stores made before ordering existed share a position; keep them in a fixed order.
+    .orderBy(stores.sortOrder, stores.createdAt, stores.id);
 
   return withAisles(rows);
 }

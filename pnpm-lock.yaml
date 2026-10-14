@@ -1201,6 +1201,9 @@ importers:
       archiver:
         specifier: 'catalog:'
         version: 7.0.1
+      cheerio:
+        specifier: 1.2.0
+        version: 1.2.0
       fuse.js:
         specifier: 'catalog:'
         version: 7.5.0

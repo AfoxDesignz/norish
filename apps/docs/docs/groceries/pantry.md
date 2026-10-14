@@ -1,31 +1,28 @@
 ---
 sidebar_position: 3
 title: Pantry
-description: In stock ingredients.
+description: The ingredients your household has in stock.
 ---
 
 # Pantry
 
-The **Pantry** is the foods your household have in stock.
-Can be found under the **Groceries page** and toggling the switch at the top.
+The **Pantry** lists the foods your household has in stock. Manage it with the
+switch at the top of the **Groceries** page.
 
 ![The Pantry page, with olive oil on the list](/img/screenshots/groceries-pantry-page.png)
 
-Each food is translated automatically if available. Press a food to open the
-[ingredient](./ingredients.md) panel. Here you can edit an ingredient, add translations etc.
+Press a food to open its [ingredient](./ingredients.md) panel, where you can
+edit it and add translations. Foods show in your language when a translation
+exists.
 
-When you add a recipe to your groceries, the foods in your pantry are
-under **In your pantry**. Press the box icon on any other line to
-add it to your pantry. By default items in your pantry are not added
-to your groceries.
+When you add a recipe to your groceries, foods in your pantry are left off and
+listed under **In your pantry**. Press the box icon on any other line to add
+that food to your pantry.
 
-The pantry does account for translations.
+## Limitations
 
-## What the pantry is not
-
-- “salt” in the pantry is never mistaken for “salted butter”: they are two
-  ingredients.
-- The pantry is not an inventory: no amounts, no expiry dates, and no record of
-  having run out. A food that ran out is simply on the list.
-- Only adding a recipe to your groceries looks at the pantry. Anything you type
-  on the grocery list yourself is added as usual.
+- It has no amounts or expiry dates. When something runs out, put it on the
+  list.
+- It matches whole ingredients, so "salt" never matches "salted butter".
+- Only adding a recipe checks the pantry. Groceries you type yourself are always
+  added.

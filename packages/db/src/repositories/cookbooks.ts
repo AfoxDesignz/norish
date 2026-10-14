@@ -450,6 +450,58 @@ export async function listEditableCookbooks(ctx: RecipeListContext): Promise<Coo
 }
 
 /**
+ * The user's own cookbook bearing a title, matched the way an archive import
+ * files by one: case-insensitively and trimmed (ADR-0022).
+ */
+export async function findOwnCookbookIdByTitle(
+  userId: string,
+  title: string
+): Promise<string | null> {
+  const [row] = await db
+    .select({ id: cookbooks.id })
+    .from(cookbooks)
+    .where(
+      and(
+        eq(cookbooks.userId, userId),
+        sql`lower(trim(${cookbooks.title})) = ${title.trim().toLowerCase()}`
+      )
+    )
+    .orderBy(asc(cookbooks.createdAt))
+    .limit(1);
+
+  return row?.id ?? null;
+}
+
+/**
+ * The titles of the cookbooks this reader can see that hold each recipe:
+ * what a Recipe Archive says a recipe is filed under.
+ */
+export async function listCookbookTitlesByRecipeIds(
+  ctx: RecipeListContext,
+  recipeIds: string[]
+): Promise<Map<string, string[]>> {
+  const titles = new Map<string, string[]>();
+
+  if (recipeIds.length === 0) return titles;
+
+  const policyCondition = await buildOwnerPolicyCondition(ctx, cookbooks.userId, "view");
+  const membership = inArray(cookbookRecipes.recipeId, recipeIds);
+
+  const rows = await db
+    .select({ recipeId: cookbookRecipes.recipeId, title: cookbooks.title })
+    .from(cookbookRecipes)
+    .innerJoin(cookbooks, eq(cookbookRecipes.cookbookId, cookbooks.id))
+    .where(policyCondition ? and(membership, policyCondition) : membership)
+    .orderBy(asc(cookbooks.title));
+
+  for (const row of rows) {
+    titles.set(row.recipeId, [...(titles.get(row.recipeId) ?? []), row.title]);
+  }
+
+  return titles;
+}
+
+/**
  * File a recipe into a cookbook. Idempotent by the unique pair, so a double
  * tap changes nothing, and the recipe row is never written (ADR-0027).
  */

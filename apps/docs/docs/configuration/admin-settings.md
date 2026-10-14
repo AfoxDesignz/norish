@@ -1,66 +1,63 @@
 ---
 sidebar_position: 7
 title: Admin settings
-description: What the server owner and admins can change from the UI.
+description: What the server owner and admins can change from the app.
 ---
 
 # Admin settings
 
-A lot of the settings are configurable during runtime, some settings
-may require a server restart, this is always indicated.
+Server settings are managed under **Settings => Admin**.
+Most changes apply right away. Settings that need a restart have a badge
+saying so.
 
-Server owners/admins can see these in: **Settings => Admin**.
-
-On this page you can manage:
-
-- **[Users](./users.md)** Basic user management.
-- **Registration policy** If new accounts are allowed.
-- **[Permissions](#permissions)** for recipe view, edit, and delete scopes.
-  And for editing ingredients.
-- **Auth providers** Basic auth, and SSO settings.
-- **OIDC claim mapping** for admin role assignment and household auto-join.
-- **Content detection settings** (units, [ingredient words](#ingredient-words),
-  content indicators, recurrence config).
-- **AI and video processing settings**.
-- **[Job queue](#job-queue)** Debug information about background jobs.
-- **System scheduler** and server restart actions.
+- [Users](./users.md)
+- Registration, whether new accounts are allowed
+- [Permissions](#permissions) for recipes and ingredients
+- Sign-in providers
+- OIDC claim mapping for admin roles and household auto-join
+- Content detection: units, [ingredient words](#ingredient-words), content
+  indicators and recurrence
+- AI and video processing, see [AI provider](./ai-provider.md)
+- The [job queues](#job-queues)
+- The scheduler and a server restart
 
 ## Ingredient words
 
-**Settings => Admin => Content detection => Ingredient words** holds words
-that are ignored when matching ingredient names to a food. This is a per language set:
+**Content detection => Ingredient words** lists the words Norish ignores when
+it matches an ingredient name to a food. The list is per locale:
 
-- `preparation`: How a food comes prepared: (“chopped”, "diced");
-- `sizes`: Indicators of how large an ingredient is: (“large”, “small”);
-- `approximately`: Words such as: (“about”);
-- `connectors`: Words between a measure and the food (“a pinch **of** nutmeg”);
-- `joiners`: Words between two preparations (“peeled **and** chopped”);
-- `servedWith`: What the food served with or in (“tuna **in** olive oil” is tuna);
-- `notFoods`: Joining words such as: (“and”, “with”);
-- `inflections`: Plural and diminutive endings “onions” becomes “onion“, “cherries“ becomes “cherry“.
+- `preparation`: how a food is prepared, like "chopped" or "diced"
+- `sizes`: like "large" or "small"
+- `approximately`: like "about"
+- `connectors`: words between a measure and the food, like "of" in "a pinch of
+  nutmeg"
+- `joiners`: words between two preparations, like "and" in "peeled and
+  chopped"
+- `servedWith`: what the food comes in, like "in" in "tuna in olive oil", which
+  is tuna
+- `notFoods`: words that are never a food on their own, like "and" or "with"
+- `inflections`: plural and diminutive endings, so "onions" becomes "onion" and
+  "cherries" becomes "cherry"
 
 ## Permissions
 
-**Settings => Admin => Permissions** The different option for permissions and view policies.
+**Recipes** sets who may view, edit and delete a recipe someone else added:
+everyone, the household, or only the owner.
 
-**Recipes** has a level for viewing, editing and deleting a recipe someone else
-added: everyone, household or owner only.
-
-**Ingredients** has three options as every household shares one catalogue of
-ingredients, which members look after in **Settings => Ingredients**. This
-decides who may edit an ingredient someone else added.
+**Ingredients** sets who may edit an ingredient someone else added. The whole
+server shares one [ingredient catalogue](../groceries/ingredients.md).
 
 - **Everyone**: any signed-in user.
-- **Household** (the default): whoever added it and their household members.
-- **Owner only**: only whoever added it.
+- **Household**: the person who added it and their household. This is the
+  default.
+- **Owner only**: only the person who added it.
 
-**Merging needs permission on both ingredients**. Anyone may add a translation to any ingredient.
+Merging two ingredients needs permission on both. Anyone can add a translation.
 
-## Job queue
+## Job queues
+
+Imports, enrichment and other long tasks run as background jobs.
+**Settings => Admin => Job queues** lists them as waiting, running, finished or
+failed. Open a job to see further details about the task.
 
 ![Job details with the models a job asked](/img/screenshots/admin-job-details.png)
-
-Most tasks executed in Norish are run in the background via queues.
-You can view these queues and their steps in: **Settings => Admin => Job queues**
-A queue has the following states: waiting, running, finished or failed.
-Opening a job shows details for debugging purposes.

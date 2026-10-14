@@ -62,7 +62,7 @@
     },
     "archiveImport": {
       "title": "Import archiwum przepisów",
-      "description": "Importuj przepisy wyeksportowane z Norish, Mela, Paprika, Mealie lub Tandoor."
+      "description": "Importuj przepisy wyeksportowane z Norish, Mela, Paprika, Mealie, Tandoor lub Recipe Keeper."
     },
     "archiveExport": {
       "title": "Eksportuj archiwum przepisów",

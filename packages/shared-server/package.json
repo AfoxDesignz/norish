@@ -1,6 +1,6 @@
 {
   "name": "@norish/shared-server",
-  "version": "0.25.0-beta",
+  "version": "0.25.1-beta",
   "private": true,
   "type": "module",
   "exports": {
@@ -27,6 +27,7 @@
     "./archive/mela-parser": "./src/archive/mela-parser.ts",
     "./archive/paprika-parser": "./src/archive/paprika-parser.ts",
     "./archive/tandoor-parser": "./src/archive/tandoor-parser.ts",
+    "./archive/recipe-keeper-parser": "./src/archive/recipe-keeper-parser.ts",
     "./archive/parser-helpers": "./src/archive/parser-helpers.ts",
     "./caldav/client": "./src/caldav/client.ts",
     "./caldav/sync": "./src/caldav/sync.ts",
@@ -88,6 +89,7 @@
     "ai": "^7.0.107",
     "ai-sdk-ollama": "^4.3.0",
     "archiver": "catalog:",
+    "cheerio": "1.2.0",
     "fuse.js": "catalog:",
     "heic-convert": "^2.1.0",
     "ioredis": "catalog:",

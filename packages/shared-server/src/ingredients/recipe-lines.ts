@@ -18,6 +18,12 @@ interface RecipeLineInput {
   ingredientName?: string;
   amount?: unknown;
   unit?: string | null;
+  /**
+   * The text the line's food is resolved from, when an import already knows
+   * which food the line is (Mealie's and Tandoor's own food names). The line
+   * keeps its own text; this is read here and never stored.
+   */
+  foodText?: string;
 }
 
 /**
@@ -27,8 +33,8 @@ interface RecipeLineInput {
  * given that Ingredient's name as its text. A line left with no text is
  * dropped, as the recipe write always skipped it, and one that names no
  * food (a heading, a text with no letter or digit) is written as it is. A
- * line's food is resolved from `lineFoodText`; a text written twice is read
- * the first way.
+ * line's food is resolved from the `foodText` it names, else from
+ * `lineFoodText`; a text written twice is read the first way.
  */
 export async function withResolvedIngredients<
   L extends RecipeLineInput,
@@ -60,7 +66,11 @@ export async function withResolvedIngredients<
     const text = line.ingredientName;
 
     if (text && !namesNoFood(text) && !foodTexts.has(text)) {
-      foodTexts.set(text, lineFoodText({ text, amount: line.amount, unit: line.unit }, units));
+      foodTexts.set(
+        text,
+        cleanIngredientText(line.foodText ?? "") ||
+          lineFoodText({ text, amount: line.amount, unit: line.unit }, units)
+      );
     }
   }
 

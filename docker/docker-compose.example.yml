@@ -13,6 +13,7 @@ services:
       DATABASE_URL: postgres://postgres:norish@db:5432/norish
       MASTER_KEY: <32-byte-base64-key> # Generate with: openssl rand -base64 32
       OBSCURA_ENDPOINT: ws://obscura:9222 # Obscura CDP endpoint used to render pages for URL imports
+      OBSCURA_CDP_TOKEN: <random-token> # Generate with: openssl rand -hex 32. Same value on the obscura service
 
       # Optional
       UPLOADS_DIR: /app/uploads # Runtime volume path
@@ -83,9 +84,11 @@ services:
   # the Compose network; no host port on purpose, since anyone who can reach
   # the CDP server can drive the browser.
   obscura:
-    image: norishapp/obscura:0.2.2-norish.1
+    image: norishapp/obscura:0.2.4-norish.1
     container_name: norish-obscura
     restart: unless-stopped
+    environment:
+      OBSCURA_CDP_TOKEN: <random-token> # Same value as on the norish service
 
   # Redis for real-time events
   redis:

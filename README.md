@@ -42,6 +42,7 @@ services:
       DATABASE_URL: postgres://postgres:norish@db:5432/norish
       MASTER_KEY: <32-byte-base64-key> # openssl rand -base64 32
       OBSCURA_ENDPOINT: ws://obscura:9222
+      OBSCURA_CDP_TOKEN: <random-token> # openssl rand -hex 32, same value on obscura
       REDIS_URL: redis://redis:6379
       UPLOADS_DIR: /app/uploads
       
@@ -72,9 +73,11 @@ services:
 
   # Renders recipe pages for URL imports
   obscura:
-    image: norishapp/obscura:0.2.2-norish.1
+    image: norishapp/obscura:0.2.4-norish.1
     container_name: norish-obscura
     restart: unless-stopped
+    environment:
+      OBSCURA_CDP_TOKEN: <random-token>
 
   redis:
     image: redis:8.4.0
