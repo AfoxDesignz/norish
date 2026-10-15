@@ -10,11 +10,11 @@
  * meals, the library layout, the calendar's phone or desktop layout) the
  * assertion reads the server's markup through
  * a JavaScript-disabled page: what shows is exactly what the server sent, the
- * skeletons included. A full load of a recipe page also carries the recipe,
- * streamed in behind its skeleton, which only JavaScript swaps in; a cookbook
- * page draws only its skeleton on the server. So the scenarios about what a
- * page shows run with JavaScript; where a wrong frame could paint and be
- * corrected, they record every frame from the start.
+ * skeletons included. A full load of a page whose data the address names (a
+ * recipe, a shared recipe, a cookbook) also carries that data, which may
+ * stream in behind the skeleton for JavaScript to swap in. So the scenarios
+ * about what a page shows run with JavaScript; where a wrong frame could
+ * paint and be corrected, they record every frame from the start.
  */
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
@@ -392,6 +392,24 @@ test("a full load of a shared recipe carries the recipe in the server's markup",
 
     await page.goto(share.url);
     await expect(page.locator("h1, h2").filter({ hasText: RECIPE.name }).first()).toBeAttached();
+  } finally {
+    await context.close();
+  }
+});
+
+test("a full load of a cookbook carries the cookbook in the server's markup", async ({
+  browser,
+}) => {
+  const cookbook = await callApi<{ id: string }>("cookbooks.create", {
+    id: crypto.randomUUID(),
+    title: "Served Cookbook",
+    recipeId: await ensureRecipe(),
+  });
+  const { context, page } = await openStatic(browser, "phone");
+
+  try {
+    await page.goto(`/cookbooks/${cookbook.id}`);
+    await expect(page.getByText("Served Cookbook").first()).toBeAttached();
   } finally {
     await context.close();
   }
