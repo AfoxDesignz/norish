@@ -31,16 +31,19 @@ import {
 export function AppShell({
   children,
   devicePreferences,
+  userId,
 }: {
   children: React.ReactNode;
   /** The profile's Device Preferences as the layout's server pass read them; absent offline. */
   devicePreferences?: DevicePreferencesSeed;
+  /** The reader the layout verified, so the Offline Cache restores at hydration; absent offline. */
+  userId?: string;
 }) {
   return (
     <AuthProviders>
       <ArchiveImportProvider>
         <UserProvider>
-          <OfflineCacheController>
+          <OfflineCacheController seededUserId={userId}>
             <DevicePreferencesProvider seed={devicePreferences}>
               <HouseholdProvider>
                 <PermissionsProvider>

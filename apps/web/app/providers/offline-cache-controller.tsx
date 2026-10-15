@@ -33,7 +33,14 @@ import { getSession } from "@norish/shared/lib/auth/client";
  *  - ask the connectivity loop to probe when a mutation is admitted to the
  *    Outbox while Live.
  */
-export function OfflineCacheController({ children }: { children: ReactNode }) {
+export function OfflineCacheController({
+  children,
+  seededUserId,
+}: {
+  children: ReactNode;
+  /** The reader the layout's server pass verified; absent offline. */
+  seededUserId?: string;
+}) {
   const { user } = useUserContext();
   const { isLive, isOffline, probeNow, subscribeLiveProbes } = useConnectivity();
   const { status: wsStatus } = useConnectionStatus();
@@ -41,7 +48,9 @@ export function OfflineCacheController({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const warmSet = useWarmSet();
 
-  const sessionUserId = user?.id ?? null;
+  // The server's verified id stands in until the browser's own session request
+  // answers, so the cache restores at hydration rather than a round trip later.
+  const sessionUserId = user?.id ?? seededUserId ?? null;
   const owner = useSyncExternalStore(cacheManager.subscribe, cacheManager.owner, () => null);
   const recovery = useMemo(
     () =>

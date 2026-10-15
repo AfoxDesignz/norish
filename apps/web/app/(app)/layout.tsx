@@ -10,12 +10,18 @@ import { readDevicePreferencesSeed, readRequestProfile } from "@/lib/request-pro
  * per request, and a reader without one is sent to sign in and back.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  if (!(await readRequestProfile()).userId) {
+  const { userId } = await readRequestProfile();
+
+  if (!userId) {
     redirect(loginPath((await headers()).get(DESTINATION_HEADER)));
   }
 
-  // The reader's Device Preferences for this request's Device Kind, read
-  // once, so the shell seeds the very first render. The offline bootstrap
+  // The reader's id and Device Preferences for this request's Device Kind,
+  // read once, so the shell seeds the very first render. The offline bootstrap
   // mounts the same shell unseeded and reads the restored profile instead.
-  return <AppShell devicePreferences={await readDevicePreferencesSeed()}>{children}</AppShell>;
+  return (
+    <AppShell devicePreferences={await readDevicePreferencesSeed()} userId={userId}>
+      {children}
+    </AppShell>
+  );
 }
