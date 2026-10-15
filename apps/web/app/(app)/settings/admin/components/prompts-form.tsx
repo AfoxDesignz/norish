@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowPathIcon } from "@heroicons/react/16/solid";
-import { Button, Description, Label, Spinner, TextArea, TextField } from "@heroui/react";
+import { Button, Description, Label, TextArea, TextField } from "@heroui/react";
 import { useTranslations } from "next-intl";
 
 import type { PromptsConfig } from "@norish/config/zod/server-config";
@@ -46,7 +46,7 @@ interface PromptsFormProps {
 export default function PromptsForm({ onDirtyChange }: PromptsFormProps) {
   const t = useTranslations("settings.admin.promptsConfig");
   const tActions = useTranslations("common.actions");
-  const { prompts, isLoading, updatePrompts, restoreDefaultConfig } = useAdminSettingsContext();
+  const { prompts, updatePrompts, restoreDefaultConfig } = useAdminSettingsContext();
   const [values, setValues] = useState<PromptValues>(EMPTY_VALUES);
   const [saving, setSaving] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -86,14 +86,6 @@ export default function PromptsForm({ onDirtyChange }: PromptsFormProps) {
       setRestoring(false);
     });
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-6">

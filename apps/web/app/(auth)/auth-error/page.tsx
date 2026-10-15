@@ -1,6 +1,5 @@
 "use client";
 
-import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ExclamationTriangleIcon, ShieldExclamationIcon } from "@heroicons/react/16/solid";
@@ -35,7 +34,7 @@ type ErrorCode = (typeof ERROR_CODES)[number];
 function isKnownErrorCode(code: string): code is ErrorCode {
   return ERROR_CODES.includes(code as ErrorCode);
 }
-function AuthErrorContent() {
+export default function AuthErrorPage() {
   const t = useTranslations("auth.errors");
   const searchParams = useSearchParams();
   const error = searchParams.get("error")?.toLowerCase();
@@ -93,18 +92,5 @@ function AuthErrorContent() {
         </Button>
       </Link>
     </AuthFrame>
-  );
-}
-export default function AuthErrorPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-full items-center justify-center">
-          <div className="border-accent h-8 w-8 animate-spin rounded-full border-b-2" />
-        </div>
-      }
-    >
-      <AuthErrorContent />
-    </Suspense>
   );
 }
