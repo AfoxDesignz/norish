@@ -2,16 +2,9 @@
 
 import { useHiddenItemVisibility } from "@/hooks/user/use-hidden-item-visibility";
 
+import type { RecipeSkeletonParts } from "./recipe-skeleton-parts";
 import RecipeSkeletonDesktop from "./recipe-skeleton-desktop";
 import RecipeSkeletonMobile from "./recipe-skeleton-mobile";
-
-export type RecipeSkeletonParts = {
-  showRatings: boolean;
-  showNutrition: boolean;
-  showFavorites: boolean;
-  /** The app's own page: its back link, actions, cook and add-to-groceries buttons. */
-  inApp: boolean;
-};
 
 /**
  * The recipe page's shape while it loads, without what the reader hid. A

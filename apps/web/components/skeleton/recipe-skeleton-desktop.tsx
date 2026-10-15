@@ -3,7 +3,7 @@ import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { Card, Skeleton } from "@heroui/react";
 import { useTranslations } from "next-intl";
 
-import type { RecipeSkeletonParts } from "./recipe-skeleton";
+import type { RecipeSkeletonParts } from "./recipe-skeleton-parts";
 import {
   AddToGroceriesPlaceholder,
   CookButtonPlaceholder,

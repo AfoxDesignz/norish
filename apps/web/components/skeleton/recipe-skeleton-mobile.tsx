@@ -15,7 +15,7 @@ import {
   cssFloatingDockPill,
 } from "@norish/web/config/css-tokens";
 
-import type { RecipeSkeletonParts } from "./recipe-skeleton";
+import type { RecipeSkeletonParts } from "./recipe-skeleton-parts";
 import {
   AddToGroceriesPlaceholder,
   CookButtonPlaceholder,

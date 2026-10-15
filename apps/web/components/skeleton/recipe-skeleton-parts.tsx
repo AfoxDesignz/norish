@@ -7,11 +7,16 @@ import { useTranslations } from "next-intl";
 
 import StarRating from "@norish/ui/star-rating";
 
-/**
- * Pieces both recipe skeletons draw for real: the headings, the buttons whose
- * words never change, and the rating and nutrition cards. Controls are drawn
- * but inert, since nothing behind them has loaded.
- */
+// Pieces both recipe skeletons draw. Controls are real but inert: nothing behind them has loaded.
+
+/** Which optional parts a recipe skeleton draws. */
+export type RecipeSkeletonParts = {
+  showRatings: boolean;
+  showNutrition: boolean;
+  showFavorites: boolean;
+  /** The app's own page: its back link, actions, cook and add-to-groceries buttons. */
+  inApp: boolean;
+};
 
 /** Ingredient rows as the list draws them: the tick, the icon and the line. */
 export function IngredientRowsSkeleton() {
