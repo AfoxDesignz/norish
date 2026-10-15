@@ -10,9 +10,11 @@
  * meals, the library layout, the calendar's phone or desktop layout) the
  * assertion reads the server's markup through
  * a JavaScript-disabled page: what shows is exactly what the server sent, the
- * skeletons included. A recipe or cookbook page draws only its skeleton on
- * the server, so those scenarios run with JavaScript; where a wrong frame
- * could paint and be corrected, they record every frame from the start.
+ * skeletons included. A full load of a recipe page also carries the recipe,
+ * streamed in behind its skeleton, which only JavaScript swaps in; a cookbook
+ * page draws only its skeleton on the server. So the scenarios about what a
+ * page shows run with JavaScript; where a wrong frame could paint and be
+ * corrected, they record every frame from the start.
  */
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
@@ -359,6 +361,22 @@ test("a recipe skeleton leaves out the rating and nutrition hidden on the phone,
     rating: true,
     nutrition: true,
   });
+});
+
+test("a full load of a recipe page carries the recipe in the server's markup", async ({
+  browser,
+}) => {
+  const id = await ensureRecipe();
+  const { context, page } = await openStatic(browser, "phone");
+
+  try {
+    await page.goto(`/recipes/${id}`);
+    // Elements, not the dehydrated data in the page's scripts.
+    await expect(page.locator("h1, h2").filter({ hasText: RECIPE.name }).first()).toBeAttached();
+    await expect(page.getByText(RECIPE.steps[0]!.step).first()).toBeAttached();
+  } finally {
+    await context.close();
+  }
 });
 
 test("groceries arrives with a by-recipe skeleton when that view is stored", async ({

@@ -13,7 +13,8 @@
  */
 
 import type { OfflineIdb } from "@/lib/offline/idb";
-import { deleteImageCache } from "@/lib/offline/cache-names";
+import type { DehydratedState, Query } from "@tanstack/react-query";
+import { deletePersonalCaches } from "@/lib/offline/cache-names";
 import { KEYVAL_STORE, offlineIdb } from "@/lib/offline/idb";
 import {
   CACHE_OWNER_STORAGE_KEY,
@@ -73,6 +74,30 @@ function writeBootOwner(ownerId: string): void {
   }
 }
 
+/** The data each query held as the server sent it with this page load, by query hash. */
+const serverCopies = new Map<string, unknown>();
+
+/**
+ * Note the reads the server sent with the page (QuerySeed). Browser only: on the server this
+ * module outlives a request.
+ */
+export function markServerCopies(state: DehydratedState | undefined): void {
+  if (typeof window === "undefined") return;
+
+  for (const { queryHash, state: query } of state?.queries ?? []) {
+    serverCopies.set(queryHash, query.data);
+  }
+}
+
+/**
+ * The server's copy, unchanged since, is current, so mounting doesn't fetch it again. Every other
+ * copy refetches on every mount, a restored one included: it may predate a change made elsewhere.
+ */
+const refetchOnMount = (query: Query) =>
+  serverCopies.has(query.queryHash) && serverCopies.get(query.queryHash) === query.state.data
+    ? false
+    : ("always" as const);
+
 /** Persist usable read data even when its latest background refetch failed. */
 const shouldDehydrateQuery = (query: { state: { data: unknown } }) =>
   query.state.data !== undefined;
@@ -84,7 +109,7 @@ function createQueryClient(): QueryClient {
         staleTime: 1000 * 60 * 5,
         gcTime: 1000 * 60 * 10,
         refetchOnWindowFocus: true,
-        refetchOnMount: "always",
+        refetchOnMount,
         retry: 1,
       },
       mutations: {
@@ -165,7 +190,7 @@ export function createCacheManager(idb: OfflineIdb): CacheManager {
     await Promise.allSettled([
       idb.del(KEYVAL_STORE, queryCacheKey(owner)),
       clearLastWarmedAt(owner, idb),
-      deleteImageCache(),
+      deletePersonalCaches(),
     ]);
   }
 
@@ -261,7 +286,7 @@ export function createCacheManager(idb: OfflineIdb): CacheManager {
           if (owner) {
             await clearOwnerReadArtifacts(owner);
           } else {
-            await Promise.allSettled([deleteImageCache()]);
+            await Promise.allSettled([deletePersonalCaches()]);
           }
 
           if (cause === "sign-out") {
@@ -303,5 +328,7 @@ export const cacheManager = createCacheManager(offlineIdb);
 
 /** The seam handed to the provider bundle's `getQueryClient`. */
 export function getPersistedQueryClient(): QueryClient {
-  return cacheManager.queryClient;
+  // The module's client is the browser's. Each server render gets its own, or a page the server
+  // seeded with one reader's data would leave it for the next request.
+  return typeof window === "undefined" ? createQueryClient() : cacheManager.queryClient;
 }

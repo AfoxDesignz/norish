@@ -1,6 +1,6 @@
 import type { OfflineIdb } from "@/lib/offline/idb";
 import type { PersistedClient } from "@tanstack/query-persist-client-core";
-import { IMAGE_CACHE_NAME } from "@/lib/offline/cache-names";
+import { IMAGE_CACHE_NAME, PAGE_CACHE_NAMES } from "@/lib/offline/cache-names";
 import { createOfflineIdb, KEYVAL_STORE, OUTBOX_STORE } from "@/lib/offline/idb";
 import { queryCacheKey } from "@/lib/query-cache/cache-identity";
 import { readLastWarmedAt, writeLastWarmedAt } from "@/lib/query-cache/last-warmed";
@@ -8,8 +8,10 @@ import {
   CACHE_BUSTER,
   CACHE_MAX_AGE_MS,
   createCacheManager,
+  markServerCopies,
 } from "@/lib/query-cache/persisted-query-client";
-import { dehydrate, QueryClient, QueryObserver } from "@tanstack/react-query";
+import { PAGES_CACHE_NAME } from "@serwist/turbopack/worker";
+import { dehydrate, hydrate, QueryClient, QueryObserver } from "@tanstack/react-query";
 import { createTRPCClient } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { IDBFactory } from "fake-indexeddb";
@@ -236,6 +238,45 @@ describe("createCacheManager", () => {
     expect(queryClient.getQueryData(elsewhere)).toBeUndefined();
   });
 
+  it("opens the server's copy as it is until it changes, and refetches any other copy", async () => {
+    const { queryClient } = createCacheManager(idb);
+    const trpc = createTRPCOptionsProxy<AppRouter>({
+      client: createTRPCClient<AppRouter>({ links: [] }),
+      queryClient,
+    });
+    const fetchesOnOpen = async (queryKey: readonly unknown[]) => {
+      const queryFn = vi.fn(async () => ({ fetched: true }));
+      const leave = new QueryObserver(queryClient, { queryKey, queryFn }).subscribe(() => {});
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      leave();
+
+      return queryFn.mock.calls.length;
+    };
+    // The app's own keys, untagged so the test can seed any data.
+    const seeded = [...trpc.recipes.get.queryKey({ id: "r1" })];
+    const restored = [...trpc.recipes.get.queryKey({ id: "r2" })];
+
+    // What QuerySeed hands over: the server's copy of r1.
+    const server = new QueryClient();
+
+    server.setQueryData(seeded, { id: "r1" });
+    const state = dehydrate(server);
+
+    markServerCopies(state);
+    hydrate(queryClient, state);
+    // r2 is as fresh, but from the Offline Cache: it may predate a change made elsewhere.
+    queryClient.setQueryData(restored, { id: "r2" });
+
+    expect(await fetchesOnOpen(seeded)).toBe(0);
+    expect(await fetchesOnOpen(restored)).toBe(1);
+
+    // Once the server's copy has changed, it refetches on mount like any other.
+    queryClient.setQueryData(seeded, { id: "r1", edited: true });
+
+    expect(await fetchesOnOpen(seeded)).toBe(1);
+  });
+
   it("resets every personalized read artifact while preserving the Outbox and app shell", async () => {
     const deletedCaches: string[] = [];
 
@@ -263,7 +304,9 @@ describe("createCacheManager", () => {
     expect(manager.queryClient.getQueryData(["memory"])).toBeUndefined();
     expect(await idb.get(KEYVAL_STORE, queryCacheKey("u1"))).toBeUndefined();
     expect(await readLastWarmedAt("u1", idb)).toBeNull();
-    expect(deletedCaches).toEqual([IMAGE_CACHE_NAME]);
+    // A recipe page's document carries its recipe, so the service worker's page caches go too.
+    expect(PAGE_CACHE_NAMES).toEqual(Object.values(PAGES_CACHE_NAME));
+    expect(deletedCaches).toEqual([IMAGE_CACHE_NAME, ...PAGE_CACHE_NAMES]);
     expect(await idb.transaction(OUTBOX_STORE, "readonly", (store) => store.count())).toBe(1);
 
     manager.queryClient.setQueryData(["rewarmed"], "read");

@@ -441,6 +441,33 @@ test("the dormant queue replays only once its owner signs in again", async () =>
   await expect(page.getByRole("checkbox", { name: SEEDED_GROCERY_NAME })).toBeChecked();
 });
 
+test("a recipe page the service worker kept is gone once another account signs in", async () => {
+  // A full load of a recipe page carries the recipe, and the worker keeps the document.
+  const keptRecipePage = () =>
+    page.evaluate(
+      async ({ path, name }) => {
+        const kept = await (await caches.open("pages")).match(path);
+
+        return kept ? (await kept.text()).includes(name) : false;
+      },
+      { path: `/recipes/${SEEDED_RECIPE_ID}`, name: SEEDED_RECIPE_NAME }
+    );
+
+  await page.goto(`/recipes/${SEEDED_RECIPE_ID}`);
+  await expect(page.getByText(SEEDED_RECIPE_NAME).first()).toBeVisible();
+  await expect.poll(keptRecipePage).toBe(true);
+
+  await offline.selectIdentity("b");
+  await page.goto("/groceries");
+  await expect(page.getByRole("button", { name: "Open user menu" })).toBeVisible();
+  await expect.poll(keptRecipePage).toBe(false);
+
+  // Back to A for the tests after this one.
+  await offline.selectIdentity("a");
+  await page.goto("/groceries");
+  await expect(page.getByRole("button", { name: "Open user menu" })).toBeVisible();
+});
+
 test("a link copied while the backend is down is offered, and Import is Queued", async () => {
   // Chromium hands the clipboard over without a gesture once allowed; the
   // link is copied from inside the page and the focus event is the return.
