@@ -14,7 +14,7 @@ See `.scratch/skeletons-and-page-loads/spec.md`, The server-data pilot.
 
 - [x] Each page, one commit, with its server markup asserted in `first-paint.e2e.ts`.
 - [x] Cold-load time to content per page, before and after, recorded here.
-- [ ] The whole E2E suite passes against a fresh `pnpm build`.
+- [ ] The whole E2E suite passes against a fresh `pnpm build`. Run on 2026-10-15 against a fresh build with 08: 180 passed. Of the three reds, two were this work's (the by-recipe skeleton scenario, now checked on an in-app visit since a full load draws the list; the offline switch-back step) and pass after fixes, the whole offline project and `first-paint.e2e.ts` green, the new scenarios 15/15 on `--repeat-each=3`. The third is `calendar-planning.e2e.ts:73`, see 06.
 
 ## Comments
 
