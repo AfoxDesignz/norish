@@ -7,7 +7,7 @@ import { MobileTimeline } from "@/components/calendar/mobile";
 import { EditNotePanel } from "@/components/Panel/consumers/edit-note-panel";
 import { EditPlannedRecipePanel } from "@/components/Panel/consumers/edit-planned-recipe-panel";
 import MiniRecipes from "@/components/Panel/consumers/mini-recipes";
-import { useWindowSize } from "usehooks-ts";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
 import type { Slot } from "@norish/shared/contracts";
 
@@ -26,9 +26,7 @@ function CalendarPageContent() {
   // Recipe editing state
   const [editingRecipe, setEditingRecipe] = useState<PlannedItemDisplay | null>(null);
 
-  // Responsive: use desktop view for md+ (768px)
-  const { width = 768 } = useWindowSize();
-  const isDesktop = width >= 768;
+  const isDesktop = !useIsMobile();
 
   useEffect(() => {
     return () => {

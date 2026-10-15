@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import { useContainerColumns } from "@/hooks/use-container-columns";
+import { useViewport } from "@/hooks/use-is-mobile";
 import { Spinner } from "@heroui/react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { useWindowSize } from "usehooks-ts";
@@ -87,9 +88,10 @@ export default function LibraryGrid({
     viewMode === "list" ? LIST_LOAD_MORE_ROW_THRESHOLD : GRID_LOAD_MORE_ROW_THRESHOLD;
 
   // Track window size to recalculate scrollMargin on resize
-  const { height: _windowHeight, width: windowWidth = 1024 } = useWindowSize();
-  const gridRowHeight =
-    windowWidth < 640 ? ESTIMATED_PHONE_GRID_ROW_HEIGHT : ESTIMATED_GRID_ROW_HEIGHT;
+  const { height: _windowHeight } = useWindowSize();
+  const gridRowHeight = useViewport((width) =>
+    width < 640 ? ESTIMATED_PHONE_GRID_ROW_HEIGHT : ESTIMATED_GRID_ROW_HEIGHT
+  );
 
   // Calculate scrollMargin from container position. The container's offset is
   // read, not tracked: a resize is what moves it, so it is measured on one and

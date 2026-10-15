@@ -7,7 +7,8 @@
  * same page is opened as an iPhone and as a desktop.
  *
  * Where the server draws the choice itself (the groceries view, Today's
- * meals, the library layout) the assertion reads the server's markup through
+ * meals, the library layout, the calendar's phone or desktop layout) the
+ * assertion reads the server's markup through
  * a JavaScript-disabled page: what shows is exactly what the server sent, the
  * skeletons included. A recipe or cookbook page draws only its skeleton on
  * the server, so those scenarios run with JavaScript; where a wrong frame
@@ -76,13 +77,19 @@ async function openLive(
   {
     watch,
     signedIn = true,
-  }: { watch?: { selector: string; attribute?: string }; signedIn?: boolean } = {}
+    viewport,
+  }: {
+    watch?: { selector: string; attribute?: string };
+    signedIn?: boolean;
+    viewport?: { width: number; height: number };
+  } = {}
 ): Promise<{ context: BrowserContext; page: Page }> {
   const context = await browser.newContext({
     baseURL: stack.baseURL,
     storageState: { cookies: signedIn ? stack.ownerCookies : [], origins: [] },
     userAgent: USER_AGENTS[kind],
     serviceWorkers: "block",
+    ...(viewport && { viewport }),
   });
 
   if (!watch) return { context, page: await context.newPage() };
@@ -228,6 +235,25 @@ test("the library arrives in the list stored for the desktop, only on a desktop"
   expect(await libraryLayoutAsServed(browser, "phone")).toBe("grid");
 });
 
+test("the calendar arrives in the layout of the Device Kind, not the server's window guess", async ({
+  browser,
+}) => {
+  for (const [kind, other] of [
+    ["phone", "desktop"],
+    ["desktop", "phone"],
+  ] as const) {
+    const { context, page } = await openStatic(browser, kind);
+
+    try {
+      await page.goto("/calendar");
+      await expect(page.locator(`[data-calendar-skeleton="${kind}"]`).first()).toBeAttached();
+      await expect(page.locator(`[data-calendar-skeleton="${other}"]`)).toHaveCount(0);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 // =============================================================================
 // Drawn from the first client frame
 // =============================================================================
@@ -352,6 +378,23 @@ test("groceries arrives with a by-recipe skeleton when that view is stored", asy
     } finally {
       await context.close();
     }
+  }
+});
+
+test("the library draws phone columns on an iPhone from its first frame", async ({ browser }) => {
+  await ensureRecipe();
+
+  const { context, page } = await openLive(browser, "phone", {
+    watch: { selector: '[data-index="0"] > .grid', attribute: "style" },
+    viewport: { width: 390, height: 844 },
+  });
+
+  try {
+    await page.goto("/");
+    await expect(page.getByText(RECIPE.name).first()).toBeVisible({ timeout: 15_000 });
+    expect(await seen(page)).toEqual([expect.stringContaining("repeat(2,")]);
+  } finally {
+    await context.close();
   }
 });
 

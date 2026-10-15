@@ -1,7 +1,7 @@
 "use client";
 
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
 export function useIsDesktopCookingMode() {
-  return useMediaQuery("(min-width: 768px)");
+  return !useIsMobile();
 }

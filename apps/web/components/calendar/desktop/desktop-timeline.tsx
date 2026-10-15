@@ -6,6 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useCalendarContext } from "@/app/(app)/calendar/context";
 import { SLOT_ORDER } from "@/components/calendar/mobile/types";
 import { CalendarSkeletonDesktop } from "@/components/skeleton/calendar-skeleton";
+import { useViewport } from "@/hooks/use-is-mobile";
 import {
   DndContext,
   DragOverlay,
@@ -63,8 +64,8 @@ export function DesktopTimeline({ onAddItem, onNoteClick, onRecipeClick }: Deskt
   } = useCalendarContext();
 
   // Responsive column count: 3 for lg+, 2 for md
-  const { width = 1024, height: _windowHeight } = useWindowSize();
-  const columnCount = width >= 1024 ? 3 : 2;
+  const columnCount = useViewport((width) => (width >= 1024 ? 3 : 2));
+  const { height: _windowHeight } = useWindowSize();
 
   // Generate all days in range from context, padded to fill complete rows
   const allDays = useMemo(() => {

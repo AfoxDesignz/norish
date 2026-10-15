@@ -1,5 +1,6 @@
 "use client";
 
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { Skeleton } from "@heroui/react";
 
 function DaySkeletonItem() {
@@ -34,7 +35,7 @@ function DaySectionSkeleton() {
 
 export function CalendarSkeletonMobile() {
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" data-calendar-skeleton="phone">
       <DaySectionSkeleton />
       <DaySectionSkeleton />
       <DaySectionSkeleton />
@@ -70,7 +71,7 @@ function DesktopDayCardSkeleton() {
 
 export function CalendarSkeletonDesktop() {
   return (
-    <div className="h-full overflow-hidden px-4 py-2">
+    <div className="h-full overflow-hidden px-4 py-2" data-calendar-skeleton="desktop">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <DesktopDayCardSkeleton key={i} />
@@ -81,17 +82,5 @@ export function CalendarSkeletonDesktop() {
 }
 
 export default function CalendarSkeleton() {
-  return (
-    <>
-      {/* Desktop skeleton */}
-      <div className="hidden h-full md:block">
-        <CalendarSkeletonDesktop />
-      </div>
-
-      {/* Mobile skeleton */}
-      <div className="block h-full md:hidden">
-        <CalendarSkeletonMobile />
-      </div>
-    </>
-  );
+  return useIsMobile() ? <CalendarSkeletonMobile /> : <CalendarSkeletonDesktop />;
 }
