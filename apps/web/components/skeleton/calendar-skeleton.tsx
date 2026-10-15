@@ -15,9 +15,8 @@ function AddButtonPlaceholder() {
 }
 
 /**
- * A phone day: the card and its header, no meals, since an empty day is the
- * header alone. The timeline lands on today, so the first day is today. Dates
- * stay grey: the server does not know the reader's time zone.
+ * A phone day: its header only, as an empty day draws. The timeline lands on today; dates
+ * stay grey because the server doesn't know the reader's time zone.
  */
 function PhoneDaySkeleton({ isToday }: { isToday: boolean }) {
   const t = useTranslations("calendar.mobile");

@@ -41,9 +41,8 @@ function CookPillPlaceholder() {
 }
 
 /**
- * The page's shape while it loads; {@link RecipeSkeleton} decides which parts.
- * The optional cards (notes, cooking time, provenance, source, cookbooks) and
- * the header's optional lines are left out.
+ * The phone page while it loads, without its optional cards and header lines;
+ * {@link RecipeSkeleton} decides the parts.
  */
 export default function RecipeSkeletonMobile({
   showRatings,

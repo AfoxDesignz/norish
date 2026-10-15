@@ -13,8 +13,8 @@ import {
 } from "./recipe-skeleton-parts";
 
 /**
- * The page's shape while it loads; {@link RecipeSkeleton} decides which parts.
- * The optional cards (provenance, notes, cookbooks) are left out.
+ * The desktop page while it loads, without its optional cards;
+ * {@link RecipeSkeleton} decides the parts.
  */
 export default function RecipeSkeletonDesktop({
   showRatings,

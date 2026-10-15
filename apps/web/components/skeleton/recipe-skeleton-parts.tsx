@@ -1,6 +1,7 @@
 "use client";
 
 import { ActionButton } from "@/components/shared/action-button";
+import { useHiddenItemVisibility } from "@/hooks/user/use-hidden-item-visibility";
 import { FireIcon } from "@heroicons/react/20/solid";
 import { Button, Card, Skeleton } from "@heroui/react";
 import { useTranslations } from "next-intl";
@@ -20,12 +21,14 @@ export type RecipeSkeletonParts = {
 
 /** Ingredient rows as the list draws them: the tick, the icon and the line. */
 export function IngredientRowsSkeleton() {
+  const { showIngredientIcons } = useHiddenItemVisibility();
+
   return (
     <div>
       {Array.from({ length: 6 }, (_, i) => (
         <div key={i} className="flex items-center gap-3 py-3">
           <Skeleton className="size-5 shrink-0 rounded-full" />
-          <Skeleton className="size-6 shrink-0 rounded-full md:size-8" />
+          {showIngredientIcons && <Skeleton className="size-6 shrink-0 rounded-full md:size-8" />}
           <Skeleton className="h-4 w-2/3 rounded-md" />
         </div>
       ))}

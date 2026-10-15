@@ -8,10 +8,10 @@ import { FIELD_STYLE } from "@/components/groceries/grocery-field";
 import { IngredientIcon, IngredientIconsProvider } from "@/components/ingredients/ingredient-icon";
 import { IngredientPanel } from "@/components/ingredients/ingredient-panel";
 import { IconActionButton } from "@/components/shared/action-button";
-import { useDevicePreference } from "@/context/device-preferences-context";
 import { useSpellingRules } from "@/hooks/config";
 import { useGroceriesQuery } from "@/hooks/groceries";
 import { usePantryMutations, usePantryQuery } from "@/hooks/pantry";
+import { useHiddenItemVisibility } from "@/hooks/user/use-hidden-item-visibility";
 import { MagnifyingGlassIcon, PlusIcon } from "@heroicons/react/16/solid";
 import { Button, InputGroup, Skeleton, TextField, toast } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
@@ -63,7 +63,7 @@ export function PantryView() {
   const rules = useSpellingRules();
   const { isOffline } = useConnectivity();
   const { items, isLoading, isUnavailable } = usePantryQuery();
-  const showIcons = !useDevicePreference("hiddenItems")[0].includes("ingredientIcons");
+  const { showIngredientIcons } = useHiddenItemVisibility();
   const { addPantryIngredient } = usePantryMutations();
   const { groceries } = useGroceriesQuery();
   const putOnTheList = usePutOnTheList();
@@ -175,7 +175,9 @@ export function PantryView() {
           >
             {Array.from({ length: 5 }, (_, index) => (
               <div key={index} className="bg-surface flex min-h-12 items-center gap-3 px-4 py-2">
-                {showIcons && <Skeleton className="size-6 shrink-0 rounded-full md:size-8" />}
+                {showIngredientIcons && (
+                  <Skeleton className="size-6 shrink-0 rounded-full md:size-8" />
+                )}
                 <Skeleton className="h-4 w-32 rounded-md" />
               </div>
             ))}

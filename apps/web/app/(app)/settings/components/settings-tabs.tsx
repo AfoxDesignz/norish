@@ -35,15 +35,6 @@ export function SettingsTabs({
   const t = useTranslations("settings");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requestedTab = searchParams.get("tab") || "user";
-  const currentTab: SettingsTab =
-    requestedTab === "user" ||
-    requestedTab === "household" ||
-    requestedTab === "caldav" ||
-    requestedTab === "ingredients" ||
-    (requestedTab === "admin" && showAdminTab)
-      ? requestedTab
-      : "user";
   const tabs: Array<{
     id: SettingsTab;
     label: string;
@@ -85,6 +76,9 @@ export function SettingsTabs({
         ]
       : []),
   ];
+
+  // Only an offered tab can be open: Admin is in the list only for an admin.
+  const currentTab = tabs.find((tab) => tab.id === searchParams.get("tab"))?.id ?? "user";
 
   const handleTabChange = (key: React.Key) => {
     router.push(`/settings?tab=${String(key)}`);

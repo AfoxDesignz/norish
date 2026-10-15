@@ -83,9 +83,8 @@ const TAB_CARDS: Record<SettingsTab, CardPlaceholder[]> = {
 };
 
 /**
- * One settings tab while it loads: its cards' real headers over grey rows.
- * The route's skeleton, the tab's lazy load and the tab's own data wait all
- * draw it, so a tab looks the same from the first frame until it fills in.
+ * A settings tab while it loads: its cards' real headers over grey rows. The route, the
+ * tab's lazy load and its data wait all draw it.
  */
 export function SettingsTabSkeleton({ tab }: { tab: SettingsTab }) {
   const t = useTranslations("settings");

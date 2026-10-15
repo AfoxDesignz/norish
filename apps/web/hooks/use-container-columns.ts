@@ -1,4 +1,4 @@
-import { useViewport } from "@/hooks/use-is-mobile";
+import { useViewport } from "@/hooks/use-viewport";
 
 /**
  * The library's column count from the window width, at Tailwind's `lg`

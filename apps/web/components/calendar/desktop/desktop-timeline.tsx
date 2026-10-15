@@ -6,7 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useCalendarContext } from "@/app/(app)/calendar/context";
 import { SLOT_ORDER } from "@/components/calendar/mobile/types";
 import { CalendarSkeletonDesktop } from "@/components/skeleton/calendar-skeleton";
-import { useViewport } from "@/hooks/use-is-mobile";
+import { useViewport } from "@/hooks/use-viewport";
 import {
   DndContext,
   DragOverlay,

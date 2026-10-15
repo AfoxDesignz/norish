@@ -11,7 +11,7 @@ import {
   useState,
 } from "react";
 import { useContainerColumns } from "@/hooks/use-container-columns";
-import { useViewport } from "@/hooks/use-is-mobile";
+import { useViewport } from "@/hooks/use-viewport";
 import { Spinner } from "@heroui/react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { useWindowSize } from "usehooks-ts";

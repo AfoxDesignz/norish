@@ -35,6 +35,18 @@ type ErrorCode = (typeof ERROR_CODES)[number];
 function isKnownErrorCode(code: string): code is ErrorCode {
   return ERROR_CODES.includes(code as ErrorCode);
 }
+function BackToLogin() {
+  const t = useTranslations("auth.errors");
+
+  return (
+    <Link href="/login?logout=true">
+      <Button className="rounded-lg px-6" variant="primary">
+        {t("backToLogin")}
+      </Button>
+    </Link>
+  );
+}
+
 function AuthErrorContent() {
   const t = useTranslations("auth.errors");
   const searchParams = useSearchParams();
@@ -87,27 +99,17 @@ function AuthErrorContent() {
         </p>
       )}
 
-      <Link href="/login?logout=true">
-        <Button className="rounded-lg px-6" variant="primary">
-          {t("backToLogin")}
-        </Button>
-      </Link>
+      <BackToLogin />
     </AuthFrame>
   );
 }
 
 /** The page before its search params are read: the frame, a grey alert and the real way back. */
 function AuthErrorSkeleton() {
-  const t = useTranslations("auth.errors");
-
   return (
     <AuthFrame contentClassName="items-center">
       <Skeleton className="h-20 w-full rounded-xl" />
-      <Link href="/login?logout=true">
-        <Button className="rounded-lg px-6" variant="primary">
-          {t("backToLogin")}
-        </Button>
-      </Link>
+      <BackToLogin />
     </AuthFrame>
   );
 }

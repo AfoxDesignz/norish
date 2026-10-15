@@ -5,9 +5,8 @@ import { Description, Label, Skeleton } from "@heroui/react";
 import { useTranslations } from "next-intl";
 
 /**
- * The sign-in page before the server says how to sign in: the real frame and
- * heading over grey rows, since the form or the provider buttons depend on
- * the instance.
+ * Sign-in before the server says how: the real frame and heading over grey rows, since
+ * the form and the provider buttons depend on the instance.
  */
 export default function LoginSkeleton() {
   const t = useTranslations("auth.login");

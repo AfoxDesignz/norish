@@ -12,7 +12,7 @@ import { usePermissionsContext } from "@/context/permissions-context";
 import { showSafeErrorToast } from "@/lib/ui/safe-error-toast";
 import { FunnelIcon } from "@heroicons/react/16/solid";
 import { BookOpenIcon, SparklesIcon } from "@heroicons/react/24/outline";
-import { Button, Spinner } from "@heroui/react";
+import { Button, Skeleton, Spinner } from "@heroui/react";
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -294,7 +294,14 @@ export default function IngredientsSettingsContent() {
             onSearch={onSearch}
           />
 
-          {!isLoading && items.length === 0 ? (
+          {isLoading ? (
+            // The same rows the tab's skeleton draws, until the first page arrives.
+            <div className="flex flex-col gap-4">
+              {Array.from({ length: 5 }, (_, i) => (
+                <Skeleton key={i} className="h-12 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : items.length === 0 ? (
             <p className="text-muted py-6 text-center" data-testid="ingredients-empty">
               {filters.flaggedOnly ? t("emptyFlagged") : t("empty")}
             </p>

@@ -7,9 +7,8 @@ import RecipeSkeletonDesktop from "./recipe-skeleton-desktop";
 import RecipeSkeletonMobile from "./recipe-skeleton-mobile";
 
 /**
- * The recipe page's shape while it loads, without what the reader hid. A
- * shared recipe has no app controls, always shows its nutrition and never
- * its rating.
+ * The recipe page while it loads, without what the reader hid. A shared recipe has no
+ * app controls, always shows its nutrition and never its rating.
  */
 export default function RecipeSkeleton({ shared = false }: { shared?: boolean }) {
   const shows = useHiddenItemVisibility();

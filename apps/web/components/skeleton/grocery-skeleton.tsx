@@ -1,24 +1,21 @@
 "use client";
 
 import { useDevicePreference } from "@/context/device-preferences-context";
+import { useHiddenItemVisibility } from "@/hooks/user/use-hidden-item-visibility";
 import { Bars3Icon, ChevronDownIcon, EllipsisVerticalIcon } from "@heroicons/react/16/solid";
 import { Skeleton } from "@heroui/react";
 
 /**
- * The list's shape before it arrives, in the reader's view and grouping: one
- * card per section, its heading bar over its rows. By store, a heading
- * carries the Store's dot and kebab and an aisle heading leads the rows; by
- * recipe it is a recipe's name. Rows are drawn as the list draws them,
- * with the Ingredient Icon unless the reader hid it.
+ * The list before it arrives, in the reader's view and grouping: one card per section,
+ * a Store's with its dot and kebab.
  */
 export default function GrocerySkeleton() {
   const [view] = useDevicePreference("groceryViewMode");
   const [grouped] = useDevicePreference("groceryGroupSimilar");
-  const [hiddenItems] = useDevicePreference("hiddenItems");
   const byStore = view === "store";
   // A grouped row carries its drag handle in line; a single row keeps it in its padding.
   const groupedRows = byStore && grouped;
-  const showIcons = !hiddenItems.includes("ingredientIcons");
+  const { showIngredientIcons } = useHiddenItemVisibility();
 
   return (
     <div
@@ -48,11 +45,6 @@ export default function GrocerySkeleton() {
           </div>
 
           <div className="border-border divide-border divide-y border-t">
-            {byStore && (
-              <div className="px-4 pt-2.5 pb-1">
-                <Skeleton className="h-3.5 w-20 rounded-md" />
-              </div>
-            )}
             {Array.from({ length: rows }, (_, rowIndex) => (
               <div
                 key={rowIndex}
@@ -64,7 +56,7 @@ export default function GrocerySkeleton() {
                   <Bars3Icon className="text-muted/60 size-4" />
                 </span>
                 <Skeleton className="size-6 shrink-0 rounded-full" />
-                {showIcons && (
+                {showIngredientIcons && (
                   <Skeleton className="size-6 shrink-0 rounded-full max-sm:hidden md:size-8" />
                 )}
                 <Skeleton className="h-4 w-40 max-w-full rounded-md" />

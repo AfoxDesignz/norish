@@ -11,6 +11,7 @@ export type UseHiddenItemVisibilityResult = {
   showNutrition: boolean;
   showNotes: boolean;
   showCookbooks: boolean;
+  showIngredientIcons: boolean;
 };
 
 /**
@@ -32,5 +33,6 @@ export function useHiddenItemVisibility(): UseHiddenItemVisibilityResult {
     // The recipe page's cookbooks card only. Hiding it never touches the
     // Library or its type chips.
     showCookbooks: shows("cookbooks"),
+    showIngredientIcons: shows("ingredientIcons"),
   };
 }
