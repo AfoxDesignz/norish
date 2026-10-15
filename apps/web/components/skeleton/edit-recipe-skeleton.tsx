@@ -28,7 +28,7 @@ function Section({
 }
 
 /** A labelled field whose input is still grey. */
-function Field({ label, height = "h-10" }: { label: string; height?: string }) {
+function Field({ label, height = "h-9" }: { label: string; height?: string }) {
   return (
     <div className="flex flex-col gap-1">
       <Label>{label}</Label>
@@ -63,7 +63,10 @@ export default function EditRecipeSkeleton({ mode }: { mode: "create" | "edit" }
 
       <div className="min-w-0 space-y-10">
         <Section number={1} title={t("photo")}>
-          <Skeleton className="aspect-video max-h-80 w-full rounded-xl" />
+          <div className="flex flex-col gap-4">
+            <Skeleton className="size-32 rounded-xl" />
+            <Skeleton className="h-3 w-24 rounded-md" />
+          </div>
         </Section>
 
         <Section number={2} title={t("basicInfo")}>
@@ -111,7 +114,7 @@ export default function EditRecipeSkeleton({ mode }: { mode: "create" | "edit" }
           <div className="space-y-6">
             <div>
               <Help>{t("tagsHelp")}</Help>
-              <Skeleton className="h-10 w-full rounded-xl" />
+              <Skeleton className="h-9 w-full rounded-xl" />
             </div>
             <div>
               <Help>{t("categoriesHelp")}</Help>
@@ -153,7 +156,7 @@ export default function EditRecipeSkeleton({ mode }: { mode: "create" | "edit" }
               <Field label={t("originCountry")} />
               <Field label={t("originRegion")} />
             </div>
-            <Skeleton className="h-10 w-full rounded-xl" />
+            <Skeleton className="h-9 w-full rounded-xl" />
           </div>
         </Section>
 
@@ -181,7 +184,7 @@ export default function EditRecipeSkeleton({ mode }: { mode: "create" | "edit" }
             <Field label={t("sourceUrl")} />
             <div className="flex flex-col gap-2">
               <span className="text-foreground text-sm font-medium">{tSystem("label")}</span>
-              <Skeleton className="h-10 w-full rounded-xl" />
+              <Skeleton className="h-9 w-full rounded-xl" />
             </div>
           </div>
         </Section>
