@@ -89,15 +89,13 @@ async function seed(stack: ProductionStack): Promise<void> {
       [userA.id, food.rows[0]!.id, alias.rows[0]!.id]
     );
     await database.query(
-      `insert into recipes (id, user_id, name, description, image, dish_color, servings)
-       values ($1, $2, $3, 'Seeded for the Offline browser project.', $4, $5, 4)`,
-      [
-        SEEDED_RECIPE_ID,
-        userA.id,
-        SEEDED_RECIPE_NAME,
-        SEEDED_RECIPE_IMAGE,
-        SEEDED_RECIPE_DISH_COLOR,
-      ]
+      `insert into recipes (id, user_id, name, description, dish_color, servings)
+       values ($1, $2, $3, 'Seeded for the Offline browser project.', $4, 4)`,
+      [SEEDED_RECIPE_ID, userA.id, SEEDED_RECIPE_NAME, SEEDED_RECIPE_DISH_COLOR]
+    );
+    await database.query(
+      `insert into recipe_images (recipe_id, image, "order") values ($1, $2, '0')`,
+      [SEEDED_RECIPE_ID, SEEDED_RECIPE_IMAGE]
     );
     const flour = await database.query<{ id: string }>(
       `insert into ingredients (name) values ($1)
@@ -185,7 +183,6 @@ export const test = base.extend<Record<never, never>, OfflineWorkerFixtures>({
     async ({ browser }, use) => {
       const stack = new ProductionStack({
         project: "offline",
-        port: 3100,
         databaseName: "norish_e2e",
         users: [USER_A, USER_B],
       });

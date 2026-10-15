@@ -61,7 +61,7 @@ function extractLinkedRecipeIds(ingredients: GroceryIngredient[]) {
   for (const ingredient of ingredients) {
     const name = ingredient.ingredientName ?? "";
 
-    for (const match of name.matchAll(/\[[^\]]+\]\(id:([a-zA-Z0-9-]+)\)/g)) {
+    for (const match of name.matchAll(/\[[^[\]]+\]\(id:([a-zA-Z0-9-]+)\)/g)) {
       if (match[1]) ids.add(match[1]);
     }
   }
@@ -166,11 +166,11 @@ export default function MiniGroceries({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
   const [editedIngredients, setEditedIngredients] = useState<Record<string, EditedIngredient>>({});
-  const hasInitialized = useRef(false);
-  const knownIngredientIds = useRef<Set<string>>(new Set());
+  const hasInitializedRef = useRef(false);
+  const knownIngredientIdsRef = useRef<Set<string>>(new Set());
   // Which lines the Pantry held when the ticks were last settled, so a line
   // that crosses between the sections can be told from one that has not.
-  const knownInPantryIds = useRef<Set<string>>(new Set());
+  const knownInPantryIdsRef = useRef<Set<string>>(new Set());
   // What the household already has: a line whose Ingredient is in the Pantry
   // is shown apart and left off the list unless it is ticked. A line edited
   // here is only text until it is a grocery, so it is matched by its name.
@@ -222,14 +222,20 @@ export default function MiniGroceries({
     return { toBuy: buy, inPantry: have };
   }, [scaledIngredients, isInPantry]);
 
-  useEffect(() => {
-    hasInitialized.current = false;
-    knownIngredientIds.current = new Set();
-    knownInPantryIds.current = new Set();
+  const [session, setSession] = useState({ open, recipeId });
+
+  if (session.open !== open || session.recipeId !== recipeId) {
+    setSession({ open, recipeId });
     setSelectedIds([]);
     setEditingId(null);
     setEditValue("");
     setEditedIngredients({});
+  }
+
+  useEffect(() => {
+    hasInitializedRef.current = false;
+    knownIngredientIdsRef.current = new Set();
+    knownInPantryIdsRef.current = new Set();
   }, [open, recipeId]);
 
   useEffect(() => {
@@ -242,11 +248,11 @@ export default function MiniGroceries({
     const toBuyIds = new Set(toBuy.map((item) => item.id));
     const inPantryIds = new Set(inPantry.map((item) => item.id));
 
-    if (currentIds.length > 0 && !hasInitialized.current) {
-      knownIngredientIds.current = new Set(currentIds);
-      knownInPantryIds.current = inPantryIds;
+    if (currentIds.length > 0 && !hasInitializedRef.current) {
+      knownIngredientIdsRef.current = new Set(currentIds);
+      knownInPantryIdsRef.current = inPantryIds;
       setSelectedIds(currentIds.filter((id) => toBuyIds.has(id)));
-      hasInitialized.current = true;
+      hasInitializedRef.current = true;
 
       return;
     }
@@ -257,13 +263,13 @@ export default function MiniGroceries({
        section the line was in, so it does not travel with it — otherwise a
        line the Pantry has just claimed would be bought anyway, pre-ticked by
        a default that was about buying it. */
-    const isNew = (id: string) => !knownIngredientIds.current.has(id);
-    const wasInPantry = (id: string) => knownInPantryIds.current.has(id);
+    const isNew = (id: string) => !knownIngredientIdsRef.current.has(id);
+    const wasInPantry = (id: string) => knownInPantryIdsRef.current.has(id);
     const tick = currentIds.filter((id) => toBuyIds.has(id) && (isNew(id) || wasInPantry(id)));
     const untick = currentIds.filter((id) => inPantryIds.has(id) && !isNew(id) && !wasInPantry(id));
 
-    knownIngredientIds.current = new Set(currentIds);
-    knownInPantryIds.current = inPantryIds;
+    knownIngredientIdsRef.current = new Set(currentIds);
+    knownInPantryIdsRef.current = inPantryIds;
 
     if (tick.length === 0 && untick.length === 0) return;
 
@@ -366,12 +372,12 @@ export default function MiniGroceries({
      buy, none the Pantry holds — once the recipe and the Pantry have
      answered. A Pantry that cannot be read ticks nothing, so the panel opens
      instead, to say so and let the person tick. */
-  const addedAtOnce = useRef(false);
+  const addedAtOnceRef = useRef(false);
 
   useEffect(() => {
-    if (!addAtOnce || open || addedAtOnce.current) return;
+    if (!addAtOnce || open || addedAtOnceRef.current) return;
     if (isLoading || linkedLoading || pantryLoading) return;
-    addedAtOnce.current = true;
+    addedAtOnceRef.current = true;
     if (pantryUnavailable) onOpenChange(true);
     else if (toBuy.length === 0) close();
     else void addLines(toBuy).finally(close);
@@ -432,12 +438,10 @@ export default function MiniGroceries({
         {isEditing ? (
           <Input
             className="min-w-0 flex-1 text-base"
-            size="sm"
             style={{
               fontSize: "16px",
             }}
             value={editValue}
-            variant="underlined"
             onBlur={handleEditSubmit}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={(e) => {

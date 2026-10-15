@@ -1,21 +1,19 @@
 /**
  * BullMQ Workers Startup
  *
- * Initializes all BullMQ workers at server boot.
- * Most workers use lazy loading (start on-demand, pause when idle).
- * Only scheduled-tasks runs continuously for cron jobs.
+ * Every queue's worker starts at boot and runs until shutdown.
  */
 
 import { startAllergyDetectionWorker } from "@norish/queue/allergy-detection/worker";
 import { startAutoCategorizationWorker } from "@norish/queue/auto-categorization/worker";
 import { startAutoTaggingWorker } from "@norish/queue/auto-tagging/worker";
 import { startCaldavSyncWorker } from "@norish/queue/caldav-sync/worker";
+import { closeWorkers } from "@norish/queue/create-worker";
 import { startImageGenerationWorker } from "@norish/queue/image-generation/worker";
 import { startImageImportWorker } from "@norish/queue/image-import/worker";
 import { startIngredientIconsWorker } from "@norish/queue/ingredient-icons/worker";
 import { startIngredientLinkingWorker } from "@norish/queue/ingredient-linking/worker";
 import { startIngredientReviewWorker } from "@norish/queue/ingredient-review/worker";
-import { stopAllLazyWorkers } from "@norish/queue/lazy-worker-manager";
 import { addNewIngredientsJob } from "@norish/queue/new-ingredients/producer";
 import { startNewIngredientsWorker } from "@norish/queue/new-ingredients/worker";
 import { startNutritionEstimationWorker } from "@norish/queue/nutrition-estimation/worker";
@@ -25,81 +23,59 @@ import { startRecipeProvenanceWorker } from "@norish/queue/recipe-provenance/wor
 import { closeBullConnection } from "@norish/queue/redis/bullmq";
 import { closeAllQueues, getQueues, initializeQueues } from "@norish/queue/registry";
 import { initializeScheduledJobs } from "@norish/queue/scheduled-tasks/producer";
-import {
-  startScheduledTasksWorker,
-  stopScheduledTasksWorker,
-} from "@norish/queue/scheduled-tasks/worker";
-import { startStoreLookupWorker, stopStoreLookupWorker } from "@norish/queue/store-lookup/worker";
+import { startScheduledTasksWorker } from "@norish/queue/scheduled-tasks/worker";
+import { startStoreLookupWorker } from "@norish/queue/store-lookup/worker";
 import { onIngredientsMinted } from "@norish/shared-server/ingredients/minted";
 import { createLogger } from "@norish/shared-server/logger";
 
 const log = createLogger("bullmq");
 
 /**
- * Start all workers at boot.
- * Initializes queue registry first, then starts workers.
- *
- * Lazy workers (recipe-import, image-import, paste-import, nutrition-estimation,
- * auto-tagging, allergy-detection, caldav-sync) start in paused state and only
- * begin processing when jobs are added. They pause again after 30s of idle time.
- *
- * Scheduled-tasks worker runs continuously for daily cron jobs.
+ * How long a running job gets to finish once shutdown begins, inside the
+ * shutdown step's own 30 seconds: then the workers are closed by force.
+ */
+const WORKER_CLOSE_BUDGET_MS = 20_000;
+
+/**
+ * Start every worker at boot. Initializes the queue registry first.
  */
 export async function startWorkers(): Promise<void> {
   log.info("Starting all BullMQ workers...");
 
-  // Initialize all queues first
   await initializeQueues();
 
-  // Lazy import workers (start on-demand when jobs are added)
-  // All lazy workers must be awaited to ensure Redis connections are ready
-  // and existing waiting jobs are processed
-  await Promise.all([
-    startRecipeImportWorker(),
-    startImageImportWorker(),
-    startPasteImportWorker(),
-    startNutritionEstimationWorker(),
-    startAutoTaggingWorker(),
-    startAutoCategorizationWorker(),
-    startAllergyDetectionWorker(),
-    startRecipeProvenanceWorker(),
-    startIngredientLinkingWorker(),
-    startImageGenerationWorker(),
-    startIngredientReviewWorker(),
-    startIngredientIconsWorker(),
-    startNewIngredientsWorker(),
-    startCaldavSyncWorker(),
-  ]);
+  startRecipeImportWorker();
+  startImageImportWorker();
+  startPasteImportWorker();
+  startNutritionEstimationWorker();
+  startAutoTaggingWorker();
+  startAutoCategorizationWorker();
+  startAllergyDetectionWorker();
+  startRecipeProvenanceWorker();
+  startIngredientLinkingWorker();
+  startImageGenerationWorker();
+  startIngredientReviewWorker();
+  startIngredientIconsWorker();
+  startNewIngredientsWorker();
+  startCaldavSyncWorker();
+  startScheduledTasksWorker();
+  startStoreLookupWorker();
 
   // Foods someone's action mints get what the administrator turned on for new foods.
   onIngredientsMinted(addNewIngredientsJob);
 
-  // Scheduled tasks (always-running for cron jobs)
-  startScheduledTasksWorker();
-
-  // Store lookups run always-on: a grocery is priced while the user is still
-  // looking at the list, and a lazy worker is where the `delay` trap lives.
-  startStoreLookupWorker();
   await initializeScheduledJobs(getQueues().scheduledTasks);
 
-  log.info("All BullMQ workers started (lazy workers waiting for jobs)");
+  log.info("All BullMQ workers started");
 }
 
 /**
- * Stop all workers gracefully.
+ * Stop all workers gracefully, then the queues and the shared connection.
  */
 export async function stopWorkers(): Promise<void> {
   log.info("Stopping all BullMQ workers...");
 
-  // Stop all lazy workers (recipe-import, image-import, paste-import,
-  // nutrition-estimation, auto-tagging, allergy-detection, caldav-sync)
-  await stopAllLazyWorkers();
-
-  // Stop the always-running scheduled tasks worker
-  await stopScheduledTasksWorker();
-  await stopStoreLookupWorker();
-
-  // Close all queue connections via registry
+  await closeWorkers(WORKER_CLOSE_BUDGET_MS);
   await closeAllQueues();
 
   // Close shared Redis connection after all workers and queues are stopped

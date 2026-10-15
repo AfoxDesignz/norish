@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { createContext, useCallback, useContext } from "react";
+import { createContext, use, useCallback } from "react";
 import { useAdminConfigsQuery, useAdminMutations } from "@/hooks/admin";
 
 import type {
@@ -19,7 +19,6 @@ import type {
   IngredientPermissionPolicy,
   IngredientWordsMap,
   PromptsConfig,
-  PromptsConfigInput,
   RecipePermissionPolicy,
   RecurrenceConfig,
   ServerConfigKey,
@@ -84,7 +83,7 @@ interface AdminSettingsContextValue {
     config: ImageGenerationConfig
   ) => Promise<{ success: boolean; error?: string }>;
   updateDecisionConfig: (config: DecisionConfig) => Promise<{ success: boolean; error?: string }>;
-  updatePrompts: (config: PromptsConfigInput) => Promise<{ success: boolean; error?: string }>;
+  updatePrompts: (config: PromptsConfig) => Promise<{ success: boolean; error?: string }>;
   updateTimerKeywords: (
     config: TimerKeywordsInput
   ) => Promise<{ success: boolean; error?: string }>;
@@ -265,7 +264,7 @@ export function AdminSettingsProvider({ children }: { children: ReactNode }) {
   );
 
   const updatePromptsConfig = useCallback(
-    async (config: PromptsConfigInput) => {
+    async (config: PromptsConfig) => {
       return mutations.updatePrompts(config);
     },
     [mutations]
@@ -392,11 +391,11 @@ export function AdminSettingsProvider({ children }: { children: ReactNode }) {
     refresh,
   };
 
-  return <AdminSettingsContext.Provider value={value}>{children}</AdminSettingsContext.Provider>;
+  return <AdminSettingsContext value={value}>{children}</AdminSettingsContext>;
 }
 
 export function useAdminSettingsContext() {
-  const context = useContext(AdminSettingsContext);
+  const context = use(AdminSettingsContext);
 
   if (!context)
     throw new Error("useAdminSettingsContext must be used within AdminSettingsProvider");

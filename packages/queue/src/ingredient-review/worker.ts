@@ -13,9 +13,8 @@
  * longer flagged, or one the asker may not edit, is passed over, and a food
  * whose question or edit broke is recorded as failed on its own step, with
  * the cause; neither ends the round. Only the round's own bookkeeping can fail
- * it, and the retry asks again, replacing the suggestions it left. Uses the lazy
- * worker pattern, which wraps the processor so the models each question asks
- * reach the job monitor.
+ * it, and the retry asks again, replacing the suggestions it left. Its worker
+ * wraps the processor so the models each question asks reach the job monitor.
  */
 
 import type { Job } from "bullmq";
@@ -38,8 +37,9 @@ import { ingredients } from "@norish/shared-server/realtime/ingredients";
 
 import type { JobStepEvent } from "../job-steps";
 import type { ReviewStepDetail } from "./progress";
-import { defineLazyWorker, QUEUE_NAMES } from "../config";
+import { createWorker, isFinalFailure } from "../create-worker";
 import { recordCompletedSteps } from "../job-steps";
+import { QUEUE_NAMES } from "../queue-names";
 import { REVIEW_STEP, summarizeReviewRound } from "./progress";
 
 const log = createLogger("worker:ingredient-review");
@@ -141,7 +141,11 @@ function reviewConcurrency(): number {
 const ROUND_WRITES = 20;
 
 /** Exported so the job body can be exercised without a Redis-backed worker. */
-export async function processIngredientReviewJob(job: Job<IngredientReviewJobData>): Promise<void> {
+export async function processIngredientReviewJob(
+  job: Job<IngredientReviewJobData>,
+  _token?: string,
+  signal?: AbortSignal
+): Promise<void> {
   const { ingredients: foods } = job.data;
   const changed: string[] = [];
   const writeEvery = Math.max(1, Math.ceil(foods.length / ROUND_WRITES));
@@ -188,7 +192,8 @@ export async function processIngredientReviewJob(job: Job<IngredientReviewJobDat
   };
 
   const askNext = async (): Promise<void> => {
-    while (next < foods.length) {
+    // A cancelled round asks no further food.
+    while (next < foods.length && !signal?.aborted) {
       const food = foods[next++]!;
       const startedAt = Date.now();
       // The food's own requests, so a round that asks two questions still says
@@ -213,6 +218,7 @@ export async function processIngredientReviewJob(job: Job<IngredientReviewJobDat
       log.warn({ err: error, jobId: job.id }, "Could not announce the round's Ingredient changes");
     }
   }
+  signal?.throwIfAborted();
   await announceRound(job, true);
 }
 
@@ -224,16 +230,12 @@ export async function handleIngredientReviewFailure(
   job: Job<IngredientReviewJobData> | undefined,
   error: Error
 ): Promise<void> {
-  log.error({ jobId: job?.id, err: error }, "A round of Ask AI failed");
-  if (!job || job.attemptsMade < (job.opts.attempts ?? 1)) return;
+  if (!job || !isFinalFailure(job, error)) return;
   await announceRound(job, true);
 }
 
-const ingredientReviewWorker = defineLazyWorker<IngredientReviewJobData>(
-  QUEUE_NAMES.INGREDIENT_REVIEW,
-  processIngredientReviewJob,
-  handleIngredientReviewFailure
-);
-
-export const startIngredientReviewWorker = ingredientReviewWorker.start;
-export const stopIngredientReviewWorker = ingredientReviewWorker.stop;
+export function startIngredientReviewWorker(): void {
+  createWorker<IngredientReviewJobData>(QUEUE_NAMES.INGREDIENT_REVIEW, processIngredientReviewJob, {
+    onFailed: handleIngredientReviewFailure,
+  });
+}

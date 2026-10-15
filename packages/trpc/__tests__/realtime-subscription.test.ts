@@ -276,7 +276,6 @@ function laggedCause(error: TRPCError): RealtimeLaggedErrorType {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   redis.streams.clear();
   hub.sources.clear();
   hub.subscribe.mockImplementation(

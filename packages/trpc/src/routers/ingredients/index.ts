@@ -90,7 +90,7 @@ import {
 
 import type { AuthedProcedureContext } from "../../middleware";
 import { formDataInputSchema, getFormDataString, getUploadedFile } from "../../form-data";
-import { authedProcedure } from "../../middleware";
+import { authedProcedure, viewerOf } from "../../middleware";
 import { router } from "../../trpc";
 import { ingredientsSubscriptions } from "./subscriptions";
 
@@ -109,14 +109,6 @@ const find = authedProcedure
 
     return ingredient ? { ingredientId: ingredient.ingredientId } : null;
   });
-
-function actorOf(ctx: AuthedProcedureContext): CatalogueActor {
-  return {
-    userId: ctx.user.id,
-    householdUserIds: ctx.householdUserIds,
-    isServerAdmin: ctx.isServerAdmin,
-  };
-}
 
 const REFUSAL_CODES: Record<CatalogueRefusal, TRPCError["code"]> = {
   forbidden: "FORBIDDEN",
@@ -177,7 +169,7 @@ const list = authedProcedure
     })
   )
   .query(async ({ ctx, input }) => {
-    const page = await listIngredients(actorOf(ctx), {
+    const page = await listIngredients(viewerOf(ctx), {
       search: input.search,
       match: input.match,
       fields: input.fields,
@@ -195,7 +187,7 @@ const list = authedProcedure
 const kinds = authedProcedure
   .input(z.object({ parentId: z.uuid(), locale: z.string().max(20).optional() }))
   .query(async ({ ctx, input }) => {
-    const page = await listIngredients(actorOf(ctx), {
+    const page = await listIngredients(viewerOf(ctx), {
       parentId: input.parentId,
       locale: input.locale,
     });
@@ -211,7 +203,7 @@ const kinds = authedProcedure
 const get = authedProcedure
   .input(z.object({ ingredientId: z.uuid(), locale: z.string().max(20).optional() }))
   .query(async ({ ctx, input }) => {
-    const page = await listIngredients(actorOf(ctx), {
+    const page = await listIngredients(viewerOf(ctx), {
       id: input.ingredientId,
       locale: input.locale,
     });
@@ -222,21 +214,19 @@ const get = authedProcedure
 /** Every spelling of one Ingredient, for a row that asked to see them all. */
 const spellings = authedProcedure
   .input(z.object({ ingredientId: z.uuid() }))
-  .query(({ ctx, input }) => listSpellings(actorOf(ctx), input.ingredientId));
+  .query(({ ctx, input }) => listSpellings(viewerOf(ctx), input.ingredientId));
 
 /** Where an Ingredient is still used, for the panel a refused delete opens. */
 const uses = authedProcedure
   .input(z.object({ ingredientId: z.uuid() }))
-  .query(({ ctx, input }) =>
-    listIngredientUses({ ...actorOf(ctx), userIds: ctx.userIds }, input.ingredientId)
-  );
+  .query(({ ctx, input }) => listIngredientUses(viewerOf(ctx), input.ingredientId));
 
 const addAlias = authedProcedure
   .input(z.object({ ingredientId: z.uuid(), text: ingredientName }))
   .mutation(({ ctx, input }) => {
     log.info({ userId: ctx.user.id, ingredientId: input.ingredientId }, "Adding an alias");
 
-    return asEditResult(() => addCatalogueAlias(actorOf(ctx), input.ingredientId, input.text));
+    return asEditResult(() => addCatalogueAlias(viewerOf(ctx), input.ingredientId, input.text));
   });
 
 const rename = authedProcedure
@@ -244,7 +234,7 @@ const rename = authedProcedure
   .mutation(({ ctx, input }) => {
     log.info({ userId: ctx.user.id, ingredientId: input.ingredientId }, "Renaming an Ingredient");
 
-    return asEditResult(() => renameIngredient(actorOf(ctx), input.ingredientId, input.name));
+    return asEditResult(() => renameIngredient(viewerOf(ctx), input.ingredientId, input.name));
   });
 
 const markDistinct = authedProcedure
@@ -252,7 +242,7 @@ const markDistinct = authedProcedure
   .mutation(({ ctx, input }) => {
     log.info({ userId: ctx.user.id, ingredientId: input.ingredientId }, "Marking distinct");
 
-    return asEditResult(() => markCatalogueDistinct(actorOf(ctx), input.ingredientId));
+    return asEditResult(() => markCatalogueDistinct(viewerOf(ctx), input.ingredientId));
   });
 
 const removeAlias = authedProcedure
@@ -260,7 +250,7 @@ const removeAlias = authedProcedure
   .mutation(({ ctx, input }) => {
     log.info({ userId: ctx.user.id, aliasId: input.aliasId }, "Removing an alias");
 
-    return asEditResult(() => removeCatalogueAlias(actorOf(ctx), input.aliasId));
+    return asEditResult(() => removeCatalogueAlias(viewerOf(ctx), input.aliasId));
   });
 
 /**
@@ -278,7 +268,7 @@ const reviewWithAI = authedProcedure
     );
 
     return translated(async () => {
-      const outcome = await reviewFlaggedWithAI(actorOf(ctx), input.ingredientId);
+      const outcome = await reviewFlaggedWithAI(viewerOf(ctx), input.ingredientId);
 
       // A suggestion recorded, or a flag's reason brought up to date.
       if (outcome.outcome !== "not-flagged") {
@@ -303,7 +293,7 @@ const findParentWithAI_ = authedProcedure
     );
 
     return translated(async () => {
-      const outcome = await findParentWithAI(actorOf(ctx), input.ingredientId);
+      const outcome = await findParentWithAI(viewerOf(ctx), input.ingredientId);
 
       // A suggestion recorded or cleared.
       await ingredientChanges().changed([input.ingredientId]);
@@ -363,7 +353,7 @@ const reviewAllWithAI = authedProcedure
 
     const foods =
       input.mode === "fix"
-        ? await fixFoods(actorOf(ctx), input.parts)
+        ? await fixFoods(viewerOf(ctx), input.parts)
         : (await namedFoods(input.ingredientIds)).map((food) => ({
             ...food,
             mode: "parent" as const,
@@ -404,7 +394,7 @@ const reviewAllWithAI = authedProcedure
 const reviewScope = authedProcedure.query(async ({ ctx }): Promise<ReviewScopeSummary> => {
   await assertAIEnabled();
 
-  const foods = await listReviewableIngredients(actorOf(ctx));
+  const foods = await listReviewableIngredients(viewerOf(ctx));
   const measured = await readRoundTokens(getQueues().ingredientReview);
 
   const suggested = foods.filter((food) => food.suggested).length;
@@ -426,7 +416,7 @@ const reviewScope = authedProcedure.query(async ({ ctx }): Promise<ReviewScopeSu
 const nameScope = authedProcedure.query(async ({ ctx }): Promise<NameScopeSummary> => {
   await assertAIEnabled();
 
-  const foods = await listNameableIngredients(actorOf(ctx));
+  const foods = await listNameableIngredients(viewerOf(ctx));
   const measured = await readRoundTokens(getQueues().ingredientReview, "name");
 
   return {
@@ -461,7 +451,7 @@ const reviewReport = authedProcedure
   });
 
 /** The suggestions waiting on the viewer: only those about foods they may edit. */
-const suggestions = authedProcedure.query(({ ctx }) => listSuggestions(actorOf(ctx)));
+const suggestions = authedProcedure.query(({ ctx }) => listSuggestions(viewerOf(ctx)));
 
 // As many as there are: Confirm all answers every suggestion a round over the catalogue left.
 const suggestionIds = z.object({ suggestionIds: z.array(z.uuid()).min(1) });
@@ -487,7 +477,7 @@ async function answerSuggestions(
 
     for (const id of ids) {
       try {
-        await answer(actorOf(ctx), id);
+        await answer(viewerOf(ctx), id);
         done += 1;
       } catch (error) {
         if (!(error instanceof CatalogueEditError)) throw error;
@@ -549,7 +539,7 @@ const uploadIcon = authedProcedure.input(formDataInputSchema).mutation(async ({ 
   );
   const bytes = Buffer.from(await picture.arrayBuffer());
 
-  return translated(() => uploadIngredientIcon(actorOf(ctx), ingredientId.data, bytes));
+  return translated(() => uploadIngredientIcon(viewerOf(ctx), ingredientId.data, bytes));
 });
 
 /**
@@ -566,7 +556,7 @@ const generateIcon = authedProcedure
       "Generating an Ingredient Icon"
     );
 
-    return translated(() => generateIngredientIcon(actorOf(ctx), input.ingredientId));
+    return translated(() => generateIngredientIcon(viewerOf(ctx), input.ingredientId));
   });
 
 /** Refuse unless the instance can draw: AI on and an image provider configured. */
@@ -584,7 +574,7 @@ async function assertCanDraw(): Promise<void> {
  */
 const iconScope = authedProcedure.query(async ({ ctx }): Promise<IconScopeSummary> => {
   await assertCanDraw();
-  const scopes = await listIconRoundFoods(actorOf(ctx));
+  const scopes = await listIconRoundFoods(viewerOf(ctx));
 
   return { bare: scopes.bare.length, unowned: scopes.unowned.length };
 });
@@ -600,7 +590,7 @@ const drawIcons = authedProcedure
   .input(z.object({ scope: z.enum(ICON_SCOPES) }))
   .mutation(async ({ ctx, input }) => {
     await assertCanDraw();
-    const foods = (await listIconRoundFoods(actorOf(ctx)))[input.scope];
+    const foods = (await listIconRoundFoods(viewerOf(ctx)))[input.scope];
 
     log.info(
       { userId: ctx.user.id, count: foods.length, scope: input.scope },
@@ -646,7 +636,7 @@ const saveDraft = authedProcedure
     log.info({ userId: ctx.user.id, ingredientId: input.ingredientId }, "Saving an Ingredient");
     const { ingredientId, ...draft } = input;
 
-    return asEditResult(() => saveIngredientDraft(actorOf(ctx), ingredientId, draft));
+    return asEditResult(() => saveIngredientDraft(viewerOf(ctx), ingredientId, draft));
   });
 
 /** Delete an Ingredient nothing uses. Follows `edit` on the Ingredient. */
@@ -655,7 +645,7 @@ const remove = authedProcedure
   .mutation(({ ctx, input }) => {
     log.info({ userId: ctx.user.id, ingredientId: input.ingredientId }, "Deleting an Ingredient");
 
-    return asEditResult(() => deleteIngredient(actorOf(ctx), input.ingredientId));
+    return asEditResult(() => deleteIngredient(viewerOf(ctx), input.ingredientId));
   });
 
 /** Merge one Ingredient into another. Needs `edit` on both. */
@@ -664,7 +654,7 @@ const merge = authedProcedure
   .mutation(({ ctx, input }) => {
     log.info({ userId: ctx.user.id, ...input }, "Merging Ingredients");
 
-    return asEditResult(() => mergeIngredients(actorOf(ctx), input.sourceId, input.targetId));
+    return asEditResult(() => mergeIngredients(viewerOf(ctx), input.sourceId, input.targetId));
   });
 
 /** Move a spelling to another Ingredient, or to a new one (`targetId` null): the unmerge. */
@@ -673,7 +663,7 @@ const moveAlias = authedProcedure
   .mutation(({ ctx, input }) => {
     log.info({ userId: ctx.user.id, ...input }, "Moving an alias");
 
-    return asEditResult(() => moveCatalogueAlias(actorOf(ctx), input.aliasId, input.targetId));
+    return asEditResult(() => moveCatalogueAlias(viewerOf(ctx), input.aliasId, input.targetId));
   });
 
 /** Set or clear an Ingredient's Parent Ingredient. Follows `edit` on the Ingredient. */
@@ -682,7 +672,9 @@ const setParent = authedProcedure
   .mutation(({ ctx, input }) => {
     log.info({ userId: ctx.user.id, ...input }, "Setting a Parent Ingredient");
 
-    return asEditResult(() => setCatalogueParent(actorOf(ctx), input.ingredientId, input.parentId));
+    return asEditResult(() =>
+      setCatalogueParent(viewerOf(ctx), input.ingredientId, input.parentId)
+    );
   });
 
 /**
@@ -723,14 +715,7 @@ const nutritionFor = authedProcedure
 const spoonMeasure = authedProcedure
   .input(z.object({ ingredientId: z.uuid() }))
   .query(({ ctx, input }): Promise<SpoonMeasure | null> =>
-    spoonMeasureFor(
-      {
-        userId: ctx.user.id,
-        householdUserIds: ctx.householdUserIds,
-        isServerAdmin: ctx.isServerAdmin,
-      },
-      input.ingredientId
-    )
+    spoonMeasureFor(viewerOf(ctx), input.ingredientId)
   );
 
 /** A dataset food, as a correction names it. */
@@ -740,7 +725,7 @@ const datasetFood = z.object({
     .regex(/^[a-z0-9-]+:[^\s]+$/)
     .max(100),
 });
-const amount = z.number().finite().nonnegative().max(100_000);
+const amount = z.number().nonnegative().max(100_000);
 
 /**
  * Correct an Ingredient's nutrition for the viewer's household: any member,

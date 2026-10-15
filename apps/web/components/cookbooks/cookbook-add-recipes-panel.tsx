@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChangeEvent } from "react";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { SelectableRow } from "@/components/cookbooks/selectable-row";
 import Panel from "@/components/Panel/Panel";
 import { ActionButton, ActionButtonGroup } from "@/components/shared/action-button";
@@ -60,13 +60,16 @@ export function CookbookAddRecipesPanel({
     [recipes, members]
   );
 
-  useEffect(() => {
+  const [wasOpen, setWasOpen] = useState(open);
+
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (!open) {
       setRawInput("");
       setSearch("");
       setSelected([]);
     }
-  }, [open]);
+  }
 
   const handleSearch = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;

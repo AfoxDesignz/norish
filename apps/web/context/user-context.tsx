@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, ReactNode, useCallback, useContext } from "react";
+import { createContext, ReactNode, use, useCallback } from "react";
 import { useTRPC } from "@/app/providers/trpc-provider";
 import { clearOfflineStateForSignOut } from "@/lib/offline/sign-out";
 import { useQuery } from "@tanstack/react-query";
@@ -66,11 +66,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
 function WebUserProviderInner({ children }: { children: ReactNode }) {
   const sharedContext = shared.useUserContext();
 
-  return <WebUserContext.Provider value={sharedContext}>{children}</WebUserContext.Provider>;
+  return <WebUserContext value={sharedContext}>{children}</WebUserContext>;
 }
 
 export function useUserContext(): WebUserContextType {
-  const context = useContext(WebUserContext);
+  const context = use(WebUserContext);
 
   if (!context) {
     throw new Error("useUserContext must be used within UserProvider");

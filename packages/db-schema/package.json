@@ -24,7 +24,8 @@
     "@norish/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
-    "prettier": "catalog:"
+    "prettier": "catalog:",
+    "typescript": "catalog:"
   },
   "prettier": "@norish/prettier-config"
 }

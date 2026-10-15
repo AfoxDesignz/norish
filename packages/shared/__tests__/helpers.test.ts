@@ -12,6 +12,7 @@ import {
   hasRecipeName,
   hasRecipeNameIngredientsAndSteps,
   isAvatarFilenameForUser,
+  normalizeUrl,
   parseIngredientWithDefaults,
   parseIsoDuration,
   stripHtmlTags,
@@ -156,6 +157,51 @@ describe("parseIngredientWithDefaults", () => {
     expect(result[0].unitOfMeasureID).toBe("piece");
     expect(result[0].quantity).toBe(2);
   });
+
+  // A pasted list often keeps its bullets. The parser read the dash as the
+  // start of a range and the others as text, so a bullet is taken off first.
+  it.each([
+    ["- 2 cups flour", 2, "cup", "flour"],
+    ["• 1 tbsp oil", 1, "tablespoon", "oil"],
+    ["* 3 eggs", 3, null, "eggs"],
+    ["– 100 g sugar", 100, "gram", "sugar"],
+    ["- 1/2 tsp salt", 0.5, "teaspoon", "salt"],
+    // No amount is negative: a dash against the number is a bullet too. The
+    // parser read "-1 egg" as 1 of nothing and "-2 tbsp butter" as plain text.
+    ["-1 egg", 1, null, "egg"],
+    ["-2 tbsp butter", 2, "tablespoon", "butter"],
+    ["–1 cup flour", 1, "cup", "flour"],
+  ])("reads the bulleted line %j as the line without its bullet", (line, quantity, unit, name) => {
+    const [result] = parseIngredientWithDefaults(line);
+
+    expect(result).toMatchObject({
+      quantity,
+      quantity2: null,
+      unitOfMeasureID: unit,
+      description: name,
+    });
+  });
+
+  it("keeps ranges, a dash inside the line, and skips blank lines", () => {
+    expect(parseIngredientWithDefaults("2-3 cloves garlic")[0]).toMatchObject({
+      quantity: 2,
+      quantity2: 3,
+      unitOfMeasureID: "clove",
+      description: "garlic",
+    });
+    expect(parseIngredientWithDefaults("2 - 3 cloves garlic")[0]).toMatchObject({
+      quantity: 2,
+      quantity2: 3,
+      description: "garlic",
+    });
+    expect(parseIngredientWithDefaults("salt - to taste")[0]).toMatchObject({
+      quantity: null,
+      description: "salt - to taste",
+    });
+    expect(
+      parseIngredientWithDefaults(["1 cup milk", "", "2 eggs"]).map((line) => line.description)
+    ).toEqual(["milk", "eggs"]);
+  });
 });
 
 describe("stripHtmlTags", () => {
@@ -165,6 +211,10 @@ describe("stripHtmlTags", () => {
 
   it("removes multiple tags", () => {
     expect(stripHtmlTags("<b>Bold</b> and <i>italic</i>")).toBe("Bold and italic");
+  });
+
+  it("keeps a lone < that opens no tag", () => {
+    expect(stripHtmlTags("if a < b <b>bold</b>")).toBe("if a < b bold");
   });
 
   it("removes nested tags", () => {
@@ -229,10 +279,26 @@ describe("stripHtmlTags", () => {
     );
   });
 
+  it("removes the space before closing punctuation at the end", () => {
+    expect(stripHtmlTags("<p>&ldquo;Quoted &rdquo;</p>")).toBe("\u201CQuoted\u201D");
+    expect(stripHtmlTags("Serve with rice (or bread )")).toBe("Serve with rice (or bread)");
+    expect(stripHtmlTags("Keep the ( space ) inside")).toBe("Keep the ( space ) inside");
+  });
+
   it("handles mixed entities and HTML tags", () => {
     expect(stripHtmlTags("<p>&ldquo;Hello&nbsp;<b>World</b>&rdquo;</p>")).toBe(
       "\u201CHello World\u201D"
     );
+  });
+});
+
+describe("normalizeUrl", () => {
+  it("drops trailing slashes and tracking parameters, in lower case", () => {
+    expect(normalizeUrl("https://Example.com/Recipes/Soup///?utm_source=x&id=2")).toBe(
+      "https://example.com/recipes/soup?id=2"
+    );
+    expect(normalizeUrl("https://example.com/a/b/")).toBe("https://example.com/a/b");
+    expect(normalizeUrl("https://example.com/a//b")).toBe("https://example.com/a//b");
   });
 });
 

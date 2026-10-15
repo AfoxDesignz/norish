@@ -326,8 +326,13 @@ test("a restart closes every socket with 1012 within seconds, and clients reconn
 
   const startedAt = Date.now();
 
+  stack.server.clearLogs();
   await stack.server.stopServer();
   const shutdownMs = Date.now() - startedAt;
+
+  // Right after the Redis restart above, so no step waits on a connection the
+  // restart left half-open.
+  expect(stack.server.logs().filter((line) => line.includes("Shutdown step is slow"))).toEqual([]);
 
   const closes = await Promise.all(raw.map((socket) => socket.closed));
 

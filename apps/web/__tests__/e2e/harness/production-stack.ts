@@ -10,9 +10,10 @@ import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { RedisContainer } from "@testcontainers/redis";
 import { Client } from "pg";
 
+import { REDIS_IMAGE } from "../../../../../packages/shared-server/__tests__/helpers/redis";
+
 const WEB_DIR = path.resolve(import.meta.dirname, "../../..");
-const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
-const DIST_SERVER_ENTRY = path.join(REPO_ROOT, "dist-server/index.mjs");
+const BUILD_ID = path.join(WEB_DIR, ".next/BUILD_ID");
 const E2E_RUNTIME_DIR = path.resolve(import.meta.dirname, "../.runtime");
 const START_TIMEOUT_MS = 90_000;
 const STOP_TIMEOUT_MS = 15_000;
@@ -25,7 +26,6 @@ export interface HarnessUser {
 
 interface ProductionStackOptions {
   project: "offline" | "ai" | "realtime";
-  port: number;
   databaseName: string;
   users: readonly [HarnessUser, HarnessUser];
   /**
@@ -48,9 +48,9 @@ export interface ProductionServer {
 }
 
 function ensureBuilt(): void {
-  if (!existsSync(DIST_SERVER_ENTRY)) {
+  if (!existsSync(BUILD_ID)) {
     throw new Error(
-      `Missing ${DIST_SERVER_ENTRY}. Run pnpm test:e2e at the repository root to build and run the complete browser gate.`
+      `Missing ${BUILD_ID}. Run pnpm test:e2e at the repository root to build and run the complete browser gate.`
     );
   }
 }
@@ -64,8 +64,8 @@ function delay(milliseconds: number): Promise<void> {
  * it rather than a kernel-assigned one, because Docker re-assigns ephemeral
  * host ports on a container restart and a fixed binding survives one — which
  * is what lets a scenario restart Redis under a server that keeps its URL.
- * The embedded parser gets one too, so stacks running side by side never
- * share (or kill) each other's parser.
+ * The server and the embedded parser get one too, so stacks running side by
+ * side, or beside a dev server, never share (or kill) each other's ports.
  */
 function freeHostPort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -128,9 +128,8 @@ async function stopAll(
 }
 
 export class ProductionStack {
-  readonly baseURL: string;
   readonly uploadsDir: string;
-  private readonly port: number;
+  private serverPort: number | null = null;
   private readonly runtimeDir: string;
   private parserPort: number | null = null;
   private postgres: StartedPostgreSqlContainer | null = null;
@@ -141,14 +140,25 @@ export class ProductionStack {
   private capturedLogs: string[] = [];
 
   constructor(private readonly options: ProductionStackOptions) {
-    // Every Playwright worker boots its own stack, so each takes the
-    // project's port plus its worker index and a runtime directory of its own.
+    // Every Playwright worker boots its own stack, so each takes a runtime
+    // directory of its own, and a free port once it starts.
     const worker = Number(process.env.TEST_PARALLEL_INDEX ?? 0);
 
-    this.port = options.port + worker;
-    this.baseURL = `http://localhost:${this.port}`;
     this.runtimeDir = path.join(E2E_RUNTIME_DIR, `${options.project}-${worker}`);
     this.uploadsDir = path.join(this.runtimeDir, "uploads");
+  }
+
+  /** Fixed for the stack's life: a restarted server keeps its origin. */
+  get baseURL(): string {
+    return `http://localhost:${this.port}`;
+  }
+
+  private get port(): number {
+    if (this.serverPort === null) {
+      throw new Error(`[${this.options.project}] server port is not allocated`);
+    }
+
+    return this.serverPort;
   }
 
   get databaseUrl(): string {
@@ -209,6 +219,7 @@ export class ProductionStack {
     let phase = "container provisioning";
 
     try {
+      this.serverPort = await freeHostPort();
       const redisHostPort = await freeHostPort();
 
       this.parserPort = await freeHostPort();
@@ -218,7 +229,7 @@ export class ProductionStack {
           .withUsername(this.options.databaseName)
           .withPassword(this.options.databaseName)
           .start(),
-        new RedisContainer("redis:8.6.2-alpine")
+        new RedisContainer(REDIS_IMAGE)
           .withExposedPorts({ container: 6379, host: redisHostPort })
           .start(),
       ]);
@@ -269,7 +280,9 @@ export class ProductionStack {
       try {
         await this.stop();
       } catch (cleanupError) {
-        throw new AggregateError([setupError, cleanupError], setupError.message);
+        throw new AggregateError([setupError, cleanupError], setupError.message, {
+          cause: cleanupError,
+        });
       }
 
       throw setupError;
@@ -287,7 +300,8 @@ export class ProductionStack {
     }
 
     const capture = this.options.captureLogs === true;
-    const child: ChildProcess = spawn(process.execPath, [DIST_SERVER_ENTRY], {
+    // As production starts it: the server's source through tsx, from apps/web.
+    const child: ChildProcess = spawn(process.execPath, ["--import", "tsx", "server/index.ts"], {
       cwd: WEB_DIR,
       env: this.serverEnvironment(),
       stdio: ["ignore", capture ? "pipe" : "inherit", capture ? "pipe" : "inherit"],
@@ -350,7 +364,7 @@ export class ProductionStack {
       try {
         await this.stopServer();
       } catch (cleanupError) {
-        throw new AggregateError([error, cleanupError], String(error));
+        throw new AggregateError([error, cleanupError], String(error), { cause: cleanupError });
       }
 
       throw error;
@@ -453,13 +467,18 @@ export class ProductionStack {
     };
   }
 
+  /**
+   * Ready for traffic, and its embedded parser answering too: readiness alone
+   * does not wait for the parser, which URL-import specs need.
+   */
   private async isHealthy(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseURL}/api/v1/health`, {
-        signal: AbortSignal.timeout(2_000),
-      });
+      const responses = await Promise.all([
+        fetch(`${this.baseURL}/api/v1/health/ready`, { signal: AbortSignal.timeout(2_000) }),
+        fetch(`http://127.0.0.1:${this.parserPort}/health`, { signal: AbortSignal.timeout(2_000) }),
+      ]);
 
-      return response.ok;
+      return responses.every((response) => response.ok);
     } catch {
       return false;
     }

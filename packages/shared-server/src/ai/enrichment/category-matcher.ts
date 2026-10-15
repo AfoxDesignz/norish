@@ -130,11 +130,9 @@ export function matchCategory(input: string): RecipeCategory | null {
 
   if (containedPhraseMatch) return containedPhraseMatch;
 
-  const results = categoryFuse.search(normalized);
+  const [bestMatch] = categoryFuse.search(normalized);
 
-  if (results.length === 0) return null;
-
-  const bestMatch = results[0];
+  if (!bestMatch) return null;
 
   if (bestMatch.score !== undefined && bestMatch.score > FUZZY_THRESHOLD) {
     return null;

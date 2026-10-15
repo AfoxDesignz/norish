@@ -16,6 +16,7 @@ import {
   recipes,
   recurringGroceries,
 } from "@norish/db/schema";
+import { viewerAndHouseholdIds } from "@norish/shared/lib/household";
 
 import type { RecipeListContext } from "./recipes";
 import { buildOwnerPolicyCondition } from "./recipes";
@@ -488,7 +489,7 @@ export interface IngredientUses {
   /** The recipes the viewer may open with a line naming it. */
   recipes: Array<{ id: string; name: string }>;
   /** The household's groceries and recurring groceries naming it. */
-  groceries: Array<{ name: string | null; done: boolean; recurring: boolean }>;
+  groceries: Array<{ id: string; name: string | null; done: boolean; recurring: boolean }>;
   /** Whether the household keeps it in the Pantry. */
   pantry: boolean;
   /** The uses the viewer may not see: other households' lists, recipes they cannot open. */
@@ -501,7 +502,7 @@ export interface IngredientUses {
  * how many uses are someone else's.
  */
 export async function listIngredientUses(
-  viewer: RecipeListContext & { userIds: readonly string[] },
+  viewer: RecipeListContext,
   ingredientId: string
 ): Promise<IngredientUses> {
   const spellings = db
@@ -510,7 +511,8 @@ export async function listIngredientUses(
     .where(eq(ingredientAliases.ingredientId, ingredientId));
   const ours = (table: typeof groceries | typeof recurringGroceries | typeof pantryIngredients) =>
     or(inArray(table.ingredientAliasId, spellings), eq(table.ingredientId, ingredientId));
-  const household = (userId: AnyPgColumn) => sql<boolean>`${inArray(userId, [...viewer.userIds])}`;
+  const household = (userId: AnyPgColumn) =>
+    sql<boolean>`${inArray(userId, viewerAndHouseholdIds(viewer))}`;
   const openable = (await buildOwnerPolicyCondition(viewer, recipes.userId, "view")) ?? sql`true`;
 
   const [lines, groceryRows, recurringRows, pantryRows] = await Promise.all([
@@ -522,6 +524,7 @@ export async function listIngredientUses(
       .orderBy(asc(sql`lower(${recipes.name})`)),
     db
       .select({
+        id: groceries.id,
         name: groceries.name,
         done: groceries.isDone,
         visible: household(groceries.userId),
@@ -530,7 +533,11 @@ export async function listIngredientUses(
       .where(ours(groceries))
       .orderBy(asc(groceries.isDone), asc(sql`lower(${groceries.name})`)),
     db
-      .select({ name: recurringGroceries.name, visible: household(recurringGroceries.userId) })
+      .select({
+        id: recurringGroceries.id,
+        name: recurringGroceries.name,
+        visible: household(recurringGroceries.userId),
+      })
       .from(recurringGroceries)
       .where(ours(recurringGroceries)),
     db
@@ -546,10 +553,10 @@ export async function listIngredientUses(
     groceries: [
       ...groceryRows
         .filter((row) => row.visible)
-        .map(({ name, done }) => ({ name, done, recurring: false })),
+        .map(({ id, name, done }) => ({ id, name, done, recurring: false })),
       ...recurringRows
         .filter((row) => row.visible)
-        .map(({ name }) => ({ name, done: false, recurring: true })),
+        .map(({ id, name }) => ({ id, name, done: false, recurring: true })),
     ],
     pantry: pantryRows.some((row) => row.visible),
     elsewhere: [...lines, ...groceryRows, ...recurringRows, ...pantryRows].filter(

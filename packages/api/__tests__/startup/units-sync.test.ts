@@ -88,11 +88,6 @@ vi.mock("@norish/config/content-indicators.default.json", () => ({
 }));
 vi.mock("@norish/config/recurrence-config.default.json", () => ({ default: { locales: {} } }));
 
-vi.mock("@norish/shared-server/ai/prompts/loader", () => ({
-  loadDefaultPrompts: vi.fn(() => ({})),
-  loadRetiredDefaultPrompts: vi.fn(() => ({})),
-}));
-
 async function bootOnce(): Promise<void> {
   const { seedServerConfig } = await import("@norish/api/startup/seed-config");
 
@@ -105,7 +100,6 @@ function storedUnits(): { units: unknown; isOverridden: boolean } {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.resetModules();
   mockStore.clear();
   mockServerConfig = {

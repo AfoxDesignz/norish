@@ -1,51 +1,52 @@
 ---
 sidebar_position: 3
 title: Use Norish offline
-description: What remains available when offline
+description: Using Norish offline.
 ---
 
 # Use Norish offline
 
-The Norish web app keeps an Offline Cache on your device so core functionality
-keeps working when your server is unreachable.
-
-The offline database includes:
+The Norish web app keeps an offline cache on your device, so it keeps working
+when your server can't be reached. The cache holds:
 
 - your 50 most recent recipes
-- groceries, recurring groceries, and stores
-- the calendar's initial window
+- every cookbook you can see and which recipes are in it
+- groceries, recurring groceries and stores
+- the calendar around today
 
-Recipes that are not cached, or unsupported pages show the following screen:
+Anything else you opened while online usually stays in the cache until you
+close the app.
+
+Pages that aren't cached show the following:
 
 ![The offline unavailable screen](/img/screenshots/offline-unavailable.png)
 
-## What is stored offline
+## Seeing what is stored
 
 Open the user menu and select the **Live** or **Offline** indicator at the
-bottom of the menu. Clicking this opens a modal where you can see some information
-on what is stored.
+bottom. The dialog shows what this device has stored.
 
 ![Connection and offline status in Norish](/img/screenshots/offline-status-modal.png)
 
-**Clear cached data** removes the local Offline Cache but keeps Queued changes.
-If you clear it while Offline.
+**Clear cached data** removes the offline cache and keeps your queued changes.
 
-## The outbox
+## Changes made offline
 
-Supported changes are saved durably in the Outbox and reported as
-**Queued**. You do not need to keep the page open or retry each action yourself.
+Changes you make offline wait in the outbox and show as **Queued**. Norish
+sends them when the server is back. You don't need to keep the page open.
 
-The outbox has the following states:
+A queued change can have the following states:
 
-- **Syncing:** waiting to replay or currently replaying;
-- **Needs attention:** retries failed and the change is Parked;
-- **Conflict:** server state changed first, so review and reapply the change if
-  needed.
+- **Syncing**: waiting to be sent, or being sent.
+- **Needs attention**: sending failed several times and Norish stopped trying.
+- **Conflict**: the same thing changed on the server first. Check it and retry
+  if you still want your change.
 
-If the automatic sync does not work the **Sync now** button in modal forces the instance to sync. **Retry all** retries Parked or conflicted work. **Discard all** permanently removes every queued change.
+**Sync now** in the dialog sends everything right away. **Retry all** tries the
+changes that need attention or conflict again. **Discard all** deletes every
+queued change.
 
 ## Accounts and shared devices
 
-The Offline Cache and Outbox are scoped to the signed-in account on the specific
-browser. Signing out with unsynced discards the queued changes and clears the 
-offline cache from the device.
+The offline cache and the outbox belong to the signed-in account in that
+browser. Signing out discards unsent changes and clears the offline cache.

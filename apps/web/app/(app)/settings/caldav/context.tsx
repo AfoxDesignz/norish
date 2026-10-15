@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, ReactNode, useCallback, useContext, useState } from "react";
+import { createContext, ReactNode, use, useCallback, useState } from "react";
 import {
   useCaldavConfigQuery,
   useCaldavConnectionQuery,
@@ -260,7 +260,7 @@ export function CalDavSettingsProvider({ children }: { children: ReactNode }) {
   }, [storedPassword]);
 
   return (
-    <CalDavSettingsContext.Provider
+    <CalDavSettingsContext
       value={{
         config,
         isLoading: isLoadingConfig || isLoadingSyncStatus,
@@ -290,12 +290,12 @@ export function CalDavSettingsProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-    </CalDavSettingsContext.Provider>
+    </CalDavSettingsContext>
   );
 }
 
 export function useCalDavSettingsContext() {
-  const context = useContext(CalDavSettingsContext);
+  const context = use(CalDavSettingsContext);
 
   if (!context) {
     throw new Error("useCalDavSettingsContext must be used within CalDavSettingsProvider");

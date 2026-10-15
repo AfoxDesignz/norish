@@ -13,7 +13,6 @@
  * adds the share of each line still left out for them. A recipe whose every line counts asks
  * the model nothing. The lines are counted from the datasets' numbers, with
  * no household's correction, which is what most readers see.
- * Uses lazy worker pattern - starts on-demand and pauses when idle.
  */
 
 import type { Job } from "bullmq";
@@ -34,9 +33,10 @@ import { createLogger } from "@norish/shared-server/logger";
 import { enrichmentWriteMode } from "@norish/shared/lib/recipe-enrichment";
 import { suppliesNutrition } from "@norish/shared/lib/recipe-nutrition";
 
-import { defineLazyWorker, QUEUE_NAMES } from "../config";
+import { createWorker } from "../create-worker";
 import { handleEnrichmentJobFailure, runEnrichmentJob } from "../enrichment/worker-runner";
 import { reportStep } from "../job-steps";
+import { QUEUE_NAMES } from "../queue-names";
 
 const log = createLogger("worker:nutrition-estimation");
 
@@ -112,11 +112,10 @@ export async function processNutritionEstimationJob(
   });
 }
 
-const nutritionEstimationWorker = defineLazyWorker<RecipeEnrichmentJobData>(
-  QUEUE_NAMES.NUTRITION_ESTIMATION,
-  processNutritionEstimationJob,
-  handleEnrichmentJobFailure
-);
-
-export const startNutritionEstimationWorker = nutritionEstimationWorker.start;
-export const stopNutritionEstimationWorker = nutritionEstimationWorker.stop;
+export function startNutritionEstimationWorker(): void {
+  createWorker<RecipeEnrichmentJobData>(
+    QUEUE_NAMES.NUTRITION_ESTIMATION,
+    processNutritionEstimationJob,
+    { onFailed: handleEnrichmentJobFailure }
+  );
+}

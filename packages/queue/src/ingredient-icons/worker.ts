@@ -9,9 +9,9 @@
  * together once every food is drawn. A food
  * the asker may no longer edit, one that is gone or one a person gave an icon
  * meanwhile is passed over, and a food whose drawing broke is recorded as
- * failed on its own step, with the cause; neither ends the round. Uses the
- * lazy worker pattern, which wraps the processor so the image model each
- * drawing asks reaches the job monitor.
+ * failed on its own step, with the cause; neither ends the round. Its worker
+ * wraps the processor so the image model each drawing asks reaches the job
+ * monitor.
  */
 
 import type { Job } from "bullmq";
@@ -24,8 +24,9 @@ import { ingredients } from "@norish/shared-server/realtime/ingredients";
 
 import type { JobStepEvent } from "../job-steps";
 import type { IconStepDetail } from "./progress";
-import { defineLazyWorker, QUEUE_NAMES } from "../config";
+import { createWorker, isFinalFailure } from "../create-worker";
 import { recordCompletedSteps } from "../job-steps";
+import { QUEUE_NAMES } from "../queue-names";
 import { ICON_STEP, summarizeIconRound } from "./progress";
 
 const log = createLogger("worker:ingredient-icons");
@@ -83,7 +84,11 @@ async function announceRound(
 }
 
 /** Exported so the job body can be exercised without a Redis-backed worker. */
-export async function processIngredientIconsJob(job: Job<IngredientIconsJobData>): Promise<void> {
+export async function processIngredientIconsJob(
+  job: Job<IngredientIconsJobData>,
+  _token?: string,
+  signal?: AbortSignal
+): Promise<void> {
   const { ingredients: foods } = job.data;
   const writeEvery = Math.max(1, Math.ceil(foods.length / ROUND_WRITES));
   let unwritten: (JobStepEvent & { endedAt: number; detail: IconStepDetail })[] = [];
@@ -95,6 +100,8 @@ export async function processIngredientIconsJob(job: Job<IngredientIconsJobData>
   await announcingTogether(async () => {
     // ponytail: one drawing at a time, as image APIs rate-limit hard; draw a few at once if rounds feel slow.
     for (const [index, food] of foods.entries()) {
+      // A cancelled round draws no further food.
+      if (signal?.aborted) break;
       const startedAt = Date.now();
       const { ingredientId, ...outcome } = await draw(job, food.id);
 
@@ -119,7 +126,9 @@ export async function processIngredientIconsJob(job: Job<IngredientIconsJobData>
         unwritten.map((step) => step.detail)
       );
     }
+    if (unwritten.length > 0) await recordCompletedSteps(job, unwritten);
   });
+  signal?.throwIfAborted();
   await announceRound(job, true);
 }
 
@@ -128,16 +137,12 @@ export async function handleIngredientIconsFailure(
   job: Job<IngredientIconsJobData> | undefined,
   error: Error
 ): Promise<void> {
-  log.error({ jobId: job?.id, err: error }, "A Draw icons round failed");
-  if (!job || job.attemptsMade < (job.opts.attempts ?? 1)) return;
+  if (!job || !isFinalFailure(job, error)) return;
   await announceRound(job, true);
 }
 
-const ingredientIconsWorker = defineLazyWorker<IngredientIconsJobData>(
-  QUEUE_NAMES.INGREDIENT_ICONS,
-  processIngredientIconsJob,
-  handleIngredientIconsFailure
-);
-
-export const startIngredientIconsWorker = ingredientIconsWorker.start;
-export const stopIngredientIconsWorker = ingredientIconsWorker.stop;
+export function startIngredientIconsWorker(): void {
+  createWorker<IngredientIconsJobData>(QUEUE_NAMES.INGREDIENT_ICONS, processIngredientIconsJob, {
+    onFailed: handleIngredientIconsFailure,
+  });
+}

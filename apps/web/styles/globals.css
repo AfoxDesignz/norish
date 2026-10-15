@@ -5,7 +5,7 @@
 @import "@heroui/styles";
 @import "@norish/tailwind-config/heroui-theme";
 @import "@norish/tailwind-config/marks";
-@source "../../../node_modules/@heroui/styles/dist/**/*.{css,js,ts,jsx,tsx}";
+@source "../node_modules/@heroui/styles/dist/**/*.{css,js,ts,jsx,tsx}";
 
 @custom-variant light (&:is(:root, .light *, [data-theme="light"] *));
 @custom-variant dark (&:is(.dark *, [data-theme="dark"] *));
@@ -281,5 +281,25 @@
       from var(--untinted-surface-tertiary) l calc(var(--dish-c, 0) * 0.7) var(--dish-h, 0)
     );
     --default: oklch(from var(--untinted-default) l calc(var(--dish-c, 0) * 0.5) var(--dish-h, 0));
+  }
+}
+
+/* A recipe card's image carries into the recipe's hero (RecipeImageTransition).
+   Nothing else moves: the page itself never cross-fades, and a reader who
+   prefers reduced motion gets no morph either. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+::view-transition-group(.morph) {
+  animation-duration: 300ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }

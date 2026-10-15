@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AisleSelector } from "@/components/groceries/aisle-selector";
 import { GroceryProductField } from "@/components/groceries/grocery-product-field";
 import { GroceryRecurrenceControl } from "@/components/groceries/grocery-recurrence-control";
@@ -62,8 +62,19 @@ export default function EditGroceryPanel({
     enabled: open && !recurrencePanelOpen,
   });
 
+  const [seededFrom, setSeededFrom] = useState<{
+    open: boolean;
+    grocery: GroceryDto;
+    recurringGrocery: RecurringGroceryDto | null;
+  } | null>(null);
+
   // Initialize form with grocery data when opening
-  useEffect(() => {
+  if (
+    seededFrom?.open !== open ||
+    seededFrom.grocery !== grocery ||
+    seededFrom.recurringGrocery !== recurringGrocery
+  ) {
+    setSeededFrom({ open, grocery, recurringGrocery });
     if (open) {
       const text = [grocery.amount, grocery.unit, grocery.name].filter(Boolean).join(" ");
 
@@ -84,7 +95,7 @@ export default function EditGroceryPanel({
     } else {
       reset();
     }
-  }, [open, grocery, recurringGrocery, setItemName, setConfirmedPattern, reset]);
+  }
   const price = useProductChoice({
     itemName,
     stores,

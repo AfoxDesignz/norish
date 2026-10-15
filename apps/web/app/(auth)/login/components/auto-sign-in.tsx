@@ -15,29 +15,17 @@ interface AutoSignInProps {
 }
 
 export function AutoSignIn({ provider, callbackUrl }: AutoSignInProps) {
-  const redirectInitiated = useRef(false);
+  const redirectInitiatedRef = useRef(false);
 
   useEffect(() => {
-    if (redirectInitiated.current) return;
-    redirectInitiated.current = true;
+    if (redirectInitiatedRef.current) return;
+    redirectInitiatedRef.current = true;
 
-    const providerId = provider.id.toLowerCase();
-
-    // GitHub and Google use signIn.social(), OIDC uses signIn.oauth2()
-    if (providerId === "github" || providerId === "google") {
-      signIn.social({
-        provider: providerId,
-        callbackURL: callbackUrl,
-        errorCallbackURL: "/auth-error",
-      });
-    } else {
-      // Generic OAuth (OIDC) via genericOAuth plugin
-      signIn.oauth2({
-        providerId: provider.id,
-        callbackURL: callbackUrl,
-        errorCallbackURL: "/auth-error",
-      });
-    }
+    signIn.social({
+      provider: provider.id.toLowerCase(),
+      callbackURL: callbackUrl,
+      errorCallbackURL: "/auth-error",
+    });
   }, [provider, callbackUrl]);
 
   return (

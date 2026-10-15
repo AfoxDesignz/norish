@@ -76,7 +76,6 @@ describe("recurring groceries procedures", () => {
   let ctx: ReturnType<typeof createMockAuthedContext>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     ctx = createMockAuthedContext(mockUser, mockHousehold);
     getRecurringGroceryOwnerId.mockResolvedValue(ctx.user.id);
     assertHouseholdAccess.mockResolvedValue(undefined);
@@ -741,7 +740,6 @@ describe("a repeating grocery asks its Store what it knows", () => {
   let ctx: ReturnType<typeof createMockAuthedContext>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     ctx = createMockAuthedContext(mockUser, mockHousehold);
     getRecurringGroceryOwnerId.mockResolvedValue(ctx.user.id);
     assertHouseholdAccess.mockResolvedValue(undefined);

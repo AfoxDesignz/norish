@@ -48,7 +48,6 @@ vi.mock("@norish/shared-server/ai/prompts/loader", () => ({
 
 describe("Auth Provider Sync Logic", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockServerConfig = {};
     mockDeleteConfig.mockResolvedValue(undefined);
     mockNormalizeAndBackfillConfig.mockResolvedValue(false);

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { SiteAuthTokenDecryptedDto } from "@norish/shared/contracts/dto/site-auth-tokens";
 import { fetchRenderedPage } from "@norish/api/parser/fetch";
@@ -78,10 +78,6 @@ function getExtraHTTPHeaders(): Record<string, string> | undefined {
 // Tests
 // ---------------------------------------------------------------------------
 describe("fetchRenderedPage – auth token injection", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("sends no headers at all when no tokens are provided", async () => {
     await fetchRenderedPage("https://example.com/recipe");
 

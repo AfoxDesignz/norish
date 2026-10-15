@@ -11,83 +11,66 @@ import Redis from "ioredis";
 
 import { SERVER_CONFIG } from "@norish/config/env-config-server";
 import { createLogger, redactUrl } from "@norish/shared-server/logger";
+import { withTimeout } from "@norish/shared/lib/with-timeout";
 
 import { parseRedisUrl } from "./url";
 
 const log = createLogger("redis");
-
-/** Longest pause between reconnection attempts. The strategy never gives up. */
-export const REDIS_RETRY_MAX_DELAY_MS = 5_000;
-export const REDIS_KEEP_ALIVE_MS = 30_000;
-export const REDIS_CONNECT_TIMEOUT_MS = 10_000;
 
 // Read on every access, never copied into a module-local — see the note on
 // `globalForRegistry` in packages/queue/src/registry.ts for why this module is
 // evaluated more than once per process. Here the cost of getting it wrong is
 // one connection per instance, of which shutdown closes only the one it can see.
 const globalForRedis = globalThis as unknown as {
-  publisherClient: Redis | null;
-  connectionPromise: Promise<Redis> | null;
+  publisherClient: Redis | null | undefined;
 };
 
 /**
- * Exponential backoff, capped, and never `null`: pub/sub must keep trying for
- * as long as the process lives. Returning `null` would make ioredis give up,
- * after which every subscription in the process is silently dead.
+ * A socket that has received nothing for this long after a command went out is
+ * taken for dead and reconnected. Without it, a connection left half-open by a
+ * Redis restart is only noticed once the operating system's keep-alive gives
+ * up, minutes later.
  */
-export function redisRetryStrategy(times: number): number {
-  return Math.min(1_000 * 2 ** Math.max(0, times - 1), REDIS_RETRY_MAX_DELAY_MS);
-}
+export const REDIS_SOCKET_TIMEOUT_MS = 10_000;
 
-/** Connection options shared by the publisher and every subscriber. */
+/**
+ * Connection options every Redis client in Norish starts from: the publisher,
+ * each subscriber and BullMQ's connections. ioredis 6's defaults do the rest:
+ * RESP3, reconnecting with capped exponential backoff for as long as the
+ * process lives, and a 30-second keep-alive.
+ */
 export function getRedisConnectionOptions(url = SERVER_CONFIG.REDIS_URL): RedisOptions {
   return {
     ...parseRedisUrl(url),
     lazyConnect: true,
     maxRetriesPerRequest: null,
-    keepAlive: REDIS_KEEP_ALIVE_MS,
-    connectTimeout: REDIS_CONNECT_TIMEOUT_MS,
-    retryStrategy: redisRetryStrategy,
+    // How long a deliberate disconnect waits for the far end to close before
+    // destroying the socket. Shutdown waits this long for every connection a
+    // Redis restart left unanswered; ioredis's two seconds overran its budget.
+    disconnectTimeout: 200,
   };
 }
 
 /**
- * Get the publisher client (singleton).
- * Used for PUBLISH operations and every non-subscribe command.
+ * The publisher, for PUBLISH and every non-subscribe command. Created once per
+ * process: while Redis is down it reconnects, and callers keep getting it.
  */
 export async function getPublisherClient(): Promise<Redis> {
-  const existing = globalForRedis.publisherClient;
-
-  if (existing && existing.status === "ready") {
-    return existing;
-  }
-
-  // Prevent multiple simultaneous connection attempts
-  const inFlight = globalForRedis.connectionPromise;
-
-  if (inFlight) {
-    return inFlight;
-  }
-
-  const connectionPromise = connectPublisher();
-
-  globalForRedis.connectionPromise = connectionPromise;
-
-  try {
-    const publisherClient = await connectionPromise;
-
-    globalForRedis.publisherClient = publisherClient;
-
-    return publisherClient;
-  } finally {
-    globalForRedis.connectionPromise = null;
-  }
+  return (globalForRedis.publisherClient ??= createPublisher());
 }
 
-async function connectPublisher(): Promise<Redis> {
+function createPublisher(): Redis {
   log.info({ url: redactUrl(SERVER_CONFIG.REDIS_URL) }, "Connecting to Redis");
 
-  const client = new Redis(getRedisConnectionOptions());
+  const client = new Redis({
+    ...getRedisConnectionOptions(),
+    // A command fails when Redis has not answered it within five seconds, so
+    // an outage cannot hold a request for ever, while a restart that takes a
+    // second or two is waited out: a session read failed then reads as signed out.
+    commandTimeout: 5_000,
+    socketTimeout: REDIS_SOCKET_TIMEOUT_MS,
+    connectionName: `norish:${process.pid}:publisher`,
+  });
 
   client.on("error", (err) => {
     log.error({ err }, "Redis client error");
@@ -97,20 +80,40 @@ async function connectPublisher(): Promise<Redis> {
     log.warn("Redis client reconnecting");
   });
 
-  await client.connect();
-  log.info("Redis publisher connected");
+  client.on("ready", () => {
+    log.info("Redis publisher connected");
+  });
 
   return client;
 }
 
+const REDIS_HEALTH_TIMEOUT_MS = 2_000;
+
+/** PING through the publisher. A ping unanswered after two seconds counts as down. */
+export async function getRedisHealth() {
+  try {
+    const redis = await getPublisherClient();
+
+    await withTimeout(() => redis.ping(), REDIS_HEALTH_TIMEOUT_MS, "Redis PING");
+
+    return { status: "ok" as const };
+  } catch {
+    return { status: "error" as const };
+  }
+}
+
 /**
- * Create a new subscriber client.
- * Each subscriber needs its own connection because Redis clients
- * enter "subscribe mode" and can't do other operations.
+ * Create the Realtime Hub's subscriber client, duplicated from the publisher
+ * with its socket timeout. It needs its own connection because a Redis client
+ * in subscribe mode serves nothing else.
  */
 export async function createSubscriberClient(): Promise<Redis> {
   const publisher = await getPublisherClient();
-  const subscriber = publisher.duplicate();
+  // A SUBSCRIBE waits out an outage rather than failing like a publisher's command.
+  const subscriber = publisher.duplicate({
+    commandTimeout: undefined,
+    connectionName: `norish:${process.pid}:realtime-hub`,
+  });
 
   subscriber.on("error", (err) => {
     log.error({ err }, "Redis subscriber error");
@@ -122,15 +125,16 @@ export async function createSubscriberClient(): Promise<Redis> {
 }
 
 /**
- * Gracefully close all Redis connections.
- * Call during server shutdown.
+ * Close the publisher. Shutdown calls this after every consumer has stopped,
+ * so nothing is in flight: it disconnects rather than sending a QUIT that a
+ * dead socket would never answer.
  */
 export async function closeRedisConnections(): Promise<void> {
   const publisherClient = globalForRedis.publisherClient;
 
   if (publisherClient && publisherClient.status !== "end") {
     log.info("Closing Redis connections");
-    await publisherClient.quit();
+    publisherClient.disconnect();
     globalForRedis.publisherClient = null;
   }
 }

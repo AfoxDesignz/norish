@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePending } from "@/hooks/use-pending";
 import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { Button, FieldError, InputGroup, Label, Link, TextField } from "@heroui/react";
 import { useTranslations } from "next-intl";
@@ -22,29 +23,27 @@ export function EmailPasswordForm({
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, whileLoading] = usePending();
   const [error, setError] = useState<string | null>(null);
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
-    try {
-      const result = await signIn.email({
-        email,
-        password,
-        callbackURL: callbackUrl,
-      });
-
-      if (result.error) {
-        setError(result.error.message || t("errors.invalidCredentials"));
-      } else {
-        router.push(callbackUrl);
-      }
-    } catch {
-      setError(t("errors.generic"));
-    } finally {
-      setIsLoading(false);
-    }
+    await whileLoading(() =>
+      signIn
+        .email({
+          email,
+          password,
+          callbackURL: callbackUrl,
+        })
+        .then((result) => {
+          if (result.error) {
+            setError(result.error.message || t("errors.invalidCredentials"));
+          } else {
+            router.push(callbackUrl);
+          }
+        })
+        .catch(() => setError(t("errors.generic")))
+    );
   };
 
   return (

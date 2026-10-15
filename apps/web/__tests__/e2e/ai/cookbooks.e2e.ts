@@ -137,6 +137,20 @@ function cookbookCard(title: string) {
   return page.locator("[data-cookbook-card]").filter({ hasText: title }).first();
 }
 
+/**
+ * The cookbook page's own title. The Library card shows the same title as a
+ * heading too, and carries the same option labels, so a wait on any heading
+ * by that name passes while the click is still navigating away from it.
+ */
+function cookbookHeading() {
+  return page.locator("#cookbook-heading");
+}
+
+async function openCookbook(title: string) {
+  await cookbookCard(title).click();
+  await expect(cookbookHeading()).toHaveText(title);
+}
+
 test.beforeAll(async ({ aiStack: _aiStack }) => {
   await clearCookbooks();
   await seedRecipe(RECIPE_NAME);
@@ -261,9 +275,7 @@ test("filing a recipe from its quick actions shows it on the recipe page card", 
 test("the cookbook page lists the member it was given", async () => {
   await page.goto("/");
   await selectChip("cookbooks");
-  await cookbookCard(COOKBOOK_TITLE).click();
-
-  await expect(page.getByRole("heading", { name: COOKBOOK_TITLE })).toBeVisible();
+  await openCookbook(COOKBOOK_TITLE);
   await expect(recipeCard()).toBeVisible();
 });
 
@@ -279,8 +291,7 @@ test("the way back names where the reader actually came from", async () => {
   // link used to offer to take a reader who had never been there.
   await page.goto("/");
   await selectChip("cookbooks");
-  await cookbookCard(COOKBOOK_TITLE).click();
-  await expect(page.getByRole("heading", { name: COOKBOOK_TITLE })).toBeVisible();
+  await openCookbook(COOKBOOK_TITLE);
   // The cookbook itself came from the Library under Cookbooks.
   await expect(page.getByRole("link", { name: "Back to cookbooks" })).toBeVisible();
 
@@ -291,7 +302,7 @@ test("the way back names where the reader actually came from", async () => {
 
   await expect(back).toBeVisible();
   await back.click();
-  await expect(page.getByRole("heading", { name: COOKBOOK_TITLE })).toBeVisible();
+  await expect(cookbookHeading()).toHaveText(COOKBOOK_TITLE);
 });
 
 test("the same panel takes the recipe out again", async () => {
@@ -330,8 +341,7 @@ test("a cookbook fills itself from its own side", async () => {
   // recipes go in at once rather than one recipe at a time from each page.
   await page.goto("/");
   await selectChip("cookbooks");
-  await cookbookCard(COOKBOOK_TITLE).click();
-  await expect(page.getByRole("heading", { name: COOKBOOK_TITLE })).toBeVisible();
+  await openCookbook(COOKBOOK_TITLE);
 
   await chooseCookbookOption("Add recipes");
   await page.locator(`[data-add-recipe="${RECIPE_NAME}"]`).click();
@@ -358,8 +368,7 @@ test("the edit panel takes a recipe out of the cookbook it is editing", async ()
 
   await page.goto("/");
   await selectChip("cookbooks");
-  await cookbookCard(COOKBOOK_TITLE).click();
-  await expect(page.getByRole("heading", { name: COOKBOOK_TITLE })).toBeVisible();
+  await openCookbook(COOKBOOK_TITLE);
 
   await chooseCookbookOption("Edit cookbook");
   await page.locator(`[data-remove-member="${RECIPE_NAME}"]`).click();
@@ -379,8 +388,7 @@ test("the edit panel takes a recipe out of the cookbook it is editing", async ()
 test("an uploaded cover replaces the mosaic until it is removed", async () => {
   await page.goto("/");
   await selectChip("cookbooks");
-  await cookbookCard(COOKBOOK_TITLE).click();
-  await expect(page.getByRole("heading", { name: COOKBOOK_TITLE })).toBeVisible();
+  await openCookbook(COOKBOOK_TITLE);
 
   await chooseCookbookOption("Edit cookbook");
   await page.getByTestId("cookbook-image-file").setInputFiles(await pictureFile("#b4587a"));
@@ -402,8 +410,7 @@ test("an uploaded cover replaces the mosaic until it is removed", async () => {
   await selectChip("cookbooks");
   await expect(cookbookCard(COOKBOOK_TITLE).locator(`img[src="${image}"]`)).toBeVisible();
 
-  await cookbookCard(COOKBOOK_TITLE).click();
-  await expect(page.getByRole("heading", { name: COOKBOOK_TITLE })).toBeVisible();
+  await openCookbook(COOKBOOK_TITLE);
   await chooseCookbookOption("Edit cookbook");
   await page.getByRole("button", { name: "Remove image", exact: true }).click();
   await page.getByRole("button", { name: /^save$/i }).click();
@@ -427,11 +434,9 @@ test("renaming and deleting a cookbook leaves its recipes alone", async () => {
 
   await page.goto("/");
   await selectChip("cookbooks");
-  await cookbookCard(COOKBOOK_TITLE).click();
-
-  // Wait for the cookbook's own page: the Library card carrying the same
-  // action labels is gone by then.
-  await expect(page.getByRole("heading", { name: COOKBOOK_TITLE })).toBeVisible();
+  // The cookbook's own page: the Library card carrying the same action labels
+  // is gone by then.
+  await openCookbook(COOKBOOK_TITLE);
 
   // Rename from inside the cookbook, through the same panel that takes
   // recipes out of it.
@@ -439,7 +444,7 @@ test("renaming and deleting a cookbook leaves its recipes alone", async () => {
   await page.getByTestId("cookbook-title-input").fill(RENAMED_TITLE);
   await page.getByRole("button", { name: /^save$/i }).click();
 
-  await expect(page.getByRole("heading", { name: RENAMED_TITLE })).toBeVisible();
+  await expect(cookbookHeading()).toHaveText(RENAMED_TITLE);
   await expect(async () => {
     expect(await readCookbookTitles()).toContain(RENAMED_TITLE);
   }).toPass({ timeout: 10_000 });

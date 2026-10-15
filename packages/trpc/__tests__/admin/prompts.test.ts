@@ -14,7 +14,7 @@ import superjson from "superjson";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PromptValues } from "@norish/config/zod/server-config";
-import { PromptsConfigInputSchema, ServerConfigKeys } from "@norish/config/zod/server-config";
+import { PromptsConfigSchema, ServerConfigKeys } from "@norish/config/zod/server-config";
 import { mergeWithDefaults, pruneToOverrides } from "@norish/shared-server/ai/prompts/overrides";
 
 import { getConfig, setConfig } from "../mocks/server-config";
@@ -75,8 +75,8 @@ function buildRouter(userId: string) {
 
       return { ...values, isOverridden: overriddenFields.length > 0 };
     }),
-    updatePrompts: adminProcedure.input(PromptsConfigInputSchema).mutation(async ({ input }) => {
-      const { overrides } = pruneToOverrides(input, DEFAULTS);
+    updatePrompts: adminProcedure.input(PromptsConfigSchema).mutation(async ({ input }) => {
+      const overrides = pruneToOverrides(input, DEFAULTS);
 
       await setConfig(ServerConfigKeys.PROMPTS, overrides, userId, false);
 
@@ -90,7 +90,6 @@ describe("prompts procedures", () => {
   const mockAdmin = createMockAdminUser();
 
   beforeEach(() => {
-    vi.clearAllMocks();
     isUserServerAdmin.mockImplementation((userId: string) => {
       return Promise.resolve(userId === mockAdmin.id);
     });

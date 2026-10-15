@@ -64,7 +64,6 @@ export function TimerDock({
   const dockedTimers = useDockedTimers();
   const completedTimers = dockedTimers.filter((timer) => timer.status === "completed");
   const t = useTranslations("common");
-  const router = useRouter();
   const [uncontrolledExpanded, setUncontrolledExpanded] = useState(false);
   const isExpanded = expandedProp ?? uncontrolledExpanded;
   const setIsExpanded = (next: boolean) => {
@@ -78,7 +77,7 @@ export function TimerDock({
   };
   // Track whether dock has been expanded before — distinguishes a collapse
   // transition (needs crossfade) from a fresh appearance (outer container handles fade)
-  const hasExpandedRef = useRef(false);
+  const [hasExpanded, setHasExpanded] = useState(false);
   const { isDenied: notificationsDenied, isSupported: notificationsSupported } =
     useNotificationPermission();
 
@@ -104,20 +103,20 @@ export function TimerDock({
     interrupt: false,
   });
   const hasCompletedTimers = completedTimers.length > 0;
-  const [isPlaying, setIsPlaying] = useState(false);
+  const isPlayingRef = useRef(false);
   useEffect(() => {
     if (hasCompletedTimers) {
-      if (!isPlaying) {
+      if (!isPlayingRef.current) {
         play();
-        setIsPlaying(true);
+        isPlayingRef.current = true;
       }
     } else {
-      if (isPlaying) {
+      if (isPlayingRef.current) {
         stop();
-        setIsPlaying(false);
+        isPlayingRef.current = false;
       }
     }
-  }, [hasCompletedTimers, isPlaying, play, stop]);
+  }, [hasCompletedTimers, play, stop]);
   useEffect(() => {
     return () => {
       stop();
@@ -126,11 +125,13 @@ export function TimerDock({
   const hasTimers = dockedTimers.length > 0;
 
   // Reset to collapsed when all timers are removed
+  if (!hasTimers && (uncontrolledExpanded || hasExpanded)) {
+    setUncontrolledExpanded(false);
+    setHasExpanded(false);
+  }
   useEffect(() => {
     if (!hasTimers) {
-      setUncontrolledExpanded(false);
       onExpandedChange?.(false);
-      hasExpandedRef.current = false;
     }
   }, [hasTimers, onExpandedChange]);
   if (!timersEnabled) return null;
@@ -148,7 +149,7 @@ export function TimerDock({
     <>
       <TimerTicker />
       <AnimatePresence>
-        {hasTimers && (
+        {topTimer && (
           <motion.div
             animate={{
               opacity: 1,
@@ -216,7 +217,6 @@ export function TimerDock({
                       <TimerRow
                         key={timer.id}
                         isLast={index === sortedTimers.length - 1}
-                        router={router}
                         t={t}
                         timer={timer}
                       />
@@ -240,14 +240,14 @@ export function TimerDock({
                   }}
                   className={`group text-foreground flex items-center gap-2 transition-all hover:shadow-xl ${cssFloatingDockPill}`}
                   initial={
-                    hasExpandedRef.current
+                    hasExpanded
                       ? {
                           opacity: 0,
                         }
                       : false
                   }
                   transition={
-                    hasExpandedRef.current
+                    hasExpanded
                       ? {
                           duration: 0.1,
                           delay: 0.12,
@@ -258,7 +258,7 @@ export function TimerDock({
                   }
                   type="button"
                   onClick={() => {
-                    hasExpandedRef.current = true;
+                    setHasExpanded(true);
                     setIsExpanded(true);
                   }}
                 >
@@ -298,14 +298,13 @@ function getSmartIncrement(originalDurationMs: number): number {
 function TimerRow({
   timer,
   t,
-  router,
   isLast,
 }: {
   timer: import("@/stores/timers").Timer;
   t: (key: string) => string;
-  router: ReturnType<typeof useRouter>;
   isLast: boolean;
 }) {
+  const router = useRouter();
   const pauseTimer = useTimerStore((state) => state.pauseTimer);
   const startTimer = useTimerStore((state) => state.startTimer);
   const removeTimer = useTimerStore((state) => state.removeTimer);
@@ -349,7 +348,6 @@ function TimerRow({
             isIconOnly
             aria-label={`Decrease time by ${formatTimerMs(smartIncrement)}`}
             size="sm"
-            title={`-${formatTimerMs(smartIncrement)}`}
             onPress={() => adjustTimer(timer.id, -smartIncrement)}
             variant="tertiary"
           >
@@ -360,7 +358,6 @@ function TimerRow({
             isIconOnly
             aria-label={`Increase time by ${formatTimerMs(smartIncrement)}`}
             size="sm"
-            title={`+${formatTimerMs(smartIncrement)}`}
             onPress={() => adjustTimer(timer.id, smartIncrement)}
             variant="tertiary"
           >

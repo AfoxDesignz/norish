@@ -75,11 +75,7 @@ export interface ResolveActor {
 }
 
 export interface ResolveOptions {
-  /**
-   * Whether rung 3 may be asked. Off for the upgrade, which resolves an
-   * instance's whole history at startup and must not spend a model request
-   * per row; its mints are flagged.
-   */
+  /** Whether rung 3 may be asked; off, a name nothing else knows is minted flagged. */
   ai?: boolean;
 }
 
@@ -215,7 +211,7 @@ export async function resolveIngredients(
     const match = matchKnown(spelling, known);
 
     if (!match) {
-      // No answer is the upgrade's case: it resolves a whole history and asks no AI.
+      // No answer means AI was not asked: the name is minted flagged.
       const asked = answers.get(sameFoodKey(spelling));
       const answer = asked?.answer ?? flaggedNew("upgrade");
       const wordsParent = async () => (asked ? asked.words : await parentFromWords(spelling));
@@ -259,7 +255,7 @@ export async function resolveIngredients(
     });
   }
 
-  // What the administrator turned on for new foods follows someone's action, never the upgrade's.
+  // What the administrator turned on for new foods follows someone's action, never a pass with AI off.
   if (options.ai !== false) await announceMinted([...minted]);
 
   return resolved;

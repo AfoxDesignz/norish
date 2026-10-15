@@ -51,6 +51,8 @@ export function createUseCookbookRecipesQuery({ useTRPC }: CreateCookbookHooksOp
     filters: RecipeFilters & { favoritesOnly?: boolean } = {},
     { enabled = true }: { enabled?: boolean } = {}
   ): CookbookRecipesQueryResult {
+    "use memo";
+
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const {

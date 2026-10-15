@@ -68,7 +68,6 @@ function queued(): RecipeEnrichmentEnrollment[] {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   ctx = createMockAuthedContext(mockUser, mockHousehold);
   isAIEnabled.mockResolvedValue(true);
   canAccessResource.mockResolvedValue(true);

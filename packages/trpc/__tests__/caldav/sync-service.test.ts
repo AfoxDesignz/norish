@@ -61,7 +61,6 @@ function plannedItem(overrides: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   mockGetCaldavConfigDecrypted.mockResolvedValue(CONFIG);
   mockAddCaldavSyncJob.mockResolvedValue({ id: "job" });
   mockListPlannedItemsByUserAndDateRange.mockResolvedValue([]);

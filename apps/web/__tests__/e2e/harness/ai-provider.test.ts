@@ -10,7 +10,7 @@
  */
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createTypeSafeAi } from "@ai-sdk/typesafe-ai";
-import { APICallError, experimental_evaluate, generateImage, generateText, Output } from "ai";
+import { APICallError, experimental_decide, generateImage, generateText, Output } from "ai";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
@@ -288,13 +288,13 @@ describe("the image-generation route", () => {
 describe("the Decision route", () => {
   // The exact client the production runtime builds for the Decision block.
   function harnessDecisionModel() {
-    return createTypeSafeAi({ apiKey: "e2e-key", baseURL: `${provider.url}/v1` }).evaluationModel(
+    return createTypeSafeAi({ apiKey: "e2e-key", baseURL: `${provider.url}/v1` }).decisionModel(
       "jev-latest"
     );
   }
 
   function ask() {
-    return experimental_evaluate({
+    return experimental_decide({
       model: harnessDecisionModel(),
       state: { title: "Lentil stew" },
       questions: {
@@ -344,7 +344,10 @@ describe("the Decision route", () => {
 
     const result = await ask();
 
-    expect(Object.keys(result.answers).sort()).toEqual(["Breakfast", "mealtime"]);
+    expect(Object.keys(result.answers).sort((a, b) => a.localeCompare(b))).toEqual([
+      "Breakfast",
+      "mealtime",
+    ]);
     expect(result.answers.Breakfast).toEqual({ type: "boolean", probability: 0.04 });
   });
 
@@ -365,8 +368,8 @@ describe("the Decision route", () => {
     const first = await ask();
     const second = await ask();
 
-    expect(first.answers.Breakfast.probability).toBe(0.1);
-    expect(second.answers.Breakfast.probability).toBe(0.9);
+    expect(first.answers.Breakfast.probability).toBeCloseTo(0.1);
+    expect(second.answers.Breakfast.probability).toBeCloseTo(0.9);
     expect(provider.control.decisionRequestCount).toBe(2);
   });
 

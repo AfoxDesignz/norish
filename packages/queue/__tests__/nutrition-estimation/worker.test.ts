@@ -138,7 +138,6 @@ function job(overrides: Partial<RecipeEnrichmentJobData> = {}): Job<RecipeEnrich
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   mocks.getRecipeFull.mockResolvedValue(RECIPE);
   mocks.estimate.mockResolvedValue(ESTIMATE);
   mocks.estimateGap.mockResolvedValue(SHARES);

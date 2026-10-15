@@ -25,7 +25,9 @@ import {
   isDecisionUseEnabled,
 } from "@norish/shared-server/config/server-config-loader";
 import { aiLogger } from "@norish/shared-server/logger";
+import { OperationTimeoutError } from "@norish/shared/lib/error-extensions";
 import { foldName } from "@norish/shared/lib/fold-name";
+import { withTimeout } from "@norish/shared/lib/with-timeout";
 
 import type { TokenEstimate } from "../runtime/runtime";
 import { isCredentialRejection } from "../runtime/errors";
@@ -156,16 +158,6 @@ export async function askWhatFoodThisIs(
   if (candidates.length === 0 && !options.thorough) return flaggedNew("unknown-food");
 
   const budgetMs = options.budgetMs ?? RESOLUTION_BUDGET_MS;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const outOfTime = new Promise<AIResolution>((resolve) => {
-    timer = setTimeout(() => {
-      aiLogger.warn(
-        { feature: "ingredient-resolution", text, budgetMs },
-        "Ingredient resolution ran out of time, minting a flagged Ingredient"
-      );
-      resolve(flaggedNew("ai-unavailable"));
-    }, budgetMs);
-  });
   const trace = options.trace ?? { considered: [], englishName: null };
   const asked = (
     options.thorough
@@ -175,11 +167,16 @@ export async function askWhatFoodThisIs(
 
   if (!options.thorough) trace.considered.push(...candidates.map((candidate) => candidate.name));
 
-  try {
-    return await Promise.race([asked, outOfTime]);
-  } finally {
-    clearTimeout(timer);
-  }
+  return withTimeout(() => asked, budgetMs, "Ingredient resolution").catch((error: unknown) => {
+    if (!(error instanceof OperationTimeoutError)) throw error;
+
+    aiLogger.warn(
+      { feature: "ingredient-resolution", text, budgetMs },
+      "Ingredient resolution ran out of time, minting a flagged Ingredient"
+    );
+
+    return flaggedNew("ai-unavailable");
+  });
 }
 
 /**

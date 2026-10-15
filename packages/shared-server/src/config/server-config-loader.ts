@@ -51,7 +51,6 @@ import {
   isImageGenerationConfigValid,
   ServerConfigKeys,
   UnitsConfigSchema,
-  UnitsMapSchema,
 } from "@norish/config/zod/server-config";
 import { getConfig } from "@norish/db/repositories/server-config";
 import { DEFAULT_LOCALE } from "@norish/i18n/config";
@@ -92,21 +91,6 @@ export async function getUnits(): Promise<UnitsMap> {
 
   if (wrapped.success) {
     return wrapped.data.units;
-  }
-
-  const legacyWrapped =
-    typeof value === "object" && value !== null && "units" in value && "isOverwritten" in value
-      ? UnitsMapSchema.safeParse((value as { units: unknown }).units)
-      : null;
-
-  if (legacyWrapped?.success) {
-    return legacyWrapped.data;
-  }
-
-  const legacy = UnitsMapSchema.safeParse(value);
-
-  if (legacy.success) {
-    return legacy.data;
   }
 
   return defaultUnits as UnitsMap;

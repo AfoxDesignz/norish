@@ -358,7 +358,7 @@ vi.mock("@/components/Panel/Panel", () => {
   Panel.Body = ({ children }: any) => <div>{children}</div>;
   Panel.Footer = ({ children }: any) => <div>{children}</div>;
 
-  return { default: Panel, usePanelPortalContainer: () => undefined };
+  return { default: Panel, PanelPortal: ({ children }: { children: React.ReactNode }) => children };
 });
 
 // A food's nutrition and its corrections are the nutrition section's own tests' business.
@@ -470,7 +470,6 @@ async function showSpellings(opened: HTMLElement) {
 
 describe("IngredientsSettingsContent", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     linkedIngredient = null;
     // The end of the list watches for itself scrolling into view; jsdom has no observer.
     vi.stubGlobal(

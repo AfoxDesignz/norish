@@ -12,9 +12,8 @@
 import type { RedisOptions } from "ioredis";
 import Redis from "ioredis";
 
-import { SERVER_CONFIG } from "@norish/config/env-config-server";
 import { createLogger } from "@norish/shared-server/logger";
-import { parseRedisUrl } from "@norish/shared-server/redis/url";
+import { getRedisConnectionOptions } from "@norish/shared-server/redis/client";
 
 const log = createLogger("redis:bullmq");
 
@@ -27,35 +26,25 @@ const globalForBull = globalThis as unknown as {
 };
 
 /**
- * Base Redis options optimized for BullMQ
+ * Longer than the longest block BullMQ asks Redis for (ten seconds), so only a
+ * socket that stopped answering is dropped: a command can no longer hang for
+ * minutes on a connection a Redis restart left half-open.
  */
-function getBaseOptions(): RedisOptions {
-  return {
-    ...parseRedisUrl(SERVER_CONFIG.REDIS_URL),
-    maxRetriesPerRequest: null,
+export const BULL_SOCKET_TIMEOUT_MS = 15_000;
 
-    // Performance optimizations
+/**
+ * The shared Redis options plus what BullMQ needs on top: it connects at once,
+ * a command waits out an outage in the offline queue instead of failing, no
+ * ready check holds the connection back, and a dead socket is dropped.
+ */
+export function getBullConnectionOptions(url?: string): RedisOptions {
+  return {
+    ...getRedisConnectionOptions(url),
+    lazyConnect: false,
+    maxRetriesPerRequest: null,
     enableReadyCheck: false,
     enableOfflineQueue: true,
-
-    lazyConnect: false,
-    keepAlive: 30_000,
-    connectTimeout: 10_000,
-
-    // Retry strategy with exponential backoff
-    retryStrategy: (times: number) => {
-      if (times > 20) {
-        log.error({ times }, "Redis connection failed after max retries");
-
-        return null; // Stop retrying
-      }
-
-      const delay = Math.min(Math.exp(times), 20_000);
-
-      log.warn({ times, delay }, "Redis connection retry");
-
-      return delay;
-    },
+    socketTimeout: BULL_SOCKET_TIMEOUT_MS,
   };
 }
 
@@ -82,7 +71,7 @@ export function getBullClient(): Redis {
 
   // Create new client if none exists or previous one was closed
   const bullClient = new Redis({
-    ...getBaseOptions(),
+    ...getBullConnectionOptions(),
     connectionName: `norish:${process.pid}:bull`,
   });
 
@@ -104,14 +93,15 @@ export function getBullClient(): Redis {
 }
 
 /**
- * Close the BullMQ Redis connection.
- * Call during server shutdown.
+ * Close the shared BullMQ connection. Shutdown calls this after every worker
+ * and queue has closed, so nothing is in flight: it disconnects rather than
+ * sending a QUIT that a socket left half-open by a Redis restart never answers.
  */
 export async function closeBullConnection(): Promise<void> {
   const bullClient = globalForBull.bullClient;
 
   if (bullClient && bullClient.status !== "end") {
-    await bullClient.quit();
+    bullClient.disconnect();
     globalForBull.bullClient = null;
     log.info("BullMQ Redis connection closed");
   }

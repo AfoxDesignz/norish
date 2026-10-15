@@ -17,7 +17,7 @@ async function withDatabase<T>(run: (database: Client) => Promise<T>): Promise<T
 export interface StoredRecipe {
   id: string;
   userId: string | null;
-  /** Gallery image web paths, hero image first when the recipe has one */
+  /** Gallery image web paths, in order */
   images: string[];
 }
 
@@ -30,12 +30,10 @@ export function readStoredRecipes(name: string): Promise<StoredRecipe[]> {
     const result = await database.query<{
       id: string;
       user_id: string | null;
-      hero: string | null;
       gallery: string[];
     }>(
       `select r.id,
               r.user_id,
-              r.image as hero,
               coalesce(
                 array_agg(i.image order by i."order") filter (where i.image is not null),
                 '{}'
@@ -50,7 +48,7 @@ export function readStoredRecipes(name: string): Promise<StoredRecipe[]> {
     return result.rows.map((row) => ({
       id: row.id,
       userId: row.user_id,
-      images: [...(row.hero ? [row.hero] : []), ...row.gallery],
+      images: row.gallery,
     }));
   });
 }

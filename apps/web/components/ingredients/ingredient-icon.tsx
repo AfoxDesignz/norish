@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, use, useMemo } from "react";
 import { useTRPC } from "@/app/providers/trpc-provider";
 import { useDevicePreference } from "@/context/device-preferences-context";
 import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
@@ -48,7 +48,8 @@ export function useIngredientIcons(
   const key = ids.filter(Boolean).join(",");
   const wanted = useMemo(
     // ponytail: a surface past 500 foods shows no icons beyond them; page the read if one ever does.
-    () => [...new Set(key ? key.split(",") : [])].sort().slice(0, MAX_IDS),
+    () =>
+      [...new Set(key ? key.split(",") : [])].sort((a, b) => a.localeCompare(b)).slice(0, MAX_IDS),
     [key]
   );
   const { data } = useQuery({
@@ -99,12 +100,12 @@ export function IngredientIconsProvider({
   const hidden = useDevicePreference("hiddenItems")[0].includes("ingredientIcons");
   const value = useMemo(() => ({ addresses, hidden }), [addresses, hidden]);
 
-  return <IconsContext.Provider value={value}>{children}</IconsContext.Provider>;
+  return <IconsContext value={value}>{children}</IconsContext>;
 }
 
 /** Whether the reader hid Ingredient Icons, as the surface's provider read it; false outside one. */
 export function useIngredientIconsHidden(): boolean {
-  return useContext(IconsContext).hidden;
+  return use(IconsContext).hidden;
 }
 
 /**
@@ -132,7 +133,7 @@ export function IngredientIcon({
   placeholder?: boolean;
   className?: string;
 }) {
-  const { addresses, hidden } = useContext(IconsContext);
+  const { addresses, hidden } = use(IconsContext);
 
   if (hidden) return null;
 

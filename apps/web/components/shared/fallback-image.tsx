@@ -73,7 +73,7 @@ export default function FallbackImage(props: FallbackImageProps) {
 
 // For components that track errors across multiple images (carousels)
 export function useImageErrors() {
-  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  const [imageErrors, setImageErrors] = useState<Set<string>>(() => new Set());
 
   const handleImageError = (src: string) => {
     setImageErrors((prev) => new Set(prev).add(src));

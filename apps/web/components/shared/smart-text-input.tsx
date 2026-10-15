@@ -321,7 +321,7 @@ function getIngredientTriggerMatch(
 
   if (triggerStart === -1) return null;
 
-  const previousChar = triggerStart > 0 ? textBeforeCursor[triggerStart - 1] : "";
+  const previousChar = triggerStart > 0 ? textBeforeCursor.charAt(triggerStart - 1) : "";
 
   if (/[A-Za-z0-9_]/.test(previousChar)) return null;
 

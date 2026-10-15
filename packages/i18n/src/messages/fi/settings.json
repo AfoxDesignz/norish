@@ -62,7 +62,7 @@
     },
     "archiveImport": {
       "title": "Tuo reseptiarkisto",
-      "description": "Tuo reseptejä, jotka on viety Norishista, Melasta, Paprikasta, Mealiesta tai Tandoorista."
+      "description": "Tuo reseptejä, jotka on viety Norishista, Melasta, Paprikasta, Mealiesta, Tandoorista tai Recipe Keeperistä."
     },
     "archiveExport": {
       "title": "Vie reseptiarkisto",
@@ -1171,7 +1171,7 @@
         "delayed": "Viivästetty",
         "completed": "Valmis",
         "failed": "Epäonnistui",
-        "paused": "Keskeytetty",
+        "cancelled": "Peruttu",
         "prioritized": "Priorisoitu",
         "unknown": "Tuntematon",
         "hanging": "Jumissa"
@@ -1236,6 +1236,7 @@
       "detail": {
         "title": "Työn tiedot",
         "notFound": "Työtä ei löytynyt. Se on voitu siivota pois.",
+        "cancelledNote": "Ylläpitäjä perui tämän työn.",
         "sections": {
           "error": "Virhe",
           "pipelineSteps": "Käsittelyvaiheet",
@@ -1264,6 +1265,8 @@
       },
       "actions": {
         "retry": "Yritä uudelleen",
+        "cancel": "Peru työ",
+        "cancelling": "Perutaan…",
         "remove": "Poista"
       },
       "removeModal": {

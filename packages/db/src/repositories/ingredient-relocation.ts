@@ -111,9 +111,10 @@ async function ancestorsOf(
   ids: readonly string[]
 ): Promise<Map<string, string[]>> {
   const wanted = Array.from(new Set(ids));
-  const answer = new Map(wanted.map((id) => [id, [] as string[]]));
 
-  if (wanted.length === 0) return answer;
+  if (wanted.length === 0) return new Map();
+
+  const answer = new Map(wanted.map((id) => [id, [] as string[]]));
 
   const result = await tx.execute<{ start: string; ancestor: string; depth: number }>(sql`
     with recursive up(start, ancestor, depth) as (

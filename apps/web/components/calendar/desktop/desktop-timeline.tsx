@@ -22,7 +22,7 @@ import { useWindowSize } from "usehooks-ts";
 import type { Slot } from "@norish/shared/contracts";
 import { dateKey, eachDayOfInterval } from "@norish/shared/lib/helpers";
 
-import { landOnDay, settleLanding } from "../land-on-day";
+import { hasReachedDay, landOnDay, settleLanding } from "../land-on-day";
 import { usePrependAnchorRestore } from "../use-prepend-anchor-restore";
 import { DesktopDayCard } from "./desktop-day-card";
 import { DesktopDragOverlay } from "./desktop-drag-overlay";
@@ -45,6 +45,10 @@ type DesktopTimelineProps = {
 };
 
 export function DesktopTimeline({ onAddItem, onNoteClick, onRecipeClick }: DesktopTimelineProps) {
+  // TanStack Virtual hands back one mutable instance, so compiled memoisation
+  // would keep its first rows.
+  "use no memo";
+
   const locale = useLocale();
   const tSlots = useTranslations("common.slots");
 
@@ -125,13 +129,18 @@ export function DesktopTimeline({ onAddItem, onNoteClick, onRecipeClick }: Deskt
   // Container ref for scroll margin calculation
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Calculate scroll margin from container position
-  const scrollMargin = useMemo(() => {
-    if (typeof window === "undefined" || !containerRef.current) return 0;
-    const rect = containerRef.current.getBoundingClientRect();
+  // Calculate scroll margin from container position. The container's offset is
+  // read, not tracked: a resize is what moves it, so it is measured on one and
+  // the timeline counts from the top of the page until then.
+  const [scrollMargin, setScrollMargin] = useState(0);
+  const measuredHeightRef = useRef(_windowHeight);
 
-    return rect.top + window.scrollY;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    if (_windowHeight === measuredHeightRef.current) return;
+    measuredHeightRef.current = _windowHeight;
+    setScrollMargin(
+      containerRef.current ? containerRef.current.getBoundingClientRect().top + window.scrollY : 0
+    );
   }, [_windowHeight]);
 
   // Window virtualizer (like mobile/recipe grid)
@@ -146,6 +155,7 @@ export function DesktopTimeline({ onAddItem, onNoteClick, onRecipeClick }: Deskt
 
   // Track if we've scrolled to today and if we've triggered expand
   const hasScrolledRef = useRef(false);
+  const hasLandedRef = useRef(false);
   const hasTriggeredExpandPastRef = useRef(false);
   const hasTriggeredExpandFutureRef = useRef(false);
 
@@ -213,6 +223,10 @@ export function DesktopTimeline({ onAddItem, onNoteClick, onRecipeClick }: Deskt
   // Infinite scroll: trigger expandRange when near the edges
   useEffect(() => {
     if (virtualItems.length === 0 || !hasScrolledRef.current) return;
+    if (!hasLandedRef.current) {
+      if (!hasReachedDay(virtualItems, todayRowIndex)) return;
+      hasLandedRef.current = true;
+    }
 
     const firstItem = virtualItems[0];
     const lastItem = virtualItems[virtualItems.length - 1];
@@ -245,7 +259,15 @@ export function DesktopTimeline({ onAddItem, onNoteClick, onRecipeClick }: Deskt
     if (!isNearEnd) {
       hasTriggeredExpandFutureRef.current = false;
     }
-  }, [virtualItems, rows.length, isLoadingMore, expandRange, virtualizer, captureAnchor]);
+  }, [
+    virtualItems,
+    rows.length,
+    isLoadingMore,
+    expandRange,
+    virtualizer,
+    captureAnchor,
+    todayRowIndex,
+  ]);
 
   const handleScrollToToday = useCallback(() => {
     virtualizer.scrollToIndex(todayRowIndex, { align: "start", behavior: "smooth" });

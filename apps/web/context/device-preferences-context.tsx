@@ -1,11 +1,12 @@
 "use client";
 
+import type { Mutation } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, use, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useConnectivity } from "@/app/providers/connectivity-provider";
 import { useTRPC } from "@/app/providers/trpc-provider";
 import { useUserCacheHelpers } from "@/hooks/user/use-user-cache";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type {
   DeviceKind,
@@ -46,7 +47,9 @@ const DevicePreferencesContext = createContext<DevicePreferencesValue | null>(nu
  * profile, through the Outbox when Offline. Writes go one at a time, and the
  * profile is read again once the last one queued settles, so a refused write
  * puts the stored choice back; reading it after an earlier one would show the
- * server without the changes still queued. Where there
+ * server without the changes still queued. Until its write settles, a change
+ * also stays over any other read of the profile that lands meanwhile (the
+ * Cache Warmer's, a refetch on focus). Where there
  * is no profile query (a shared recipe) the change is held for the visit,
  * and a signed-out reader's is never written.
  */
@@ -88,19 +91,29 @@ export function DevicePreferencesProvider({
     },
   });
   const [changes, setChanges] = useState<DevicePreferencesUpdate>({});
+  // The changes whose writes have not settled, oldest first.
+  const unsettled = useMutationState({
+    filters: { mutationKey: trpc.user.setDevicePreferences.mutationKey(), status: "pending" },
+    select: (mutation: Mutation<unknown, unknown, Parameters<typeof mutate>[0]>) =>
+      mutation.state.variables,
+  });
 
   const profileWins = profile !== undefined && (!seed || isOffline || dataUpdatedAt >= mountedAt);
   const stored = profile?.user.preferences?.[kind];
-  const values = useMemo(
-    () =>
-      profileWins
-        ? (stored ?? DEVICE_PREFERENCE_DEFAULTS)
-        : { ...(seed?.values ?? DEVICE_PREFERENCE_DEFAULTS), ...changes },
-    [profileWins, stored, seed?.values, changes]
-  );
+  const values = useMemo(() => {
+    if (!profileWins) return { ...(seed?.values ?? DEVICE_PREFERENCE_DEFAULTS), ...changes };
+    const queued = unsettled.reduce<DevicePreferencesUpdate>(
+      (all, write) => (write?.kind === kind ? { ...all, ...write.preferences } : all),
+      {}
+    );
+
+    return { ...(stored ?? DEVICE_PREFERENCE_DEFAULTS), ...queued };
+  }, [profileWins, stored, unsettled, kind, seed?.values, changes]);
   const valuesRef = useRef(values);
 
-  valuesRef.current = values;
+  useLayoutEffect(() => {
+    valuesRef.current = values;
+  }, [values]);
 
   const set = useCallback(
     (update: DevicePreferencesUpdate) => {
@@ -122,13 +135,11 @@ export function DevicePreferencesProvider({
 
   const value = useMemo(() => ({ kind, values, set }), [kind, values, set]);
 
-  return (
-    <DevicePreferencesContext.Provider value={value}>{children}</DevicePreferencesContext.Provider>
-  );
+  return <DevicePreferencesContext value={value}>{children}</DevicePreferencesContext>;
 }
 
 function useDevicePreferences(): DevicePreferencesValue {
-  const context = useContext(DevicePreferencesContext);
+  const context = use(DevicePreferencesContext);
 
   if (!context) {
     throw new Error("Device Preferences must be read within DevicePreferencesProvider");
@@ -154,7 +165,9 @@ export function useDevicePreference<K extends keyof DevicePreferences>(
   const value = values[key];
   const valueRef = useRef(value);
 
-  valueRef.current = value;
+  useLayoutEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   const setValue = useCallback<SetDevicePreference<DevicePreferences[K]>>(
     (next) => {

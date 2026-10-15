@@ -9,6 +9,15 @@ import { createUserSettingsContext } from "@norish/shared-react/contexts";
 
 export type { UserSettingsContextValue } from "@norish/shared-react/contexts";
 
+// The context calls this as a hook, so other platforms can use hooks in theirs; the web's needs none.
+function deleteAccountAdapter() {
+  return {
+    onSuccess: () => {
+      window.location.href = "/login";
+    },
+  };
+}
+
 const { UserSettingsProvider, useUserSettingsContext } = createUserSettingsContext({
   useUserSettingsQuery,
   useUserMutations,
@@ -35,13 +44,7 @@ const { UserSettingsProvider, useUserSettingsContext } = createUserSettingsConte
       },
     };
   },
-  useDeleteAccountAdapter: () => {
-    return {
-      onSuccess: () => {
-        window.location.href = "/login";
-      },
-    };
-  },
+  useDeleteAccountAdapter: deleteAccountAdapter,
 });
 
 export { UserSettingsProvider, useUserSettingsContext };

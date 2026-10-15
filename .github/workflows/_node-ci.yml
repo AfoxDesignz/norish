@@ -62,6 +62,10 @@ jobs:
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: pnpm run lint
 
+      - name: Type check
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        run: pnpm run typecheck
+
       # Unit tests need NODE_ENV=test: under the workflow-wide "production"
       # Vite resolves Node builtins as browser externals, and every jsdom suite
       # that reaches one dies with "No such built-in module: node:" before a
@@ -75,6 +79,12 @@ jobs:
       - name: Build
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: pnpm run build
+
+      # The landing deploy runs this wrangler from the lockfile; a broken install
+      # shows here instead of on the next deploy.
+      - name: Wrangler
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        run: pnpm --filter @norish/landing exec wrangler --version
 
   # One Playwright worker per shard (see the E2E config): a worker is a whole
   # stack, and a second one on a 4-vCPU runner slows both into timing reds.
@@ -97,7 +107,7 @@ jobs:
       - name: Setup toolchain and install dependencies
         uses: ./tooling/github/setup
 
-      # The suites boot dist-server/index.mjs (the harness at
+      # The suites boot the server's source with the built .next (the harness at
       # apps/web/__tests__/e2e/harness/production-stack.ts), so the web app and
       # what it depends on is all a shard builds.
       - name: Build

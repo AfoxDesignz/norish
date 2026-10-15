@@ -28,7 +28,7 @@
     "drizzle-orm": "catalog:",
     "fuse.js": "catalog:",
     "pg": "catalog:",
-    "pino": "^10.3.1",
+    "pino": "^10.4.0",
     "superjson": "catalog:",
     "zod": "catalog:"
   },
@@ -37,10 +37,13 @@
     "@norish/prettier-config": "workspace:*",
     "@norish/tsconfig": "workspace:*",
     "@testcontainers/postgresql": "catalog:",
+    "@types/node": "catalog:",
     "@types/pg": "8.23.1",
-    "drizzle-kit": "0.31.10",
+    "drizzle-kit": "0.31.11",
     "eslint": "catalog:",
     "prettier": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:"
   },
   "prettier": "@norish/prettier-config"

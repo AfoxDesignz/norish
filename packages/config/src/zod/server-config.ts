@@ -132,10 +132,6 @@ export type TimerKeywordsInput = z.infer<typeof TimerKeywordsInputSchema>;
  * default. Defaults live in the shipped prompt files and are merged in at
  * read time, so a new release's prompts reach every deployment that never
  * customized them.
- *
- * `isOverridden` is the pre-0.20 row-level flag. It froze all prompts after
- * any save; rows still carrying it are pruned to real overrides at boot, and
- * it is never written again.
  */
 export const PromptsConfigSchema = z.object({
   recipeExtraction: z.string().optional(),
@@ -152,16 +148,12 @@ export const PromptsConfigSchema = z.object({
   imageGenerationStyle: z.string().optional(),
   ingredientIconStyle: z.string().optional(),
   ingredientPlainName: z.string().optional(),
-  isOverridden: z.boolean().optional(),
 });
 
 export type PromptsConfig = z.infer<typeof PromptsConfigSchema>;
 
-export const PromptsConfigInputSchema = PromptsConfigSchema.omit({ isOverridden: true });
-export type PromptsConfigInput = z.infer<typeof PromptsConfigInputSchema>;
-
 /** One text per prompt, nothing missing: the shape of shipped defaults and of the merged admin view. */
-export type PromptValues = Required<PromptsConfigInput>;
+export type PromptValues = Required<PromptsConfig>;
 
 // ============================================================================
 // i18n Locale Configuration Schema
@@ -305,19 +297,6 @@ export const AIProviderSchema = z.enum([
 
 export type AIProvider = z.infer<typeof AIProviderSchema>;
 
-/**
- * Legacy auto-tagging mode. Superseded by the independent `automaticEnrichment.autoTagging`
- * switch plus `tagStrategy`; still accepted on read so stored config migrates in place.
- */
-export const AutoTaggingModeSchema = z.enum([
-  "disabled",
-  "predefined",
-  "predefined_db",
-  "freeform",
-]);
-
-export type AutoTaggingMode = z.infer<typeof AutoTaggingModeSchema>;
-
 /** How auto-tagging picks tag names. Independent of whether auto-tagging runs automatically. */
 export const TagStrategySchema = z.enum(["predefined", "predefined_db", "freeform"]);
 
@@ -408,45 +387,22 @@ export const AIConfigInputSchema = z.object({
   cuisineStrategy: CuisineStrategySchema.optional(),
   automaticEnrichment: AutomaticEnrichmentSchema.partial().optional(),
   automaticIngredients: AutomaticIngredientsSchema.partial().optional(),
-  /** @deprecated Migrated into `automaticEnrichment.autoTagging` + `tagStrategy`. */
-  autoTaggingMode: AutoTaggingModeSchema.optional(),
-  /** @deprecated Migrated into `automaticEnrichment.allergyDetection`. */
-  autoTagAllergies: z.boolean().optional(),
 });
 
 /**
- * The canonical AI configuration contract. Stored config written before the
- * unified enrichment flow still parses: legacy fields migrate without changing
- * effective enabledness, and canonical values always win over legacy ones.
+ * The canonical AI configuration contract: every setting a stored config
+ * leaves out takes its default.
  */
 export const AIConfigSchema = AIConfigInputSchema.transform(
-  ({
-    autoTaggingMode,
-    autoTagAllergies,
-    tagStrategy,
-    cuisineStrategy,
-    automaticEnrichment,
-    automaticIngredients,
-    ...rest
-  }) => {
-    const legacyAutoTaggingOn =
-      autoTaggingMode === undefined ? undefined : autoTaggingMode !== "disabled";
-    const legacyStrategy =
-      autoTaggingMode === undefined || autoTaggingMode === "disabled" ? undefined : autoTaggingMode;
-
+  ({ tagStrategy, cuisineStrategy, automaticEnrichment, automaticIngredients, ...rest }) => {
     return {
       ...rest,
-      tagStrategy: tagStrategy ?? legacyStrategy ?? DEFAULT_TAG_STRATEGY,
+      tagStrategy: tagStrategy ?? DEFAULT_TAG_STRATEGY,
       cuisineStrategy: cuisineStrategy ?? DEFAULT_CUISINE_STRATEGY,
       automaticEnrichment: {
-        autoTagging:
-          automaticEnrichment?.autoTagging ??
-          legacyAutoTaggingOn ??
-          DEFAULT_AUTOMATIC_ENRICHMENT.autoTagging,
+        autoTagging: automaticEnrichment?.autoTagging ?? DEFAULT_AUTOMATIC_ENRICHMENT.autoTagging,
         allergyDetection:
-          automaticEnrichment?.allergyDetection ??
-          autoTagAllergies ??
-          DEFAULT_AUTOMATIC_ENRICHMENT.allergyDetection,
+          automaticEnrichment?.allergyDetection ?? DEFAULT_AUTOMATIC_ENRICHMENT.allergyDetection,
         autoCategorization:
           automaticEnrichment?.autoCategorization ??
           DEFAULT_AUTOMATIC_ENRICHMENT.autoCategorization,
@@ -931,37 +887,6 @@ export type UserServerRole = z.infer<typeof UserServerRoleSchema>;
 // Validation helpers
 // ============================================================================
 
-const SERVER_CONFIG_MIGRATIONS: Partial<Record<ServerConfigKey, (value: unknown) => unknown>> = {
-  [ServerConfigKeys.UNITS]: (value) => {
-    const legacyWrapped =
-      typeof value === "object" && value !== null && "units" in value && "isOverwritten" in value
-        ? UnitsMapSchema.safeParse((value as { units: unknown }).units)
-        : null;
-
-    if (legacyWrapped?.success) {
-      return {
-        units: legacyWrapped.data,
-        isOverridden: false,
-      };
-    }
-
-    const legacy = UnitsMapSchema.safeParse(value);
-
-    if (legacy.success) {
-      return {
-        units: legacy.data,
-        isOverridden: false,
-      };
-    }
-
-    return value;
-  },
-};
-
-function migrateConfigValue(key: ServerConfigKey, value: unknown): unknown {
-  return SERVER_CONFIG_MIGRATIONS[key]?.(value) ?? value;
-}
-
 /**
  * Get the appropriate Zod schema for a given config key
  */
@@ -1021,7 +946,7 @@ export function normalizeConfigValue(
 ): { success: true; data: unknown } | { success: false; error: z.ZodError } {
   const schema = getSchemaForConfigKey(key);
 
-  return schema.safeParse(migrateConfigValue(key, value));
+  return schema.safeParse(value);
 }
 
 /**

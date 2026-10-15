@@ -16,7 +16,6 @@ import { recipeEnrichment } from "@norish/shared-server/realtime/recipe-enrichme
 import { recipes } from "@norish/shared-server/realtime/recipes";
 
 import type { RecipeEnrichmentJobData } from "../contracts/job-types";
-import { enrichmentRunId, enrichmentRunSequence } from "./identity";
 
 const log = createLogger("queue:enrichment-announce");
 
@@ -54,8 +53,8 @@ export async function publishEnrichmentLifecycle(
     "enrichment",
     {
       recipeId: data.recipeId,
-      runId: enrichmentRunId(data),
-      runSequence: enrichmentRunSequence(data),
+      runId: data.runId,
+      runSequence: data.runSequence,
       kind: data.kind,
       state,
       origin: data.origin,

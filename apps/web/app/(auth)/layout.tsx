@@ -12,6 +12,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             without scripting gets finished, still drawings. Set it before
             first paint so the strokes can draw themselves once on arrival. */}
         <script
+          // A constant, and React escapes a script's text children, so it goes in as raw HTML.
+          // eslint-disable-next-line @eslint-react/dom-no-dangerously-set-innerhtml
           dangerouslySetInnerHTML={{ __html: `document.documentElement.classList.add("js")` }}
         />
         <div aria-hidden className="hero-wash pointer-events-none absolute inset-x-0 top-0 h-160" />

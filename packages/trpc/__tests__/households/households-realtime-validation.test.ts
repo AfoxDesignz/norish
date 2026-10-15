@@ -23,7 +23,6 @@ const { households } = await import("@norish/shared-server/realtime/households")
 
 describe("household publishes validate against their zod schemas", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     redis.realtimePublish = undefined;
   });
 

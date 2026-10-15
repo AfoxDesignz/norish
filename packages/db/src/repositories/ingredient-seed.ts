@@ -399,7 +399,6 @@ async function removeUnusedDropped(tx: DbTransaction, listed: readonly string[])
         sql`not ${usedThroughAlias(recipeIngredients)}`,
         sql`not ${usedThroughAlias(groceries)}`,
         sql`not ${usedById(recurringGroceries)}`,
-        // A grocery the upgrade has not given an alias yet points at its food alone.
         sql`not ${usedById(groceries)}`,
         sql`not ${usedById(pantryIngredients)}`,
         sql`not ${usedById(aisleLinks)}`,

@@ -162,8 +162,7 @@ async function memberTags(
  * One membership join under the same view-policy condition the recipe list
  * applies, so the count and the list agree by construction and two readers
  * may honestly see two different counts (ADR-0027). Images resolve through
- * the same gallery-first SQL recipes use, so the deprecated scalar is never
- * read directly. Ordered by the member's own creation time so the mosaic and
+ * the same gallery-first SQL recipes use. Ordered by the member's own creation time so the mosaic and
  * the derived description are stable between reads.
  */
 async function memberSummaries(
@@ -447,6 +446,58 @@ export async function listEditableCookbooks(ctx: RecipeListContext): Promise<Coo
     .orderBy(asc(cookbooks.title));
 
   return withMemberSummaries(ctx, rows);
+}
+
+/**
+ * The user's own cookbook bearing a title, matched the way an archive import
+ * files by one: case-insensitively and trimmed (ADR-0022).
+ */
+export async function findOwnCookbookIdByTitle(
+  userId: string,
+  title: string
+): Promise<string | null> {
+  const [row] = await db
+    .select({ id: cookbooks.id })
+    .from(cookbooks)
+    .where(
+      and(
+        eq(cookbooks.userId, userId),
+        sql`lower(trim(${cookbooks.title})) = ${title.trim().toLowerCase()}`
+      )
+    )
+    .orderBy(asc(cookbooks.createdAt))
+    .limit(1);
+
+  return row?.id ?? null;
+}
+
+/**
+ * The titles of the cookbooks this reader can see that hold each recipe:
+ * what a Recipe Archive says a recipe is filed under.
+ */
+export async function listCookbookTitlesByRecipeIds(
+  ctx: RecipeListContext,
+  recipeIds: string[]
+): Promise<Map<string, string[]>> {
+  const titles = new Map<string, string[]>();
+
+  if (recipeIds.length === 0) return titles;
+
+  const policyCondition = await buildOwnerPolicyCondition(ctx, cookbooks.userId, "view");
+  const membership = inArray(cookbookRecipes.recipeId, recipeIds);
+
+  const rows = await db
+    .select({ recipeId: cookbookRecipes.recipeId, title: cookbooks.title })
+    .from(cookbookRecipes)
+    .innerJoin(cookbooks, eq(cookbookRecipes.cookbookId, cookbooks.id))
+    .where(policyCondition ? and(membership, policyCondition) : membership)
+    .orderBy(asc(cookbooks.title));
+
+  for (const row of rows) {
+    titles.set(row.recipeId, [...(titles.get(row.recipeId) ?? []), row.title]);
+  }
+
+  return titles;
 }
 
 /**

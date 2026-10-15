@@ -9,9 +9,13 @@ import {
   CACHE_MAX_AGE_MS,
   createCacheManager,
 } from "@/lib/query-cache/persisted-query-client";
-import { dehydrate, QueryClient } from "@tanstack/react-query";
+import { dehydrate, QueryClient, QueryObserver } from "@tanstack/react-query";
+import { createTRPCClient } from "@trpc/client";
+import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { IDBFactory } from "fake-indexeddb";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { AppRouter } from "@norish/trpc/client";
 
 /** Build a valid persisted cache blob holding a single successful query. */
 function seedClient(key: unknown[], value: unknown): PersistedClient {
@@ -37,6 +41,10 @@ describe("createCacheManager", () => {
   beforeEach(() => {
     window.localStorage.clear();
     idb = createOfflineIdb(new IDBFactory());
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("does nothing while the online session is still unresolved", async () => {
@@ -192,6 +200,40 @@ describe("createCacheManager", () => {
     const query = manager.queryClient.getQueryCache().find({ queryKey: ["recipes", "get", "r1"] });
 
     expect(query?.gcTime).toBe(CACHE_MAX_AGE_MS);
+  });
+
+  it("holds a recipe and a cookbook the reader opened past the default gcTime (ADR-0008)", async () => {
+    vi.useFakeTimers();
+
+    const { queryClient } = createCacheManager(idb);
+    // The app's own keys, so this proves the held paths match what tRPC builds.
+    const trpc = createTRPCOptionsProxy<AppRouter>({
+      client: createTRPCClient<AppRouter>({ links: [] }),
+      queryClient,
+    });
+    const opened = [
+      trpc.recipes.get.queryKey({ id: "r1" }),
+      trpc.cookbooks.get.queryKey({ id: "c1" }),
+    ];
+    const elsewhere = trpc.groceries.list.queryKey();
+
+    for (const queryKey of [...opened, elsewhere]) {
+      // The page reads it while it is open, then the reader leaves.
+      const page = new QueryObserver(queryClient, { queryKey, queryFn: async () => ({}) });
+      const leave = page.subscribe(() => {});
+
+      await vi.waitFor(() => expect(page.getCurrentResult().isSuccess).toBe(true));
+      leave();
+    }
+
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000 + 1);
+
+    for (const queryKey of opened) {
+      expect(queryClient.getQueryData(queryKey)).toBeDefined();
+    }
+
+    // Any other read goes at the default, so the clock really did pass it.
+    expect(queryClient.getQueryData(elsewhere)).toBeUndefined();
   });
 
   it("resets every personalized read artifact while preserving the Outbox and app shell", async () => {

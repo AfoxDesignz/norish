@@ -10,6 +10,7 @@
     "MASTER_KEY",
     "AUTH_URL",
     "OBSCURA_ENDPOINT",
+    "OBSCURA_CDP_TOKEN",
     "REDIS_URL",
     "PARSER_API_TIMEOUT_MS"
   ],
@@ -20,11 +21,7 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "dist-server/**", ".cache/**", "**/*.tsbuildinfo"]
-    },
-    "build:server": {
-      "dependsOn": ["^build:server"],
-      "cache": false
+      "outputs": ["dist/**", ".cache/**", "**/*.tsbuildinfo"]
     },
     "dev": {
       "dependsOn": ["^dev"],
@@ -41,7 +38,7 @@
     },
     "typecheck": {
       "dependsOn": ["^typecheck"],
-      "outputs": ["dist/**", "**/*.tsbuildinfo", ".cache/**"]
+      "outputs": ["**/*.tsbuildinfo", ".cache/**"]
     },
     "test": {
       "dependsOn": ["^test"],

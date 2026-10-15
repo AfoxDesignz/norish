@@ -1,4 +1,6 @@
+import { readFileSync } from "node:fs";
 import { Readable } from "node:stream";
+import JSZip from "jszip";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FullRecipeInsertSchema } from "@norish/shared/contracts/zod";
@@ -32,8 +34,6 @@ describe("norish archive round-trip", () => {
   const ITALIAN_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 
   beforeEach(() => {
-    vi.clearAllMocks();
-
     mockSaveImageBytes.mockResolvedValue(`/recipes/${MINTED_ID}/saved-image.jpg`);
     mockSaveStepImageBytes.mockResolvedValue(`/recipes/${MINTED_ID}/steps/saved-step.jpg`);
     mockSaveVideoBytes.mockResolvedValue({
@@ -45,7 +45,7 @@ describe("norish archive round-trip", () => {
   async function roundTrip(
     recipe = buildFullRecipe(),
     mediaBytes: Record<string, string> = {},
-    marks: { rating?: number; favorite?: boolean } = {}
+    marks: { rating?: number; favorite?: boolean; cookbooks?: string[] } = {}
   ) {
     const reloaded = await writeArchive({
       records: [
@@ -234,7 +234,7 @@ describe("norish archive round-trip", () => {
     );
 
     // and the recreated recipe points at the new instance's own paths
-    expect(parsed.dto.image).toBe(`/recipes/${MINTED_ID}/saved-image.jpg`);
+    expect(parsed.dto.images?.[0]?.image).toBe(`/recipes/${MINTED_ID}/saved-image.jpg`);
     // The Generated Image marking survives the round-trip; the supplied
     // photograph arrives unmarked, exactly as it left.
     expect(parsed.dto.images).toHaveLength(2);
@@ -252,9 +252,8 @@ describe("norish archive round-trip", () => {
   });
 
   it("round-trips a recipe with no media at all", async () => {
-    const { parsed } = await roundTrip(buildFullRecipe({ image: null, images: [], videos: [] }));
+    const { parsed } = await roundTrip(buildFullRecipe({ images: [], videos: [] }));
 
-    expect(parsed.dto.image).toBeNull();
     expect(parsed.dto.images).toEqual([]);
     expect(parsed.dto.videos).toEqual([]);
     expect(mockSaveImageBytes).not.toHaveBeenCalled();
@@ -273,6 +272,15 @@ describe("norish archive round-trip", () => {
 
     expect(parsed.importedRating).toBeUndefined();
     expect(parsed.importedFavorite).toBeUndefined();
+    expect(parsed.cookbooks).toEqual([]);
+  });
+
+  it("carries the cookbook titles through for the importer to file under", async () => {
+    const { parsed } = await roundTrip(buildFullRecipe(), {}, { cookbooks: ["Dolci", "Kerst"] });
+
+    expect(parsed.cookbooks).toEqual(["Dolci", "Kerst"]);
+    // A title is something to file under, never recipe data.
+    expect(parsed.dto).not.toHaveProperty("cookbooks");
   });
 
   it("keeps attribution out of the imported recipe", async () => {
@@ -306,5 +314,31 @@ describe("norish archive round-trip", () => {
     expect(parsed.dto).not.toHaveProperty("userId");
     expect(parsed.dto).not.toHaveProperty("author");
     expect(parsed.dto).not.toHaveProperty("authorName");
+  });
+
+  it("still reads an archive a 0.25 instance wrote", async () => {
+    // Written by archiver 7, before the move to 8; the parser must not care.
+    const archive = await JSZip.loadAsync(
+      readFileSync(new URL("./fixtures/norish-archive-0.25.zip", import.meta.url))
+    );
+    const recipe = buildFullRecipe();
+    const [entry] = await extractNorishRecipes(archive);
+
+    expect((await readNorishManifest(archive)).exporter?.name).toBe("Mika");
+    expect(entry?.parseError).toBeUndefined();
+
+    const { dto } = await parseNorishRecipeToDTO(
+      entry!.json,
+      MINTED_ID,
+      new Map([["italian", ITALIAN_ID]]),
+      archive.folder(entry!.folderKey)
+    );
+
+    expect(dto.name).toBe(recipe.name);
+    expect(dto.recipeIngredients.map((line) => line.ingredientName)).toEqual([
+      "spaghetti",
+      "clams",
+    ]);
+    expect(dto.steps.map((step) => step.step)).toEqual(["Boil the pasta", "Steam the clams"]);
   });
 });

@@ -36,8 +36,8 @@ import PhoneMockup from "@site/src/components/PhoneMockup";
 
 ## What is Norish?
 
-Norish is a recipe manager, with the abillity to do meal planning and make grocery lists.
-The whole instance is live, an import someone makes will automatically show up for you as well.
+Norish is a recipe manager with meal planning and grocery lists. Changes sync
+live, so a recipe someone imports shows up for you right away.
 
 > **The name** comes from Nora (our dog) + dish. Coincidentally, it also sounds
 > like "nourish".
@@ -46,31 +46,27 @@ The whole instance is live, an import someone makes will automatically show up f
 
 <FeatureGrid>
   <Feature className="sm:col-span-2" icon={<ArrowDownTrayIcon />} title="Import from any source">
-    Importing works regardless of source, websites, videos, images or plain text.
+    Import from websites, videos, images or plain text.
   </Feature>
   <Feature icon={<CalendarDaysIcon />} title="Plan and shop">
-    Plan your week, and make a grocery list.
+    Plan your week and make a grocery list.
   </Feature>
   <Feature icon={<ChartPieIcon />} title="Macro calculation">
-    Nutrition can be worked out from the ingredients, metric and US conversion, allergy warnings.
+    Nutrition worked out from the ingredients, metric and US conversion, and allergy warnings.
   </Feature>
   <Feature icon={<BoltIcon />} title="Synced in real time">
-    Recipes, groceries and mealplans update for everyone in realtime.
+    Recipes, groceries and meal plans update for everyone in real time.
   </Feature>
   <Feature icon={<DevicePhoneMobileIcon />} title="Mobile first">
     Made to use on your phone, even when offline.
   </Feature>
-  <Feature icon={<ShieldCheckIcon />} title="SSO and Password auth">
+  <Feature icon={<ShieldCheckIcon />} title="SSO and password sign-in">
     Sign in with a password, OIDC, GitHub or Google.
   </Feature>
   <Feature icon={<LanguageIcon />} title="Multi-language">
     <Languages />
   </Feature>
 </FeatureGrid>
-
-:::note
-AI feature speed can vary by provider, model, and region.
-:::
 
 ## Where to next
 
@@ -92,7 +88,7 @@ AI feature speed can vary by provider, model, and region.
     eyebrow="Browser extension"
     icon={<GitHubIcon className="text-muted size-4.5" />}
     title="Norish Quick Import Extension"
-    description="Quickly import recipes into Norish using a browser extension. Maintained by the community."
+    description="Import recipes into Norish from your browser. Maintained by the community."
   />
 </LinkCardGrid>
 

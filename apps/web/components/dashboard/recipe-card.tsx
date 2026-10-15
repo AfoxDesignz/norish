@@ -5,6 +5,7 @@ import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MiniCalendar, MiniGroceries } from "@/components/Panel/consumers";
 import OriginFlag from "@/components/recipes/origin-flag";
+import { RecipeImageTransition } from "@/components/recipes/recipe-image-transition";
 import HeartButton from "@/components/shared/heart-button";
 import SmartMarkdownRenderer from "@/components/shared/smart-markdown-renderer";
 import { usePermissionsContext } from "@/context/permissions-context";
@@ -181,7 +182,7 @@ function RecipeCardComponent({
   const description = recipe.description?.trim() || "";
 
   // The resolved primary image: the list projection serves the first gallery
-  // image, with the deprecated legacy scalar only as a fallback.
+  // image.
   const thumbnailImage = recipe.image;
   const showImage = thumbnailImage && failedImage !== thumbnailImage;
 
@@ -283,13 +284,15 @@ function RecipeCardComponent({
     hoverScaleClass = "group-hover/row:scale-105"
   ) =>
     showImage ? (
-      <img
-        alt={recipe.name}
-        className={`pointer-events-none h-full w-full object-cover transition-transform duration-300 ease-in-out ${open ? "scale-100" : hoverScaleClass} `}
-        loading="lazy"
-        src={thumbnailImage}
-        onError={() => setFailedImage(thumbnailImage)}
-      />
+      <RecipeImageTransition recipeId={recipe.id}>
+        <img
+          alt={recipe.name}
+          className={`pointer-events-none h-full w-full object-cover transition-transform duration-300 ease-in-out ${open ? "scale-100" : hoverScaleClass} `}
+          loading="lazy"
+          src={thumbnailImage}
+          onError={() => setFailedImage(thumbnailImage)}
+        />
+      </RecipeImageTransition>
     ) : (
       <div
         className={`bg-surface-secondary text-muted flex h-full w-full items-center justify-center transition-all duration-300 ease-in-out ${open ? "scale-100" : "group-hover/row:scale-105"} `}

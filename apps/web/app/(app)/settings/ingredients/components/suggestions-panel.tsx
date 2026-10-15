@@ -91,6 +91,10 @@ function VirtualRows({
   rows: readonly PanelRow[];
   render: (row: PanelRow, index: number) => ReactNode;
 }) {
+  // TanStack Virtual hands back one mutable instance, so compiled memoisation
+  // would keep its first rows.
+  "use no memo";
+
   const listRef = useRef<HTMLDivElement>(null);
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
   // Where the list starts in the body, below its padding.

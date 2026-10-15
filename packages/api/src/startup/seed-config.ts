@@ -3,7 +3,6 @@ import type {
   AuthProviderGitHub,
   AuthProviderGoogle,
   AuthProviderOIDC,
-  PromptsConfig,
   ServerConfigKey,
   TimerKeywordsConfig,
 } from "@norish/db/zodSchemas/server-config";
@@ -29,13 +28,7 @@ import {
   IngredientWordsMapSchema,
   ServerConfigKeys,
   UnitsConfigSchema,
-  UnitsMapSchema,
 } from "@norish/db/zodSchemas/server-config";
-import {
-  loadDefaultPrompts,
-  loadRetiredDefaultPrompts,
-} from "@norish/shared-server/ai/prompts/loader";
-import { pruneToOverrides } from "@norish/shared-server/ai/prompts/overrides";
 import {
   buildLocaleConfigFromEnv,
   DEFAULT_LOCALE_CONFIG,
@@ -195,7 +188,6 @@ export async function seedServerConfig(): Promise<void> {
   await normalizeExistingConfigs();
   await importEnvAuthProvidersIfMissing();
   await syncUnits();
-  await syncPrompts();
   await syncLocales();
   await syncTimerKeywords();
   await syncIngredientWords();
@@ -485,41 +477,6 @@ async function syncGoogleProvider(): Promise<void> {
 }
 
 /**
- * Reduce the stored prompts row to genuine administrator overrides.
- *
- * Rows written before 0.20 carried full copies of the then-current default
- * texts (plus a row-level isOverridden flag that froze all of them after any
- * save). Dropping every field that matches a shipped default — current or
- * retired — releases those copies, so the release's prompts reach the admin
- * surface and the model, while texts an administrator actually wrote are
- * exactly the fields that survive.
- */
-async function syncPrompts(): Promise<void> {
-  const existing = await getConfig<PromptsConfig>(ServerConfigKeys.PROMPTS);
-
-  if (!existing) {
-    serverLogger.warn("Prompts config not found in DB, will be seeded");
-
-    return;
-  }
-
-  const { overrides, changed } = pruneToOverrides(
-    existing,
-    loadDefaultPrompts(),
-    loadRetiredDefaultPrompts()
-  );
-
-  if (changed) {
-    await setConfig(ServerConfigKeys.PROMPTS, overrides, null, false);
-
-    serverLogger.info(
-      { overriddenFields: Object.keys(overrides) },
-      "Pruned stored prompts to administrator overrides"
-    );
-  }
-}
-
-/**
  * Sync timer keywords from default config file
  * Updates DB if file changes and user hasn't overridden
  */
@@ -642,40 +599,6 @@ async function syncUnits(): Promise<void> {
       );
       serverLogger.info("Updated units from default file (content changed)");
     }
-
-    return;
-  }
-
-  const legacyWrapped =
-    typeof existing === "object" &&
-    existing !== null &&
-    "units" in existing &&
-    "isOverwritten" in existing
-      ? UnitsMapSchema.safeParse((existing as { units: unknown }).units)
-      : null;
-
-  if (legacyWrapped?.success) {
-    await setConfig(
-      ServerConfigKeys.UNITS,
-      { units: legacyWrapped.data, isOverridden: false },
-      null,
-      false
-    );
-    serverLogger.info("Migrated units config flag from isOverwritten to isOverridden");
-
-    return;
-  }
-
-  const legacy = UnitsMapSchema.safeParse(existing);
-
-  if (legacy.success) {
-    await setConfig(
-      ServerConfigKeys.UNITS,
-      { units: legacy.data, isOverridden: false },
-      null,
-      false
-    );
-    serverLogger.info("Migrated units config to wrapped schema format");
 
     return;
   }

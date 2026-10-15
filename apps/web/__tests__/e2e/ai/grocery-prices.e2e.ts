@@ -62,7 +62,7 @@ async function addGroceryToShop(name: string, shown: string = name): Promise<voi
   // The add panel stays open for batch adding; the list underneath is what
   // every assertion here is about.
   await page.getByRole("button", { name: "Close panel" }).click();
-  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 
 /** One grocery's own row, whichever Store's section it is sitting in. */
@@ -286,7 +286,7 @@ test("a grocery dragged into another Store is priced there, on the list", async 
   // shopper opening anything to make it look.
   await dragGroceryToStore("roomboter", STORE_NAME);
 
-  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect
     .poll(async () => readGroceryStore("roomboter"), { timeout: 30_000 })
     .toBe(STORE_NAME);
@@ -314,11 +314,11 @@ test("700 g of a 500 g pack is two packs, on the row and at the heading", async 
   // screen, adds up to the number in its heading.
   const section = row.locator("xpath=ancestor::*[@data-store-id]").first();
   const money = (text: string | null) =>
-    Number(text?.match(/\d+[.,]\d{2}/)?.[0].replace(",", ".") ?? 0);
+    Number(text?.match(/(?<!\d)\d+[.,]\d{2}/)?.[0].replace(",", ".") ?? 0);
 
   await expect(section.getByTestId("store-total")).toBeVisible();
   // The heading reads what is left and what it costs, in one line.
-  await expect(section.getByTestId("store-meta")).toContainText(/\d+ items · /);
+  await expect(section.getByTestId("store-meta")).toContainText(/(?<!\d)\d+ items · /);
   const heading = money(await section.getByTestId("store-total").textContent());
   const costs = await section.getByTestId("grocery-line-cost").allTextContents();
   const sum = costs.map(money).reduce((total, cost) => Math.round((total + cost) * 100) / 100, 0);

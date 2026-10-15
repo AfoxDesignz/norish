@@ -184,7 +184,6 @@ export const test = base.extend<NoTestFixtures, RealtimeWorkerFixtures>({
     async ({ browser }, use) => {
       const stack = new ProductionStack({
         project: "realtime",
-        port: 3300,
         databaseName: "norish_realtime_e2e",
         users: [USER_A, USER_B],
         captureLogs: true,

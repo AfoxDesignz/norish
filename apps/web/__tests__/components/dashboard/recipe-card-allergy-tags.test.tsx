@@ -147,7 +147,7 @@ function tagTooltip() {
 
   expect(withChips).toHaveLength(1);
 
-  return withChips[0];
+  return withChips[0]!;
 }
 
 describe("RecipeCard list view allergy tags", () => {

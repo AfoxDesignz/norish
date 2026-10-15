@@ -50,7 +50,9 @@ test("quick Hidden Items changes all land, and none drops out while the next is 
     .poll(async () => {
       const stored = await readProfilePreferences(aiStack.baseURL, aiStack.ownerCookies);
 
-      return [...((stored.desktop as { hiddenItems?: string[] })?.hiddenItems ?? [])].sort();
+      return [...((stored.desktop as { hiddenItems?: string[] })?.hiddenItems ?? [])].sort((a, b) =>
+        a.localeCompare(b)
+      );
     })
     .toEqual(["notes", "nutrition", "rating"]);
 });

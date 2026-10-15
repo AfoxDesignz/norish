@@ -112,6 +112,11 @@
     "message": "노라가 여기저기 킁킁대며 가려던 곳을 찾고 있어요.",
     "imageAlt": "어리둥절한 노라"
   },
+  "errorPage": {
+    "title": "문제가 발생했어요.",
+    "message": "이 페이지에서 Norish에 오류가 발생했어요.",
+    "retry": "다시 시도"
+  },
   "import": {
     "url": {
       "title": "레시피 가져오기",

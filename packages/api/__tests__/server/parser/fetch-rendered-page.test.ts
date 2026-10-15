@@ -78,8 +78,6 @@ function makeToken(
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
-
   mockGoto.mockResolvedValue(undefined);
   mockContent.mockResolvedValue("<html>rendered</html>");
   mockClose.mockResolvedValue(undefined);

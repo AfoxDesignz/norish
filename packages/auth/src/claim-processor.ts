@@ -221,7 +221,7 @@ export function parseOIDCClaims(
     .filter((g) => g.toLowerCase().startsWith(prefixLower))
     .map((g) => g.slice(cfg.householdPrefix.length))
     .filter((name) => name.length > 0)
-    .sort(); // Alphabetical for deterministic "first wins"
+    .sort((a, b) => a.localeCompare(b, "en")); // Alphabetical, case aside, for deterministic "first wins"
 
   const householdName = householdGroups[0] ?? null;
 

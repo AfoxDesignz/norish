@@ -6,8 +6,8 @@
  * path-agnostic middleware makes every authenticated mutation idempotent:
  *
  * - Mutations carrying an `operationId` (from the `x-operation-id` header)
- *   atomically claim that id in Redis (TTL-bounded) and store their serialized
- *   (superjson) response.
+ *   atomically claim that id in Redis for five minutes and store their
+ *   serialized (superjson) response for seven days.
  * - A repeat with the same id returns the stored response without re-executing
  *   the handler.
  *
@@ -31,11 +31,17 @@ import { middleware } from "./trpc";
 const KEY_PREFIX = "norish:idempotency:";
 
 /**
- * How long a claimed operationId (and its stored response) lives in Redis.
- * Must comfortably exceed realistic offline periods for the supported scenarios;
- * an Outbox entry replayed after this window could still duplicate (ADR-0002).
+ * How long a stored response lives in Redis. Must comfortably exceed realistic
+ * offline periods for the supported scenarios; an Outbox entry replayed after
+ * this window could still duplicate (ADR-0002).
  */
 export const IDEMPOTENCY_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
+
+/**
+ * How long a claim lives while its owner runs. An owner that dies mid-request
+ * leaves the claim behind, and every retry waits on it until it expires.
+ */
+export const IDEMPOTENCY_CLAIM_TTL_SECONDS = 5 * 60;
 
 /**
  * What we store in Redis under an idempotency key.
@@ -69,6 +75,7 @@ export interface IdempotencyRedis {
 
 export interface IdempotencyConfig {
   getRedis: () => Promise<IdempotencyRedis>;
+  claimTtlSeconds: number;
   ttlSeconds: number;
   pollIntervalMs: number;
   pollMaxAttempts: number;
@@ -76,6 +83,7 @@ export interface IdempotencyConfig {
 
 const DEFAULT_CONFIG: IdempotencyConfig = {
   getRedis: getPublisherClient,
+  claimTtlSeconds: IDEMPOTENCY_CLAIM_TTL_SECONDS,
   ttlSeconds: IDEMPOTENCY_TTL_SECONDS,
   pollIntervalMs: DEFAULT_POLL_INTERVAL_MS,
   pollMaxAttempts: DEFAULT_POLL_MAX_ATTEMPTS,
@@ -125,7 +133,7 @@ export async function runWithIdempotency<TResult>(
 
   for (let attempt = 0; attempt <= config.pollMaxAttempts; attempt++) {
     // Atomically claim the id. NX succeeds only if no one else holds it.
-    const claimed = await redis.set(key, PENDING_RECORD, "EX", config.ttlSeconds, "NX");
+    const claimed = await redis.set(key, PENDING_RECORD, "EX", config.claimTtlSeconds, "NX");
 
     if (claimed === "OK") {
       let result: TResult;

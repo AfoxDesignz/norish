@@ -5,7 +5,7 @@ import { ArrowPathIcon } from "@heroicons/react/16/solid";
 import { Button, Description, Label, Spinner, TextArea, TextField } from "@heroui/react";
 import { useTranslations } from "next-intl";
 
-import type { PromptsConfigInput } from "@norish/config/zod/server-config";
+import type { PromptsConfig } from "@norish/config/zod/server-config";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
 
 import { useAdminSettingsContext } from "../context";
@@ -30,7 +30,7 @@ const PROMPT_FIELDS = [
   { key: "imageGenerationStyle", rows: 4 },
   { key: "ingredientIconStyle", rows: 4 },
   { key: "ingredientPlainName", rows: 8 },
-] as const satisfies readonly { key: keyof PromptsConfigInput; rows: number }[];
+] as const satisfies readonly { key: keyof PromptsConfig; rows: number }[];
 
 type PromptKey = (typeof PROMPT_FIELDS)[number]["key"];
 
@@ -50,12 +50,14 @@ export default function PromptsForm({ onDirtyChange }: PromptsFormProps) {
   const [values, setValues] = useState<PromptValues>(EMPTY_VALUES);
   const [saving, setSaving] = useState(false);
   const [restoring, setRestoring] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
+  // Starts unset so prompts present on the first render seed the form too.
+  const [prevPrompts, setPrevPrompts] = useState<typeof prompts>();
 
   // Initialize from context. A prompt added after the stored config was
   // written has no stored value; the loader falls back to the shipped file
   // until an administrator saves one.
-  useEffect(() => {
+  if (prompts !== prevPrompts) {
+    setPrevPrompts(prompts);
     if (prompts) {
       setValues(
         Object.fromEntries(
@@ -63,14 +65,12 @@ export default function PromptsForm({ onDirtyChange }: PromptsFormProps) {
         ) as PromptValues
       );
     }
-  }, [prompts]);
+  }
 
   // Track changes
-  useEffect(() => {
-    if (prompts) {
-      setHasChanges(PROMPT_FIELDS.some(({ key }) => values[key] !== (prompts[key] ?? "")));
-    }
-  }, [values, prompts]);
+  const hasChanges =
+    !!prompts && PROMPT_FIELDS.some(({ key }) => values[key] !== (prompts[key] ?? ""));
+
   useEffect(() => {
     onDirtyChange?.(hasChanges);
   }, [hasChanges, onDirtyChange]);

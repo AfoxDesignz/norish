@@ -1,7 +1,15 @@
 "use client";
 
 import type { LibraryGridItem } from "@/lib/library-items";
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useContainerColumns } from "@/hooks/use-container-columns";
 import { Spinner } from "@heroui/react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
@@ -53,6 +61,10 @@ export default function LibraryGrid({
   emptyState,
   renderItem,
 }: LibraryGridProps) {
+  // TanStack Virtual hands back one mutable instance, so compiled memoisation
+  // would keep its first rows.
+  "use no memo";
+
   const { saveScrollState, getScrollState } = useScrollRestoration(scrollKey);
 
   // Seeded from `isLoading` so the skeleton is part of the very first paint —
@@ -79,14 +91,19 @@ export default function LibraryGrid({
   const gridRowHeight =
     windowWidth < 640 ? ESTIMATED_PHONE_GRID_ROW_HEIGHT : ESTIMATED_GRID_ROW_HEIGHT;
 
-  // Calculate scrollMargin from container position
-  const scrollMargin = useMemo(() => {
-    if (!containerRef.current) return 0;
-    const rect = containerRef.current.getBoundingClientRect();
+  // Calculate scrollMargin from container position. The container's offset is
+  // read, not tracked: a resize is what moves it, so it is measured on one and
+  // the grid counts from the top of the page until then.
+  const [scrollMargin, setScrollMargin] = useState(0);
+  const measuredHeightRef = useRef(_windowHeight);
 
-    return rect.top + window.scrollY;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [_windowHeight]); // Recalculate when window resizes
+  useLayoutEffect(() => {
+    if (_windowHeight === measuredHeightRef.current) return;
+    measuredHeightRef.current = _windowHeight;
+    setScrollMargin(
+      containerRef.current ? containerRef.current.getBoundingClientRect().top + window.scrollY : 0
+    );
+  }, [_windowHeight]);
 
   const rowCount = useMemo(
     () => Math.ceil(items.length / effectiveColumnCount),
@@ -138,21 +155,14 @@ export default function LibraryGrid({
     }
   }, [virtualRows, rowCount, loadMoreRowThreshold, isFetchingMore, loadMore]);
 
-  // Show skeleton loading state logic
+  // Show skeleton loading state logic: the first load shows it from the start
+  // (seeded above), a finished load hides it at once, a reload only after a beat.
+  if (!isLoading && (showSkeleton || !isLoadedOnce)) {
+    setIsLoadedOnce(true);
+    setShowSkeleton(false);
+  }
+
   useEffect(() => {
-    if (!isLoadedOnce && isLoading) {
-      setShowSkeleton(true);
-
-      return;
-    }
-
-    if (!isLoading) {
-      setIsLoadedOnce(true);
-      setShowSkeleton(false);
-
-      return;
-    }
-
     if (isLoadedOnce && isLoading) {
       // Swapping a loaded library for a grid of skeletons is the single most
       // expensive render on this page, and it fires from a timer while the

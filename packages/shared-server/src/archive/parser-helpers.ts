@@ -26,11 +26,13 @@ export function parseHumanDurationToMinutes(s?: string | null): number | undefin
     return Number.isFinite(total) && total > 0 ? total : undefined;
   }
 
+  // A number starts where a digit run starts (?<!\d): otherwise a long run of
+  // digits is rescanned from every position, quadratic in an archive's field.
   // Match patterns like "1 hr 30 min", "1h30m", "90 minutes", "1 hour", "2 hours"
   // For hours: allow 'h' to be followed by digits (for compact "1h30m" format)
-  const hourMatch = lower.match(/(\d+)\s*(?:hrs?|hours?|h)(?:\s|\d|$)/i);
+  const hourMatch = lower.match(/(?<!\d)(\d+)\s*(?:hrs?|hours?|h)(?:\s|\d|$)/i);
   // For minutes: require 'm' not to be followed by word characters (to avoid matching words like "medium")
-  const minMatch = lower.match(/(\d+)\s*(?:mins?|minutes?|m)(?!\w)/i);
+  const minMatch = lower.match(/(?<!\d)(\d+)\s*(?:mins?|minutes?|m)(?!\w)/i);
 
   const hours = hourMatch ? parseInt(hourMatch[1]!, 10) : 0;
   const minutes = minMatch ? parseInt(minMatch[1]!, 10) : 0;
@@ -38,6 +40,59 @@ export function parseHumanDurationToMinutes(s?: string | null): number | undefin
   const total = hours * 60 + minutes;
 
   return Number.isFinite(total) && total > 0 ? total : undefined;
+}
+
+/** An archive recipe's one picture as its gallery, or an empty gallery. */
+export function galleryOf(image: string | null | undefined) {
+  return image ? [{ image, order: 0 }] : [];
+}
+
+/** Minutes added up, or undefined when none of them is known. */
+export function sumMinutes(...minutes: Array<number | undefined>): number | undefined {
+  const known = minutes.filter((value): value is number => value !== undefined);
+
+  return known.length > 0 ? known.reduce((total, value) => total + value, 0) : undefined;
+}
+
+/**
+ * Parse a nutrition value string to a number.
+ * Handles values like "300", "300 kcal", "25g", "25 grams", etc.
+ */
+export function parseNutritionValue(value: string | null | undefined): number | null {
+  if (value == null) return null;
+
+  const str = value.toString().trim();
+
+  if (!str) return null;
+
+  // Extract numeric portion (handles "300 kcal", "25g", "25 grams", etc.)
+  const match = str.match(/^[\d.,]+/);
+
+  if (match) {
+    const parsed = parseFloat(match[0].replace(",", "."));
+
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+/**
+ * Hand each line the food it resolves from, past the insert schema, which
+ * knows nothing of it: the resolver reads it (`foodText` in
+ * `withResolvedIngredients`) and it is never stored.
+ */
+export function withLineFoodTexts(
+  dto: FullRecipeInsertDTO,
+  foodTexts: ReadonlyArray<string | undefined>
+): FullRecipeInsertDTO {
+  return {
+    ...dto,
+    recipeIngredients: dto.recipeIngredients?.map((line, i) => ({
+      ...line,
+      foodText: foodTexts[i],
+    })),
+  };
 }
 
 /**
@@ -145,6 +200,28 @@ export type RecipeParseInput = {
 };
 
 /**
+ * The longest step paragraph read as a Heading when it ends in a colon.
+ * ponytail: a naive length cut-off, so a long sentence ending in ":" ("Mix
+ * the following together:") stays a step; a sentence shorter than this does
+ * not, and a source's own heading markup is the upgrade path.
+ */
+const MAX_HEADING_STEP_LENGTH = 40;
+
+/**
+ * The Heading a text line marks itself as, written as one ("# Per la base"),
+ * or null. A line is a Heading when it already is one, or when it ends in a
+ * colon; capitals alone never make one, since real ingredients are written
+ * that way ("SAVOIARDI"). The caller decides that no amount stands in it.
+ */
+function headingOf(line: string): string | null {
+  if (line.startsWith("#")) return line;
+
+  const title = line.endsWith(":") ? line.slice(0, -1).trim() : "";
+
+  return title ? `# ${title}` : null;
+}
+
+/**
  * Build a FullRecipeInsertDTO from common recipe data
  * Handles ingredient parsing, step splitting, tag creation, and schema validation
  */
@@ -157,18 +234,25 @@ export async function buildRecipeDTO(input: RecipeParseInput): Promise<FullRecip
 
   // Parse ingredients - split by newlines first, then parse each line
   const units = await getUnits();
-  const ingredientLines = splitNonEmptyLines(input.ingredientsText);
-  const ingredientArray = parseIngredientWithDefaults(ingredientLines, units);
+  const ingredientArray = splitNonEmptyLines(input.ingredientsText).flatMap((text) =>
+    parseIngredientWithDefaults(text, units).map((line) => ({ ...line, text }))
+  );
   const systemUsed = inferSystemUsedFromParsed(ingredientArray);
   const normalizedIngredients = ingredientArray
-    .map((line) => ({
-      ...line,
-      description: (line.description || "").trim(),
-    }))
+    .map((line) => {
+      // A Heading is kept as written, never parsed into an amount and a food.
+      const heading = line.quantity == null ? headingOf(line.text) : null;
+
+      return heading
+        ? { quantity: null, unitOfMeasureID: null, description: heading }
+        : { ...line, description: (line.description || "").trim() };
+    })
     .filter((line) => line.description.length > 0);
 
   // Parse steps
-  const stepLines = splitNonEmptyLines(input.instructionsText);
+  const stepLines = splitNonEmptyLines(input.instructionsText).map(
+    (step) => (step.length <= MAX_HEADING_STEP_LENGTH && headingOf(step)) || step
+  );
 
   // Parse tags from categories
   const tags = (input.categories || [])
@@ -179,7 +263,7 @@ export async function buildRecipeDTO(input: RecipeParseInput): Promise<FullRecip
   const dto: FullRecipeInsertDTO = {
     name: name.trim(),
     url: url || undefined,
-    image: image || undefined,
+    images: galleryOf(image),
     description: description || undefined,
     servings: servings,
     systemUsed: systemUsed,
@@ -200,7 +284,7 @@ export async function buildRecipeDTO(input: RecipeParseInput): Promise<FullRecip
       systemUsed: systemUsed,
     })),
     tags: tags,
-  } as FullRecipeInsertDTO;
+  };
 
   // Validate against schema
   const parsed = FullRecipeInsertSchema.safeParse(dto);

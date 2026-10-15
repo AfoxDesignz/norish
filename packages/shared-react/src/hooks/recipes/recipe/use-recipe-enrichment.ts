@@ -117,6 +117,8 @@ export function createUseRecipeEnrichment({ useTRPC }: CreateRecipeHooksOptions)
     currentUserId?: string | null,
     callbacks: RecipeEnrichmentCallbacks = {}
   ): RecipeEnrichmentResult {
+    "use memo";
+
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
@@ -124,7 +126,7 @@ export function createUseRecipeEnrichment({ useTRPC }: CreateRecipeHooksOptions)
       recipeId: recipeId ?? "",
     });
     const statusKey = statusOptions.queryKey;
-    const lifecycleVersions = useRef<Record<RecipeEnrichmentKind, number>>({
+    const lifecycleVersionsRef = useRef<Record<RecipeEnrichmentKind, number>>({
       "auto-tagging": 0,
       "allergy-detection": 0,
       "auto-categorization": 0,
@@ -138,7 +140,7 @@ export function createUseRecipeEnrichment({ useTRPC }: CreateRecipeHooksOptions)
       ...statusOptions,
       enabled: !!recipeId,
       queryFn: async (context) => {
-        const versionsAtStart = { ...lifecycleVersions.current };
+        const versionsAtStart = { ...lifecycleVersionsRef.current };
 
         if (typeof statusOptions.queryFn !== "function") {
           throw new Error("Recipe Enrichment status query is unavailable");
@@ -147,7 +149,7 @@ export function createUseRecipeEnrichment({ useTRPC }: CreateRecipeHooksOptions)
         const incoming = await statusOptions.queryFn(context);
         const changedKinds = new Set(
           ENRICHMENT_KINDS.filter(
-            (kind) => versionsAtStart[kind] !== lifecycleVersions.current[kind]
+            (kind) => versionsAtStart[kind] !== lifecycleVersionsRef.current[kind]
           )
         );
 
@@ -255,7 +257,7 @@ export function createUseRecipeEnrichment({ useTRPC }: CreateRecipeHooksOptions)
           };
         });
 
-        if (applied) lifecycleVersions.current[event.kind] += 1;
+        if (applied) lifecycleVersionsRef.current[event.kind] += 1;
 
         return applied;
       },
@@ -266,6 +268,10 @@ export function createUseRecipeEnrichment({ useTRPC }: CreateRecipeHooksOptions)
       enabled: !!recipeId,
       // The status query is the recovery read: a lagged subscription refetches it.
       lagQueryKeys: [statusKey],
+      // A fresh subscription carries no cursor, so a transition between the
+      // first read and the server taking the subscription reaches nobody: a run
+      // that finished then would show as in progress until the next refocus.
+      onStarted: () => void queryClient.invalidateQueries({ queryKey: statusKey }),
       onEvent: (payload) => {
         // The catalogue declares this payload with `z.custom`, which validates
         // nothing at runtime yet, so the shape is still checked here.
@@ -298,6 +304,7 @@ export function createUseRecipeEnrichment({ useTRPC }: CreateRecipeHooksOptions)
         },
       })
     );
+    const { mutate: mutateMutation } = mutation;
 
     const request = useCallback(
       (kind: RecipeEnrichmentKind) => {
@@ -316,7 +323,7 @@ export function createUseRecipeEnrichment({ useTRPC }: CreateRecipeHooksOptions)
           },
           true
         );
-        mutation.mutate({ recipeId, kind });
+        mutateMutation({ recipeId, kind });
       },
       [recipeId, mutation, applyLifecycle]
     );

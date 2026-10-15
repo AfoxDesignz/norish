@@ -9,7 +9,7 @@
  */
 
 import { TRPCError } from "@trpc/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createCookbook,
@@ -75,10 +75,6 @@ function cookbookSummary(overrides: Record<string, unknown> = {}) {
 }
 
 describe("cookbook procedures", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe("create", () => {
     it("stores a title against the caller and echoes the new cookbook", async () => {
       const summary = cookbookSummary();

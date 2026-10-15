@@ -230,7 +230,7 @@ export function bracketedGrams(
       phrase.every((word, index) => folded[index] === word)
     );
     const at = approximation?.length ?? 0;
-    const quantity = /^[~±≈]?(\d*[.,]?\d+)(\p{L}*\.?)$/u.exec(tokens[at] ?? "");
+    const quantity = /^[~±≈]?(\d+(?:[.,]\d+)?|[.,]\d+)(\p{L}*\.?)$/u.exec(tokens[at] ?? "");
 
     if (!quantity) continue;
 

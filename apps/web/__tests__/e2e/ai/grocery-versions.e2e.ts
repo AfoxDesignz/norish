@@ -56,7 +56,7 @@ async function addGrocery(name: string): Promise<void> {
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.locator(`[data-grocery-name="${name}"]`).first()).toBeVisible();
   await page.getByRole("button", { name: "Close panel" }).click();
-  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 
 function rowFor(name: string) {

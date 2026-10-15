@@ -1,11 +1,12 @@
 "use client";
 
 import type { Timer } from "@/stores/timers";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useTimersEnabledQuery } from "@/hooks/config";
 import { useTimerStore } from "@/stores/timers";
 
 const NO_TIMERS: Timer[] = [];
+const noSubscription = () => () => {};
 
 /**
  * The timers the timer dock is currently showing — which is also the answer to
@@ -20,11 +21,12 @@ const NO_TIMERS: Timer[] = [];
 export function useDockedTimers(): Timer[] {
   const { timersEnabled } = useTimersEnabledQuery();
   const timers = useTimerStore((state) => state.timers);
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+  // False on the server and while hydrating, like the markup the server sent.
+  const isHydrated = useSyncExternalStore(
+    noSubscription,
+    () => true,
+    () => false
+  );
 
   if (!isHydrated || !timersEnabled || timers.length === 0) return NO_TIMERS;
 

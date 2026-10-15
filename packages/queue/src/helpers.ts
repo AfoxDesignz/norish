@@ -7,7 +7,6 @@
 import type { Queue } from "bullmq";
 
 import type { PermissionLevel } from "@norish/config/zod/server-config";
-import { OperationTimeoutError } from "@norish/shared/lib/error-extensions";
 import { normalizeUrl } from "@norish/shared/lib/helpers";
 
 export function sanitizeUrlForJobId(url: string): string {
@@ -17,14 +16,11 @@ export function sanitizeUrlForJobId(url: string): string {
 }
 
 /**
- * Generate a unique job ID based on the view policy.
- * Note: BullMQ doesn't allow colons in job IDs, so we use underscores as delimiters.
- *
- * - "everyone": `import_${sanitizedUrl}` - globally unique
- * - "household": `import_${householdKey}_${sanitizedUrl}` - unique per household
- * - "owner": `import_${userId}_${sanitizedUrl}` - unique per user
+ * The deduplication id of a URL import, scoped by the view policy: one import
+ * of a URL in flight at a time, for everyone, per household or per user.
+ * BullMQ allows no colons in it, so the parts are joined with underscores.
  */
-export function generateJobId(
+export function recipeImportDeduplicationId(
   url: string,
   userId: string,
   householdKey: string,
@@ -42,20 +38,6 @@ export function generateJobId(
     default:
       return `import_${sanitized}`;
   }
-}
-
-/**
- * Check if a job with the given ID is currently in the queue
- * (waiting, active, or delayed - not completed or failed)
- */
-export async function isJobInQueue<T>(queue: Queue<T>, jobId: string): Promise<boolean> {
-  const job = await queue.getJob(jobId);
-
-  if (!job) return false;
-
-  const state = await job.getState();
-
-  return state === "waiting" || state === "active" || state === "delayed";
 }
 
 /**
@@ -86,27 +68,5 @@ export async function removeRetainedTerminalJob<T>(
     return true;
   } catch (err) {
     throw new Error(`Could not remove retained job ${jobId}`, { cause: err });
-  }
-}
-
-export async function withTimeout<T>(
-  operation: () => Promise<T>,
-  timeoutMs: number,
-  operationName: string
-): Promise<T> {
-  let timeoutId: NodeJS.Timeout | null = null;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new OperationTimeoutError(operationName, timeoutMs));
-    }, timeoutMs);
-  });
-
-  try {
-    return await Promise.race([operation(), timeoutPromise]);
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
   }
 }

@@ -14,12 +14,6 @@ import { SharedRecipePageDesktop } from "./components/shared-recipe-page-desktop
 import { SharedRecipePageMobile } from "./components/shared-recipe-page-mobile";
 import { PublicRecipeProvider } from "./public/public-recipe-context";
 
-type Props = {
-  params: Promise<{
-    token: string;
-  }>;
-};
-
 function SharedRecipePageContent({ token }: { token: string }) {
   const { recipe, isLoading, error } = sharedRecipeShareHooks.useSharedRecipeQuery(token);
   const t = useTranslations("recipes.detail");
@@ -48,7 +42,7 @@ function SharedRecipePageContent({ token }: { token: string }) {
     </PublicRecipeProvider>
   );
 }
-export default function SharedRecipePage({ params }: Props) {
+export default function SharedRecipePage({ params }: PageProps<"/share/[token]">) {
   const { token } = use(params);
 
   return <SharedRecipePageContent token={token} />;

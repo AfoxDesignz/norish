@@ -474,7 +474,7 @@ export async function markAllDoneInStore(
   }
 
   return await db.transaction(async (trx) => {
-    const updatedRows = [];
+    const updatedRows: (typeof groceries.$inferSelect)[] = [];
 
     for (const grocery of groceriesToMark) {
       const whereConditions = [

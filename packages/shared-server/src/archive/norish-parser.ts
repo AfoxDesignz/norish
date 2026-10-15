@@ -177,6 +177,8 @@ export type ParsedNorishRecipe = {
   droppedCuisines: string[];
   importedRating?: number;
   importedFavorite?: boolean;
+  /** Titles of the cookbooks the exporter filed the recipe under */
+  cookbooks: string[];
 };
 
 /**
@@ -230,6 +232,34 @@ async function rehomeMediaReference(
 }
 
 /**
+ * Attach cuisine names only where the receiving vocabulary already knows them
+ * (lowercased name → cuisine id), and say which were dropped: an archive
+ * never extends a vocabulary its administrator owns (ADR-0022).
+ */
+export function matchCuisineNames(
+  names: readonly string[],
+  cuisineIdsByName: ReadonlyMap<string, string>
+): { cuisineIds: string[]; droppedCuisines: string[] } {
+  const cuisineIds = new Set<string>();
+  const droppedCuisines: string[] = [];
+  const seenDropped = new Set<string>();
+
+  for (const name of names) {
+    const key = name.trim().toLowerCase();
+    const id = cuisineIdsByName.get(key);
+
+    if (id) {
+      cuisineIds.add(id);
+    } else if (key && !seenDropped.has(key)) {
+      seenDropped.add(key);
+      droppedCuisines.push(name.trim());
+    }
+  }
+
+  return { cuisineIds: [...cuisineIds], droppedCuisines };
+}
+
+/**
  * Map a `recipe.json` payload to the canonical insert shape.
  *
  * Cuisine names resolve case-insensitively against the target instance's
@@ -261,6 +291,7 @@ export async function parseNorishRecipeToDTO(
     authorName: _authorName,
     rating,
     favorite,
+    cookbooks,
     steps,
     image: wireImage,
     images: wireImages,
@@ -268,25 +299,7 @@ export async function parseNorishRecipeToDTO(
     ...rest
   } = parsed.data;
 
-  const cuisineIds = new Set<string>();
-  const droppedCuisines: string[] = [];
-  const seenDropped = new Set<string>();
-
-  for (const name of cuisineNames) {
-    const key = name.trim().toLowerCase();
-    const id = cuisineIdsByName.get(key);
-
-    if (id) {
-      cuisineIds.add(id);
-    } else if (!seenDropped.has(key)) {
-      seenDropped.add(key);
-      droppedCuisines.push(name.trim());
-    }
-  }
-
-  const image = await rehomeMediaReference(recipeFolder, wireImage, (bytes) =>
-    saveImageBytes(bytes, recipeId)
-  );
+  const { cuisineIds, droppedCuisines } = matchCuisineNames(cuisineNames, cuisineIdsByName);
 
   const images: Array<{ image: string; order: number; generated?: boolean }> = [];
 
@@ -305,6 +318,16 @@ export async function parseNorishRecipeToDTO(
         ...(galleryImage.generated === true ? { generated: true } : {}),
       });
     }
+  }
+
+  // The hero is the gallery's primary, so it only stands alone in an archive
+  // written before recipes had a gallery.
+  if (images.length === 0) {
+    const hero = await rehomeMediaReference(recipeFolder, wireImage, (bytes) =>
+      saveImageBytes(bytes, recipeId)
+    );
+
+    if (hero) images.push({ image: hero, order: 0 });
   }
 
   const rehomedSteps: FullRecipeInsertDTO["steps"] = [];
@@ -354,8 +377,7 @@ export async function parseNorishRecipeToDTO(
   const dto: FullRecipeInsertDTO = {
     ...rest,
     id: recipeId,
-    cuisines: [...cuisineIds],
-    image,
+    cuisines: cuisineIds,
     images,
     videos,
     steps: rehomedSteps,
@@ -366,5 +388,6 @@ export async function parseNorishRecipeToDTO(
     droppedCuisines,
     importedRating: rating,
     importedFavorite: favorite,
+    cookbooks,
   };
 }

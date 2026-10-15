@@ -21,23 +21,11 @@ export function ProviderButton({
 }: ProviderButtonProps) {
   const t = useTranslations("auth.provider");
   const handleSignIn = async () => {
-    const id = providerId.toLowerCase();
-
-    // GitHub and Google use signIn.social(), OIDC uses signIn.oauth2()
-    if (id === "github" || id === "google") {
-      await signIn.social({
-        provider: id,
-        callbackURL: callbackUrl,
-        errorCallbackURL: "/auth-error",
-      });
-    } else {
-      // Generic OAuth (OIDC) via genericOAuth plugin
-      await signIn.oauth2({
-        providerId,
-        callbackURL: callbackUrl,
-        errorCallbackURL: "/auth-error",
-      });
-    }
+    await signIn.social({
+      provider: providerId.toLowerCase(),
+      callbackURL: callbackUrl,
+      errorCallbackURL: "/auth-error",
+    });
   };
   return (
     <Button fullWidth className="h-11 gap-3" onPress={handleSignIn} variant="tertiary">

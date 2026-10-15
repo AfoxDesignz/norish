@@ -154,12 +154,14 @@ describe("ingredient uses", () => {
   it("lists the uses the viewer may see, a recipe once, and counts the rest", async () => {
     expect(
       await listIngredientUses(
-        { userId: me.id, userIds: [me.id], householdUserIds: null, isServerAdmin: false },
+        { userId: me.id, householdUserIds: null, isServerAdmin: false },
         chickenId
       )
     ).toEqual({
       recipes: [{ id: recipeId, name: "Saté" }],
-      groceries: [{ name: "kipfilet met de hand", done: true, recurring: false }],
+      groceries: [
+        { id: expect.any(String), name: "kipfilet met de hand", done: true, recurring: false },
+      ],
       pantry: true,
       elsewhere: 1,
     });

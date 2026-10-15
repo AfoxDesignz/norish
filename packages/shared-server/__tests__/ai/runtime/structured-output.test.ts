@@ -17,7 +17,7 @@
  */
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import type { AIConfig } from "@norish/config/zod/server-config";
@@ -52,6 +52,8 @@ interface CapturedRequest {
 
 let captured: CapturedRequest[] = [];
 let replies: (() => { status: number; body: unknown })[] = [];
+/** Leaves every request unanswered, as a model still thinking does. */
+let holdReplies = false;
 
 /** The answer the model gives when it plays along, with the usage it reports. */
 function tagged(
@@ -96,6 +98,7 @@ const server = createServer((req, res) => {
   req.on("data", (chunk) => chunks.push(chunk as Buffer));
   req.on("end", () => {
     captured.push({ body: JSON.parse(Buffer.concat(chunks).toString() || "{}") });
+    if (holdReplies) return;
 
     const next = replies.length > 1 ? replies.shift() : replies[0];
     const { status, body } = (next ?? (() => tagged()))();
@@ -144,13 +147,10 @@ function responseFormats(): unknown[] {
 
 beforeEach(() => {
   captured = [];
+  holdReplies = false;
   replies = [() => tagged()];
   mockGetAIConfig.mockResolvedValue(aiConfig());
   mockGetPrompts.mockResolvedValue({});
-});
-
-afterEach(() => {
-  vi.clearAllMocks();
 });
 
 describe("an endpoint that serves structured output", () => {
@@ -375,5 +375,21 @@ describe("an estimate of a request", () => {
     // An empty prompt still sends the system message and the schema.
     expect(await estimate([])).toBeGreaterThan(20);
     expect(captured).toHaveLength(0);
+  });
+});
+
+describe("the job's abort signal", () => {
+  it("ends the request in flight when the job is stopped, and the job asks nothing more", async () => {
+    holdReplies = true;
+    const job = new AbortController();
+    const ledger = createModelUseLedger(job.signal);
+    const asked = runWithModelUseLedger(ledger, generate);
+
+    await vi.waitFor(() => expect(captured).toHaveLength(1));
+    job.abort("Cancelled by an administrator");
+
+    await expect(asked).rejects.toThrow();
+    await expect(runWithModelUseLedger(ledger, generate)).rejects.toThrow();
+    expect(captured).toHaveLength(1);
   });
 });

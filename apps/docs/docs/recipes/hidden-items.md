@@ -1,30 +1,26 @@
 ---
 sidebar_position: 8
 title: Hidden Items
-description: What UI elements to show or not.
+description: Hide parts of the recipe page you don't use.
 ---
 
 # Hidden Items
 
-The recipe page displays a lot of information, not every user wants to see the same settings.
-And not every device needs the same information density, for this reason a lot of elements can be hidden.
-By default everything is **enabled** what you disable is on a per device basis.
+Under **Settings => User => Hidden items** you can hide parts of the recipe
+page. Everything shows by default, and your choice is kept separately for phone
+and desktop.
 
-## Hiding items
+- **Provenance**: the provenance card. The flag beside the title stays.
+- **Nutrition**: the nutrition card.
+- **Notes**: the notes card.
+- **Ratings**: the rating card.
+- **Favorites**: the heart and the favorites filter.
+- **Ingredient conversion**: the metric and US conversion menu.
+- **Recipe timers**: timers Norish finds in the steps.
+- **Cookbooks**: the cookbooks card at the end of a recipe.
+- **Ingredient icons**: see [Ingredient icons](../groceries/ingredient-icons.md).
 
-Under Settings => User => **Hidden items** you can hide UI elements.
-The following items can be hidden:
-
-- **Provenance**, the Recipe Provenance section. Flags beside the titles do remain;
-- **Nutrition**, the Nutrition Information section;
-- **Notes**, the notes section on the recipe page;
-- **Ratings**, the rating section on the recipe page;
-- **Favorites**, the heart icon and the favorites filter;
-- **Ingredient conversion**, the measurement conversion control;
-- **Recipe timers**, the automatic timer detection in recipe steps;
-- **Ingredient icons**, The ingredient icons [Ingredient icons](../groceries/ingredient-icons.md).
-
-Hiding items does not change the data stored.
+Hiding something doesn't delete any data.
 
 ![The Hidden Items control in user settings](/img/screenshots/hidden-items-settings.png)
 ![A recipe page with Recipe Provenance, Nutrition Information and notes hidden](/img/screenshots/hidden-items-recipe.jpg)

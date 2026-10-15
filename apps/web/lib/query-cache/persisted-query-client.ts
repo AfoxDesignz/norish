@@ -27,6 +27,10 @@ import {
   persistQueryClientSubscribe,
 } from "@tanstack/query-persist-client-core";
 import { QueryClient } from "@tanstack/react-query";
+import { createTRPCClient } from "@trpc/client";
+import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
+
+import type { AppRouter } from "@norish/trpc/client";
 
 /** Discard a restored cache older than this (ADR: 7-day maxAge). */
 export const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -38,7 +42,7 @@ export const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
  */
 // NEXT_PUBLIC values are intentionally exposed to the browser by Next.js.
 // eslint-disable-next-line no-restricted-properties
-export const CACHE_BUSTER = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0";
+export const CACHE_BUSTER = process.env.NEXT_PUBLIC_APP_VERSION;
 
 /** Placeholder owner before any user is confirmed; never actually persisted. */
 const ANON_OWNER = "__anon__";
@@ -74,7 +78,7 @@ const shouldDehydrateQuery = (query: { state: { data: unknown } }) =>
   query.state.data !== undefined;
 
 function createQueryClient(): QueryClient {
-  return new QueryClient({
+  const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         staleTime: 1000 * 60 * 5,
@@ -93,6 +97,24 @@ function createQueryClient(): QueryClient {
       },
     },
   });
+
+  // Defaults are read when a query is built, so registering them here, before
+  // any read or restore, gives every such entry the offline cache's lifetime
+  // however it got in: the Warm Set, the page the reader opened, or the seed a
+  // create writes Live or Offline.
+  // The reads a reader opens or makes that must outlive a trip Offline: a recipe
+  // and a cookbook (ADR-0008). tRPC builds their path keys, so each matches every
+  // id; the proxy only names keys and never sends a request.
+  const keys = createTRPCOptionsProxy<AppRouter>({
+    client: createTRPCClient<AppRouter>({ links: [] }),
+    queryClient,
+  });
+
+  for (const pathKey of [keys.recipes.get.pathKey(), keys.cookbooks.get.pathKey()]) {
+    queryClient.setQueryDefaults(pathKey, { gcTime: CACHE_MAX_AGE_MS });
+  }
+
+  return queryClient;
 }
 
 export interface CacheManager {

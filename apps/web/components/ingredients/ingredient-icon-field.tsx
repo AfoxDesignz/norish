@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { useTRPC } from "@/app/providers/trpc-provider";
-import { usePanelPortalContainer } from "@/components/Panel/Panel";
+import { PanelPortal } from "@/components/Panel/Panel";
 import { cssAIIconColor } from "@/config/css-tokens";
 import { usePermissionsContext } from "@/context/permissions-context";
 import { showSafeErrorToast } from "@/lib/ui/safe-error-toast";
@@ -44,8 +44,7 @@ export function IngredientIconField({
   const t = useTranslations("settings.ingredients.icon");
   const tIngredients = useTranslations("settings.ingredients");
   const trpc = useTRPC();
-  const portalContainer = usePanelPortalContainer();
-  const picker = useRef<HTMLInputElement>(null);
+  const pickerRef = useRef<HTMLInputElement>(null);
   const upload = useMutation(trpc.ingredients.uploadIcon.mutationOptions());
   const generate = useMutation(trpc.ingredients.generateIcon.mutationOptions());
   const { canDrawImages } = usePermissionsContext();
@@ -107,7 +106,7 @@ export function IngredientIconField({
   return (
     <>
       <input
-        ref={picker}
+        ref={pickerRef}
         accept={ICON_PICTURE_MIME_TYPES.join(",")}
         className="hidden"
         data-testid="ingredient-icon-file"
@@ -128,40 +127,42 @@ export function IngredientIconField({
         >
           {icon}
         </Dropdown.Trigger>
-        <Dropdown.Popover UNSTABLE_portalContainer={portalContainer} className="bg-overlay">
-          <Dropdown.Menu aria-label={t("change")}>
-            <Dropdown.Item
-              id="upload"
-              textValue={t("upload")}
-              onAction={() => picker.current?.click()}
-            >
-              <ArrowUpTrayIcon className="size-4" />
-              <Label>{t("upload")}</Label>
-            </Dropdown.Item>
-            {canDrawImages ? (
+        <PanelPortal>
+          <Dropdown.Popover className="bg-overlay">
+            <Dropdown.Menu aria-label={t("change")}>
               <Dropdown.Item
-                id="generate"
-                textValue={t("generate")}
-                onAction={() => void generateIcon()}
+                id="upload"
+                textValue={t("upload")}
+                onAction={() => pickerRef.current?.click()}
               >
-                <SparklesIcon className={`size-4 ${cssAIIconColor}`} />
-                <Label>{t("generate")}</Label>
+                <ArrowUpTrayIcon className="size-4" />
+                <Label>{t("upload")}</Label>
               </Dropdown.Item>
-            ) : null}
-            {hasOwn ? (
-              <Dropdown.Item
-                className="text-danger"
-                id="remove"
-                textValue={t("remove")}
-                variant="danger"
-                onAction={() => onDraftChange(item.ownIcon ? null : undefined)}
-              >
-                <TrashIcon className="size-4" />
-                <Label>{t("remove")}</Label>
-              </Dropdown.Item>
-            ) : null}
-          </Dropdown.Menu>
-        </Dropdown.Popover>
+              {canDrawImages ? (
+                <Dropdown.Item
+                  id="generate"
+                  textValue={t("generate")}
+                  onAction={() => void generateIcon()}
+                >
+                  <SparklesIcon className={`size-4 ${cssAIIconColor}`} />
+                  <Label>{t("generate")}</Label>
+                </Dropdown.Item>
+              ) : null}
+              {hasOwn ? (
+                <Dropdown.Item
+                  className="text-danger"
+                  id="remove"
+                  textValue={t("remove")}
+                  variant="danger"
+                  onAction={() => onDraftChange(item.ownIcon ? null : undefined)}
+                >
+                  <TrashIcon className="size-4" />
+                  <Label>{t("remove")}</Label>
+                </Dropdown.Item>
+              ) : null}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </PanelPortal>
       </Dropdown>
     </>
   );

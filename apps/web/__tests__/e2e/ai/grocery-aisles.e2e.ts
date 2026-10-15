@@ -56,7 +56,9 @@ async function addGrocery(
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.getByText(shown).first()).toBeVisible();
   await page.getByRole("button", { name: "Close panel" }).click();
-  await expect(page.getByRole("dialog")).toBeHidden();
+  // None left, rather than one hidden: the Store picker's popover can still be
+  // leaving while the panel is, and then two dialogs are on the page at once.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 
 /** The Store's block on the list, whichever view is showing. */
@@ -68,7 +70,7 @@ function storeBlock(storeName: string = STORE) {
 }
 
 /** The same rows regardless of order: new rows land at the top, and order is not what these are about. */
-const sorted = (names: readonly string[]) => [...names].sort();
+const sorted = (names: readonly string[]) => [...names].sort((a, b) => a.localeCompare(b));
 
 /** Every grocery row of the Store's block, top to bottom. */
 async function rowsOf(storeName: string = STORE): Promise<string[]> {
@@ -138,7 +140,7 @@ async function fileFromPanel(name: string, aisleName: string): Promise<void> {
   await field.getByRole("button").click();
   await page.getByRole("option", { name: aisleName, exact: true }).click();
   await page.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 
 /** Switch the grouped list on or off from the view menu; the page says which it shows. */
@@ -147,9 +149,16 @@ async function setGrouped(on: boolean): Promise<void> {
   const current = await shown.getAttribute("data-grocery-grouping");
 
   if ((current === "grouped") === on) return;
+  // The choice is a device preference written to the profile: a navigation
+  // straight after would abort the write and reload the old choice.
+  const saved = page.waitForResponse(
+    (response) => response.url().includes("user.setDevicePreferences") && response.ok()
+  );
+
   await page.getByRole("button", { name: "View Mode" }).click();
   await page.getByRole("menuitem", { name: /Group ingredients/ }).click();
   await expect(shown).toHaveAttribute("data-grocery-grouping", on ? "grouped" : "flat");
+  await saved;
 }
 
 /** Open the Store in the store editor. */
@@ -176,7 +185,7 @@ async function closeStoreManager(): Promise<void> {
     .getByRole("dialog", { name: "Manage Stores" })
     .getByRole("button", { name: "Close panel" })
     .click();
-  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 
 test("a Store given two aisles shows both headings, with the list unchanged above them", async () => {
@@ -264,7 +273,7 @@ test("filing a name from the panel moves the row and its same-named sibling, her
   await page.getByText("komkommer", { exact: true }).first().click();
   await expect(page.getByTestId("aisle-selector").getByRole("button")).toContainText("No aisle");
   await page.getByRole("button", { name: "Close panel" }).click();
-  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
   await fileFromPanel("kwark", "Zuivel");
   await expect.poll(() => readAisleFiling(STORE, "kwark")).toBe("Zuivel");

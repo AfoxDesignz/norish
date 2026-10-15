@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import JSZip from "jszip";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 // @vitest-environment node
 
@@ -8,6 +9,8 @@ const mockUpdateRecipeWithRefs = vi.fn();
 const mockDashboardRecipe = vi.fn();
 const mockRateRecipe = vi.fn();
 const mockAddFavorite = vi.fn();
+const mockParseMelaArchive = vi.fn();
+const mockParseMelaRecipeToDTO = vi.fn();
 
 vi.mock("node:fs/promises", () => ({
   default: {
@@ -60,6 +63,12 @@ vi.mock("@norish/db/repositories/favorites", () => ({
   addFavorite: mockAddFavorite,
 }));
 
+vi.mock("@norish/db/repositories/cookbooks", () => ({
+  findOwnCookbookIdByTitle: vi.fn(),
+  createCookbook: vi.fn(),
+  addRecipeToCookbook: vi.fn(),
+}));
+
 vi.mock("@norish/db/repositories/cuisines", () => ({
   listCuisines: vi.fn().mockResolvedValue([]),
 }));
@@ -71,8 +80,8 @@ vi.mock("@norish/shared-server/media/storage", () => ({
 }));
 
 vi.mock("@norish/shared-server/archive/mela-parser", () => ({
-  parseMelaArchive: vi.fn(),
-  parseMelaRecipeToDTO: vi.fn(),
+  parseMelaArchive: mockParseMelaArchive,
+  parseMelaRecipeToDTO: mockParseMelaRecipeToDTO,
 }));
 
 vi.mock("@norish/shared-server/archive/mealie-parser", () => ({
@@ -92,6 +101,13 @@ vi.mock("@norish/shared-server/archive/mealie-legacy-parser", () => ({
 vi.mock("@norish/shared-server/archive/tandoor-parser", () => ({
   extractTandoorRecipes: vi.fn(),
   parseTandoorRecipeToDTO: vi.fn(),
+}));
+
+vi.mock("@norish/shared-server/archive/recipe-keeper-parser", () => ({
+  readRecipeKeeperHtml: vi.fn().mockResolvedValue(null),
+  countRecipeKeeperRecipes: vi.fn(),
+  extractRecipeKeeperRecipes: vi.fn(),
+  parseRecipeKeeperRecipeToDTO: vi.fn(),
 }));
 
 vi.mock("@norish/shared-server/archive/paprika-parser", () => ({
@@ -130,18 +146,21 @@ async function* itemsOf(items: unknown[]) {
   }
 }
 
-describe("archive import loop favourite extra", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+let parser: typeof import("@norish/shared-server/archive/parser");
 
+// Loaded once, in a hook: the parser's import graph is heavy, and loaded
+// inside a test it spent that test's 5 s budget on a busy machine.
+beforeAll(async () => {
+  parser = await import("@norish/shared-server/archive/parser");
+});
+
+describe("archive import loop favourite extra", () => {
   it("applies the favourite to a freshly created recipe for the importing user", async () => {
     mockFindExistingRecipe.mockResolvedValue(null);
     mockCreateRecipeWithRefs.mockResolvedValue({ status: "inserted", recipeId: "new-recipe-id" });
     mockDashboardRecipe.mockResolvedValue({ id: "new-recipe-id", name: "Marked Soup" });
 
-    const { importRecipeItems } = await import("@norish/shared-server/archive/parser");
-    const result = await importRecipeItems(
+    const result = await parser.importRecipeItems(
       itemsOf([
         {
           dto: buildDto("new-recipe-id"),
@@ -164,8 +183,7 @@ describe("archive import loop favourite extra", () => {
     mockFindExistingRecipe.mockResolvedValue("existing-recipe-id");
     mockDashboardRecipe.mockResolvedValue({ id: "existing-recipe-id", name: "Marked Soup" });
 
-    const { importRecipeItems } = await import("@norish/shared-server/archive/parser");
-    const result = await importRecipeItems(
+    const result = await parser.importRecipeItems(
       itemsOf([
         { dto: buildDto("archive-recipe-id"), fileName: "recipe_1", importedFavorite: true },
       ]),
@@ -184,9 +202,7 @@ describe("archive import loop favourite extra", () => {
     mockCreateRecipeWithRefs.mockResolvedValue({ status: "inserted", recipeId: "new-recipe-id" });
     mockDashboardRecipe.mockResolvedValue({ id: "new-recipe-id", name: "Marked Soup" });
 
-    const { importRecipeItems } = await import("@norish/shared-server/archive/parser");
-
-    await importRecipeItems(
+    await parser.importRecipeItems(
       itemsOf([{ dto: buildDto("new-recipe-id"), fileName: "recipe_1", importedRating: 3 }]),
       "user-1",
       ["user-1"]
@@ -200,9 +216,7 @@ describe("archive import loop favourite extra", () => {
     mockCreateRecipeWithRefs.mockResolvedValue({ status: "inserted", recipeId: "new-recipe-id" });
     mockDashboardRecipe.mockResolvedValue({ id: "new-recipe-id", name: "Marked Soup" });
 
-    const { importRecipeItems } = await import("@norish/shared-server/archive/parser");
-
-    await importRecipeItems(
+    await parser.importRecipeItems(
       itemsOf([{ dto: buildDto("new-recipe-id"), fileName: "recipe_1", importedFavorite: true }]),
       undefined,
       ["user-1"]
@@ -217,8 +231,7 @@ describe("archive import loop favourite extra", () => {
     mockDashboardRecipe.mockResolvedValue({ id: "new-recipe-id", name: "Marked Soup" });
     mockAddFavorite.mockRejectedValue(new Error("favorites table unavailable"));
 
-    const { importRecipeItems } = await import("@norish/shared-server/archive/parser");
-    const result = await importRecipeItems(
+    const result = await parser.importRecipeItems(
       itemsOf([{ dto: buildDto("new-recipe-id"), fileName: "recipe_1", importedFavorite: true }]),
       "user-1",
       ["user-1"]
@@ -226,5 +239,26 @@ describe("archive import loop favourite extra", () => {
 
     expect(result.imported).toHaveLength(1);
     expect(result.errors).toHaveLength(0);
+  });
+  it("favourites a Mela recipe its archive marks as a favourite", async () => {
+    mockFindExistingRecipe.mockResolvedValue(null);
+    mockCreateRecipeWithRefs.mockResolvedValue({ status: "inserted", recipeId: "new-recipe-id" });
+    mockDashboardRecipe.mockResolvedValue({ id: "new-recipe-id", name: "Marked Soup" });
+    mockParseMelaArchive.mockResolvedValue([
+      { title: "Marked Soup", favorite: true },
+      { title: "Plain Soup", favorite: false },
+    ]);
+    mockParseMelaRecipeToDTO.mockImplementation(async (_raw, recipeId: string) =>
+      buildDto(recipeId)
+    );
+
+    const zip = new JSZip();
+
+    zip.file("recipe.melarecipe", "{}");
+    const zipBytes = Buffer.from(await zip.generateAsync({ type: "uint8array" }));
+
+    await parser.importArchive("user-1", ["user-1"], zipBytes);
+
+    expect(mockAddFavorite).toHaveBeenCalledTimes(1);
   });
 });

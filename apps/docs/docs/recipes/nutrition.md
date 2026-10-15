@@ -1,59 +1,52 @@
 ---
 sidebar_position: 4
 title: Nutrition
-description: Macros in norish
+description: Calories and macros per serving, worked out from the ingredients.
 ---
 
 # Nutrition
 
-If enough data is available norish shows the protein, fats, carbs and calories of a recipe.
-When the source does not state it the macros are worked out from the ingredients.
-This works on every server, with or without [AI](../configuration/ai-provider.md).
+Norish shows calories, protein, fat and carbs per serving. When the source
+doesn't state them, Norish works them out from the ingredients. This works with
+or without [AI](../configuration/ai-provider.md).
 
 ![A recipe's nutrition worked out from its ingredients](/img/screenshots/recipe-nutrition-worked-out.png)
 
-## How it works
+## How lines are counted
 
-Each line of the recipe is turned into grams and counted through the numbers
-per 100 g of its [ingredient](../groceries/ingredients.md):
+Norish turns each ingredient line into grams and uses the
+[ingredient's](../groceries/ingredients.md) values per 100 g.
 
-- A weight (“200 g onion”, “1 lb rice”) is used as is.
-- A count (“2 onions”, “2 large eggs”, “3 cloves garlic”, “1 slice bread”) uses the average
-  a piece weighs
-- A volume (“1 tsp cumin”, “2 tbsp olive oil”, “1 cup milk”, “100 ml stock”)
-  uses its spoon weighs settable in the ingredient panel
-- When the weight is stated in brackets that is used:
-  “1 (15 ounce) can coconut milk”, “1 can (400 g) tomatoes”, “1 tsp (3 g) paprika”.
-- A pinch, a dash or “to taste” is seasoning and never counted.
+- A weight, like `200 g onion` or `1 lb rice`, is used as is.
+- A count, like `2 eggs` or `3 cloves garlic`, uses the weight of one piece.
+- A volume, like `2 tbsp olive oil` or `1 cup milk`, uses the weight of a spoon
+  of that ingredient. A teaspoon is 5 ml, a tablespoon 15 ml and a cup 240 ml.
+- A weight in brackets wins: `1 (15 ounce) can coconut milk`,
+  `1 can (400 g) tomatoes`.
+- A pinch, a dash or "to taste" is not counted.
 
-The nutrition card always shows what is counted and what isn't with the reasoning.
+The total is divided by the servings. The nutrition card lists which lines were
+counted and why the others weren't.
 
-A teaspoon is 5 ml, a tablespoon 15 ml and a cup 240 ml.
+## Where the numbers come from
 
-The total is divided by the recipe's servings to get a per portion estimate.
-
-## The data
-
-Each ingredient has its numbers per 100 g, what one piece weighs and what a
-spoon of it weighs. Open **Settings => Ingredients** and click an ingredient to see the data.
+Open **Settings => Ingredients** and pick an ingredient to see its values per
+100 g, the weight of one piece and the weight of a spoon.
 
 ![An ingredient's nutrition in its panel](/img/screenshots/ingredients-panel-nutrition.png)
 
-The order
+Norish uses the first of these that has numbers:
 
-1. Your (household's) correction.
-2. A food Norish chose for it, where the dataset's usual pick is wrong for
-   cooking: “milk” is whole milk, not skimmed, and “corn” is sweet corn, not
-   dry grain. Marked with: **chosen by Norish**.
-3. The food the ingredient's [Open Food Facts](https://world.openfoodfacts.org)
-   code names in CIQUAL, CALNUT or USDA FoodData Central.
-4. A dataset food with the same name. Marked with: **matched by name**.
-5. The nearest more general food that has numbers: “red onion” borrows from
-   “onion”. Marked with: **from onion**, so filing a food under a [parent](../groceries/ingredients.md#where-the-catalogue-comes-from)
-   gives it nutritional values as well. A few general foods never lend their numbers, because
-   their children differ too much such as: sauces, pure alcohol and fruit.
-
-### The datasets
+1. Your household's correction.
+2. A food Norish picked because the usual match is wrong for cooking, like
+   whole milk for "milk". Marked **chosen by Norish**.
+3. The food that the ingredient's [Open Food Facts](https://world.openfoodfacts.org)
+   entry points to.
+4. A dataset food with the same name. Marked **matched by name**.
+5. A more general food: "red onion" uses "onion". Marked **from onion**. Filing
+   an ingredient under a [parent](../groceries/ingredients.md#catalogue-source)
+   gives it the parent's values. Sauces, pure alcohol and fruit don't pass
+   their values on, because their kinds differ too much.
 
 The datasets are [CIQUAL 2025](https://ciqual.anses.fr) and CALNUT (ANSES),
 [USDA FoodData Central](https://fdc.nal.usda.gov) and
@@ -61,15 +54,15 @@ The datasets are [CIQUAL 2025](https://ciqual.anses.fr) and CALNUT (ANSES),
 
 ## Correcting nutrition
 
-If Norish's numbers don't match what you buy, open **Nutrition** in the
-ingredient's panel and press **Correct**. Anyone in your household can correct
-any ingredient, and corrections are scoped to your household: nobody else sees
-them. Each fact says what Norish has for it now. For each of the numbers per
-100 g, the weight of one piece and the weight of a spoon (in the measure your
-recipes use for it), choose:
+If the numbers don't match what you buy, open **Nutrition** in the ingredient's
+panel and press **Correct**. Anyone in your household can correct any
+ingredient, and only your household sees the correction.
 
-- **No correction**: keep Norish's numbers,
-- **A dataset food**: search the datasets by name, such as “milk semi-skimmed”,
-- **From a label**: type the numbers from a pack.
+For the values per 100 g, the weight of one piece and the weight of a spoon,
+pick one:
+
+- **No correction**: keep Norish's numbers.
+- **A dataset food**: search the datasets, like "milk semi-skimmed".
+- **From a label**: type the numbers from the pack.
 
 ![Correcting what a teaspoon of cumin weighs, from a label](/img/screenshots/ingredients-nutrition-correction.png)

@@ -9,7 +9,7 @@
  */
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AIConfig, DecisionConfig } from "@norish/config/zod/server-config";
 
@@ -157,10 +157,6 @@ beforeEach(() => {
   reply = answered;
   mockGetAIConfig.mockResolvedValue(aiConfig());
   mockGetDecisionConfig.mockResolvedValue(decisionConfig());
-});
-
-afterEach(() => {
-  vi.clearAllMocks();
 });
 
 describe("decide", () => {

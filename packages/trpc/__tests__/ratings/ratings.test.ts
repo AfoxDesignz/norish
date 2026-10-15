@@ -34,7 +34,6 @@ describe("ratings procedures", () => {
   let ctx: ReturnType<typeof createMockAuthedContext>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     ctx = createMockAuthedContext(mockUser, mockHousehold);
   });
 

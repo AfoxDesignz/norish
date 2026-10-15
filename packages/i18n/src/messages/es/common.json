@@ -107,6 +107,11 @@
     "message": "Está olfateando para encontrar adónde querías ir.",
     "imageAlt": "Nora con cara de confusión"
   },
+  "errorPage": {
+    "title": "Algo salió mal.",
+    "message": "Norish encontró un error en esta página.",
+    "retry": "Reintentar"
+  },
   "import": {
     "url": {
       "title": "Importar receta",

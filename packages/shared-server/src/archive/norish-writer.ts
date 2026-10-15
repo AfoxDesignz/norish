@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
 import type { Archiver } from "archiver";
-import archiver from "archiver";
+import { ZipArchive } from "archiver";
 
 import { FullRecipeDTO } from "@norish/shared/contracts";
 import { primaryRecipeImage } from "@norish/shared/lib/recipe-media";
@@ -46,6 +46,8 @@ export type NorishArchiveRecord = {
   rating?: number;
   /** The exporter's own favourite mark — never anyone else's */
   favorite?: boolean;
+  /** Titles of the cookbooks the exporter can see that hold the recipe */
+  cookbooks?: string[];
 };
 
 export type NorishArchiveExporter = {
@@ -106,9 +108,8 @@ export function collectRecipeMediaRefs(recipe: FullRecipeDTO): NorishArchiveMedi
     refs.push({ webPath, archivePath });
   };
 
-  // The hero is the resolved primary, not the deprecated scalar: new rows
-  // no longer carry the scalar at all, and a receiving instance on an older
-  // release reads the hero for its dashboard thumbnail.
+  // The hero is the resolved primary. It travels beside the gallery so a
+  // receiving instance on an older release reads it for its thumbnail.
   const hero = primaryRecipeImage(recipe);
   const heroBasename = localMediaBasename(hero, recipe.id);
 
@@ -154,10 +155,11 @@ export function collectRecipeMediaRefs(recipe: FullRecipeDTO): NorishArchiveMedi
  * unchanged; media that did not make it into the archive is dropped rather
  * than exported as a dead reference.
  *
- * Three export-only fields ride along: the author's display name as
- * attribution (a name and nothing else — no id, no avatar, no email), plus
- * the exporter's own rating and favourite mark. Nobody else's marks and no
- * account data of anyone ever enter the archive (ADR-0022).
+ * Export-only fields ride along: the author's display name as attribution
+ * (a name and nothing else — no id, no avatar, no email), the exporter's own
+ * rating and favourite mark, and the titles of the cookbooks the exporter
+ * can see that hold the recipe. Nobody else's marks and no account data of
+ * anyone ever enter the archive (ADR-0022).
  */
 function buildArchiveRecipe(record: NorishArchiveRecord): NorishArchiveRecipe {
   const recipe = record.recipe;
@@ -252,6 +254,7 @@ function buildArchiveRecipe(record: NorishArchiveRecord): NorishArchiveRecipe {
     authorName: recipe.author?.name ?? null,
     rating: record.rating,
     favorite: record.favorite,
+    cookbooks: record.cookbooks ?? [],
   };
 }
 
@@ -306,7 +309,7 @@ function appendRecord(archive: Archiver, record: NorishArchiveRecord): void {
  * instead of corrupting the download.
  */
 export function streamNorishArchive(input: NorishArchiveInput): Readable {
-  const archive = archiver("zip", { zlib: { level: 6 } });
+  const archive = new ZipArchive({ zlib: { level: 6 } });
 
   archive.append(JSON.stringify(buildManifest(input), null, 2), {
     name: NORISH_ARCHIVE_MANIFEST_FILE,

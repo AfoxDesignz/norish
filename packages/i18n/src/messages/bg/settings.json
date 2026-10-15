@@ -62,7 +62,7 @@
     },
     "archiveImport": {
       "title": "Импортиране на архив с рецепти",
-      "description": "Импортирай рецепти, експортирани от Norish, Mela, Paprika, Mealie или Tandoor."
+      "description": "Импортирай рецепти, експортирани от Norish, Mela, Paprika, Mealie, Tandoor или Recipe Keeper."
     },
     "archiveExport": {
       "title": "Експортиране на архив с рецепти",
@@ -1171,7 +1171,7 @@
         "delayed": "Отложена",
         "completed": "Завършена",
         "failed": "Неуспешна",
-        "paused": "На пауза",
+        "cancelled": "Отменена",
         "prioritized": "С приоритет",
         "unknown": "Неизвестно",
         "hanging": "Блокирала"
@@ -1236,6 +1236,7 @@
       "detail": {
         "title": "Подробности за задачата",
         "notFound": "Задачата не е намерена. Възможно е да е била изчистена.",
+        "cancelledNote": "Администратор отмени тази задача.",
         "sections": {
           "error": "Грешка",
           "pipelineSteps": "Стъпки на обработката",
@@ -1264,6 +1265,8 @@
       },
       "actions": {
         "retry": "Опитай отново",
+        "cancel": "Отмени задачата",
+        "cancelling": "Отменяне…",
         "remove": "Премахни"
       },
       "removeModal": {

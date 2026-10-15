@@ -76,7 +76,6 @@ describe("admin procedures", () => {
   const mockAdmin = createMockAdminUser();
 
   beforeEach(() => {
-    vi.clearAllMocks();
     // Default: admin check returns true for admin users
     isUserServerAdmin.mockImplementation((userId: string) => {
       return Promise.resolve(userId === mockAdmin.id);

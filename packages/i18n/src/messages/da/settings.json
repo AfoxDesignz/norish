@@ -62,7 +62,7 @@
     },
     "archiveImport": {
       "title": "Importer opskriftarkiv",
-      "description": "Importer opskrifter eksporteret fra Norish, Mela, Paprika, Mealie eller Tandoor."
+      "description": "Importer opskrifter eksporteret fra Norish, Mela, Paprika, Mealie, Tandoor eller Recipe Keeper."
     },
     "archiveExport": {
       "title": "Eksportér opskriftsarkiv",
@@ -1171,7 +1171,7 @@
         "delayed": "Delayed",
         "completed": "Completed",
         "failed": "Failed",
-        "paused": "Paused",
+        "cancelled": "Cancelled",
         "prioritized": "Prioritized",
         "unknown": "Unknown",
         "hanging": "Hanging"
@@ -1236,6 +1236,7 @@
       "detail": {
         "title": "Job Details",
         "notFound": "Job not found. It may have been cleaned up.",
+        "cancelledNote": "An administrator cancelled this job.",
         "sections": {
           "error": "Error",
           "pipelineSteps": "Pipeline Steps",
@@ -1264,6 +1265,8 @@
       },
       "actions": {
         "retry": "Retry",
+        "cancel": "Cancel job",
+        "cancelling": "Cancelling…",
         "remove": "Remove"
       },
       "removeModal": {

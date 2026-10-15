@@ -160,7 +160,6 @@ function ownedBy(ownerId: string | null) {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   ingredientsRealtime.reset();
   withPolicy("household");
   relocation.mergeCatalogueIngredients.mockResolvedValue(true);

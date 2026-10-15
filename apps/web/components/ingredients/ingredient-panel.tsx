@@ -123,9 +123,7 @@ export function IngredientPanel({
   const [usesOf, setUsesOf] = useState<{ id: string; name: string } | null>(null);
   const [usesOpen, setUsesOpen] = useState(false);
 
-  useEffect(() => {
-    if (current) setShown(current);
-  }, [current]);
+  if (current && current !== shown) setShown(current);
 
   // Another food asked for, not read yet: nothing, rather than the last one.
   if (!shown || (open && id !== null && shown.id !== id && !current)) return null;
@@ -199,7 +197,7 @@ function IngredientPanelContent({
   const [name, setName] = useState(item.name);
   const [parent, setParent] = useState<DraftParent>(item.parent);
   const [added, setAdded] = useState<string[]>([]);
-  const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(() => new Set());
   const [icon, setIcon] = useState<IconDraft>(undefined);
   // What the row counts: every spelling the food has, and the draft's changes to them.
   const spellingCount = item.aliases.length + hiddenSpellings + added.length - removed.size;
@@ -224,14 +222,14 @@ function IngredientPanelContent({
 
   // A refused save is read back from the server, which would overwrite the
   // draft the viewer still has to fix: that one read leaves the draft alone.
-  const keepDraft = useRef(false);
+  const keepDraftRef = useRef(false);
 
   // A change elsewhere (a housemate's, or AI's) shows in the draft where the
   // viewer has not touched that field; a parent AI suggests fills the draft,
   // for the viewer to keep with Save or dismiss.
   useEffect(() => {
-    if (keepDraft.current) {
-      keepDraft.current = false;
+    if (keepDraftRef.current) {
+      keepDraftRef.current = false;
 
       return;
     }
@@ -261,9 +259,6 @@ function IngredientPanelContent({
     try {
       show();
       await edit();
-      onChanged?.();
-
-      return true;
     } catch (error) {
       void cache.rollback();
       const refusal = refusalOf(error);
@@ -290,6 +285,9 @@ function IngredientPanelContent({
 
       return false;
     }
+    onChanged?.();
+
+    return true;
   };
 
   // The draft's parent is AI's suggestion, not yet saved.
@@ -359,7 +357,7 @@ function IngredientPanelContent({
 
     // A refused draft is the viewer's to fix, so it comes back as it was.
     if (!saved) {
-      keepDraft.current = true;
+      keepDraftRef.current = true;
       setAdded(draft.added);
       setRemoved(draft.removed);
       setName(nextName);
@@ -980,8 +978,8 @@ function IngredientUsesPanel({
           {data && data.groceries.length > 0 ? (
             <Section title={t("groceries")}>
               <ul className="flex flex-col gap-1 text-sm">
-                {data.groceries.map((grocery, index) => (
-                  <li key={index}>
+                {data.groceries.map((grocery) => (
+                  <li key={grocery.id}>
                     {grocery.name}
                     {grocery.done || grocery.recurring ? (
                       <span className="text-muted">

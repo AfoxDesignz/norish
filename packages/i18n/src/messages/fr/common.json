@@ -112,6 +112,11 @@
     "message": "Elle renifle partout pour retrouver où vous vouliez aller.",
     "imageAlt": "Nora a l'air perdue"
   },
+  "errorPage": {
+    "title": "Une erreur s'est produite.",
+    "message": "Norish a rencontré une erreur sur cette page.",
+    "retry": "Réessayer"
+  },
   "import": {
     "url": {
       "title": "Import recette",

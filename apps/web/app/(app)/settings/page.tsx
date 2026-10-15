@@ -1,19 +1,11 @@
-import type { SessionRoleUser } from "@/lib/auth/server-admin";
-import { headers } from "next/headers";
-import { hasServerAdminRole } from "@/lib/auth/server-admin";
-
-import { auth } from "@norish/auth/auth";
+import { readRequestProfile } from "@/lib/request-profile";
 
 import SettingsPageContent from "./components/settings-page-content";
 
 export default async function SettingsPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  // The layout's own session read: hiding the tab is presentation only, since
+  // every admin procedure authorises server-side.
+  const { identity } = await readRequestProfile();
 
-  // Hiding the tab is presentation only — every admin procedure authorises
-  // server-side.
-  const showAdminTab = hasServerAdminRole(session?.user as SessionRoleUser | undefined);
-
-  return <SettingsPageContent showAdminTab={showAdminTab} />;
+  return <SettingsPageContent showAdminTab={identity?.isServerAdmin ?? false} />;
 }

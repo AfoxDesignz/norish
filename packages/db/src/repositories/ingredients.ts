@@ -10,11 +10,7 @@ import type {
   RecipeIngredientsDto,
 } from "@norish/shared/contracts/dto/recipe-ingredient";
 import defaultUnits from "@norish/config/units.default.json";
-import {
-  ServerConfigKeys,
-  UnitsConfigSchema,
-  UnitsMapSchema,
-} from "@norish/config/zod/server-config";
+import { ServerConfigKeys, UnitsConfigSchema } from "@norish/config/zod/server-config";
 import { db } from "@norish/db/drizzle";
 import { dbLogger } from "@norish/db/logger";
 import { getConfig } from "@norish/db/repositories/server-config";
@@ -35,21 +31,6 @@ export async function getUnitsForNormalization(): Promise<UnitsMap> {
 
   if (wrapped.success) {
     return wrapped.data.units;
-  }
-
-  const legacyWrapped =
-    typeof value === "object" && value !== null && "units" in value && "isOverwritten" in value
-      ? UnitsMapSchema.safeParse((value as { units: unknown }).units)
-      : null;
-
-  if (legacyWrapped?.success) {
-    return legacyWrapped.data;
-  }
-
-  const legacy = UnitsMapSchema.safeParse(value);
-
-  if (legacy.success) {
-    return legacy.data;
   }
 
   return defaultUnits as UnitsMap;

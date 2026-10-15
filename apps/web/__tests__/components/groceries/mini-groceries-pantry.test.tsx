@@ -20,6 +20,9 @@ const addPantryIngredient = vi.fn(async () => "kept");
 let pantryLoading = false;
 let pantryUnavailable = false;
 
+let linkedAskedFor: string[][] = [];
+let linkedLines: Array<(typeof INGREDIENTS)[number]> = [];
+
 const INGREDIENTS = [
   {
     id: "i-oil",
@@ -80,11 +83,15 @@ vi.mock("@/components/ingredients/ingredient-icon", () => ({
 }));
 vi.mock("@/hooks/recipes/use-recipe-ingredients", () => ({
   useRecipeIngredients: () => ({
-    ingredients: INGREDIENTS,
+    ingredients: [...INGREDIENTS, ...linkedLines],
     systemUsed: "metric",
     isLoading: false,
   }),
-  useLinkedRecipeIngredients: () => ({ ingredients: [] }),
+  useLinkedRecipeIngredients: (ids: string[]) => {
+    linkedAskedFor.push(ids);
+
+    return { ingredients: [] };
+  },
 }));
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, params?: Record<string, unknown>) =>
@@ -105,7 +112,7 @@ vi.mock("@/components/Panel/Panel", () => {
   Panel.Body = ({ children }: { children: ReactNode }) => <div>{children}</div>;
   Panel.Footer = ({ children }: { children: ReactNode }) => <div>{children}</div>;
 
-  return { default: Panel, usePanelPortalContainer: () => undefined };
+  return { default: Panel, PanelPortal: ({ children }: { children: React.ReactNode }) => children };
 });
 vi.mock("@/components/shared/action-button", () => ({
   ActionButton: ({ children, onPress, isDisabled, action }: any) => (
@@ -148,7 +155,8 @@ const addedNames = () =>
 
 describe("MiniGroceries with a Pantry", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    linkedAskedFor = [];
+    linkedLines = [];
     pantry = [pantryIngredient("Olive oil", "olive oil"), pantryIngredient("salt", "salt")];
     pantryLoading = false;
     pantryUnavailable = false;
@@ -416,5 +424,19 @@ describe("MiniGroceries with a Pantry", () => {
       expect(createGroceriesFromData).not.toHaveBeenCalled();
       expect(onOpenChange).toHaveBeenCalledWith(false);
     });
+  });
+
+  it("asks for the ingredients of each recipe a line links to, once", () => {
+    linkedLines = [
+      { ...INGREDIENTS[2]!, id: "i-sauce", ingredientName: "[Sauce](id:recipe-1)" },
+      {
+        ...INGREDIENTS[2]!,
+        id: "i-two",
+        ingredientName: "[Sauce](id:recipe-1) or [Pesto](id:recipe-2)",
+      },
+    ];
+    render(<MiniGroceries open recipeId="r1" onOpenChange={() => undefined} />);
+
+    expect(linkedAskedFor.at(-1)).toEqual(["recipe-1", "recipe-2"]);
   });
 });

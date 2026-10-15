@@ -87,10 +87,10 @@ export type AddPasteImportJobResult =
  */
 export interface RecipeEnrichmentJobData {
   recipeId: string;
-  /** Unique per accepted enrollment; optional only for retained jobs created before this field existed. */
-  runId?: string;
-  /** Redis-allocated ordering token; optional only for retained jobs created before this field existed. */
-  runSequence?: number;
+  /** Unique per accepted enrollment. */
+  runId: string;
+  /** Redis-allocated ordering token. */
+  runSequence: number;
   kind: RecipeEnrichmentKind;
   userId: string;
   householdKey: string;
@@ -106,6 +106,9 @@ export interface RecipeEnrichmentJobData {
   replaceExisting?: boolean;
 }
 
+/** An enrollment as it is asked for; the producer gives it its run identity. */
+export type RecipeEnrichmentJobInput = Omit<RecipeEnrichmentJobData, "runId" | "runSequence">;
+
 /**
  * One job of the always-on `storeLookup` queue. A match job answers "what does
  * this grocery name mean at this shop"; a refresh job re-reads Shelf Prices
@@ -116,11 +119,8 @@ export type StoreLookupJobData =
   | {
       kind: "match";
       storeId: string;
-      /**
-       * The Ingredient asked about, which the answer is filed under (ADR-0037).
-       * Absent on a job queued before the upgrade, which names only the text.
-       */
-      ingredientId?: string;
+      /** The Ingredient asked about, which the answer is filed under (ADR-0037). */
+      ingredientId: string;
       /** The grocery's name as the list shows it: what the shop is searched for. */
       name: string;
       householdKey: string;

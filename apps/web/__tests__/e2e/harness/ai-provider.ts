@@ -400,7 +400,7 @@ async function handleRequest(
   }
 
   const raw = await readBody(req);
-  let parsed: unknown = null;
+  let parsed: unknown;
 
   try {
     parsed = raw ? JSON.parse(raw) : null;

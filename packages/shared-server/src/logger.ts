@@ -90,6 +90,7 @@ export function redactUrl(raw: string): string {
 
     return url.toString();
   } catch {
+    // eslint-disable-next-line sonarjs/super-linear-regex -- reads a configured connection URL, not outside input; a password may hold a "/" this must still hide
     return raw.replace(/(\/\/)([^@]+)@/, "$1***@");
   }
 }

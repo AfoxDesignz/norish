@@ -4,7 +4,7 @@ import type { TimerKeywordsConfig } from "@norish/config/zod/server-config";
 import {
   ContentIndicatorsSchema,
   IngredientWordsMapSchema,
-  PromptsConfigInputSchema,
+  PromptsConfigSchema,
   RecurrenceConfigSchema,
   ServerConfigKeys,
   TimerKeywordsInputSchema,
@@ -159,20 +159,18 @@ const getPrompts = adminProcedure.query(async () => {
  * never pins prompts the administrator did not change — and reverting a
  * prompt to the default text un-pins it.
  */
-const updatePrompts = adminProcedure
-  .input(PromptsConfigInputSchema)
-  .mutation(async ({ input, ctx }) => {
-    const { overrides } = pruneToOverrides(input, loadDefaultPrompts());
+const updatePrompts = adminProcedure.input(PromptsConfigSchema).mutation(async ({ input, ctx }) => {
+  const overrides = pruneToOverrides(input, loadDefaultPrompts());
 
-    log.info(
-      { userId: ctx.user.id, overriddenFields: Object.keys(overrides) },
-      "Updating prompts config"
-    );
+  log.info(
+    { userId: ctx.user.id, overriddenFields: Object.keys(overrides) },
+    "Updating prompts config"
+  );
 
-    await setConfig(ServerConfigKeys.PROMPTS, overrides, ctx.user.id, false);
+  await setConfig(ServerConfigKeys.PROMPTS, overrides, ctx.user.id, false);
 
-    return { success: true };
-  });
+  return { success: true };
+});
 
 /**
  * Get timer keywords config.

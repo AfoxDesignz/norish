@@ -101,20 +101,39 @@ describe("OAuth sign-in over encrypted emails", () => {
     expect((await findUser(user.id))?.emailVerified).toBe(true);
   });
 
-  it("auto-links another trusted provider once the email is verified", async () => {
+  it.each([
+    ["github", "google"],
+    ["google", "github"],
+    ["oidc", "google"],
+  ])(
+    "never links a %s sign-in to a verified %s user with the same email",
+    async (providerId, existingProvider) => {
+      const { user } = await (
+        await context()
+      ).internalAdapter.createOAuthUser(
+        { email: EMAIL, name: "Ada", emailVerified: true },
+        { providerId: existingProvider, accountId: `${existingProvider}-1` }
+      );
+
+      const result = await signInWith(providerId, `${providerId}-1`);
+
+      expect(result.error).toBe("account not linked");
+      expect(await providersOf(user.id)).toEqual([existingProvider]);
+    }
+  );
+
+  it("still signs in a provider that is already linked", async () => {
     const { user } = await (
       await context()
     ).internalAdapter.createOAuthUser(
-      { email: EMAIL, name: "Ada", emailVerified: false },
-      { providerId: "google", accountId: "google-1" }
+      { email: EMAIL, name: "Ada", emailVerified: true },
+      { providerId: "github", accountId: "github-1" }
     );
 
-    await signInWith("google", "google-1");
     const result = await signInWith("github", "github-1");
 
     expect(result.error).toBeNull();
     expect(result.data?.user.id).toBe(user.id);
-    expect(await providersOf(user.id)).toEqual(["github", "google"]);
   });
 
   it("refuses to link a provider to a password account, whose email nobody verified", async () => {

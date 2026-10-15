@@ -2,7 +2,7 @@ import { useCallback } from "react";
 
 export type ScrollMeasurement = {
   index: number;
-  key: string | number;
+  key: string | number | bigint;
   start: number;
   end: number;
   size: number;

@@ -1,59 +1,56 @@
 ---
 sidebar_position: 5
 title: Recipe enrichment
-description: Auto tagging, allergy indicators, Nutrition estimates, image generation.
+description: Let AI add tags, allergies, categories, nutrition, provenance, step ingredients and images.
 ---
 
 # Recipe enrichment
 
-When your the instance has AI enabled, it can automatically do the following actions:
+With AI set up, Norish can fill in a recipe for you:
 
-- **Tagging**:
-- **Allergy indications**: These are tags that match allergies you or you household members have set
-- **Meal categories**: Breakfast, Lunch, Dinner, Snack
-- **Nutrition**: calories, fat, carbs, and protein per serving
-- **[Provenance](./provenance.md)**: where the recipe comes from: its country,
-  region, cuisines, and a short written explanation
-- **[Step ingredients](./step-ingredients.md)**: which ingredient lines each
-  step uses.
-- **Image generation**: an generated photo for recipes that have no
-  image at all. and [image provider](../configuration/ai-provider.md#image-generation) is needed.
+- **Tags**
+- **Allergy tags** for the allergies set in your household
+- **Meal categories**: breakfast, lunch, dinner or snack
+- **Nutrition**: calories, fat, carbs and protein per serving
+- **[Provenance](./provenance.md)**: country, region, cuisines and a short note
+- **[Step ingredients](./step-ingredients.md)**: which ingredients each step
+  uses
+- **Image**: a generated photo for recipes without one, which needs an
+  [image provider](../configuration/ai-provider.md#image-generation)
 
-Enrichtments always run after a recipe has been imported.
+Your administrator chooses which of these run on every new recipe, see
+[Automatic enrichment](../configuration/ai-provider.md#automatic-enrichment).
 
-### Supplied data
+## What enrichment leaves alone
 
-Information you entered yourself, or that the source stated explicitly, outranks automatic enrichment.
-The following rules apply:
+Anything you entered, or that the source stated, wins over an automatic run:
 
-- **Catorization**: Any meal detecxted category stops automatic categorization.
-- **Nutrition estimation** When the source has a complete list of macros no estimation is run.
-  On an incomplete list the estimation is run regardless. When the source matches nothing and Norish
-  has more tan 80% of the database itself the macros are calculated without AI. With less than 80%,
-  the facts Norish does have are sent to the provider to estimate the rest.
-- **Recipe provenance** If the source states anything about this the run is skipped.
-- **Ingredient linking** Ingredient linking is done per step line. Any lines you did yourself are ignored.
-  [Step ingredients](../recipes/step-ingredients.md#letting-ai-fill-the-gaps).
-- **Image generation** For most sources this will be skipped, if anything is present that will be used.
-- **Tags and allergy indications** Are different: for these they append but
-  never remove what is present.
+- **Categories**: a recipe with any meal category is left alone.
+- **Nutrition**: a recipe that states all four values is left alone. Otherwise,
+  when Norish has nutrition data for more than 80% of the ingredients, it works
+  the values out without AI. Below that, the AI estimates what is missing.
+- **Provenance**: only the missing parts are filled in, around what is there.
+- **Step ingredients**: only steps without ingredients get them.
+- **Image**: only recipes without any image get one.
+- **Tags and allergy tags** are only ever added, never removed.
 
-## Individual enrichments
+## Running one yourself
 
-Each of the enrichments can also be run manually under the quick actions menu of a recipe (**⋯**).
+The recipe's actions menu (**⋯**) runs each enrichment on demand, also when the
+automatic switch is off. This only needs an AI provider.
 
 - **Auto-tag**
-- **Detect allergies** shown when your household has allergies configured
-- **Auto-categorize**
-- **Estimate nutrition**
-- **Work out provenance**
-- **Link ingredients to steps**
-- **Generate Picture** needs an
-  [image provider](../configuration/ai-provider.md#image-generation) configured
+- **Detect Allergies**, when your household has allergies set
+- **Auto Categorize**
+- **Estimate Nutrition**
+- **Work Out Provenance**
+- **Link Ingredients to Steps**
+- **Generate Picture**, which needs an
+  [image provider](../configuration/ai-provider.md#image-generation)
 
-These options remain available even when automatic enrichments is off. All that needs to be configured
-is an AI provider.
+A run you start yourself replaces the current categories, nutrition or
+provenance. Step ingredients you linked yourself are kept.
 
 :::warning
-**Generate Picture replaces the recipe's primary image**
+**Generate Picture** replaces the recipe's main image.
 :::

@@ -102,34 +102,37 @@ export function useIngredientSuggestions() {
       cache.dropSuggestions(ids);
       if (patches.size > 0) cache.patchRowsById(patches);
 
-      try {
-        const result = await mutation.mutateAsync({ suggestionIds });
+      const answeredAll = await mutation
+        .mutateAsync({ suggestionIds })
+        .then((result) => {
+          // A refused one does not stop the rest; the first refusal says why.
+          if (result.failed > 0) {
+            toast(t("errors.title"), {
+              description: t("suggestionsFailed", {
+                count: result.failed,
+                reason: t(`errors.${result.refusal ?? "unknown"}`),
+              }),
+              variant: "danger",
+            });
+          }
 
-        // A refused one does not stop the rest; the first refusal says why.
-        if (result.failed > 0) {
-          toast(t("errors.title"), {
-            description: t("suggestionsFailed", {
-              count: result.failed,
-              reason: t(`errors.${result.refusal ?? "unknown"}`),
-            }),
-            variant: "danger",
+          return result.failed === 0;
+        })
+        .catch((error: unknown) => {
+          showSafeErrorToast({
+            title: t("errors.title"),
+            description: t("errors.unknown"),
+            error,
+            context: "ingredients:suggestions",
           });
-        }
 
-        return result.failed === 0;
-      } catch (error) {
-        showSafeErrorToast({
-          title: t("errors.title"),
-          description: t("errors.unknown"),
-          error,
-          context: "ingredients:suggestions",
+          return false;
         });
 
-        return false;
-      } finally {
-        // What the server did replaces the guess, in the background.
-        void cache.rollback();
-      }
+      // What the server did replaces the guess, in the background.
+      void cache.rollback();
+
+      return answeredAll;
     },
     [cache, suggestions, t]
   );

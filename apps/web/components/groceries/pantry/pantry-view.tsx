@@ -67,7 +67,7 @@ export function PantryView() {
   const putOnTheList = usePutOnTheList();
   const [draft, setDraft] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
-  const field = useRef<HTMLInputElement>(null);
+  const fieldRef = useRef<HTMLInputElement>(null);
   const typed = draft.trim();
   const [search] = useDebounceValue(typed, SEARCH_DELAY_MS);
   const catalogue = useQuery({
@@ -101,7 +101,7 @@ export function PantryView() {
     );
     setDraft("");
     // The field is where the next food goes, however the last one was added.
-    field.current?.focus();
+    fieldRef.current?.focus();
   };
 
   const duplicate =
@@ -139,7 +139,7 @@ export function PantryView() {
                 <MagnifyingGlassIcon aria-hidden className="text-muted size-5" />
               </InputGroup.Prefix>
               <InputGroup.Input
-                ref={field}
+                ref={fieldRef}
                 data-testid="pantry-name"
                 maxLength={PANTRY_INGREDIENT_NAME_MAX_LENGTH}
                 placeholder={t("fieldPlaceholder")}

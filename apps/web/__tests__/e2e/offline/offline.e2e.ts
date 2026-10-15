@@ -85,6 +85,7 @@ test.beforeAll(async ({ offlineHarness }) => {
   page = offline.page;
 });
 
+// eslint-disable-next-line sonarjs/assertions-in-tests -- the expect.poll below asserts the warm image landed
 test("a Live visit installs the app shell and warms the Warm Set", async () => {
   // /settings is deliberately NOT a Warm Set surface: every later offline
   // navigation below is a genuinely unseen route in this browser profile.

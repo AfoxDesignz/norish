@@ -172,14 +172,14 @@ function preprocessText(text: string, linkMode: SmartMarkdownLinkMode): string {
 
   if (linkMode === "private") {
     processed = processed.replace(
-      /\[([^\]]+)\]\(id:([a-zA-Z0-9-]+)\)/g,
+      /\[([^[\]]+)\]\(id:([a-zA-Z0-9-]+)\)/g,
       (_, recipeName, recipeId) => {
         return `[${recipeName}](/recipes/${recipeId})`;
       }
     );
   } else {
     processed = processed.replace(
-      /\[([^\]]+)\]\(id:[a-zA-Z0-9-]+\)/g,
+      /\[([^[\]]+)\]\(id:[a-zA-Z0-9-]+\)/g,
       (_: string, recipeName: string) => recipeName
     );
   }

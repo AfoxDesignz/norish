@@ -13,8 +13,11 @@
 
 import { REACHABILITY_DEADLINE_MS } from "./reachability";
 
-/** Public OpenAPI health route (see `packages/trpc` config router). */
-export const HEALTH_PROBE_PATH = "/api/v1/health";
+/**
+ * The public readiness route (see `packages/trpc` config router): Live means
+ * Postgres and Redis answer. A parser outage stops URL imports, not the app.
+ */
+export const HEALTH_PROBE_PATH = "/api/v1/health/ready";
 
 /** Give up on a single probe after this long; a hung request counts as Offline. */
 export const HEALTH_PROBE_TIMEOUT_MS = REACHABILITY_DEADLINE_MS;

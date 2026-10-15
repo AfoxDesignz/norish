@@ -64,10 +64,14 @@ describe("ShareLinksTableCard", () => {
     const shares: RecipeShareInventoryDto[] = [
       {
         id: "share-1",
+        userId: "user-1",
         recipeId: "recipe-1",
         recipeName: "Pasta",
         createdAt: new Date("2026-01-01T00:00:00Z"),
+        updatedAt: new Date("2026-01-01T00:00:00Z"),
         expiresAt: null,
+        revokedAt: null,
+        lastAccessedAt: null,
         status: "active",
         version: 1,
       },

@@ -86,11 +86,12 @@ describe("AIConfigSchema automatic enrichment", () => {
     expect(config.automaticEnrichment.imageGeneration).toBe(false);
   });
 
-  it("drops the legacy fields from the canonical output", () => {
+  it("parses a config stored before 0.20, its old tagging fields left out", () => {
     const config = parse({ autoTaggingMode: "freeform", autoTagAllergies: false });
 
     expect(config).not.toHaveProperty("autoTaggingMode");
     expect(config).not.toHaveProperty("autoTagAllergies");
+    expect(config.tagStrategy).toBe("predefined");
   });
 });
 
@@ -104,55 +105,6 @@ describe("AIConfigSchema automatic ingredients", () => {
       plainName: true,
       icon: false,
     });
-  });
-});
-
-describe("AIConfigSchema legacy migration", () => {
-  it("migrates a disabled tagging mode to automation off with predefined retained", () => {
-    const config = parse({ autoTaggingMode: "disabled" });
-
-    expect(config.automaticEnrichment.autoTagging).toBe(false);
-    expect(config.tagStrategy).toBe("predefined");
-  });
-
-  it.each(["predefined", "predefined_db", "freeform"] as const)(
-    "migrates the %s tagging mode to automation on with the same strategy",
-    (mode) => {
-      const config = parse({ autoTaggingMode: mode });
-
-      expect(config.automaticEnrichment.autoTagging).toBe(true);
-      expect(config.tagStrategy).toBe(mode);
-    }
-  );
-
-  it("migrates the legacy allergy switch directly", () => {
-    expect(parse({ autoTagAllergies: false }).automaticEnrichment.allergyDetection).toBe(false);
-    expect(parse({ autoTagAllergies: true }).automaticEnrichment.allergyDetection).toBe(true);
-  });
-
-  it("leaves the new category and nutrition controls off when upgrading", () => {
-    const config = parse({ autoTaggingMode: "freeform", autoTagAllergies: true });
-
-    expect(config.automaticEnrichment.autoCategorization).toBe(false);
-    expect(config.automaticEnrichment.nutritionEstimation).toBe(false);
-  });
-
-  it("lets canonical values win over legacy ones", () => {
-    const config = parse({
-      autoTaggingMode: "disabled",
-      tagStrategy: "freeform",
-      automaticEnrichment: { autoTagging: true },
-    });
-
-    expect(config.tagStrategy).toBe("freeform");
-    expect(config.automaticEnrichment.autoTagging).toBe(true);
-  });
-
-  it("is idempotent when re-parsing its own output", () => {
-    const once = parse({ autoTaggingMode: "predefined_db", autoTagAllergies: false });
-    const twice = AIConfigSchema.parse(once);
-
-    expect(twice).toEqual(once);
   });
 });
 

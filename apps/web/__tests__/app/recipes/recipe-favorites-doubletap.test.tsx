@@ -63,21 +63,7 @@ vi.mock("@/hooks/recipes/use-worked-out-nutrition", () => ({
 vi.mock("@/app/(app)/recipes/[id]/context", () => ({
   useRecipeContext: () => ({ recipe: stubRecipe }),
   useRecipeContextRequired: () => ({
-    recipe: {
-      id: "r1",
-      name: "Recipe",
-      url: null,
-      description: "desc",
-      categories: [],
-      prepMinutes: 10,
-      cookMinutes: 20,
-      totalMinutes: 30,
-      tags: [],
-      author: null,
-      notes: null,
-      servings: 2,
-      systemUsed: null,
-    },
+    recipe: stubRecipe,
     currentServings: 2,
     allergies: [],
     allergySet: new Set<string>(),
@@ -197,5 +183,20 @@ describe("recipe pages favorite visibility", () => {
       "data-doubletap-enabled",
       "false"
     );
+  });
+});
+
+describe("recipe page servings", () => {
+  it("leaves a recipe without servings out of the ingredients header on desktop", () => {
+    stubRecipe.servings = 0;
+
+    try {
+      render(<RecipePageDesktop />);
+
+      expect(screen.queryByText("servings-control")).not.toBeInTheDocument();
+      expect(screen.queryByText("0")).not.toBeInTheDocument();
+    } finally {
+      stubRecipe.servings = 2;
+    }
   });
 });

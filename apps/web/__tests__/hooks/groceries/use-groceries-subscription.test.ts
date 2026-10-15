@@ -126,7 +126,6 @@ describe("useGroceriesSubscription", () => {
   });
 
   beforeEach(() => {
-    vi.clearAllMocks();
     // Clear subscription callbacks
     Object.keys(subscriptionCallbacks).forEach((key) => {
       delete subscriptionCallbacks[key];
@@ -171,7 +170,7 @@ describe("useGroceriesSubscription", () => {
 
       // Simulate WebSocket event
       act(() => {
-        subscriptionCallbacks.onCreated(emitPayload({ groceries: [newGrocery] }));
+        subscriptionCallbacks.onCreated!(emitPayload({ groceries: [newGrocery] }));
       });
 
       const cachedData =
@@ -193,7 +192,7 @@ describe("useGroceriesSubscription", () => {
 
       // Try to add the same grocery
       act(() => {
-        subscriptionCallbacks.onCreated(emitPayload({ groceries: [existingGrocery] }));
+        subscriptionCallbacks.onCreated!(emitPayload({ groceries: [existingGrocery] }));
       });
 
       const cachedData =
@@ -231,7 +230,7 @@ describe("useGroceriesSubscription", () => {
       });
 
       act(() => {
-        subscriptionCallbacks.onCreated(emitPayload({ groceries: [newGrocery] }));
+        subscriptionCallbacks.onCreated!(emitPayload({ groceries: [newGrocery] }));
       });
 
       const cachedData =
@@ -256,13 +255,13 @@ describe("useGroceriesSubscription", () => {
       const updatedGrocery = { ...existingGrocery, isDone: true };
 
       act(() => {
-        subscriptionCallbacks.onUpdated(emitPayload({ changedGroceries: [updatedGrocery] }));
+        subscriptionCallbacks.onUpdated!(emitPayload({ changedGroceries: [updatedGrocery] }));
       });
 
       const cachedData =
         queryClient.getQueryData<ReturnType<typeof createMockGroceriesData>>(mockQueryKey);
 
-      expect(cachedData?.groceries[0].isDone).toBe(true);
+      expect(cachedData?.groceries[0]!.isDone).toBe(true);
     });
 
     it("leaves non-updated groceries unchanged", async () => {
@@ -279,7 +278,7 @@ describe("useGroceriesSubscription", () => {
       const updatedGrocery1 = { ...grocery1, name: "Whole Milk" };
 
       act(() => {
-        subscriptionCallbacks.onUpdated(emitPayload({ changedGroceries: [updatedGrocery1] }));
+        subscriptionCallbacks.onUpdated!(emitPayload({ changedGroceries: [updatedGrocery1] }));
       });
 
       const cachedData =
@@ -303,14 +302,14 @@ describe("useGroceriesSubscription", () => {
       });
 
       act(() => {
-        subscriptionCallbacks.onDeleted(emitPayload({ groceryIds: ["g1"] }));
+        subscriptionCallbacks.onDeleted!(emitPayload({ groceryIds: ["g1"] }));
       });
 
       const cachedData =
         queryClient.getQueryData<ReturnType<typeof createMockGroceriesData>>(mockQueryKey);
 
       expect(cachedData?.groceries).toHaveLength(1);
-      expect(cachedData?.groceries[0].id).toBe("g2");
+      expect(cachedData?.groceries[0]!.id).toBe("g2");
     });
 
     it("handles deleting multiple groceries", async () => {
@@ -326,14 +325,14 @@ describe("useGroceriesSubscription", () => {
       });
 
       act(() => {
-        subscriptionCallbacks.onDeleted(emitPayload({ groceryIds: ["g1", "g3"] }));
+        subscriptionCallbacks.onDeleted!(emitPayload({ groceryIds: ["g1", "g3"] }));
       });
 
       const cachedData =
         queryClient.getQueryData<ReturnType<typeof createMockGroceriesData>>(mockQueryKey);
 
       expect(cachedData?.groceries).toHaveLength(1);
-      expect(cachedData?.groceries[0].id).toBe("g2");
+      expect(cachedData?.groceries[0]!.id).toBe("g2");
     });
   });
 
@@ -351,7 +350,7 @@ describe("useGroceriesSubscription", () => {
       const newRecurring = createMockRecurringGrocery({ id: "r1", name: "Weekly Eggs" });
 
       act(() => {
-        subscriptionCallbacks.onRecurringCreated(
+        subscriptionCallbacks.onRecurringCreated!(
           emitPayload({
             grocery: newGrocery,
             recurringGrocery: newRecurring,
@@ -385,7 +384,7 @@ describe("useGroceriesSubscription", () => {
       const updatedRecurring = { ...recurring, name: "Weekly Organic Eggs" };
 
       act(() => {
-        subscriptionCallbacks.onRecurringUpdated(
+        subscriptionCallbacks.onRecurringUpdated!(
           emitPayload({
             grocery: updatedGrocery,
             recurringGrocery: updatedRecurring,
@@ -396,8 +395,8 @@ describe("useGroceriesSubscription", () => {
       const cachedData =
         queryClient.getQueryData<ReturnType<typeof createMockGroceriesData>>(mockQueryKey);
 
-      expect(cachedData?.groceries[0].name).toBe("Organic Eggs");
-      expect(cachedData?.recurringGroceries[0].name).toBe("Weekly Organic Eggs");
+      expect(cachedData?.groceries[0]!.name).toBe("Organic Eggs");
+      expect(cachedData?.recurringGroceries[0]!.name).toBe("Weekly Organic Eggs");
     });
   });
 
@@ -415,7 +414,7 @@ describe("useGroceriesSubscription", () => {
       });
 
       act(() => {
-        subscriptionCallbacks.onRecurringDeleted(emitPayload({ recurringGroceryId: "r1" }));
+        subscriptionCallbacks.onRecurringDeleted!(emitPayload({ recurringGroceryId: "r1" }));
       });
 
       const cachedData =
@@ -441,7 +440,7 @@ describe("useGroceriesSubscription", () => {
       });
 
       act(() => {
-        subscriptionCallbacks.onStale(emitPayload({ reason: "Grocery was updated elsewhere" }));
+        subscriptionCallbacks.onStale!(emitPayload({ reason: "Grocery was updated elsewhere" }));
       });
 
       expect(invalidateSpy).toHaveBeenCalled();
@@ -461,7 +460,7 @@ describe("useGroceriesSubscription", () => {
       });
 
       act(() => {
-        subscriptionCallbacks.onFailed(emitPayload({ reason: "Failed to save grocery" }));
+        subscriptionCallbacks.onFailed!(emitPayload({ reason: "Failed to save grocery" }));
       });
 
       expect(toast).toHaveBeenCalledWith(

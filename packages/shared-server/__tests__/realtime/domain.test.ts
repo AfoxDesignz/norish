@@ -55,7 +55,6 @@ function lastPublished(): RealtimeEventEnvelope {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   config.NODE_ENV = "development";
   redis.realtimePublish = undefined;
   getPublisherClient.mockResolvedValue(redis);

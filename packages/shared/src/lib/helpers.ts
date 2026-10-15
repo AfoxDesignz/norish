@@ -12,9 +12,35 @@ import {
   flattenForLibrary,
 } from "@norish/shared/lib/unit-localization";
 
+/** A span holding no bracket of its own kind, per set of bracket kinds stripped. */
+const INNERMOST_BRACKETED = {
+  roundOrSquare: /\([^()]*\)|\[[^[\]]*\]/g,
+  roundSquareOrCurly: /\([^()]*\)|\[[^[\]]*\]|\{[^{}]*\}/g,
+} as const;
+
+/**
+ * The text with every bracketed span of `kinds` replaced by a space, brackets
+ * inside brackets included. Each pass peels one level off the innermost
+ * spans; a bracket that never closes stays.
+ */
+// ponytail: one pass per nesting level, fine for names; a depth scanner if long nested text ever comes through
+export function stripBracketed(
+  text: string,
+  kinds: keyof typeof INNERMOST_BRACKETED = "roundOrSquare"
+): string {
+  let previous: string;
+
+  do {
+    previous = text;
+    text = text.replace(INNERMOST_BRACKETED[kinds], " ");
+  } while (text !== previous);
+
+  return text;
+}
+
 export function stripHtmlTags(input: string): string {
   // 1. Remove HTML tags first (replace with space to preserve word boundaries)
-  const withoutTags = input.replace(/<[^>]*>/g, " ");
+  const withoutTags = input.replace(/<[^<>]*>/g, " ");
 
   // 2. Decode HTML entities
   const decoded = decode(withoutTags);
@@ -26,7 +52,7 @@ export function stripHtmlTags(input: string): string {
   const trimmed = normalized.trim();
 
   // 5. Remove space before closing punctuation at end (including Unicode quotes)
-  const cleaned = trimmed.replace(/\s+(["\u201D\u201C\u2019\u2018'»\]\)]+)$/g, "$1");
+  const cleaned = trimmed.replace(/(?<!\s)\s+(["\u201D\u201C\u2019\u2018'»\]\)]+)$/g, "$1");
 
   return cleaned;
 }
@@ -52,6 +78,12 @@ export const parseJsonWithRepair = (input: string): any | null => {
  * word split treats it as a single word.
  */
 const UNIT_PLACEHOLDER = "norishmultiwordunit";
+
+/**
+ * A list bullet a pasted line keeps: a dash, bullet or asterisk, then a space,
+ * or a dash right against the amount (no amount is negative).
+ */
+const LEADING_BULLET = /^\s*(?:[-–—•·*]\s+|[-–—](?=\d))/;
 
 /**
  * Hand `parse-ingredient` a line it can read, by collapsing a multi-word unit
@@ -98,8 +130,12 @@ export function parseIngredientWithDefaults(
   for (const line of lines) {
     if (!line) continue;
 
-    // Normalize comma decimals to periods (European format => US format)
-    const normalizedLine = line.toString().replace(/(\d),(\d)/g, "$1.$2");
+    // Normalize comma decimals to periods (European format => US format), and
+    // take a bullet off, which the parser reads as a range or as the name.
+    const normalizedLine = line
+      .toString()
+      .replace(/(\d),(\d)/g, "$1.$2")
+      .replace(LEADING_BULLET, "");
 
     const collapsed = withMultiWordUnitCollapsed(normalizedLine, multiWordUnits, flatUnits);
 
@@ -274,15 +310,19 @@ const VIDEO_PLATFORM_HOSTS = [
  * routed into the video pipeline.
  */
 export function isVideoUrl(str: string): boolean {
-  if (!isUrl(str)) return false;
+  return isUrl(str) && isOnDomain(str, ...VIDEO_PLATFORM_HOSTS);
+}
 
-  try {
-    const hostname = new URL(str).hostname.toLowerCase();
+/** Whether `hostname` is `domain` or a subdomain of it, matched at a dot boundary. */
+export function isHostOnDomain(hostname: string, domain: string): boolean {
+  return hostname === domain || hostname.endsWith(`.${domain}`);
+}
 
-    return VIDEO_PLATFORM_HOSTS.some((host) => hostname === host || hostname.endsWith(`.${host}`));
-  } catch {
-    return false;
-  }
+/** Whether the URL's host is one of `domains` or a subdomain of one (`instagram.com.example.net` is neither). */
+export function isOnDomain(url: string, ...domains: string[]): boolean {
+  const hostname = URL.parse(url)?.hostname.toLowerCase();
+
+  return !!hostname && domains.some((domain) => isHostOnDomain(hostname, domain));
 }
 
 export const toArr = (v: any) => (Array.isArray(v) ? v : []);
@@ -323,6 +363,11 @@ export function dateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** The text without its trailing slashes, where they are not part of `//` (a bare `https://` keeps both). */
+export function withoutTrailingSlashes(text: string): string {
+  return text.replace(/(?<!\/)\/+$/, "");
+}
+
 /**
  * Normalize URL for consistent deduplication.
  * Removes trailing slashes, normalizes protocol, and strips tracking params.
@@ -332,7 +377,7 @@ export function normalizeUrl(url: string): string {
     const parsed = new URL(url);
 
     // Remove trailing slash from pathname
-    parsed.pathname = parsed.pathname.replace(/\/+$/, "");
+    parsed.pathname = withoutTrailingSlashes(parsed.pathname);
 
     // Remove common tracking params
     parsed.searchParams.delete("utm_source");

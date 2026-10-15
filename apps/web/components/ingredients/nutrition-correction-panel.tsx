@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useTRPC } from "@/app/providers/trpc-provider";
-import Panel, { usePanelPortalContainer } from "@/components/Panel/Panel";
+import Panel, { PanelPortal } from "@/components/Panel/Panel";
 import { ActionButton, ActionButtonGroup } from "@/components/shared/action-button";
 import { showSafeErrorToast } from "@/lib/ui/safe-error-toast";
 import {
@@ -511,7 +511,6 @@ function DatasetFoodPicker({
   const format = useFormatter();
   const trpc = useTRPC();
   // Inside a Panel the options must portal into it, or vaul swallows every tap (#511).
-  const portalContainer = usePanelPortalContainer();
   const [term, setTerm] = useState(picked?.name ?? "");
   const [search, setSearch] = useState("");
 
@@ -562,13 +561,13 @@ function DatasetFoodPicker({
       inputValue={term}
       items={options}
       menuTrigger="input"
-      selectedKey={picked?.key ?? null}
+      value={picked?.key ?? null}
       variant="secondary"
       onInputChange={(value) => {
         setTerm(value);
         if (picked) onPick(null);
       }}
-      onSelectionChange={(key) => {
+      onChange={(key) => {
         const option = options.find((candidate) => candidate.id === key);
 
         if (!option) return;
@@ -588,29 +587,31 @@ function DatasetFoodPicker({
         placeholder={t("searchFood")}
         variant="secondary"
       />
-      <ComboBox.Popover UNSTABLE_portalContainer={portalContainer}>
-        <ListBox
-          renderEmptyState={() => (
-            <p className="text-muted px-3 py-2 text-sm">
-              {term.trim().length < 2
-                ? t("foodHint")
-                : isFetching || search !== term.trim()
-                  ? t("searchingFoods")
-                  : t("noFoods")}
-            </p>
-          )}
-        >
-          {(option: { id: string; name: string; detail: string }) => (
-            <ListBox.Item
-              data-testid="nutrition-food-option"
-              id={option.id}
-              textValue={option.name}
-            >
-              <FoodOption detail={option.detail}>{option.name}</FoodOption>
-            </ListBox.Item>
-          )}
-        </ListBox>
-      </ComboBox.Popover>
+      <PanelPortal>
+        <ComboBox.Popover>
+          <ListBox
+            renderEmptyState={() => (
+              <p className="text-muted px-3 py-2 text-sm">
+                {term.trim().length < 2
+                  ? t("foodHint")
+                  : isFetching || search !== term.trim()
+                    ? t("searchingFoods")
+                    : t("noFoods")}
+              </p>
+            )}
+          >
+            {(option: { id: string; name: string; detail: string }) => (
+              <ListBox.Item
+                data-testid="nutrition-food-option"
+                id={option.id}
+                textValue={option.name}
+              >
+                <FoodOption detail={option.detail}>{option.name}</FoodOption>
+              </ListBox.Item>
+            )}
+          </ListBox>
+        </ComboBox.Popover>
+      </PanelPortal>
     </ComboBox>
   );
 }

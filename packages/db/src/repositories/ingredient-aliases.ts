@@ -16,10 +16,8 @@ import { isConstraintViolation } from "./constraint-violation";
 
 /**
  * The Ingredient Alias rows the ingredient resolver reads and writes. Nothing
- * but the resolver (in `@norish/shared-server/ingredients`) and the startup
- * backfill calls the writers here: they are the only paths that mint
- * Ingredients or aliases (ADR-0037). The upgrade's carry-over of rows
- * written before aliases existed is `ingredient-backfill`.
+ * but the resolver (in `@norish/shared-server/ingredients`) calls the writers
+ * here: it is the only path that mints Ingredients or aliases (ADR-0037).
  */
 
 /**

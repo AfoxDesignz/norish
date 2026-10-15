@@ -79,11 +79,9 @@ export default function CookingMode({
     adjustedIngredients?.length > 0 ? adjustedIngredients : recipe.recipeIngredients;
   const currentStep = clampStep(activeStep, steps.length);
 
-  useEffect(() => {
-    if (activeStep !== currentStep) {
-      setActiveStep(currentStep);
-    }
-  }, [activeStep, currentStep]);
+  if (activeStep !== currentStep) {
+    setActiveStep(currentStep);
+  }
 
   useEffect(() => {
     if (!isOpen || !isSupported || isActive || wakeLockOwnedRef.current) {
@@ -168,29 +166,26 @@ export default function CookingMode({
       y: event.clientY,
     };
   }, []);
-  const handlePointerUp = useCallback(
-    (event: ReactPointerEvent) => {
-      const start = swipeStartRef.current;
+  const handlePointerUp = useCallback((event: ReactPointerEvent) => {
+    const start = swipeStartRef.current;
 
-      swipeStartRef.current = null;
+    swipeStartRef.current = null;
 
-      if (!start || event.pointerType === "mouse") {
-        return;
-      }
+    if (!start || event.pointerType === "mouse") {
+      return;
+    }
 
-      const deltaX = event.clientX - start.x;
-      const deltaY = event.clientY - start.y;
-      const absX = Math.abs(deltaX);
-      const absY = Math.abs(deltaY);
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
 
-      if (absX > absY && absX > SWIPE_THRESHOLD) {
-        setActiveView(deltaX < 0 ? "ingredients" : "steps");
+    if (absX > absY && absX > SWIPE_THRESHOLD) {
+      setActiveView(deltaX < 0 ? "ingredients" : "steps");
 
-        return;
-      }
-    },
-    [activeView, steps.length]
-  );
+      return;
+    }
+  }, []);
   const dialogProps = {
     activeStep: currentStep,
     activeView,

@@ -81,6 +81,19 @@ const isBuild =
   process.env.NEXT_PHASE === "phase-production-build" ||
   process.env.NEXT_PHASE === "phase-export";
 
+const commaSeparatedList = z
+  .string()
+  .optional()
+  .transform((val) =>
+    val
+      ? val
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : []
+  )
+  .pipe(z.array(z.string()));
+
 const ServerConfigSchema = z.object({
   NODE_ENV: z.enum(["development", "production"]),
 
@@ -90,18 +103,10 @@ const ServerConfigSchema = z.object({
   // Public URL for auth callbacks etc.
   AUTH_URL: z.url().default("http://localhost:3000"),
   // Additional trusted origins (comma-separated URLs) for multi-domain access
-  TRUSTED_ORIGINS: z
-    .string()
-    .optional()
-    .transform((val) =>
-      val
-        ? val
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : []
-    )
-    .pipe(z.array(z.string())),
+  TRUSTED_ORIGINS: commaSeparatedList,
+  // Reverse proxies (IPs or CIDR ranges, comma-separated) whose hops are
+  // skipped in X-Forwarded-For, so the client behind several proxies is found
+  TRUSTED_PROXIES: commaSeparatedList,
   UPLOADS_DIR: z.string().default(defaultUploadsDir),
 
   // Auth endpoint rate limiting. Defaults are the production values; they are
@@ -144,18 +149,7 @@ const ServerConfigSchema = z.object({
     .transform((val) => val === "true" || val === "1")
     .pipe(z.boolean())
     .default(false),
-  OIDC_SCOPES: z
-    .string()
-    .optional()
-    .transform((val) =>
-      val
-        ? val
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : []
-    )
-    .pipe(z.array(z.string())),
+  OIDC_SCOPES: commaSeparatedList,
   OIDC_GROUPS_CLAIM: z.string().default("groups"),
   OIDC_ADMIN_GROUP: z.string().default("norish_admin"),
   OIDC_HOUSEHOLD_GROUP_PREFIX: z.string().default("norish_household_"),
@@ -221,7 +215,11 @@ const ServerConfigSchema = z.object({
   OBSCURA_ENDPOINT: z
     .string()
     .min(1, "OBSCURA_ENDPOINT is required for web scraping")
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- the shipped obscura service answers on the private compose network, without TLS
     .default("ws://obscura:9222"),
+  // Sent as a bearer token. Obscura refuses to listen beyond loopback without
+  // one, so the shipped `obscura` service sets the same value.
+  OBSCURA_CDP_TOKEN: z.string().optional(),
   // How long a URL import waits for the page's `load` event in Obscura.
   OBSCURA_NAVIGATION_TIMEOUT_MS: z.coerce.number().int().positive().default(45000),
 
@@ -236,25 +234,14 @@ const ServerConfigSchema = z.object({
   MAX_VIDEO_FILE_SIZE: z.coerce.number().default(100 * 1024 * 1024), // 100MB
 
   // Redis Configuration
-  REDIS_URL: z.string().url().default("redis://localhost:6379"),
+  REDIS_URL: z.url().default("redis://localhost:6379"),
 
   // Internationalization
   // If invalid locale is specified, falls back to 'en'
   DEFAULT_LOCALE: z.string().default("en"),
   // If not set, all available locales are enabled
   // Can be overridden by admin UI settings stored in database
-  ENABLED_LOCALES: z
-    .string()
-    .optional()
-    .transform((val) =>
-      val
-        ? val
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : []
-    )
-    .pipe(z.array(z.string())),
+  ENABLED_LOCALES: commaSeparatedList,
 });
 
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;

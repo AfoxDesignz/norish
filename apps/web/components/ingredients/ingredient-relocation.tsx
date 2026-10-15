@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Panel from "@/components/Panel/Panel";
 import { ActionButton, ActionButtonGroup } from "@/components/shared/action-button";
 import { PlusIcon } from "@heroicons/react/24/outline";
@@ -40,9 +40,7 @@ export function IngredientRelocationPanel({
   const [shown, setShown] = useState<Relocation | null>(null);
   const asked = relocation ?? shown;
 
-  useEffect(() => {
-    if (relocation) setShown(relocation);
-  }, [relocation]);
+  if (relocation && relocation !== shown) setShown(relocation);
 
   const close = () => {
     setTarget(null);

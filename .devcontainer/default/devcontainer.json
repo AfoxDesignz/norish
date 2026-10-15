@@ -27,6 +27,7 @@
     "AUTH_URL": "http://localhost:3000",
     "DATABASE_URL": "postgres://postgres:norish@db:5432/norish",
     "OBSCURA_ENDPOINT": "ws://obscura:9222",
+    "OBSCURA_CDP_TOKEN": "norish-local-obscura-token-not-for-production",
     "REDIS_URL": "redis://redis:6379"
     // "REACT_NATIVE_PACKAGER_HOSTNAME": "Your host local ip", // Optiional: Use only if the automatic approach is not working for you for some reason, this takes precedence over the .env file 
   },
@@ -34,7 +35,7 @@
     3000,
     8081
   ], // 3000 for web, 8081 for expo
-  "postCreateCommand": "pnpm install",
+  "postCreateCommand": "npm install -g \"$(node -p \"require('./package.json').packageManager\")\" && pnpm install",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -77,7 +78,7 @@
             "pattern": "tooling/*/"
           }
         ],
-        "prettier.prettierPath": "./node_modules/prettier",
+        "prettier.prettierPath": "./tooling/prettier/node_modules/prettier",
         "prettier.requireConfig": true
       }
     }

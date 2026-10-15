@@ -47,7 +47,6 @@ describe("the Pantry", () => {
   const caller = pantryProcedures.createCaller(createMockCallerContext(ctx));
 
   beforeEach(() => {
-    vi.clearAllMocks();
     assertHouseholdAccess.mockResolvedValue(undefined);
     addToPantry.mockImplementation(async (id: string, input: { userId: string; name: string }) => ({
       item: {

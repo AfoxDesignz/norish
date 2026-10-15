@@ -23,6 +23,13 @@ const log = createLogger("realtime:hub");
 
 export const DEFAULT_MAX_QUEUE = 100;
 
+/**
+ * An idle subscriber sends nothing, so nothing would arm its socket timeout. A
+ * PING this often does: a socket that stopped answering is dropped within the
+ * socket timeout of the next one, and the reconnect ends every iterable Lagged.
+ */
+export const HEARTBEAT_INTERVAL_MS = 15_000;
+
 export type RealtimeLaggedReason =
   | "queue-overflow"
   | "redis-reconnect"
@@ -150,6 +157,7 @@ function refcount(state: ChannelState): number {
 
 class RedisRealtimeHub implements RealtimeHub {
   private subscriber: Redis | null = null;
+  private heartbeat: NodeJS.Timeout | null = null;
   private starting: Promise<void> | null = null;
   private readonly channels = new Map<string, ChannelState>();
   private readonly warnedChannels = new Set<string>();
@@ -200,6 +208,12 @@ class RedisRealtimeHub implements RealtimeHub {
     }
 
     this.subscriber = subscriber;
+    this.heartbeat = setInterval(() => {
+      if (subscriber.status === "ready") {
+        subscriber.ping().catch(() => {});
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+    this.heartbeat.unref();
     log.info("Realtime hub started");
   }
 
@@ -209,6 +223,8 @@ class RedisRealtimeHub implements RealtimeHub {
     if (!subscriber) return;
 
     this.subscriber = null;
+    clearInterval(this.heartbeat ?? undefined);
+    this.heartbeat = null;
 
     for (const [channel, state] of this.channels) {
       for (const listener of state.listeners) {
@@ -219,12 +235,9 @@ class RedisRealtimeHub implements RealtimeHub {
       this.channels.delete(channel);
     }
 
-    try {
-      await subscriber.unsubscribe();
-      await subscriber.quit();
-    } catch (err) {
-      log.debug({ err }, "Error while stopping the realtime hub subscriber");
-    }
+    // No UNSUBSCRIBE or QUIT: the connection is going away either way, and a
+    // dead socket would never answer them.
+    subscriber.disconnect();
 
     this.readyCount = 0;
     log.info("Realtime hub stopped");
@@ -518,7 +531,7 @@ export function startRealtimeHub(): Promise<void> {
   return hubInstance().start();
 }
 
-/** End every iterable cleanly, unsubscribe everything and quit the connection. */
+/** End every iterable cleanly and close the subscriber connection. */
 export function stopRealtimeHub(): Promise<void> {
   return hubInstance().stop();
 }

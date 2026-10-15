@@ -48,6 +48,10 @@ export function IngredientList({
   /** Fold a food's kinds out or back; absent where the list is flat. */
   onToggleKinds?: (id: string) => void;
 }) {
+  // TanStack Virtual hands back one mutable instance, so compiled memoisation
+  // would keep its first rows.
+  "use no memo";
+
   const containerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   // Whether the end of the list is within reach of the viewport.

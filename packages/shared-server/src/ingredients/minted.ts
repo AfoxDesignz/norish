@@ -2,9 +2,9 @@
  * Where the resolver says it minted Ingredients for someone's action, so
  * what the administrator turned on for new foods (their Plain Name, their
  * icon) can follow without the resolver knowing of it. The queue listens
- * from startup; nothing listens otherwise, in tests or tools. The upgrade
- * backfill, the seed and the recheck never announce: they mint or rename
- * with AI off, and must not spend a request per food.
+ * from startup; nothing listens otherwise, in tests or tools. The seed and
+ * the recheck never announce: they mint or rename with AI off, and must not
+ * spend a request per food.
  */
 import { createLogger } from "@norish/shared-server/logger";
 

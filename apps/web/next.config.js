@@ -51,12 +51,16 @@ const withNextIntl = createNextIntlPlugin(getNextIntlRequestConfigPath());
 
 export default withSerwist(
   withNextIntl({
-    output: "standalone",
+    // Infer mode, through the Babel plugin (not the experimental Rust one).
+    reactCompiler: true,
     transpilePackages: workspacePackages,
     turbopack: {
       root: resolve(configDirectory, "../.."),
     },
     productionBrowserSourceMaps: false,
+    // Norish never uses the image optimizer, and /_next/image is unauthenticated
+    // (the auth proxy skips _next); unoptimized makes Next answer it with 404.
+    images: { unoptimized: true },
     allowedDevOrigins: [
       "localhost",
       "192.168.2.13",

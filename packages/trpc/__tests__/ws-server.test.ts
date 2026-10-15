@@ -95,7 +95,6 @@ async function connectAuthenticated(): Promise<WebSocket> {
 }
 
 beforeEach(async () => {
-  vi.clearAllMocks();
   getVerifiedSession.mockResolvedValue(identity);
   connectionManager.startConnectionInvalidation.mockReturnValue(connectionManager.stopInvalidation);
 

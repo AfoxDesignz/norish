@@ -15,7 +15,7 @@ import { CalendarContextProvider } from "./context";
 
 function CalendarPageContent() {
   const [miniRecipesOpen, setMiniRecipesOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [selectedSlot, setSelectedSlot] = useState<Slot | undefined>(undefined);
   const pendingMiniRecipesScrollYRef = useRef<number | null>(null);
   const restoreMiniRecipesScrollTimerRef = useRef<number | null>(null);

@@ -102,7 +102,6 @@ export function createMockFullRecipe(overrides: Partial<FullRecipeDTO> = {}): Fu
     name: "Test Recipe",
     description: "A test recipe description",
     url: "https://example.com/recipe",
-    image: "/recipes/images/test.jpg",
     dishColor: null,
     servings: 4,
     prepMinutes: 15,

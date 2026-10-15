@@ -419,6 +419,26 @@ describe("processIngredientReviewJob", () => {
   });
 });
 
+describe("a cancelled round", () => {
+  it("asks no further food once its job is stopped, and does not report itself finished", async () => {
+    const job = new AbortController();
+
+    // The administrator cancels while the first food is being asked.
+    reviewer.reviewFlaggedWithAI.mockImplementationOnce(async () => {
+      job.abort("Cancelled by an administrator");
+
+      return { outcome: "distinct", ...trace };
+    });
+
+    await expect(
+      processIngredientReviewJob(fakeJob(["first", "second", "third"]), undefined, job.signal)
+    ).rejects.toBe("Cancelled by an administrator");
+
+    expect(reviewer.reviewFlaggedWithAI).toHaveBeenCalledTimes(1);
+    expect(published("review").some((round) => round.finished)).toBe(false);
+  });
+});
+
 describe("handleIngredientReviewFailure", () => {
   it("ends the round on every page once the attempts are spent, at the count it reached", async () => {
     // The round's own bookkeeping broke after the first food: the process died.

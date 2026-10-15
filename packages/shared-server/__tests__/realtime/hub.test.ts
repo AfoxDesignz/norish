@@ -13,14 +13,21 @@ vi.mock("@norish/shared-server/logger", () => ({
   createLogger: () => logged,
 }));
 
-const { getRealtimeHub, RealtimeLaggedError, startRealtimeHub, stopRealtimeHub } =
-  await import("../../src/realtime/hub");
+const {
+  getRealtimeHub,
+  HEARTBEAT_INTERVAL_MS,
+  RealtimeLaggedError,
+  startRealtimeHub,
+  stopRealtimeHub,
+} = await import("../../src/realtime/hub");
 
 /** A Redis subscriber connection: an EventEmitter that records SUBSCRIBE / UNSUBSCRIBE. */
 class FakeSubscriber extends EventEmitter {
   readonly subscribed = new Set<string>();
   readonly calls: string[] = [];
-  quit = vi.fn(async () => "OK");
+  status = "ready";
+  disconnect = vi.fn();
+  ping = vi.fn(async () => "PONG");
   unsubscribe = vi.fn(async (channel?: string) => {
     this.calls.push(`unsubscribe:${channel ?? "*"}`);
 
@@ -66,7 +73,6 @@ async function settle() {
 let subscriber: FakeSubscriber;
 
 beforeEach(() => {
-  vi.clearAllMocks();
   subscriber = new FakeSubscriber();
   createSubscriberClient.mockResolvedValue(subscriber);
 });
@@ -107,7 +113,7 @@ describe("start and stop", () => {
     expect(getRealtimeHub()).toBe(getRealtimeHub());
   });
 
-  it("ends every iterable cleanly, unsubscribes everything and quits on stop", async () => {
+  it("ends every iterable cleanly and disconnects on stop, without an UNSUBSCRIBE a dead socket would never answer", async () => {
     await startRealtimeHub();
 
     const iterator = getRealtimeHub().subscribe(CHANNEL)[Symbol.asyncIterator]();
@@ -117,9 +123,37 @@ describe("start and stop", () => {
     await stopRealtimeHub();
 
     await expect(pending).resolves.toEqual({ value: undefined, done: true });
-    expect(subscriber.unsubscribe).toHaveBeenCalledWith();
-    expect(subscriber.quit).toHaveBeenCalledOnce();
+    expect(subscriber.unsubscribe).not.toHaveBeenCalled();
+    expect(subscriber.disconnect).toHaveBeenCalledOnce();
     expect(getRealtimeHub().stats()).toEqual({ channels: 0, listeners: 0, dropped: 0 });
+  });
+});
+
+describe("heartbeat", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("pings every fifteen seconds while connected, and stops on stop", async () => {
+    await startRealtimeHub();
+
+    vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS);
+    expect(HEARTBEAT_INTERVAL_MS).toBe(15_000);
+    expect(subscriber.ping).toHaveBeenCalledOnce();
+
+    // Not while reconnecting: the PING would only queue up behind the outage.
+    subscriber.status = "reconnecting";
+    vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS);
+    expect(subscriber.ping).toHaveBeenCalledOnce();
+
+    subscriber.status = "ready";
+    await stopRealtimeHub();
+    vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS);
+    expect(subscriber.ping).toHaveBeenCalledOnce();
   });
 });
 

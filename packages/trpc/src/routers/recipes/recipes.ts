@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import type { RecipeListContext } from "@norish/db";
 import type { FullRecipeDTO } from "@norish/shared/contracts";
 import type { RecipeEnrichmentSkipReason } from "@norish/shared/lib/recipe-enrichment";
 import { canAccessResource, isAIEnabled as checkAIEnabled } from "@norish/auth/permissions";
@@ -57,7 +56,7 @@ import { isVideoUrl } from "@norish/shared/lib/helpers";
 import { ENRICHMENT_KINDS } from "@norish/shared/lib/recipe-enrichment";
 
 import { formDataInputSchema, isUploadedFile } from "../../form-data";
-import { authedProcedure } from "../../middleware";
+import { authedProcedure, viewerOf } from "../../middleware";
 import { router } from "../../trpc";
 import { assertRecipeAccess, findRecipeForViewer, handleRecipeError } from "./helpers";
 import {
@@ -102,11 +101,7 @@ export const listProcedure = authedProcedure
 
     log.debug({ userId: ctx.user.id, cursor, limit }, "Listing recipes");
 
-    const listCtx: RecipeListContext = {
-      userId: ctx.user.id,
-      householdUserIds: ctx.householdUserIds,
-      isServerAdmin: ctx.isServerAdmin,
-    };
+    const listCtx = viewerOf(ctx);
 
     const result = await listRecipes(
       listCtx,
@@ -600,11 +595,7 @@ const autocomplete = authedProcedure
   .query(async ({ ctx, input }) => {
     log.debug({ userId: ctx.user.id, query: input.query }, "Searching recipes for autocomplete");
 
-    const listCtx: RecipeListContext = {
-      userId: ctx.user.id,
-      householdUserIds: ctx.householdUserIds,
-      isServerAdmin: ctx.isServerAdmin,
-    };
+    const listCtx = viewerOf(ctx);
 
     const results = await searchRecipesByName(listCtx, input.query, 10);
 
@@ -614,11 +605,7 @@ const autocomplete = authedProcedure
 const getRandomRecipe = authedProcedure
   .input(randomRecipeInputSchema)
   .query(async ({ ctx, input }) => {
-    const listCtx: RecipeListContext = {
-      userId: ctx.user.id,
-      householdUserIds: ctx.householdUserIds,
-      isServerAdmin: ctx.isServerAdmin,
-    };
+    const listCtx = viewerOf(ctx);
 
     let candidates = await getRandomRecipeCandidates(listCtx, input.category);
 

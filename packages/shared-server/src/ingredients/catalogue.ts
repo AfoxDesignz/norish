@@ -65,6 +65,7 @@ import { deleteSuggestionFor } from "@norish/db/repositories/ingredient-suggesti
 import { getIngredientPermissionPolicy } from "@norish/shared-server/config/server-config-loader";
 import { claimOwnIcon } from "@norish/shared-server/media/ingredient-icon";
 import { isFlagReason } from "@norish/shared/contracts/ingredient-catalogue";
+import { viewerAndHouseholdIds } from "@norish/shared/lib/household";
 import { catalogueLanguagesFor, chooseLocaleNames } from "@norish/shared/lib/ingredient-names";
 import { parseIngredientSearch } from "@norish/shared/lib/ingredient-search";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
@@ -107,7 +108,7 @@ export function mayEditIngredientRow(
     case "everyone":
       return true;
     case "household":
-      return actor.householdUserIds?.includes(ownerId) ?? false;
+      return viewerAndHouseholdIds(actor).includes(ownerId);
     default:
       return false;
   }

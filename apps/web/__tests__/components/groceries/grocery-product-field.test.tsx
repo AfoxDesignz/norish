@@ -122,7 +122,7 @@ vi.mock("@/components/Panel/Panel", () => {
   Panel.Body = ({ children }: { children: ReactNode }) => <div>{children}</div>;
   Panel.Footer = ({ children }: { children: ReactNode }) => <div>{children}</div>;
 
-  return { usePanelPortalContainer: () => undefined, default: Panel };
+  return { PanelPortal: ({ children }: { children: React.ReactNode }) => children, default: Panel };
 });
 
 function store(id: string, name: string, searchAddress: string | null): StoreDto {
@@ -366,6 +366,61 @@ describe("GroceryProductField", () => {
       expect(onChoice).toHaveBeenLastCalledWith(null);
       expect(field()).toHaveValue("");
       expect(screen.getByTestId("product-by-hand-price")).toHaveValue("");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("makes the product it took for the grocery's name the shopper's own when they tap it", () => {
+    vi.useFakeTimers();
+    try {
+      const onChoice = vi.fn();
+      const { rerender } = render(
+        <GroceryProductField
+          choice={null}
+          groceryName="Cola B 1 L"
+          linkedProduct={null}
+          store={STORE_B}
+          onChoice={onChoice}
+        />
+      );
+
+      act(() => {
+        field().focus();
+      });
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+
+      expect(field()).toHaveValue("Cola B 1 L");
+
+      // Taking the row closed the list; the shopper opens it again.
+      act(() => {
+        fireEvent.keyDown(field(), { key: "ArrowDown" });
+      });
+
+      const taken = screen
+        .getAllByTestId("product-option")
+        .find((node) => node.textContent?.includes("Cola B 1 L"));
+
+      act(() => {
+        fireEvent.click(taken as HTMLElement);
+      });
+
+      // A tap on the row the field took is the shopper's answer, so a renamed
+      // grocery no longer lets it go.
+      rerender(
+        <GroceryProductField
+          choice={null}
+          groceryName="Cola B 1 L extra"
+          linkedProduct={null}
+          store={STORE_B}
+          onChoice={onChoice}
+        />
+      );
+
+      expect(onChoice).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "candidate" }));
+      expect(field()).toHaveValue("Cola B 1 L");
     } finally {
       vi.useRealTimers();
     }

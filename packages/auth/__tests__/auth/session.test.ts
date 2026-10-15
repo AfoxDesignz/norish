@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   getVerifiedSession,
@@ -44,10 +44,6 @@ const identity = {
 };
 
 const headers = new Headers();
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe("readSessionPrincipal", () => {
   it("returns null when there is no session", async () => {

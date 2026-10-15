@@ -80,8 +80,6 @@ const PARSED_RECIPE = {
 
 describe("processImportJob", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-
     recipeExistsByUrlForPolicy.mockResolvedValue({ exists: false });
     getDecryptedTokensByUserId.mockResolvedValue([]);
     parseRecipeFromUrl.mockResolvedValue({ recipe: PARSED_RECIPE, usedAI: false });

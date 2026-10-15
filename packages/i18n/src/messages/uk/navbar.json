@@ -42,7 +42,7 @@
     "uploading": "Завантаження…",
     "uploadFile": "Завантажити файл",
     "dragDrop": "або перетягнути сюди",
-    "formats": ".norishrecipes (Norish), .melarecipes (Mela), .paprikarecipes (Paprika), .zip (Mealie/Tandoor)",
+    "formats": ".norishrecipes (Norish), .melarecipes (Mela), .paprikarecipes (Paprika), .zip (Mealie/Tandoor/Recipe Keeper)",
     "dropzoneLabel": "Завантажити файл архіву рецептів",
     "uploadingFile": "Завантаження файлу…",
     "processing": "Обробка: {details}",

@@ -36,6 +36,8 @@ export function createUseLibraryQuery({ useTRPC }: CreateRecipeHooksOptions) {
     filters: LibraryFilters = {},
     { enabled = true }: { enabled?: boolean } = {}
   ): LibraryQueryResult {
+    "use memo";
+
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const {

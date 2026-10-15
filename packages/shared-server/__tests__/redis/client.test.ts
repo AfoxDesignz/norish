@@ -17,6 +17,7 @@ import type { RedisOptions } from "ioredis";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const constructed: RedisOptions[] = [];
+const ping = vi.fn();
 
 class MockRedis {
   status = "ready";
@@ -26,11 +27,10 @@ class MockRedis {
   }
 
   on = vi.fn();
+  ping = ping;
   connect = vi.fn().mockResolvedValue(undefined);
-  quit = vi.fn().mockImplementation(function (this: MockRedis) {
+  disconnect = vi.fn().mockImplementation(function (this: MockRedis) {
     this.status = "end";
-
-    return Promise.resolve();
   });
   removeAllListeners = vi.fn();
   duplicate = vi.fn(() => ({ on: vi.fn(), status: "ready" }));
@@ -59,7 +59,6 @@ beforeEach(() => {
   const globalForRedis = globalThis as unknown as Record<string, unknown>;
 
   delete globalForRedis.publisherClient;
-  delete globalForRedis.connectionPromise;
 });
 
 describe("publisher connection", () => {
@@ -100,7 +99,7 @@ describe("publisher connection", () => {
 
     await closer.closeRedisConnections();
 
-    expect(client.quit).toHaveBeenCalledOnce();
+    expect(client.disconnect).toHaveBeenCalledOnce();
   });
 
   it("duplicates the publisher for a subscriber instead of opening a second publisher", async () => {
@@ -110,14 +109,17 @@ describe("publisher connection", () => {
     const publisher = await getPublisherClient();
     const subscriber = await createSubscriberClient();
 
-    expect(publisher.duplicate).toHaveBeenCalledOnce();
+    expect(publisher.duplicate).toHaveBeenCalledExactlyOnceWith({
+      commandTimeout: undefined,
+      connectionName: `norish:${process.pid}:realtime-hub`,
+    });
     expect(subscriber).not.toBe(publisher);
     expect(constructed).toHaveLength(1);
   });
 });
 
 describe("connection options", () => {
-  it("connects with the parsed URL and BullMQ's keep-alive and connect timeout", async () => {
+  it("connects with the parsed URL and leaves the rest to ioredis 6's defaults", async () => {
     vi.resetModules();
     const { getPublisherClient } = await import("../../src/redis/client");
 
@@ -128,28 +130,54 @@ describe("connection options", () => {
       port: 6380,
       password: "secret",
       db: 3,
-      keepAlive: 30_000,
-      connectTimeout: 10_000,
       maxRetriesPerRequest: null,
+      commandTimeout: 5_000,
+      disconnectTimeout: 200,
+      socketTimeout: 10_000,
+      connectionName: `norish:${process.pid}:publisher`,
     });
-    expect(constructed[0]!.retryStrategy).toBeTypeOf("function");
+    // RESP3, reconnecting for ever with capped backoff, a 30 s keep-alive.
+    for (const option of ["protocol", "retryStrategy", "keepAlive", "connectTimeout"] as const) {
+      expect(constructed[0]).not.toHaveProperty(option);
+    }
+  });
+});
+
+describe("Redis health", () => {
+  it("is ok when the ping answers", async () => {
+    vi.resetModules();
+    const { getRedisHealth } = await import("../../src/redis/client");
+
+    ping.mockResolvedValueOnce("PONG");
+
+    await expect(getRedisHealth()).resolves.toEqual({ status: "ok" });
   });
 
-  it("backs off exponentially, caps at 5 s and never gives up", async () => {
+  it("is an error when the ping fails", async () => {
     vi.resetModules();
-    const { redisRetryStrategy, REDIS_RETRY_MAX_DELAY_MS } = await import("../../src/redis/client");
+    const { getRedisHealth } = await import("../../src/redis/client");
 
-    expect(REDIS_RETRY_MAX_DELAY_MS).toBe(5_000);
-    expect(redisRetryStrategy(1)).toBe(1_000);
-    expect(redisRetryStrategy(2)).toBe(2_000);
-    expect(redisRetryStrategy(3)).toBe(4_000);
-    expect(redisRetryStrategy(4)).toBe(5_000);
+    ping.mockRejectedValueOnce(new Error("Command timed out"));
 
-    for (const times of [5, 20, 21, 100, 10_000]) {
-      const delay = redisRetryStrategy(times);
+    await expect(getRedisHealth()).resolves.toEqual({ status: "error" });
+  });
 
-      expect(delay).not.toBeNull();
-      expect(delay).toBe(5_000);
+  it("is an error when the ping has not answered after two seconds", async () => {
+    vi.resetModules();
+    const { getRedisHealth } = await import("../../src/redis/client");
+
+    ping.mockReturnValueOnce(new Promise(() => {}));
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    try {
+      const health = getRedisHealth();
+
+      await vi.advanceTimersByTimeAsync(1_999);
+      await vi.advanceTimersByTimeAsync(1);
+
+      await expect(health).resolves.toEqual({ status: "error" });
+    } finally {
+      vi.useRealTimers();
     }
   });
 });

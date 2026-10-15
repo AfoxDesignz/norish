@@ -366,6 +366,30 @@ describe("ingredient resolver", () => {
       ]);
     });
 
+    it("resolves a line from the food an import names, keeping the line's own text", async () => {
+      const onions = await resolveOne("onions");
+      const recipeId = crypto.randomUUID();
+
+      await createRecipeWithRefs(
+        recipeId,
+        userId,
+        await withResolvedIngredients(
+          {
+            name: "Soup",
+            systemUsed: "metric",
+            recipeIngredients: [{ ...line("red ones, from the garden", 0), foodText: "onions" }],
+          },
+          { userId }
+        )
+      );
+
+      expect((await getRecipeFull(recipeId))?.recipeIngredients).toMatchObject([
+        { ingredientName: "red ones, from the garden", ingredientId: onions.ingredientId },
+      ]);
+      // The line's text never became a spelling of anything.
+      await expect(findIngredientFor("red ones, from the garden")).resolves.toBeNull();
+    });
+
     it("leaves out a line whose text is markup alone, and saves the rest", async () => {
       const recipeId = crypto.randomUUID();
 

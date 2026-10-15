@@ -114,7 +114,6 @@ describe("groceries procedures", () => {
   let ctx: ReturnType<typeof createMockAuthedContext>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     // Every Store a test files a grocery under is the household's own.
     storesRepository.getStoreOwnerId.mockResolvedValue("user-1");
     ctx = createMockAuthedContext(mockUser, mockHousehold);
@@ -161,7 +160,6 @@ describe("groceries openapi procedures", () => {
   let ctx: ReturnType<typeof createMockAuthedContext>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     // Every Store a test files a grocery under is the household's own.
     storesRepository.getStoreOwnerId.mockResolvedValue("user-1");
     ctx = createMockAuthedContext(mockUser, mockHousehold);
@@ -420,7 +418,6 @@ describe("grocery permission checks", () => {
   });
 
   beforeEach(() => {
-    vi.clearAllMocks();
     // Every Store a test files a grocery under is the household's own.
     storesRepository.getStoreOwnerId.mockResolvedValue("user-1");
   });
@@ -482,7 +479,6 @@ describe("grocery permission checks", () => {
 
 describe("grocery emitter", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     // Every Store a test files a grocery under is the household's own.
     storesRepository.getStoreOwnerId.mockResolvedValue("user-1");
   });
@@ -546,7 +542,6 @@ describe("grocery emitter", () => {
 
 describe("toggle procedure logic", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     // Every Store a test files a grocery under is the household's own.
     storesRepository.getStoreOwnerId.mockResolvedValue("user-1");
   });
@@ -583,7 +578,6 @@ describe("stale grocery updates", () => {
   let ctx: ReturnType<typeof createMockAuthedContext>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     // Every Store a test files a grocery under is the household's own.
     storesRepository.getStoreOwnerId.mockResolvedValue("user-1");
     ctx = createMockAuthedContext(mockUser, mockHousehold);
@@ -793,7 +787,6 @@ describe("grocery names through Ingredient Aliases", () => {
   const ctx = createMockAuthedContext(createMockUser(), createMockHousehold());
 
   beforeEach(() => {
-    vi.clearAllMocks();
     storesRepository.getStoreOwnerId.mockResolvedValue("user-1");
     listGroceriesByUsers.mockResolvedValue([]);
     createGroceries.mockImplementation(

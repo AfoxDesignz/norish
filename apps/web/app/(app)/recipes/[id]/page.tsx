@@ -13,10 +13,6 @@ import { RecipeContextProvider, useRecipeContext } from "./context";
 import RecipePageDesktop from "./recipe-page-desktop";
 import RecipePageMobile from "./recipe-page-mobile";
 
-type Props = {
-  params: Promise<{ id: string }>;
-};
-
 function RecipePageContent() {
   const { recipe, isNotFound, isLoading } = useRecipeContext();
   const t = useTranslations("recipes.detail");
@@ -63,7 +59,8 @@ function RecipePageContent() {
   );
 }
 
-export default function RecipeDetailPage({ params }: Props) {
+// Only the params: the offline shell renders this page with no search params.
+export default function RecipeDetailPage({ params }: Pick<PageProps<"/recipes/[id]">, "params">) {
   const { id } = use(params);
 
   return (

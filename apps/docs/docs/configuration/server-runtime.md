@@ -1,13 +1,13 @@
 ---
 sidebar_position: 4
 title: Server & runtime
-description: Core server settings, encryption key, networking, logging, uploads, and scheduler.
+description: Core server settings, the encryption key, health checks, networking, logging, uploads and the scheduler.
 ---
 
 # Server & runtime
 
-General settings for the Norish server process. Most of these do not require editing;
-`MASTER_KEY` is mandatory to generate.
+Settings for the Norish server. Most have working defaults, but you must provide your own
+`MASTER_KEY`.
 
 ## Core
 
@@ -21,8 +21,8 @@ General settings for the Norish server process. Most of these do not require edi
 | `REDIS_URL`  | Redis connection URL for events and jobs     | `redis://localhost:6379`               |
 
 :::info Generate a `MASTER_KEY`
-`MASTER_KEY` derives the encryption keys used to protect stored secrets.
-changing it invalidates previously encrypted data. Generate with:
+Norish derives the keys that encrypt stored secrets from `MASTER_KEY`, so
+changing it makes them unreadable. Generate one with:
 
 ```bash
 openssl rand -base64 32
@@ -30,16 +30,34 @@ openssl rand -base64 32
 
 :::
 
+## Health checks
+
+| Endpoint               | Answers 200 when                                                       | Use it for                                                      |
+| ---------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `/api/v1/health/live`  | The server responds and its parser answers                             | Restarting Norish: the image's healthcheck, Kubernetes liveness |
+| `/api/v1/health/ready` | The database and Redis answer; the parser is reported but never counts | Sending traffic: Kubernetes readiness, load balancers           |
+
 ## Networking & origins
 
-| Variable          | Description                                | Default |
-| ----------------- | ------------------------------------------ | ------- |
-| `TRUSTED_ORIGINS` | Comma-separated additional trusted origins | (empty) |
+| Variable          | Description                                                | Default |
+| ----------------- | ---------------------------------------------------------- | ------- |
+| `TRUSTED_ORIGINS` | Comma-separated additional trusted origins                 | (empty) |
+| `TRUSTED_PROXIES` | Comma-separated IPs or CIDR ranges of your reverse proxies | (empty) |
 
-`TRUSTED_ORIGINS` is useful when the instance is reached from more than one origin, for
+Set `TRUSTED_ORIGINS` when people reach Norish on more than one address, for
 example `http://192.168.1.100:3000,https://norish.example.com`. The WebSocket
-refuses an upgrade from a browser origin it does not trust.
-[WebSocket & realtime](./websocket.md#origin-check).
+refuses origins it doesn't trust, see
+[Origin check](./websocket.md#origin-check).
+
+Set `TRUSTED_PROXIES` when Norish sits behind more than one reverse proxy, for example
+Cloudflare in front of Nginx Proxy Manager. List the address or range of every proxy; for
+Cloudflare that is its [published ranges](https://www.cloudflare.com/ips/). Without it, Norish
+cannot tell visitors apart and everyone shares one rate limit for signing in and session checks.
+Behind a single proxy it is not needed.
+
+Norish tells visitors apart by the `X-Forwarded-For` header your proxy adds, so only the proxy
+should be able to reach Norish's port. A visitor who connects to the port directly can set that
+header themselves and get a sign-in rate limit of their own.
 
 ## Auth rate limiting
 
@@ -50,9 +68,7 @@ refuses an upgrade from a browser origin it does not trust.
 | `AUTH_RATE_LIMIT_MAX`     | Requests allowed per window        | `20`    |
 
 :::warning
-
 Turning this off removes brute-force protection from sign-in.
-
 :::
 
 ## Registration
@@ -61,7 +77,7 @@ Turning this off removes brute-force protection from sign-in.
 | --------------------- | --------------------------- | ------- |
 | `ENABLE_REGISTRATION` | Allow new-user registration | `false` |
 
-After the first user signs in, registration is disabled automatically. See
+Registration turns off after the first user signs in, see
 [Authentication](./authentication.md).
 
 ## Logging
@@ -92,8 +108,14 @@ After the first user signs in, registration is disabled automatically. See
 | `INGREDIENT_CATALOGUE_URL`      | Where the ingredient catalogue seed is fetched from, nightly and at startup. Empty turns the fetch off                   | The Open Food Facts ingredients taxonomy |
 | `INGREDIENT_REVIEW_CONCURRENCY` | How many ingredients are asked at once, from 1 to 50. Lower it when a self-hosted model struggles with parallel requests | `10`                                     |
 
-Norish seeds its catalogue of ingredients from the [Open Food Facts](https://world.openfoodfacts.org) ingredients taxonomy. The ingredient taxonomy is refreshed at midnight every night.
+Norish seeds its [ingredient catalogue](../groceries/ingredients.md) from the
+[Open Food Facts](https://world.openfoodfacts.org) ingredients taxonomy and
+refreshes it every night at midnight.
 
-On a server without internet, serve a copy of `ingredients.txt` from a local mirror and point `INGREDIENT_CATALOGUE_URL` at it, or leave it empty. Full functionallity will remain.
+On a server without internet, serve a copy of `ingredients.txt` from a local
+mirror and point `INGREDIENT_CATALOGUE_URL` at it, or leave it empty. Norish
+works either way.
 
-The taxonomy is available under the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/1-0/). Downloadable under: **Settings => Ingredients => Data sources**.
+The taxonomy is under the
+[Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/1-0/).
+Download it under **Settings => Ingredients => Data sources**.

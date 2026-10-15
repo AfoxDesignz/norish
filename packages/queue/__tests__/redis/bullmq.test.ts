@@ -27,10 +27,8 @@ class MockRedis {
 
   on = vi.fn();
   connect = vi.fn().mockResolvedValue(undefined);
-  quit = vi.fn().mockImplementation(function (this: MockRedis) {
+  disconnect = vi.fn().mockImplementation(function (this: MockRedis) {
     this.status = "end";
-
-    return Promise.resolve();
   });
   removeAllListeners = vi.fn();
   duplicate = vi.fn();
@@ -43,7 +41,13 @@ vi.mock("@norish/config/env-config-server", () => ({
 }));
 
 vi.mock("@norish/shared-server/logger", () => ({
-  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+  createLogger: () => ({
+    trace: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
   redactUrl: (url: string) => url,
 }));
 
@@ -78,7 +82,7 @@ describe("BullMQ connection", () => {
 
     await closer.closeBullConnection();
 
-    expect(client.quit).toHaveBeenCalledOnce();
+    expect(client.disconnect).toHaveBeenCalledOnce();
   });
 
   it("connects with every part of the URL, TLS and database index included", async () => {
@@ -95,5 +99,24 @@ describe("BullMQ connection", () => {
       db: 4,
       tls: {},
     });
+  });
+
+  it("starts from the shared options and leaves reconnecting and the protocol to ioredis", async () => {
+    vi.resetModules();
+    const { getBullClient } = await import("../../src/redis/bullmq");
+
+    getBullClient();
+
+    expect(constructed[0]).toMatchObject({
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      enableOfflineQueue: true,
+      disconnectTimeout: 200,
+      socketTimeout: 15_000,
+      connectionName: `norish:${process.pid}:bull`,
+    });
+    for (const option of ["protocol", "retryStrategy", "keepAlive", "connectTimeout"] as const) {
+      expect(constructed[0]).not.toHaveProperty(option);
+    }
   });
 });

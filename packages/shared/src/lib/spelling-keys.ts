@@ -1,6 +1,7 @@
 import type { IngredientWordsMap, UnitsMap } from "@norish/config/zod/server-config";
 import defaultIngredientWords from "@norish/config/ingredient-words.default.json";
 import { foldName } from "@norish/shared/lib/fold-name";
+import { stripBracketed } from "@norish/shared/lib/helpers";
 import { MEASURE_MAP_IDS } from "@norish/shared/lib/units";
 
 /**
@@ -35,9 +36,8 @@ const MENTION = /(^|\s)@[\p{L}\p{N}_.]+/gu;
  * either, wherever it stands: "@blueband_nl Finesse" is "Finesse".
  */
 export function stripPreparation(text: string): string {
-  return text
-    .replace(/\([^)]*\)|\[[^\]]*\]/g, " ")
-    .replace(/[([].*$/, " ")
+  return stripBracketed(text)
+    .replace(/[([].*/, " ")
     .split(",")[0]!
     .replace(MENTION, " ")
     .replace(/\s+/g, " ")

@@ -51,6 +51,8 @@ export function createUseGroceriesSubscription({
   useErrorAdapter,
 }: CreateUseGroceriesSubscriptionOptions) {
   return function useGroceriesSubscription() {
+    "use memo";
+
     const trpc = useTRPC();
     const { setGroceriesData, invalidate } = useGroceriesCacheHelpers();
     const errorAdapter = useErrorAdapter();

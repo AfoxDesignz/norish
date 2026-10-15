@@ -6,6 +6,7 @@ import SettingsSwitch from "@/app/(app)/settings/components/settings-switch";
 import { Note } from "@/components/shared/note";
 import SecretInput from "@/components/shared/secret-input";
 import { useAvailableModelsQuery } from "@/hooks/admin";
+import { usePending } from "@/hooks/use-pending";
 import { BeakerIcon, CheckIcon, XMarkIcon } from "@heroicons/react/16/solid";
 import {
   Button,
@@ -110,12 +111,12 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
   const [automaticIngredients, setAutomaticIngredients] = useState<AutomaticIngredientsConfig>(
     aiConfig?.automaticIngredients ?? DEFAULT_AUTOMATIC_INGREDIENTS
   );
-  const [testing, setTesting] = useState(false);
+  const [testing, whileTesting] = usePending();
   const [testResult, setTestResult] = useState<{
     success: boolean;
     error?: string;
   } | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [saving, whileSaving] = usePending();
 
   // Fetch available models from the provider
   // Cloud providers that don't require an endpoint (use official APIs)
@@ -141,11 +142,8 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
   const isApiKeyConfigured = !!aiConfig?.apiKey && aiConfig?.provider === provider;
   const canFetchModels =
     enabled &&
-    (cloudProviders.includes(provider)
-      ? apiKey || isApiKeyConfigured
-      : localProviders.includes(provider)
-        ? endpoint
-        : endpoint); // generic-openai needs endpoint
+    // Local providers and generic-openai need an endpoint
+    (cloudProviders.includes(provider) ? apiKey || isApiKeyConfigured : endpoint);
 
   const {
     models: availableModels,
@@ -191,7 +189,10 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
     }
     return options;
   }, [availableModels, visionModel]);
-  useEffect(() => {
+  const [prevAiConfig, setPrevAiConfig] = useState(aiConfig);
+
+  if (aiConfig !== prevAiConfig) {
+    setPrevAiConfig(aiConfig);
     if (aiConfig) {
       setEnabled(aiConfig.enabled);
       setProvider(aiConfig.provider);
@@ -207,7 +208,7 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
       setAutomaticEnrichment(aiConfig.automaticEnrichment ?? DEFAULT_AUTOMATIC_ENRICHMENT);
       setAutomaticIngredients(aiConfig.automaticIngredients ?? DEFAULT_AUTOMATIC_INGREDIENTS);
     }
-  }, [aiConfig]);
+  }
 
   // Validation: Can't enable AI without valid config
   const hasValidConfig =
@@ -327,24 +328,19 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
     }
   };
   const handleTest = async () => {
-    setTesting(true);
     setTestResult(null);
-    try {
-      const result = await testAIEndpoint({
+    await whileTesting(() =>
+      testAIEndpoint({
         provider,
         endpoint: endpoint || undefined,
         apiKey: apiKey || undefined,
-      });
-      setTestResult(result);
-    } finally {
-      setTesting(false);
-    }
+      }).then(setTestResult)
+    );
   };
   const handleSave = async () => {
     if (enabled && !hasValidConfig) return;
-    setSaving(true);
-    try {
-      await updateAIConfig({
+    await whileSaving(() =>
+      updateAIConfig({
         enabled,
         provider: provider as AIConfig["provider"],
         endpoint: endpoint || undefined,
@@ -359,18 +355,16 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
         cuisineStrategy,
         automaticEnrichment,
         automaticIngredients,
-      });
-      // Saved keys live on the server, not in the form: a key left in state
-      // reads as an unsaved change on every later render.
-      setApiKey("");
-    } finally {
-      setSaving(false);
-    }
+      })
+        // Saved keys live on the server, not in the form: a key left in state
+        // reads as an unsaved change on every later render.
+        .then(() => setApiKey(""))
+    );
   };
   return (
     <div className="flex flex-col gap-4">
       <SwitchRow description={t("enableAIDescription")} title={t("enableAI")}>
-        <SettingsSwitch color="success" isSelected={enabled} onValueChange={setEnabled} />
+        <SettingsSwitch isSelected={enabled} onValueChange={setEnabled} />
       </SwitchRow>
 
       {showValidationWarning && <Note status="warning">{t("configureWarning")}</Note>}
@@ -446,7 +440,7 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
         inputValue={model}
         isDisabled={!enabled || !canFetchModels}
         onInputChange={setModel}
-        onSelectionChange={(key) => key && setModel(key as string)}
+        onChange={(key) => key && setModel(key as string)}
       >
         <Label>{t("model")}</Label>
         <ComboBox.InputGroup>
@@ -478,7 +472,7 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
         inputValue={visionModel}
         isDisabled={!enabled || !canFetchModels}
         onInputChange={setVisionModel}
-        onSelectionChange={(key) => key && setVisionModel(key as string)}
+        onChange={(key) => key && setVisionModel(key as string)}
       >
         <Label>{t("visionModel")}</Label>
         <ComboBox.InputGroup>
@@ -552,7 +546,6 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
 
       <SwitchRow description={t("alwaysUseAIDescription")} title={t("alwaysUseAI")}>
         <SettingsSwitch
-          color="success"
           isDisabled={!enabled}
           isSelected={alwaysUseAI}
           onValueChange={setAlwaysUseAI}
