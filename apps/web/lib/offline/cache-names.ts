@@ -13,9 +13,8 @@ export const IMAGE_CACHE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 export const PAGE_CACHE_NAMES = ["pages-rsc-prefetch", "pages-rsc", "pages"];
 
 /**
- * Drop the runtime image and page caches. Cached images and pages (a recipe page carries its
- * recipe) are personalized household data (ADR-0005), so account transitions clear them
- * alongside the read cache; entries carry no owner tag, so the unit is the whole cache.
+ * Drop the image and page caches (a recipe page carries its recipe): personal data that account
+ * transitions clear with the read cache (ADR-0005). Entries carry no owner, so whole caches go.
  */
 export async function deletePersonalCaches(): Promise<void> {
   if (typeof caches === "undefined") {

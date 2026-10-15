@@ -256,11 +256,14 @@ describe("createCacheManager", () => {
     // The app's own keys, untagged so the test can seed any data.
     const seeded = [...trpc.recipes.get.queryKey({ id: "r1" })];
     const restored = [...trpc.recipes.get.queryKey({ id: "r2" })];
+    const kept = [...trpc.recipes.get.queryKey({ id: "r3" })];
 
-    // What QuerySeed hands over: the server's copy of r1.
+    // What QuerySeed hands over: the server's copy of r1, and of r3 in a document the
+    // service worker kept from ten minutes ago.
     const server = new QueryClient();
 
     server.setQueryData(seeded, { id: "r1" });
+    server.setQueryData(kept, { id: "r3" }, { updatedAt: Date.now() - 10 * 60 * 1000 });
     const state = dehydrate(server);
 
     markServerCopies(state);
@@ -270,6 +273,7 @@ describe("createCacheManager", () => {
 
     expect(await fetchesOnOpen(seeded)).toBe(0);
     expect(await fetchesOnOpen(restored)).toBe(1);
+    expect(await fetchesOnOpen(kept)).toBe(1);
 
     // Once the server's copy has changed, it refetches on mount like any other.
     queryClient.setQueryData(seeded, { id: "r1", edited: true });

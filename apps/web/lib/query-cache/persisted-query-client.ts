@@ -89,12 +89,16 @@ export function markServerCopies(state: DehydratedState | undefined): void {
   }
 }
 
+const STALE_TIME_MS = 1000 * 60 * 5;
+
 /**
- * The server's copy, unchanged since, is current, so mounting doesn't fetch it again. Every other
- * copy refetches on every mount, a restored one included: it may predate a change made elsewhere.
+ * A server copy, unchanged and under the stale time (a document the worker kept can be old), is
+ * current. Every other copy refetches on mount: a restored one may predate a change made elsewhere.
  */
 const refetchOnMount = (query: Query) =>
-  serverCopies.has(query.queryHash) && serverCopies.get(query.queryHash) === query.state.data
+  serverCopies.has(query.queryHash) &&
+  serverCopies.get(query.queryHash) === query.state.data &&
+  !query.isStaleByTime(STALE_TIME_MS)
     ? false
     : ("always" as const);
 
@@ -106,7 +110,7 @@ function createQueryClient(): QueryClient {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 1000 * 60 * 5,
+        staleTime: STALE_TIME_MS,
         gcTime: 1000 * 60 * 10,
         refetchOnWindowFocus: true,
         refetchOnMount,
@@ -242,6 +246,7 @@ export function createCacheManager(idb: OfflineIdb): CacheManager {
       unsubscribe?.();
       unsubscribe = null;
       queryClient.clear();
+      serverCopies.clear();
 
       await Promise.all([
         clearOwnerReadArtifacts(knownOwner),
@@ -282,6 +287,7 @@ export function createCacheManager(idb: OfflineIdb): CacheManager {
           unsubscribe?.();
           unsubscribe = null;
           queryClient.clear();
+          serverCopies.clear();
 
           if (owner) {
             await clearOwnerReadArtifacts(owner);

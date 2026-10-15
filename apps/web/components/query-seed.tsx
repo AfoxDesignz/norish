@@ -11,10 +11,8 @@ import type { AppRouter } from "@norish/trpc/client";
 import { appRouter, createHttpContextFromHeaders } from "@norish/trpc/server";
 
 /**
- * Hands the reads a page's first frame needs to the browser's query cache on a full load, so
- * the first paint is the page rather than its skeleton. An in-app navigation carries nothing
- * and renders from the cache, or the skeleton while the page fetches, as before. A read that
- * fails is left out, and the page handles it as it always has.
+ * On a full load, the reads a page's first frame needs go into the browser's query cache with
+ * the document; a failed read is left to the page. An in-app navigation carries nothing.
  */
 export async function QuerySeed({
   children,

@@ -9,9 +9,8 @@ import { getHouseholdForUser } from "@norish/db/repositories/households";
 import type { SettingsShape } from "./components/settings-tabs";
 
 /**
- * Which tabs and cards the reader's settings show, read once per request so the
- * route's skeleton and the page draw the same ones. Hiding the admin tab is
- * presentation only, since every admin procedure authorises server-side.
+ * Which tabs and cards the reader's settings show, so the route's skeleton and the page draw the
+ * same ones. Hiding the admin tab is presentation only: admin procedures authorise server-side.
  */
 export const readSettingsShape = cache(async (): Promise<SettingsShape> => {
   const { identity } = await readRequestProfile();
