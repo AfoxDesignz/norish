@@ -379,6 +379,24 @@ test("a full load of a recipe page carries the recipe in the server's markup", a
   }
 });
 
+test("a full load of a shared recipe carries the recipe in the server's markup", async ({
+  browser,
+}) => {
+  const id = await ensureRecipe();
+  const share = await callApi<{ url: string }>("recipes.shareCreate", { recipeId: id });
+  // Signed out, as a shared link is mostly read.
+  const context = await browser.newContext({ baseURL: stack.baseURL, javaScriptEnabled: false });
+
+  try {
+    const page = await context.newPage();
+
+    await page.goto(share.url);
+    await expect(page.locator("h1, h2").filter({ hasText: RECIPE.name }).first()).toBeAttached();
+  } finally {
+    await context.close();
+  }
+});
+
 test("groceries arrives with a by-recipe skeleton when that view is stored", async ({
   browser,
 }) => {
