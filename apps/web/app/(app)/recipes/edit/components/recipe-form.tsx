@@ -415,7 +415,7 @@ export default function RecipeForm({ mode, initialData }: RecipeFormProps) {
 
   // Show skeleton while reserving recipe ID for create mode
   if (isLoadingRecipeId) {
-    return <EditRecipeSkeleton />;
+    return <EditRecipeSkeleton mode={mode} />;
   }
   return (
     <div className="mx-auto w-full max-w-3xl overflow-hidden px-4 py-6 md:py-8">
