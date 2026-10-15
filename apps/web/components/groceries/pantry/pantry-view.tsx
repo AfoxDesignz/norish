@@ -8,6 +8,7 @@ import { FIELD_STYLE } from "@/components/groceries/grocery-field";
 import { IngredientIcon, IngredientIconsProvider } from "@/components/ingredients/ingredient-icon";
 import { IngredientPanel } from "@/components/ingredients/ingredient-panel";
 import { IconActionButton } from "@/components/shared/action-button";
+import { useDevicePreference } from "@/context/device-preferences-context";
 import { useSpellingRules } from "@/hooks/config";
 import { useGroceriesQuery } from "@/hooks/groceries";
 import { usePantryMutations, usePantryQuery } from "@/hooks/pantry";
@@ -62,6 +63,7 @@ export function PantryView() {
   const rules = useSpellingRules();
   const { isOffline } = useConnectivity();
   const { items, isLoading, isUnavailable } = usePantryQuery();
+  const showIcons = !useDevicePreference("hiddenItems")[0].includes("ingredientIcons");
   const { addPantryIngredient } = usePantryMutations();
   const { groceries } = useGroceriesQuery();
   const putOnTheList = usePutOnTheList();
@@ -74,16 +76,6 @@ export function PantryView() {
     ...trpc.ingredients.list.queryOptions({ search, locale }),
     enabled: !isOffline && search.length >= SEARCH_MIN_LENGTH,
   });
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-2" data-testid="pantry-loading">
-        {Array.from({ length: 5 }, (_, index) => (
-          <Skeleton key={index} className="h-11 rounded-lg" />
-        ))}
-      </div>
-    );
-  }
 
   if (isUnavailable) {
     return (
@@ -131,7 +123,8 @@ export function PantryView() {
   return (
     <IngredientIconsProvider ids={items.map((item) => item.ingredientId)}>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
+        {/* While the Pantry loads, the field is drawn but takes nothing: a food added then could double one already kept. */}
+        <div className="flex flex-col gap-2" inert={isLoading}>
           <TextField aria-label={t("fieldLabel")} value={draft} onChange={setDraft}>
             {/* Shaped as the dashboard's search field is. */}
             <InputGroup className="h-12">
@@ -175,7 +168,19 @@ export function PantryView() {
           ) : null}
         </div>
 
-        {items.length === 0 ? (
+        {isLoading ? (
+          <div
+            className="divide-border divide-y overflow-hidden rounded-lg"
+            data-testid="pantry-loading"
+          >
+            {Array.from({ length: 5 }, (_, index) => (
+              <div key={index} className="bg-surface flex min-h-12 items-center gap-3 px-4 py-2">
+                {showIcons && <Skeleton className="size-6 shrink-0 rounded-full md:size-8" />}
+                <Skeleton className="h-4 w-32 rounded-md" />
+              </div>
+            ))}
+          </div>
+        ) : items.length === 0 ? (
           <p className="text-muted py-2 text-center" data-testid="pantry-empty">
             {t("empty")}
           </p>

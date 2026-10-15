@@ -75,7 +75,8 @@ export default function TodaysMealsContent({ visibility }: TodaysMealsContentPro
     setPlanningOpen(true);
   };
 
-  if (!isLoading && visibleSlots.length === 0) return null;
+  // Planned-only can hide the whole row, so it shows nothing until the plan says.
+  if (visibleSlots.length === 0) return null;
 
   return (
     <section aria-labelledby="today-meals-heading" className="flex shrink-0 flex-col gap-4">

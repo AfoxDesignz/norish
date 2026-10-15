@@ -202,12 +202,12 @@ test("Today's meals is in the dashboard markup by default", async ({ browser }) 
   }
 });
 
-test("a planned rule keeps the block in the dashboard markup", async ({ browser }) => {
-  // What is planned is client data, so the server's share of the planned
-  // rule is rendering the block; the empty-day collapse is the client's.
+test("a planned rule leaves the block out of the dashboard markup", async ({ browser }) => {
+  // What is planned is client data, and a day with nothing planned shows no
+  // block, so the server draws none rather than one that might vanish.
   await seed("desktop", { todaySectionVisibility: "planned" });
 
-  expect(await dashboardHasTodaysMeals(browser, "desktop")).toBe(true);
+  expect(await dashboardHasTodaysMeals(browser, "desktop")).toBe(false);
 });
 
 /** The library layout the server selected for one kind. */
