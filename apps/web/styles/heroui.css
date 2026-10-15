@@ -24,6 +24,7 @@
 @import "@heroui/styles/components/menu-item.css" layer(components);
 @import "@heroui/styles/components/menu-section.css" layer(components);
 @import "@heroui/styles/components/menu.css" layer(components);
+@import "@heroui/styles/components/slider.css" layer(components);
 @import "@heroui/styles/components/switch.css" layer(components);
 @import "@heroui/styles/components/chip.css" layer(components);
 @import "@heroui/styles/components/table.css" layer(components);
