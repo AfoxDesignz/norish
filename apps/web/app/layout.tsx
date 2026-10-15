@@ -12,7 +12,16 @@ export const viewport = appViewport;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
-  const messages = await getMessages();
+  // The settings tabs' messages ship with that route's own provider; other pages keep what
+  // their client code reads (the ingredient panels, the AI key prompt).
+  const { settings, ...messages } = await getMessages();
+  const clientMessages = {
+    ...messages,
+    settings: {
+      ingredients: settings.ingredients,
+      admin: { aiProcessing: settings.admin.aiProcessing },
+    },
+  };
 
   return (
     <html suppressHydrationWarning lang={locale}>
@@ -21,7 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="bg-background text-foreground min-h-dvh font-sans antialiased">
         <AppThemeProvider>
-          <NextIntlClientProvider locale={locale} messages={messages}>
+          <NextIntlClientProvider locale={locale} messages={clientMessages}>
             {children}
           </NextIntlClientProvider>
         </AppThemeProvider>
