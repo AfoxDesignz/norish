@@ -36,11 +36,13 @@ vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string) => `${namespace}.${key}`,
 }));
 
+const shape = { showAdminTab: false, household: "none", caldav: "none" } as const;
+
 describe("settings tab list", () => {
   it("shows the Admin tab in the first painted tab list for an administrator", () => {
     navigation.searchParams = new URLSearchParams();
 
-    render(<SettingsPageContent showAdminTab />);
+    render(<SettingsPageContent shape={{ ...shape, showAdminTab: true }} />);
 
     expect(screen.getByRole("tab", { name: /tabs\.admin/ })).toBeInTheDocument();
   });
@@ -48,7 +50,7 @@ describe("settings tab list", () => {
   it("never renders an Admin tab for a regular member", () => {
     navigation.searchParams = new URLSearchParams();
 
-    render(<SettingsPageContent showAdminTab={false} />);
+    render(<SettingsPageContent shape={shape} />);
 
     expect(screen.queryByRole("tab", { name: /tabs\.admin/ })).not.toBeInTheDocument();
     // User, Household, CalDAV and Ingredients.
@@ -58,7 +60,7 @@ describe("settings tab list", () => {
   it("lands an administrator directly on a deep-linked admin tab", () => {
     navigation.searchParams = new URLSearchParams("tab=admin");
 
-    render(<SettingsPageContent showAdminTab />);
+    render(<SettingsPageContent shape={{ ...shape, showAdminTab: true }} />);
 
     expect(screen.getByRole("tab", { name: /tabs\.admin/ })).toHaveAttribute(
       "aria-selected",
@@ -69,7 +71,7 @@ describe("settings tab list", () => {
   it("falls back to the default tab when a member deep-links to admin", () => {
     navigation.searchParams = new URLSearchParams("tab=admin");
 
-    render(<SettingsPageContent showAdminTab={false} />);
+    render(<SettingsPageContent shape={shape} />);
 
     expect(screen.queryByRole("tab", { name: /tabs\.admin/ })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /tabs\.user/ })).toHaveAttribute(

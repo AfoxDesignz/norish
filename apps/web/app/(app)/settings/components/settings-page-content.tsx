@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { SettingsTabSkeleton } from "@/components/skeleton/settings-skeleton";
 
+import type { SettingsShape } from "./settings-tabs";
 import { SettingsTabs } from "./settings-tabs";
 
 const UserSettingsTab = dynamic(() => import("../user/components/user-settings-content"), {
@@ -31,7 +32,7 @@ const AdminSettingsTab = dynamic(() => import("../admin/components/admin-setting
   loading: () => <SettingsTabSkeleton tab="admin" />,
 });
 
-export default function SettingsPageContent({ showAdminTab }: { showAdminTab: boolean }) {
+export default function SettingsPageContent({ shape }: { shape: SettingsShape }) {
   return (
     <SettingsTabs
       panel={(tab) =>
@@ -43,7 +44,7 @@ export default function SettingsPageContent({ showAdminTab }: { showAdminTab: bo
           admin: <AdminSettingsTab />,
         })[tab]
       }
-      showAdminTab={showAdminTab}
+      shape={shape}
     />
   );
 }

@@ -1,11 +1,6 @@
-import { readRequestProfile } from "@/lib/request-profile";
-
 import SettingsPageContent from "./components/settings-page-content";
+import { readSettingsShape } from "./read-settings-shape";
 
 export default async function SettingsPage() {
-  // The layout's own session read: hiding the tab is presentation only, since
-  // every admin procedure authorises server-side.
-  const { identity } = await readRequestProfile();
-
-  return <SettingsPageContent showAdminTab={identity?.isServerAdmin ?? false} />;
+  return <SettingsPageContent shape={await readSettingsShape()} />;
 }
