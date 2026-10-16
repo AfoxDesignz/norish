@@ -2,7 +2,7 @@
 
 **What to build:** what an existing instance gets on upgrade, the browser coverage, and the feature docs.
 
-**Blocked by:** 01, 03, 05, 06, 07, 09, 10
+**Blocked by:** 01, 03, 05, 06, 07, 09, 10, 11, 12, 13
 
 **Status:** ready-for-agent
 

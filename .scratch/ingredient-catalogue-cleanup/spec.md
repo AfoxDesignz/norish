@@ -47,6 +47,17 @@ Glossary: **Ingredient Catalogue**, **Compound Spelling**, and the amended Ingre
    - A scheduled cleanup deletes the ones nothing names and nothing is remembered about.
 7. **Upgrade.** Without AI: the cleanup, the word splits and rung 1–2 merges. When AI is on: untouched flagged foods whose AI step never ran (`ai-unavailable`, `unknown-food`, `ai-key-rejected`) are queued. Every other flag waits for Fix catalogue.
 
+8. **Line Texts.** A line's raw text that carried more than the food ("GR TONIJN UIT BLIK", "onions, diced") is a hidden Line Text, not a spelling.
+   - It keeps resolving the same text without AI, and an unmerge still moves its lines. It is never listed as a translation, and it is deleted once nothing is written that way.
+   - Clean names with AI (the round and the automatic clean) also tells which of a food's spellings are Line Texts. A name a Plain Name replaced becomes one.
+   - Recipe lines keep their text.
+9. **Three more automatic upkeep choices,** for new ingredients (Admin → AI config, off by default, run after settling) and as Fix catalogue parts over foods recipes name:
+   - **Add translations** in the server's enabled languages (`ENABLED_LOCALES`) the food has no spelling in. A spelling another food holds is skipped.
+   - **Fill in nutrition:** AI writes the numbers, only for a food with no data at all (no dataset food, nothing to borrow).
+   - **Fill in conversions:** a piece weight or density a recipe line needs, from the food's data where USDA has a portion, else AI's estimate.
+
+   What they add shows on the food, marked as AI's, and is corrected as today. It is not listed under Done by AI (ADR-0039, amended 2026-10-16).
+
 ## Decisions
 
 - Mike accepts that a line's food settles seconds after it is saved, and that AI acts without confirmation on flagged foods. Unflagged foods are clean until a person asks for a re-check, which may merge or split them whatever was decided before (Mike, 2026-10-16: "we can assume these are clean unless the user specifically asks the whole library"). Remembering two foods a person separated is left out until a re-check is seen re-merging them.
