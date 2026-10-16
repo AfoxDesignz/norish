@@ -52,6 +52,9 @@ export interface RenderedPage {
   status: number | null;
 }
 
+// `page.evaluate` runs in the page, where `document` exists; this package compiles without DOM types.
+declare const document: { cookie: string };
+
 /**
  * Render a page in Obscura and return its HTML.
  *
@@ -110,25 +113,22 @@ export async function renderPage(
         : undefined
     );
 
-    if (cookieTokens.length > 0) {
-      let domain: string;
+    const page = await context.newPage();
 
-      try {
-        domain = new URL(targetUrl).hostname;
-      } catch {
-        domain = targetUrl;
-      }
-      await context.addCookies(
-        cookieTokens.map((token) => ({
-          name: token.name,
-          value: token.value,
-          domain,
-          path: "/",
-        }))
+    // Obscura never sends a cookie set over CDP (addCookies included) but does send one a page
+    // sets, so the tokens are set from the target's own origin; its jar sends them to that host only.
+    if (cookieTokens.length > 0) {
+      await page.goto(new URL("/robots.txt", targetUrl).href, {
+        waitUntil: "domcontentloaded",
+        timeout: SERVER_CONFIG.OBSCURA_NAVIGATION_TIMEOUT_MS,
+      });
+      await page.evaluate(
+        (cookies) => {
+          for (const { name, value } of cookies) document.cookie = `${name}=${value}; path=/`;
+        },
+        cookieTokens.map(({ name, value }) => ({ name, value }))
       );
     }
-
-    const page = await context.newPage();
 
     page.on("response", (response) => {
       if (response.request().isNavigationRequest() && response.frame() === page.mainFrame()) {
