@@ -1,5 +1,6 @@
 "use client";
 
+import type { RefObject } from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useMotionValueEvent, useScroll } from "motion/react";
@@ -25,6 +26,18 @@ function isAtPageBottom(scrollTop: number = window.scrollY) {
   );
 }
 
+// A no-op setState still queues an update, and queued hides could undo a navigation's reset to
+// visible, so only a real change is set.
+function setVisibility(
+  isVisibleRef: RefObject<boolean>,
+  setIsVisible: (visible: boolean) => void,
+  visible: boolean
+) {
+  if (isVisibleRef.current === visible) return;
+  isVisibleRef.current = visible;
+  setIsVisible(visible);
+}
+
 interface AutoHideOptions {
   scrollThreshold?: number;
   idleDelay?: number;
@@ -41,6 +54,8 @@ export function useAutoHide({
   const pathname = usePathname();
   const { scrollY } = useScroll();
   const [isVisible, setIsVisible] = useState(true);
+  // What the nav shows on screen, for setVisibility.
+  const isVisibleRef = useRef(true);
   const [prevPathname, setPrevPathname] = useState(pathname);
   const [wasDisabled, setWasDisabled] = useState(disabled);
   const lastScrollYRef = useRef(0);
@@ -58,6 +73,10 @@ export function useAutoHide({
   useLayoutEffect(() => {
     disabledRef.current = disabled;
   }, [disabled]);
+
+  useLayoutEffect(() => {
+    isVisibleRef.current = isVisible;
+  }, [isVisible]);
 
   // A new page starts with the nav shown
   if (pathname !== prevPathname) {
@@ -83,14 +102,14 @@ export function useAutoHide({
 
       // If became non-scrollable, show navbar
       if (wasScrollable && !scrollable) {
-        setIsVisible(true);
+        setVisibility(isVisibleRef, setIsVisible, true);
       }
 
       // A page can also shrink under a reader who is already scrolled — one
       // deleted row is enough — leaving them at the foot of it with no scroll
       // event to notice by.
       if (isAtPageBottom()) {
-        setIsVisible(true);
+        setVisibility(isVisibleRef, setIsVisible, true);
       }
     };
 
@@ -111,7 +130,7 @@ export function useAutoHide({
   // Stable callbacks that read from refs
   const show = useCallback(() => {
     if (disabledRef.current) return;
-    setIsVisible(true);
+    setVisibility(isVisibleRef, setIsVisible, true);
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
   }, []);
 
@@ -121,12 +140,13 @@ export function useAutoHide({
     // hover timer cannot shrink the chrome at the foot of the page either.
     if (isAtPageBottom()) return;
     if (!isHoveringRef.current) {
-      setIsVisible(false);
+      setVisibility(isVisibleRef, setIsVisible, false);
     }
   }, []);
 
-  // Reset state on route change - ignore scroll events briefly
-  useEffect(() => {
+  // On a route change, ignore scrolling briefly. A layout effect, because a view transition delays
+  // passive effects until it ends, and the new page's scroll would count as the reader's.
+  useLayoutEffect(() => {
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
       scrollTimeoutRef.current = null;
