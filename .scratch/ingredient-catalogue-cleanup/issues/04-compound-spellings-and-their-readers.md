@@ -19,7 +19,7 @@
 - [ ] **Nutrition:** an "or" takes the first food's numbers. An "and" is left out with a new reason, "names several foods", in all locales.
 - [ ] **The Ingredient panel** lists a compound spelling among each of its foods' translations, marked with its other foods.
   - Moving it to one food makes it an ordinary spelling of that food. That is the undo for a wrong split.
-- [ ] **Split suggestion.** A flagged food may carry a suggestion to split it into named foods with a kind. Confirming turns its spelling(s) into a Compound Spelling and removes the food; dismissing keeps it one food and marks it distinct.
+- [ ] **Split suggestion.** A flagged food may carry a suggestion to split it into named foods with a kind. Confirming turns its spelling(s) into a Compound Spelling and removes the food; dismissing ("Keep as one food") keeps it one food and clears the flag, as Mark distinct does; only a re-check (ticket 09) may split it later.
 - [ ] **Tests:**
   - Pantry coverage for both kinds;
   - add-to-groceries for both kinds, including the unticked "or" parts;

@@ -13,13 +13,13 @@
 - [ ] **Every mint is announced, whatever `getAutomaticIngredientsConfig()` says.**
   - The producer always queues while AI is on.
   - The worker settles first, then runs the Plain Name and icon steps only if they are switched on and the food still exists.
-- [ ] **Settling.** It reuses rung 3 (`ai/resolution/ingredient-resolution.ts`), and skips a food that is gone, `kept_distinct`, `parent_chosen`, or renamed by a person. A sure answer is applied:
+- [ ] **Settling.** It reuses rung 3 (`ai/resolution/ingredient-resolution.ts`), and skips a food that is gone or no longer flagged (every person's decision clears the flag). It may merge into any food, whatever was decided about that food. A sure answer is applied:
   - **same as X:** merge into X (`mergeCatalogueIngredients`). The lines follow their aliases.
   - **a kind of X:** set the parent (not `parent_chosen`) and unflag.
   - **new:** unflag.
   - **unsure:** keep the flag and write a suggestion, as an Ask AI round does today.
   - Tickets 03 and 05 add the "names no food" and "several foods" answers.
-- [ ] **Race safety.** Settling takes the tree lock. It re-reads the food's decision markers under the lock, and does nothing if a person decided meanwhile.
+- [ ] **Race safety.** Settling takes the tree lock. It re-reads the flag under the lock, and does nothing if a person cleared it meanwhile.
 - [ ] **Realtime.** A merge or move that re-points groceries, recurring groceries or Pantry rows publishes their changes, so the list picks up the new food's aisle and price without a reload. This covers a person's merge too; today nothing is published (`ingredient-relocation.ts` `mergeCatalogueIngredients`).
 - [ ] **Fix catalogue applies sure answers.**
   - In `review.ts`, `suggest()` applies a sure merge, parent or distinct on an untouched food through the same code as settling.

@@ -26,8 +26,8 @@ Glossary: **Ingredient Catalogue**, **Compound Spelling**, and the amended Ingre
    - The `new-ingredients` job settles each new food first, before its Plain Name and icon, with no time budget.
    - AI can answer: same as X, a kind of X, a food of its own, names no food (recipe lines only), or names several foods.
    - A sure answer is applied. An unsure one leaves the flag and a suggestion.
-   - A food a person renamed, kept distinct or chose a parent for is skipped. Using a food does not protect it.
-   - Fix catalogue (Ask AI rounds) applies sure answers the same way.
+   - AI fixes flagged foods only; it may merge one into any food. A person's rename, parent or Mark distinct clears the flag, and an unflagged food is taken to be clean. Using a food changes nothing.
+   - Fix catalogue (Ask AI rounds) applies sure answers the same way, and gains a re-check of every food not from the seed, the one way AI looks at clean foods again.
 2. **Better answers.** Candidates are also found by AI's English reading of the name. The Decision acts at 0.5, as grocery linking does.
 3. **Names no food.** A recipe line AI is sure names no food points at nothing, as a heading does. It keeps its text, and the mint is removed.
 4. **Compound Spelling.** A spelling may name several foods, "and" or "or" (ADR-0040).
@@ -48,7 +48,7 @@ Glossary: **Ingredient Catalogue**, **Compound Spelling**, and the amended Ingre
 
 ## Decisions
 
-- Mike accepts that a line's food settles seconds after it is saved, and that AI acts without confirmation on foods nobody decided about.
+- Mike accepts that a line's food settles seconds after it is saved, and that AI acts without confirmation on flagged foods. Unflagged foods are clean until a person asks for a re-check, which may merge or split them whatever was decided before (Mike, 2026-10-16: "we can assume these are clean unless the user specifically asks the whole library"). Remembering two foods a person separated is left out until a re-check is seen re-merging them.
 - A recipe's text is never changed by AI. The only rewrite is a person's rename-merge, limited to recipes they may edit.
 - One-off grocery things stay Ingredients, kept out of the catalogue, rather than being remembered by name (ADR-0037 amendment).
 - Compound Spellings are decided per spelling, not per line (ADR-0040).
