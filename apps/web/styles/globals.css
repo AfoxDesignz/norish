@@ -296,8 +296,8 @@
   --vt-from: -40px 0;
 }
 
-/* Clicks pass through the overlay; components/page-transition.tsx replays those on the named
-   layers, which ignore hits while they animate. */
+/* Clicks pass through the overlay to the live page. Named layers still ignore hits while they
+   animate, which is why the slides stay short. */
 ::view-transition {
   pointer-events: none;
 }

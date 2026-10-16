@@ -21,6 +21,7 @@ See `.scratch/architecture-after-upgrades/spec.md`, React 19.3.
 
 ## Comments
 
+- 2026-10-16, second review: the mid-slide tap replay is gone. Next's guide accepts that named layers ignore hits during a transition ("keep transitions short"), and the replay swallowed a keyboard click after a cancelled tap. Back links land via `lib/scroll-memory.ts` (retrying while a loading.tsx skeleton grows), and navbar tabs always open at the top.
 - 2026-10-15, review fixes: moves between recipe pages slide too (`app/(app)/recipes/template.tsx`), a back link returns the page to its scroll position, a tap made mid-slide is replayed once the slide ends (named layers ignore hits while they animate), the root no longer cross-fades, and the recipe tint fades once.
 - 2026-10-15: the shared element is gone. Mike rejected the card-to-hero morph after trying it, so pages slide instead (`components/page-transition.tsx`, Next's `<Link transitionTypes>`) and `recipe-image-transition.tsx` was deleted. The 2026-10-14 notes on the shared element below describe removed code.
 - 2026-10-14, implemented:

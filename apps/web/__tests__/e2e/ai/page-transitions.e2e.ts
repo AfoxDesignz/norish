@@ -170,30 +170,6 @@ test("moving from a recipe to its editor slides the page", async ({ page }) => {
     ]);
 });
 
-test("a tap during a slide lands on what is under it once the slide ends", async ({ page }) => {
-  await page.goto("/");
-  const calendar = page.getByRole("link", { name: "Calendar", exact: true });
-  const box = (await calendar.boundingBox())!;
-
-  await page.getByRole("link", { name: "Groceries", exact: true }).click();
-  // Held mid-slide, where the named layers ignore hits.
-  await page.waitForFunction(() =>
-    document
-      .getAnimations()
-      .some((animation) =>
-        (animation.effect as KeyframeEffect | null)?.pseudoElement?.startsWith(
-          "::view-transition-new"
-        )
-      )
-  );
-  await page.evaluate(() => document.getAnimations().forEach((animation) => animation.pause()));
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await expect(page).toHaveURL(/\/groceries$/);
-
-  await page.evaluate(() => document.getAnimations().forEach((animation) => animation.play()));
-  await expect(page).toHaveURL(/\/calendar$/);
-});
-
 test("a tab starts its page at the top, and a step back returns the page to where it was left, the nav shown on both", async ({
   browser,
   aiStack,
