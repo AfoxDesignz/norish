@@ -90,8 +90,9 @@ export function headerScope(hostname: string, tokens: SiteAuthTokenDecryptedDto[
     return at < 0 ? hostname : labels.slice(at).join(".");
   });
 
-  return domains.reduce((narrowest, domain) =>
-    domain.length > narrowest.length ? domain : narrowest
+  return domains.reduce(
+    (narrowest, domain) => (domain.length > narrowest.length ? domain : narrowest),
+    ""
   );
 }
 
