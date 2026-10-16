@@ -42,12 +42,7 @@ async function recordViewTransitions(context: BrowserContext): Promise<void> {
         .sort((a, b) => a.localeCompare(b));
     const record = (transition: ViewTransition) =>
       transition.ready.then(
-        () => {
-          seen.push({ types: [...transition.types], animations: animations() });
-          console.log(
-            `VT ${location.pathname} types=${[...transition.types]} anims=${animations()}`
-          );
-        },
+        () => seen.push({ types: [...transition.types], animations: animations() }),
         () => {}
       );
     const start = document.startViewTransition.bind(document);
@@ -105,7 +100,6 @@ for (const reducedMotion of ["reduce", "no-preference"] as const) {
     const page = await context.newPage();
     const thrown: string[] = [];
 
-    page.on("console", (m) => m.text().startsWith("VT") && console.log(reducedMotion, m.text()));
     page.on("pageerror", (error) =>
       thrown.push(`${new URL(page.url()).pathname}: ${error.message.slice(0, 60)}`)
     );
@@ -288,30 +282,6 @@ test("a back link returns a recipe to where it was scrolled", async ({ page }) =
   const shelf = "Stew Shelf";
 
   await seedCookbook(shelf, [id]);
-  await recordViewTransitions(page.context());
-  const logs: string[] = [];
-  page.on(
-    "console",
-    (m) => (m.text().startsWith("VT") || m.text().startsWith("SC")) && logs.push(m.text())
-  );
-  await page.context().addInitScript(() => {
-    const orig = window.scrollTo.bind(window);
-    window.scrollTo = ((...args: unknown[]) => {
-      console.log(
-        `SC scrollTo ${JSON.stringify(args)} h=${document.documentElement.scrollHeight} at ${location.pathname} ${new Error().stack?.split("\n").slice(2, 5).join(" | ")}`
-      );
-      return (orig as (...a: unknown[]) => void)(...args);
-    }) as typeof window.scrollTo;
-    addEventListener("scroll", () =>
-      console.log(
-        `SC event y=${Math.round(window.scrollY)} h=${document.documentElement.scrollHeight} at ${location.pathname}`
-      )
-    );
-  });
-  test.info().attach("logs", { body: "" });
-  page.on("close", () => {});
-  process.on("exit", () => {});
-  (globalThis as unknown as { __dump: () => void }).__dump = () => console.log(logs.join("\n"));
   await page.setViewportSize({ width: 390, height: 500 });
   const scrollY = () => page.evaluate(() => Math.round(window.scrollY));
 
@@ -329,12 +299,7 @@ test("a back link returns a recipe to where it was scrolled", async ({ page }) =
 
   await page.getByRole("link", { name: `Back to ${name}` }).click();
   await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
-  try {
-    await expect.poll(scrollY, { timeout: 4000 }).toBe(left);
-  } catch (error) {
-    console.log("FAILED-RUN left=" + left + "\n" + logs.join("\n"));
-    throw error;
-  }
+  await expect.poll(scrollY).toBe(left);
 });
 
 test("signing in hands the auth screen over to the app in one transition", async ({
