@@ -4,6 +4,7 @@ import type { SiteAuthTokenDecryptedDto } from "@norish/shared/contracts/dto/sit
 import { getBrowser } from "@norish/api/obscura";
 import { SERVER_CONFIG } from "@norish/config/env-config-server";
 import { parserLogger as log } from "@norish/shared-server/logger";
+import { isHostOnDomain } from "@norish/shared/lib/helpers";
 
 /** How long a page that answered with something else is given to become itself. */
 const SETTLE_TIMEOUT_MS = 15_000;
@@ -106,18 +107,26 @@ export async function renderPage(
 
     const page = await context.newPage();
 
-    // Obscura never sends a cookie set over CDP (addCookies included) but does send one a page
-    // sets, so the tokens are set from the target's own origin; its jar sends them to that host only.
+    // Obscura never sends a cookie set over CDP but does send one a page sets, so the tokens are set
+    // from the target's origin, for the token's domain when the target is on it, and stay within it.
     if (cookieTokens.length > 0) {
+      const hostname = new URL(targetUrl).hostname;
+
       await page.goto(new URL("/robots.txt", targetUrl).href, {
         waitUntil: "domcontentloaded",
         timeout: SERVER_CONFIG.OBSCURA_NAVIGATION_TIMEOUT_MS,
       });
       await page.evaluate(
         (cookies) => {
-          for (const { name, value } of cookies) document.cookie = `${name}=${value}; path=/`;
+          for (const { name, value, domain } of cookies) {
+            document.cookie = `${name}=${value}; path=/${domain ? `; domain=${domain}` : ""}`;
+          }
         },
-        cookieTokens.map(({ name, value }) => ({ name, value }))
+        cookieTokens.map(({ name, value, domain }) => ({
+          name,
+          value,
+          domain: isHostOnDomain(hostname, domain.toLowerCase()) ? domain.toLowerCase() : null,
+        }))
       );
     }
 
