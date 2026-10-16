@@ -82,10 +82,11 @@ export function GroceriesHeader({ view }: { view: GroceriesView }) {
                 ] as const
               ).map(([id, Icon]) => (
                 <Tabs.Tab key={id} className={cssHeaderTab} id={id}>
-                  {/* A phone shows the words alone: the icons only guess at a list and a pantry. */}
-                  <div className="flex items-center gap-1.5">
-                    <Icon className={`${cssHeaderIcon} max-sm:hidden`} />
-                    <span>{t(id)}</span>
+                  {/* Like the Library's grid/list switch: icons alone on a phone, and
+                      the words beside them on wider screens. */}
+                  <div className="flex items-center gap-1.5" title={t(id)}>
+                    <Icon className={cssHeaderIcon} />
+                    <span className="sr-only sm:not-sr-only">{t(id)}</span>
                   </div>
                   <Tabs.Indicator />
                 </Tabs.Tab>
