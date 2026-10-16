@@ -5,16 +5,18 @@ import { ViewTransition } from "react";
 import Link from "next/link";
 import { arriveWhereLeft } from "@/lib/scroll-memory";
 
-// The type for going back; styles/globals.css slides those pages in from the left.
+// The transition type of a link back; globals.css slides those pages in from the left.
 export const NAV_BACK = ["nav-back"];
+// Next's guide maps untyped navigations to none; here they slide forward, so every page moves.
+const SLIDES = { "nav-back": "nav-back", default: "nav-forward" };
 
 /**
- * The template of `(app)` and of `recipes`, so every navigation remounts one and slides it (`.page`
- * in globals.css). The div gives the browser one box per page to capture, whatever the page renders.
+ * The template of `(app)` and of `recipes`, so every navigation remounts one and slides it. The div
+ * gives the browser one box per page to capture, whatever the page renders.
  */
 export function PageTransition({ children }: { children: ReactNode }) {
   return (
-    <ViewTransition default="none" enter="page" exit="page">
+    <ViewTransition default="none" enter={SLIDES} exit={SLIDES}>
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </ViewTransition>
   );

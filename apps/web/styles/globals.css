@@ -284,16 +284,12 @@
   }
 }
 
-/* View transitions. PageTransition gives each page the `page` class, links going back add
-   `nav-back` (components/page-transition.tsx), and app/layout.tsx types the sign-in. */
+/* View transitions. PageTransition classes a page `nav-forward`, or `nav-back` for a back link
+   (components/page-transition.tsx), and app/layout.tsx types the sign-in. */
 :root {
   --vt-ease: cubic-bezier(0.2, 0, 0, 1);
-  /* Where an arriving page starts: from the right going forward, from the left going back. */
+  /* Where an arriving page starts: from the right, or from the left going back. */
   --vt-from: 40px 0;
-}
-
-:root:active-view-transition-type(nav-back) {
-  --vt-from: -40px 0;
 }
 
 /* Clicks pass through the overlay to the live page. Named layers still ignore hits while they
@@ -310,12 +306,18 @@
 
 /* Only the arriving page moves: Safari leaves an animated outgoing page standing under the new
    one, and a plain `display: none` loses to its own styles there. */
-::view-transition-old(.page) {
+::view-transition-old(.nav-forward),
+::view-transition-old(.nav-back) {
   display: none !important;
 }
 
-::view-transition-new(.page) {
+::view-transition-new(.nav-forward),
+::view-transition-new(.nav-back) {
   animation: 300ms var(--vt-ease) both vt-in;
+}
+
+::view-transition-new(.nav-back) {
+  --vt-from: -40px 0;
 }
 
 @keyframes vt-in {
