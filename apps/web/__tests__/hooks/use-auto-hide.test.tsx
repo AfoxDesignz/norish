@@ -162,6 +162,23 @@ describe("useAutoHide", () => {
     expect(result.current.isVisible).toBe(true);
   });
 
+  it("stays shown after the pointer leaves a nav that only hides on scroll", () => {
+    const { result } = renderHook(() => useAutoHide({ idleDelay: Infinity }));
+
+    settle();
+    scrollTo(MID_PAGE);
+    act(() => result.current.onHoverStart());
+    expect(result.current.isVisible).toBe(true);
+
+    // A page transition takes the hover away too; browsers run an Infinity timeout at once.
+    act(() => result.current.onHoverEnd());
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+
+    expect(result.current.isVisible).toBe(true);
+  });
+
   it("shows on a new page however often the last one asked it to hide", () => {
     const { result, rerender } = renderHook(() => useAutoHide());
 

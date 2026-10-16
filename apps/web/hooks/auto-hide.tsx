@@ -232,7 +232,8 @@ export function useAutoHide({
     isHoveringRef.current = false;
     const currentScroll = scrollY.get();
 
-    if (currentScroll > topOffset && isScrollableRef.current) {
+    // An Infinity delay means never idle; browsers would run that timeout at once.
+    if (currentScroll > topOffset && isScrollableRef.current && isFinite(idleDelay)) {
       scrollTimeoutRef.current = setTimeout(() => hide(), idleDelay);
     }
   }, [hide, idleDelay, scrollY, topOffset]);
