@@ -19,7 +19,7 @@ Renaming a food to a name another food holds is either refused ("Another ingredi
 
 ## Solution
 
-Glossary: **Ingredient Catalogue**, **Compound Spelling**, and the amended Ingredient Alias, Flagged Ingredient and Ingredient Words entries in `CONTEXT.md`. Decisions: ADR-0037 (three amendments of 2026-10-16) and ADR-0040.
+Glossary: **Ingredient Catalogue**, **Compound Spelling**, **Line Text**, and the amended Ingredient, Ingredient Alias, Flagged Ingredient, Ingredient Nutrition and Ingredient Words entries in `CONTEXT.md`. Decisions: ADR-0037 (three amendments of 2026-10-16), ADR-0039 (amended 2026-10-16) and ADR-0040.
 
 1. **Background settling.** No path asks AI while a text is saved.
    - Rungs 1 and 2 resolve; anything they miss is minted at once.
@@ -45,7 +45,7 @@ Glossary: **Ingredient Catalogue**, **Compound Spelling**, and the amended Ingre
    - The page shows recipe-named and flagged foods by default; **Show all** adds the seed.
    - Foods only groceries or the Pantry name are never listed, found, counted or asked about.
    - A scheduled cleanup deletes the ones nothing names and nothing is remembered about.
-7. **Upgrade.** Without AI: the cleanup, the word splits and rung 1–2 merges. When AI is on: untouched flagged foods whose AI step never ran (`ai-unavailable`, `unknown-food`, `ai-key-rejected`) are queued. Every other flag waits for Fix catalogue.
+7. **Upgrade.** Without AI: Line Text classification, the cleanup, the word splits and rung 1–2 merges. When AI is on: untouched flagged foods whose AI step never ran (`ai-unavailable`, `unknown-food`, `ai-key-rejected`) are queued. Every other flag waits for Fix catalogue.
 
 8. **Line Texts.** A line's raw text that carried more than the food ("GR TONIJN UIT BLIK", "onions, diced") is a hidden Line Text, not a spelling.
    - It keeps resolving the same text without AI, and an unmerge still moves its lines. It is never listed as a translation, and it is deleted once nothing is written that way.

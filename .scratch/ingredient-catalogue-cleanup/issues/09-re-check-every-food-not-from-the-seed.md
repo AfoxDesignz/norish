@@ -2,7 +2,7 @@
 
 **What to build:** AI looks only at new and flagged foods by itself. An unflagged food is taken to be clean. Fix catalogue gains the one way back in: a person asks AI to re-check every food in the Ingredient Catalogue that is not from the seed, flagged or not. Sure answers are applied whatever was decided before. Mike, 2026-10-16: "we can assume these are clean unless the user specifically asks the whole library". See ADR-0037 (amended 2026-10-16) and the Flagged Ingredient entry.
 
-**Blocked by:** 01, 02, 05, 07
+**Blocked by:** 01, 02, 03, 05, 07
 
 **Status:** ready-for-agent
 
