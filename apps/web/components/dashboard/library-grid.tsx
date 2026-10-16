@@ -123,10 +123,8 @@ export default function LibraryGrid({
     initialOffset: savedState?.scrollOffset,
     initialMeasurementsCache: savedState?.measurementsCache,
     onChange: (instance) => {
-      // Save state when not scrolling (after scroll settles)
-      if (!instance.isScrolling) {
-        saveScrollState(instance.scrollOffset ?? 0, instance.measurementsCache);
-      }
+      // Saved while scrolling too: a reader can open a card before a flick has settled.
+      saveScrollState(instance.scrollOffset ?? 0, instance.measurementsCache);
     },
   });
 
