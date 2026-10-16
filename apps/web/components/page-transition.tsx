@@ -1,22 +1,19 @@
 "use client";
 
 import type { ComponentProps, ReactNode } from "react";
-import { useLayoutEffect, ViewTransition } from "react";
+import { ViewTransition } from "react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import { arriveWhereLeft } from "@/lib/scroll-memory";
 
 // The type for going back; styles/globals.css slides those pages in from the left.
 const NAV_BACK = ["nav-back"];
 // The navbar's tabs, left to right.
 const TABS = [...siteConfig.navItems.map((item) => item.href), "/settings"];
 
-// Each path's last scroll position, so a back link can return a page to it.
-const scrollTops = new Map<string, number>();
-const arrival = { restoresScroll: false, tappedMidSlide: false };
+const arrival = { tappedMidSlide: false };
 
 if (typeof window !== "undefined") {
-  addEventListener("scroll", () => scrollTops.set(location.pathname, scrollY), { passive: true });
-
   // Named view-transition layers ignore hits while they animate, so a tap then lands on whatever
   // unnamed box is behind them: hold its click and replay it on what is under the pointer after.
   const isSliding = () => document.documentElement.matches(":active-view-transition");
@@ -48,12 +45,6 @@ if (typeof window !== "undefined") {
  * in globals.css). The div gives the browser one box per page to capture, whatever the page renders.
  */
 export function PageTransition({ children }: { children: ReactNode }) {
-  useLayoutEffect(() => {
-    if (!arrival.restoresScroll) return;
-    arrival.restoresScroll = false;
-    scrollTo(0, scrollTops.get(location.pathname) ?? 0);
-  }, []);
-
   return (
     <ViewTransition default="none" enter="page" exit="page">
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
@@ -65,15 +56,20 @@ export function PageTransition({ children }: { children: ReactNode }) {
  * A link to where the reader came from: it slides in from the left and returns the page to where
  * it was scrolled, instead of Next's scroll to the top.
  */
-export function BackLink({ onNavigate, ...props }: ComponentProps<typeof Link>) {
+export function BackLink({
+  href,
+  onNavigate,
+  ...props
+}: Omit<ComponentProps<typeof Link>, "href"> & { href: string }) {
   return (
     <Link
       {...props}
+      href={href}
       scroll={false}
       transitionTypes={NAV_BACK}
       onNavigate={(event) => {
         onNavigate?.(event);
-        arrival.restoresScroll = true;
+        arriveWhereLeft(href);
       }}
     />
   );

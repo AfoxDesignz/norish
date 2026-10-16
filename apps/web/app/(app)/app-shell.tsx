@@ -1,6 +1,7 @@
 import type { DevicePreferencesSeed } from "@/context/device-preferences-context";
 import { AuthProviders } from "@/app/providers/auth-providers";
 import { OfflineCacheController } from "@/app/providers/offline-cache-controller";
+import { ArrivalScroll } from "@/components/arrival-scroll";
 import { Navbar } from "@/components/navbar/navbar";
 import AIKeyRejectionPrompt from "@/components/shared/ai-key-rejection-prompt";
 import ClipboardImportPrompt from "@/components/shared/clipboard-import-prompt";
@@ -77,6 +78,7 @@ export function AppShell({
                             >
                               {children}
                             </main>
+                            <ArrivalScroll />
                           </div>
                           <TimerDock />
                           <ClipboardImportPrompt />

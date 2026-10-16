@@ -10,14 +10,15 @@ import {
   useRef,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import { useContainerColumns } from "@/hooks/use-container-columns";
 import { useViewport } from "@/hooks/use-viewport";
+import { lastScrollTop, rememberedListRows, rememberListRows } from "@/lib/scroll-memory";
 import { Spinner } from "@heroui/react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { useWindowSize } from "usehooks-ts";
 
 import type { RecipeViewMode } from "@norish/shared/contracts/zod/device-preferences";
-import { useScrollRestoration } from "@norish/shared-react/hooks";
 
 import RecipeGridSkeleton from "../skeleton/recipe-grid-skeleton";
 
@@ -66,7 +67,7 @@ export default function LibraryGrid({
   // would keep its first rows.
   "use no memo";
 
-  const { saveScrollState, getScrollState } = useScrollRestoration(scrollKey);
+  const pathname = usePathname();
 
   // Seeded from `isLoading` so the skeleton is part of the very first paint —
   // server render included. Starting at `false` and flipping in the effect
@@ -112,19 +113,19 @@ export default function LibraryGrid({
     [items.length, effectiveColumnCount]
   );
 
-  // Get saved scroll state for initialization
-  const savedState = getScrollState();
+  // A revisit lays out its remembered rows at the remembered scroll, before the first paint.
+  const savedRows = rememberedListRows(scrollKey);
 
   const virtualizer = useWindowVirtualizer({
     count: rowCount,
     estimateSize: () => (viewMode === "list" ? ESTIMATED_LIST_ROW_HEIGHT : gridRowHeight),
     overscan: rowOverscan,
     scrollMargin,
-    initialOffset: savedState?.scrollOffset,
-    initialMeasurementsCache: savedState?.measurementsCache,
+    initialOffset: savedRows ? lastScrollTop(pathname) : undefined,
+    initialMeasurementsCache: savedRows,
     onChange: (instance) => {
       // Saved while scrolling too: a reader can open a card before a flick has settled.
-      saveScrollState(instance.scrollOffset ?? 0, instance.measurementsCache);
+      rememberListRows(scrollKey, instance.measurementsCache);
     },
   });
 

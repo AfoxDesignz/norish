@@ -1,6 +1,5 @@
 export * from "./use-dirty-state";
 export * from "./use-grocery-form-state";
-export * from "./use-scroll-restoration";
 export * from "./use-servings-scaler";
 export * from "./unit-formatter";
 export * from "./use-user";
