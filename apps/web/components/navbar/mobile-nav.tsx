@@ -3,8 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  NAV_LABEL_KEYS,
+  NAV_TABS,
+  navTabPosition,
+  SETTINGS_HREF,
+  tabTransitionTypes,
+} from "@/components/navbar/nav-tabs";
 import NavbarUserMenu from "@/components/navbar/navbar-user-menu";
-import { tabIndex, tabTransitionTypes } from "@/components/page-transition";
 import { useAutoHide } from "@/hooks/auto-hide";
 import {
   CalendarDaysIcon,
@@ -16,13 +22,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 
 import { cssFloatingDockEndCap, MOBILE_NAV_SHRUNKEN_SCALE } from "@norish/web/config/css-tokens";
-import { siteConfig } from "@norish/web/config/site";
 
-// Map hrefs to translation keys (same as navbar.tsx)
-const navLabelKeys: Record<string, "home" | "calendar" | "groceries"> = {
-  "/": "home",
-  "/groceries": "groceries",
-  "/calendar": "calendar",
+const TAB_ICONS: Record<string, typeof HomeIcon> = {
+  "/": HomeIcon,
+  "/groceries": ClipboardDocumentListIcon,
+  "/calendar": CalendarDaysIcon,
+  [SETTINGS_HREF]: Cog6ToothIcon,
 };
 
 // Both floating pieces share one solid treatment on the chrome tokens — the
@@ -39,7 +44,7 @@ export const MobileNav = () => {
   const tNav = useTranslations("navbar.nav");
   const tMenu = useTranslations("navbar.userMenu");
   const pathname = usePathname();
-  const activeTab = tabIndex(pathname ?? "");
+  const activeTab = navTabPosition(pathname);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const { isVisible, show } = useAutoHide({
@@ -95,42 +100,43 @@ export const MobileNav = () => {
           {/* Nav items - icon height, full width */}
           <div className={`flex h-12 flex-1 items-center px-3 ${barSurfaceClassName}`}>
             <div className="relative w-full">
-              {/* One pill slides between the four columns. CSS moves it, so page
-                  scroll can't throw it off the way a measured animation was. */}
+              {/* One pill slides between the tabs' columns on a CSS transition, which page scroll
+                  can't move. */}
               <span
                 aria-hidden
-                className={`pointer-events-none absolute inset-y-0 left-0 flex w-1/4 items-center justify-center transition-[translate,opacity] duration-300 ease-(--vt-ease) motion-reduce:transition-none ${
+                className={`pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center transition-[translate,opacity] duration-300 ease-(--vt-ease) motion-reduce:transition-none ${
                   activeTab < 0 ? "opacity-0" : ""
                 }`}
-                style={{ translate: `${Math.max(activeTab, 0) * 100}% 0` }}
+                style={{
+                  width: `${100 / NAV_TABS.length}%`,
+                  translate: `${Math.max(activeTab, 0) * 100}% 0`,
+                }}
               >
                 <span className="bg-accent h-10 w-15 rounded-full" />
               </span>
-              <ul className="relative grid w-full grid-cols-4 items-center justify-items-center">
-                {siteConfig.navItems.map((item) => {
-                  const isActive =
-                    pathname === item.href ||
-                    (item.href !== "/" && pathname?.startsWith(item.href + "/"));
-                  const Icon =
-                    item.href === "/"
-                      ? HomeIcon
-                      : item.href.startsWith("/calendar")
-                        ? CalendarDaysIcon
-                        : ClipboardDocumentListIcon;
-                  const label = tNav(navLabelKeys[item.href] ?? "home");
+              <ul
+                className="relative grid w-full items-center justify-items-center"
+                style={{ gridTemplateColumns: `repeat(${NAV_TABS.length}, minmax(0, 1fr))` }}
+              >
+                {NAV_TABS.map((href, position) => {
+                  const Icon = TAB_ICONS[href] ?? HomeIcon;
+                  const label =
+                    href === SETTINGS_HREF
+                      ? tMenu("settings.title")
+                      : tNav(NAV_LABEL_KEYS[href] ?? "home");
 
                   return (
-                    <li key={item.href}>
+                    <li key={href}>
                       <NextLink
                         aria-label={label}
                         className={`${tabClassName} transition-colors ${
-                          isActive ? "text-accent-foreground" : idleTabClassName
+                          position === activeTab ? "text-accent-foreground" : idleTabClassName
                         }`}
-                        href={item.href}
+                        href={href}
                         title={label}
-                        transitionTypes={tabTransitionTypes(pathname, item.href)}
+                        transitionTypes={tabTransitionTypes(pathname, href)}
                         onClick={(e) => {
-                          if (item.href === "/" && pathname === "/") {
+                          if (href === "/" && pathname === "/") {
                             e.preventDefault();
                             window.scrollTo({ top: 0, behavior: "smooth" });
                           }
@@ -141,22 +147,6 @@ export const MobileNav = () => {
                     </li>
                   );
                 })}
-
-                <li>
-                  <NextLink
-                    aria-label={tMenu("settings.title")}
-                    className={`${tabClassName} transition-colors ${
-                      pathname?.startsWith("/settings")
-                        ? "text-accent-foreground"
-                        : idleTabClassName
-                    }`}
-                    href="/settings?tab=user"
-                    title={tMenu("settings.title")}
-                    transitionTypes={tabTransitionTypes(pathname, "/settings?tab=user")}
-                  >
-                    <Cog6ToothIcon className="h-5 w-5" />
-                  </NextLink>
-                </li>
               </ul>
             </div>
           </div>

@@ -3,13 +3,10 @@
 import type { ComponentProps, ReactNode } from "react";
 import { ViewTransition } from "react";
 import Link from "next/link";
-import { siteConfig } from "@/config/site";
 import { arriveWhereLeft } from "@/lib/scroll-memory";
 
 // The type for going back; styles/globals.css slides those pages in from the left.
-const NAV_BACK = ["nav-back"];
-// The navbar's tabs, left to right.
-const TABS = [...siteConfig.navItems.map((item) => item.href), "/settings"];
+export const NAV_BACK = ["nav-back"];
 
 const arrival = { tappedMidSlide: false };
 
@@ -73,18 +70,4 @@ export function BackLink({
       }}
     />
   );
-}
-
-/** Which navbar tab a path belongs to, left to right, or -1 when it is none of them. */
-export function tabIndex(path: string) {
-  const pathname = path.split("?")[0] ?? path;
-
-  return TABS.findIndex(
-    (tab) => pathname === tab || (tab !== "/" && pathname.startsWith(`${tab}/`))
-  );
-}
-
-/** A navbar tab's transition types: a tab left of the current page slides in from the left. */
-export function tabTransitionTypes(pathname: string, href: string) {
-  return tabIndex(href) < tabIndex(pathname) ? NAV_BACK : undefined;
 }
