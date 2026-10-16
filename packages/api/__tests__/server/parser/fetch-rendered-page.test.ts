@@ -142,12 +142,12 @@ describe("fetchRenderedPage – rendered-page contract", () => {
     expect(contextOptions()).toEqual({});
   });
 
-  it("adds no referer, client hints or fetch metadata alongside a user's headers", async () => {
+  it("configures no headers even when the user has header tokens", async () => {
     await fetchRenderedPage("https://example.com/recipe", [
       makeToken({ name: "Authorization", value: "Bearer abc123", type: "header" }),
     ]);
 
-    expect(contextOptions()).toEqual({ extraHTTPHeaders: { Authorization: "Bearer abc123" } });
+    expect(contextOptions()).toEqual({});
   });
 
   it("reads the page once when the caller has no reading of its own", async () => {

@@ -98,20 +98,11 @@ export async function renderPage(
   try {
     const browser = await getBrowser();
 
-    const headerTokens = tokens?.filter((t) => t.type === "header") ?? [];
     const cookieTokens = tokens?.filter((t) => t.type === "cookie") ?? [];
 
-    // A fresh context per fetch: one importer's tokens can never be seen by
-    // another's page, and closing it below disposes of the whole session.
-    context = await browser.newContext(
-      headerTokens.length > 0
-        ? {
-            extraHTTPHeaders: Object.fromEntries(
-              headerTokens.map((token) => [token.name, token.value])
-            ),
-          }
-        : undefined
-    );
+    // A fresh context per fetch, so one importer's tokens never reach another's page. No header
+    // tokens: Obscura's stealth build sends extraHTTPHeaders to other sites' scripts, never the page.
+    context = await browser.newContext();
 
     const page = await context.newPage();
 
