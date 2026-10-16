@@ -1,6 +1,6 @@
 # Skeletons and page loads
 
-Status: done (08 leaves out the calendar and today's meals, see its ticket)
+Status: done (08's calendar and today's meals followed on 2026-10-16, see its ticket)
 
 Settled in a `/grill-with-docs` session on 2026-10-15. It builds on the facts in `.scratch/architecture-after-upgrades/`, especially its ticket 08, the Cache Components spike, whose measurements this spec reuses. The vocabulary is CONTEXT.md's **Skeleton** (added that day), **Device Preference**, **Device Kind**, **Offline Cache**, **Warm Set** and **Recovery**. Target Version: 0.26.0-beta. Nothing here is expensive to reverse, so it adds no ADR.
 

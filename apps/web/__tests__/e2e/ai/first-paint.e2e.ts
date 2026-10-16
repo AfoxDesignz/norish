@@ -204,12 +204,75 @@ test("Today's meals is in the dashboard markup by default", async ({ browser }) 
   }
 });
 
-test("a planned rule leaves the block out of the dashboard markup", async ({ browser }) => {
-  // What is planned is client data, and a day with nothing planned shows no
-  // block, so the server draws none rather than one that might vanish.
-  await seed("desktop", { todaySectionVisibility: "planned" });
+/** `YYYY-MM-DD` for today in `timeZone`. */
+function todayIn(timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
 
-  expect(await dashboardHasTodaysMeals(browser, "desktop")).toBe(false);
+test("a full load of the dashboard draws Today's meals for the reader's day, from their time zone", async ({
+  browser,
+}) => {
+  // UTC+14, so its date is often not the server's: the cookie must decide the day.
+  const timeZone = "Pacific/Kiritimati";
+  const today = todayIn(timeZone);
+
+  await seed("desktop", { todaySectionVisibility: "planned" });
+  await callApi("calendar.createItem", {
+    id: crypto.randomUUID(),
+    date: today,
+    slot: "Dinner",
+    itemType: "note",
+    title: "Served Kiritimati note",
+  });
+  const { context, page } = await openStatic(browser, "desktop");
+
+  try {
+    await context.addCookies([{ name: "norish-tz", value: timeZone, url: stack.baseURL }]);
+    await page.goto("/");
+    // Planned, so drawn at all only because the server knew what was planned that day.
+    await expect(page.getByText("Served Kiritimati note").first()).toBeAttached();
+    await expect(page.locator('section[aria-labelledby="today-meals-heading"]')).toContainText(
+      new Intl.DateTimeFormat("en", {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+        timeZone,
+      }).format(new Date())
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test("a full load of the calendar carries its opening range, so its days draw without asking", async ({
+  browser,
+}) => {
+  await callApi("calendar.createItem", {
+    id: crypto.randomUUID(),
+    date: new Date().toLocaleDateString("en-CA"),
+    slot: "Lunch",
+    itemType: "note",
+    title: "Served calendar note",
+  });
+  const { context, page } = await openLive(browser, "phone");
+  const asked: string[] = [];
+
+  page.on("request", (request) => {
+    if (request.url().includes("calendar.listItems")) asked.push(request.url());
+  });
+
+  try {
+    await page.goto("/calendar");
+    await expect(page.getByText("Served calendar note").first()).toBeVisible();
+    expect(asked).toEqual([]);
+  } finally {
+    await context.close();
+  }
 });
 
 /** The library layout the server selected for one kind. */

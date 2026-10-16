@@ -5,6 +5,7 @@ import type { DragEndEvent, DragOverEvent, DragStartEvent } from "@dnd-kit/core"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useCalendarContext } from "@/app/(app)/calendar/context";
 import { SLOT_ORDER } from "@/components/calendar/mobile/types";
+import { useReaderToday } from "@/components/reader-today";
 import { CalendarSkeletonDesktop } from "@/components/skeleton/calendar-skeleton";
 import { useViewport } from "@/hooks/use-viewport";
 import {
@@ -28,14 +29,6 @@ import { usePrependAnchorRestore } from "../use-prepend-anchor-restore";
 import { DesktopDayCard } from "./desktop-day-card";
 import { DesktopDragOverlay } from "./desktop-drag-overlay";
 import { DesktopScrollToToday } from "./desktop-scroll-to-today";
-
-function startOfDay(date: Date): Date {
-  const d = new Date(date);
-
-  d.setHours(0, 0, 0, 0);
-
-  return d;
-}
 
 const ESTIMATED_ROW_HEIGHT = 420; // Card height (400) + gap (20)
 
@@ -119,8 +112,8 @@ export function DesktopTimeline({ onAddItem, onNoteClick, onRecipeClick }: Deskt
   );
 
   // Today tracking
-  const today = useMemo(() => startOfDay(new Date()), []);
-  const todayKey = useMemo(() => dateKey(today), [today]);
+  const todayKey = useReaderToday();
+  const today = useMemo(() => new Date(`${todayKey}T00:00:00`), [todayKey]);
   const todayRowIndex = useMemo(() => {
     const dayIndex = allDays.findIndex((d) => dateKey(d) === todayKey);
 
@@ -378,7 +371,9 @@ export function DesktopTimeline({ onAddItem, onNoteClick, onRecipeClick }: Deskt
     [activeItem]
   );
 
-  if (isLoading) {
+  // Also before the window is measured, which the server and the hydrating render never are: with
+  // a seeded range the days draw on the first measured frame, without a request.
+  if (isLoading || virtualItems.length === 0) {
     return <CalendarSkeletonDesktop />;
   }
 

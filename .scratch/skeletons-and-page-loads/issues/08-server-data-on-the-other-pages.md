@@ -10,7 +10,7 @@ See `.scratch/skeletons-and-page-loads/spec.md`, The server-data pilot.
 
 **Blocked by:** 07. Done only if 07 is adopted; otherwise closed as wontfix.
 
-**Status:** done for share, cookbook, groceries and pantry; calendar and today's meals left out (see below)
+**Status:** done; the calendar and today's meals followed on 2026-10-16 (see below)
 
 - [x] Each page, one commit, with its server markup asserted in `first-paint.e2e.ts`.
 - [x] Cold-load time to content per page, before and after, recorded here.
@@ -36,3 +36,10 @@ See `.scratch/skeletons-and-page-loads/spec.md`, The server-data pilot.
     In each case the content now arrives with first paint. Checked in a browser on phone and desktop: no hydration errors, and no seeded read is fetched again on load.
   - **Left out: the calendar and today's meals.** Both take their range, and today's meals its date label, from the browser's clock and time zone (`getInitialDateRange` builds local weeks from `new Date()`, and the label formats in the runtime's zone). The server knows neither the reader's time zone nor, near midnight, their date, so its range would key a different query and its label could differ from the browser's, a hydration mismatch. Seeding them needs the reader's time zone on the server, for example a cookie the browser writes; that is a decision for the maintainer. The spec's "range from Device Kind" doesn't match the code either: the calendar uses the same five-week range on every kind.
   - **Seen on the way:** the Warm Set warms `cookbooks.recipes` as `{ cookbookId, limit: 100 }`, while the cookbook page reads it with the library filters (`limit: 50`, sort, and so on), so the warmed entry never serves that page.
+- 2026-10-16, **calendar and today's meals seeded, on the reader's time zone.**
+  - **The day.** The head script in `app/layout.tsx` writes the browser's IANA zone to the `norish-tz` cookie. `lib/reader-today-server.ts` reads it once per request (`cache()`) and gives the reader's `YYYY-MM-DD` (`lib/reader-today.ts`; an unknown or missing zone falls back to the server's). The `(app)` layout hands it to the App Shell's `ReaderTodayProvider`, and `useReaderToday()` (`components/reader-today.tsx`) is a `useSyncExternalStore` whose server snapshot is that date: the server and the hydrating render use the server's day, the browser's own clock takes over after, and once a minute it notices midnight. So a reader without the cookie yet, or one whose day turned between the server render and hydration, still hydrates without a mismatch.
+  - **The seeds.** `getInitialDateRange(mode, today)` builds both ranges from that day. The dashboard page seeds the desktop week (Today's meals), and a new `calendar/layout.tsx` seeds the phone range the calendar opens on, through `QuerySeed`; the calendar context, Today's meals and both timelines read `useReaderToday()`.
+  - **The calendar still paints its skeleton first.** Both timelines are window virtualisers, which draw nothing until they have measured the window, and the server and the hydrating render never have. They now keep the skeleton until then, so the first measured frame draws the days from the seeded data, without a request. Today's meals draws its content in the server's markup.
+  - **Not measured.** The 06 harness wasn't kept, and a before build needs the older commit checked out; content time for these two is unrecorded. `first-paint.e2e.ts` asserts the dashboard's markup carries a planned note for a `Pacific/Kiritimati` cookie's day (the planned-only rule draws the block only when the server knows something is planned), and that a live calendar load shows its note with no `calendar.listItems` request.
+  - **The Warm Set's cookbook entry** now uses the page's own input (`cookbookRecipesInput` next to `useCookbookRecipesQuery`, default filters, 50 members), so Offline the page reads it. `offline.e2e.ts` opens a cookbook with the backend down.
+
