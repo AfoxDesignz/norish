@@ -134,12 +134,22 @@ describe("fetchRenderedPage – auth token injection", () => {
     // Obscura drops cookies set over CDP, so none go through addCookies.
     expect(mockAddCookies).not.toHaveBeenCalled();
     expect(setFromPage()).toEqual({
-      cookies: [{ name: "session_id", value: "sess-abc" }],
+      cookies: [{ name: "session_id", value: "sess-abc", domain: "example.com" }],
       visited: ["https://recipes.example.com/robots.txt", "https://recipes.example.com/page"],
     });
 
     // Cookie tokens never leak into the header set
     expect(getExtraHTTPHeaders()).toBeUndefined();
+  });
+
+  it("keeps a cookie whose domain is a bare word on the target host alone", async () => {
+    const tokens = [
+      makeToken({ name: "sessionid", value: "s", type: "cookie", domain: "instagram" }),
+    ];
+
+    await fetchRenderedPage("https://www.instagram.com/reel/abc", tokens);
+
+    expect(setFromPage().cookies).toEqual([{ name: "sessionid", value: "s", domain: null }]);
   });
 
   it("handles mixed header and cookie tokens", async () => {
@@ -150,13 +160,13 @@ describe("fetchRenderedPage – auth token injection", () => {
       makeToken({ name: "prefs", value: "dark-mode", type: "cookie" }),
     ];
 
-    await fetchRenderedPage("https://food.example.org/r/1", tokens);
+    await fetchRenderedPage("https://food.example.com/r/1", tokens);
 
     expect(getExtraHTTPHeaders()).toBeUndefined();
 
     expect(setFromPage().cookies).toEqual([
-      { name: "session", value: "sess-123" },
-      { name: "prefs", value: "dark-mode" },
+      { name: "session", value: "sess-123", domain: "example.com" },
+      { name: "prefs", value: "dark-mode", domain: "example.com" },
     ]);
   });
 
@@ -171,9 +181,9 @@ describe("fetchRenderedPage – auth token injection", () => {
 
     expect(mockEvaluate).toHaveBeenCalledOnce();
     expect(setFromPage().cookies).toEqual([
-      { name: "token_a", value: "val-a" },
-      { name: "token_b", value: "val-b" },
-      { name: "token_c", value: "val-c" },
+      { name: "token_a", value: "val-a", domain: "example.com" },
+      { name: "token_b", value: "val-b", domain: "example.com" },
+      { name: "token_c", value: "val-c", domain: "example.com" },
     ]);
   });
 });
