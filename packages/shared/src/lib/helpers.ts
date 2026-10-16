@@ -237,7 +237,7 @@ function withEveryWord(ingredient: Ingredient, line: string, text: string): Ingr
     return !unitOfMeasureID || VAGUE_UNITS.has(unitOfMeasureID) ? ingredient : asWritten(text);
   }
 
-  const lastWord = line.match(/\S+$/)![0];
+  const lastWord = line.trimEnd().split(/\s+/).at(-1)!;
   const dropped =
     !unitOfMeasureID && !AMOUNT_CHAR.test(lastWord.at(-1)!) && !description.endsWith(lastWord);
 
