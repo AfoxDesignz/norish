@@ -119,7 +119,6 @@ export function RecurrencePanel({
   const showWeekdaySelector = pattern?.rule === "week" || pattern?.rule === "month";
   return (
     <Panel
-      className={nested ? "contents" : undefined}
       nested={nested}
       open={open}
       title={t("title")}

@@ -79,13 +79,7 @@ export function ProductDetailsPanel({
   };
 
   return (
-    <Panel
-      nested
-      className="contents"
-      open={open}
-      title={t("productDetails")}
-      onOpenChange={onOpenChange}
-    >
+    <Panel nested open={open} title={t("productDetails")} onOpenChange={onOpenChange}>
       <Panel.Body>
         <div className="flex flex-col gap-3">
           <TextField value={name} onChange={onNameChange}>

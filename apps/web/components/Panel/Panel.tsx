@@ -174,7 +174,8 @@ const PanelRoot: React.FC<PanelProps> = ({
   const Root = nested ? Drawer.NestedRoot : Drawer.Root;
 
   return (
-    <div data-panel className={className}>
+    // Its drawer portals out, so the wrapper takes no space: an empty box in a flex row adds a gap.
+    <div data-panel className={twMerge("contents", className)}>
       {/* vaul keeps the content mounted after close, so gate on `open` — a
           closed panel must not capture overlays. */}
       <PanelContext value={{ open, close, toggle, portalContainer: open ? contentElement : null }}>

@@ -547,7 +547,6 @@ function IngredientPanelContent({
 
   return (
     <Panel
-      className={nested ? "contents" : undefined}
       nested={nested}
       open={open}
       title={displayName}
@@ -790,7 +789,6 @@ function IngredientPanelContent({
 
       <Panel
         nested
-        className="contents"
         open={allSpellings}
         title={t("spellingsSection")}
         onOpenChange={(isOpen) => {
@@ -947,7 +945,6 @@ function IngredientUsesPanel({
 
   return (
     <Panel
-      className={nested ? "contents" : undefined}
       nested={nested}
       open={open}
       title={t("title", { name })}

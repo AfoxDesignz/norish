@@ -50,7 +50,6 @@ export function IngredientRelocationPanel({
   return (
     <Panel
       nested
-      className="contents"
       open={relocation !== null}
       title={
         asked?.kind === "move"

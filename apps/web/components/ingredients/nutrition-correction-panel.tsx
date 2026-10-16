@@ -342,7 +342,6 @@ export function NutritionCorrectionPanel({
   return (
     <Panel
       nested
-      className="contents"
       open={open}
       title={t("correctTitle", { name })}
       onOpenChange={(isOpen) => {

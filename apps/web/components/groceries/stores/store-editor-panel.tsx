@@ -74,7 +74,6 @@ export function StoreEditorPanel({
   return (
     <Panel
       nested
-      className="contents"
       open={open && editing !== null}
       title={editing?.id ? t("editStore") : t("addStore")}
       onOpenChange={(isOpen) => {
