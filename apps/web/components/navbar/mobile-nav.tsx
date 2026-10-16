@@ -1,14 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import {
   NAV_LABEL_KEYS,
   NAV_TABS,
+  NavTabLink,
   navTabPosition,
   SETTINGS_HREF,
-  tabTransitionTypes,
 } from "@/components/navbar/nav-tabs";
 import NavbarUserMenu from "@/components/navbar/navbar-user-menu";
 import { useAutoHide } from "@/hooks/auto-hide";
@@ -127,14 +126,14 @@ export const MobileNav = () => {
 
                   return (
                     <li key={href}>
-                      <NextLink
+                      <NavTabLink
                         aria-label={label}
                         className={`${tabClassName} transition-colors ${
                           position === activeTab ? "text-accent-foreground" : idleTabClassName
                         }`}
                         href={href}
+                        pathname={pathname}
                         title={label}
-                        transitionTypes={tabTransitionTypes(pathname, href)}
                         onClick={(e) => {
                           if (href === "/" && pathname === "/") {
                             e.preventDefault();
@@ -143,7 +142,7 @@ export const MobileNav = () => {
                         }}
                       >
                         <Icon className="h-5 w-5" />
-                      </NextLink>
+                      </NavTabLink>
                     </li>
                   );
                 })}

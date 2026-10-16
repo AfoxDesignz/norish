@@ -1,10 +1,9 @@
 "use client";
 
-import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import MobileNav from "@/components/navbar/mobile-nav";
-import { NAV_LABEL_KEYS, navTabPosition, tabTransitionTypes } from "@/components/navbar/nav-tabs";
+import { NAV_LABEL_KEYS, NavTabLink, navTabPosition } from "@/components/navbar/nav-tabs";
 import NavbarUserMenu from "@/components/navbar/navbar-user-menu";
 import { useAutoHide } from "@/hooks/auto-hide";
 import { motion } from "motion/react";
@@ -45,12 +44,12 @@ export const Navbar = () => {
           <div className="flex min-w-0 items-center justify-start">
             <div className="max-w-fit">
               {/* On sign-in, globals.css flies the login page's wordmark into this logo. */}
-              <NextLink
+              <NavTabLink
                 data-brand-logo
                 aria-label="Go to home"
                 className="flex items-center"
                 href="/"
-                transitionTypes={tabTransitionTypes(pathname, "/")}
+                pathname={pathname}
                 onClick={(e) => {
                   if (pathname === "/") {
                     e.preventDefault();
@@ -59,7 +58,7 @@ export const Navbar = () => {
                 }}
               >
                 <BrandLogo priority height={30} width={120} />
-              </NextLink>
+              </NavTabLink>
             </div>
           </div>
 
@@ -69,15 +68,15 @@ export const Navbar = () => {
               {/* The nav items lead NAV_TABS, so each one's position is its tab's. */}
               {siteConfig.navItems.map((item, position) => (
                 <li key={item.href}>
-                  <NextLink
+                  <NavTabLink
                     className={`hover:text-accent rounded-md px-3 py-1.5 font-medium transition-colors ${
                       position === activeTab ? "text-accent font-semibold" : "text-foreground/80"
                     }`}
                     href={item.href}
-                    transitionTypes={tabTransitionTypes(pathname, item.href)}
+                    pathname={pathname}
                   >
                     {t(NAV_LABEL_KEYS[item.href] ?? "home")}
-                  </NextLink>
+                  </NavTabLink>
                 </li>
               ))}
             </ul>

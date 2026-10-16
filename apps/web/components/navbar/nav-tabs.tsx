@@ -1,5 +1,8 @@
+import type { ComponentProps } from "react";
+import NextLink from "next/link";
 import { NAV_BACK } from "@/components/page-transition";
 import { siteConfig } from "@/config/site";
+import { arriveAtTop } from "@/lib/scroll-memory";
 
 export const SETTINGS_HREF = "/settings?tab=user";
 
@@ -26,4 +29,28 @@ export function navTabPosition(path: string) {
 /** A tab's transition types: a tab left of the current page slides in from the left. */
 export function tabTransitionTypes(pathname: string, href: string) {
   return navTabPosition(href) < navTabPosition(pathname) ? NAV_BACK : undefined;
+}
+
+/**
+ * A navbar tab's link, which opens its page at the top. Next's own scroll skips a page whose top is
+ * already in view, which leaves a page that was scrolled a little still scrolled.
+ */
+export function NavTabLink({
+  href,
+  pathname,
+  onNavigate,
+  ...props
+}: Omit<ComponentProps<typeof NextLink>, "href"> & { href: string; pathname: string }) {
+  return (
+    <NextLink
+      {...props}
+      href={href}
+      scroll={false}
+      transitionTypes={tabTransitionTypes(pathname, href)}
+      onNavigate={(event) => {
+        onNavigate?.(event);
+        arriveAtTop(href);
+      }}
+    />
+  );
 }
