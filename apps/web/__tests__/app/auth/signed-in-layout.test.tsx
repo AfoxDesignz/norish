@@ -15,7 +15,11 @@ const users = vi.hoisted(() => ({
 }));
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/headers", () => ({ headers: async () => requestHeaders.current }));
+vi.mock("next/headers", () => ({
+  headers: async () => requestHeaders.current,
+  // No time-zone cookie: the reader's day falls back to the server's.
+  cookies: async () => ({ get: () => undefined }),
+}));
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
     throw new Error(`redirect:${url}`);

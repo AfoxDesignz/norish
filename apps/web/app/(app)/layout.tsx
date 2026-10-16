@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/app/(app)/app-shell";
 import { DESTINATION_HEADER, loginPath } from "@/lib/auth/login-redirect";
+import { readReaderToday } from "@/lib/reader-today-server";
 import { readDevicePreferencesSeed, readRequestProfile } from "@/lib/request-profile";
 
 /**
@@ -20,7 +21,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // read once, so the shell seeds the very first render. The offline bootstrap
   // mounts the same shell unseeded and reads the restored profile instead.
   return (
-    <AppShell devicePreferences={await readDevicePreferencesSeed()} userId={userId}>
+    <AppShell
+      devicePreferences={await readDevicePreferencesSeed()}
+      readerToday={await readReaderToday()}
+      userId={userId}
+    >
       {children}
     </AppShell>
   );
