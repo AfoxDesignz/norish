@@ -9,6 +9,8 @@ import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AppRouter } from "@norish/trpc/client";
+import { DEFAULT_RECIPE_FILTERS, toRecipesQueryFilters } from "@norish/shared-react/contexts";
+import { cookbookRecipesInput } from "@norish/shared-react/hooks/cookbooks";
 
 const expirationMetadata = vi.hoisted(() => ({
   updateTimestamp: vi.fn(async (_url: string) => {}),
@@ -161,11 +163,14 @@ describe("WarmSet", () => {
     expect(
       queryClient.getQueryData([["cookbooks", "get"], { input: { id: "c1" }, type: "query" }])
     ).toEqual({ id: "c1", title: "Cookbook c1" });
-    // Its membership, so the page lists what is in it.
+    // Its membership, under the input the cookbook page asks with, so the page lists it Offline.
     expect(
       queryClient.getQueryData([
         ["cookbooks", "recipes"],
-        { input: { cookbookId: "c1", limit: 100 }, type: "infinite" },
+        {
+          input: cookbookRecipesInput("c1", toRecipesQueryFilters(DEFAULT_RECIPE_FILTERS)),
+          type: "infinite",
+        },
       ])
     ).toMatchObject({ pages: [{ recipes: [{ id: "r1" }] }] });
     // The cookbooks the reader may edit — one answer for every recipe page, so

@@ -45,6 +45,39 @@ export type CookbookRecipesQueryResult = {
  * honours the reader's stored sort, search and filters and pages the same way
  * the Library does.
  */
+/** The members query's input, as the cookbook page asks for it; the Warm Set warms the same one. */
+export function cookbookRecipesInput(
+  cookbookId: string,
+  filters: RecipeFilters & { favoritesOnly?: boolean } = {}
+) {
+  const {
+    limit = 50,
+    search,
+    searchFields,
+    tags,
+    categories,
+    filterMode = "AND",
+    sortMode = "dateDesc",
+    minRating,
+    maxCookingTime,
+    favoritesOnly = false,
+  } = filters;
+
+  return {
+    cookbookId,
+    limit,
+    search,
+    searchFields,
+    tags,
+    categories,
+    filterMode,
+    sortMode,
+    minRating,
+    maxCookingTime,
+    favoritesOnly,
+  };
+}
+
 export function createUseCookbookRecipesQuery({ useTRPC }: CreateCookbookHooksOptions) {
   return function useCookbookRecipesQuery(
     cookbookId: string,
@@ -55,33 +88,8 @@ export function createUseCookbookRecipesQuery({ useTRPC }: CreateCookbookHooksOp
 
     const trpc = useTRPC();
     const queryClient = useQueryClient();
-    const {
-      limit = 50,
-      search,
-      searchFields,
-      tags,
-      categories,
-      filterMode = "AND",
-      sortMode = "dateDesc",
-      minRating,
-      maxCookingTime,
-      favoritesOnly = false,
-    } = filters;
-
     const infiniteQueryOptions = trpc.cookbooks.recipes.infiniteQueryOptions(
-      {
-        cookbookId,
-        limit,
-        search,
-        searchFields,
-        tags,
-        categories,
-        filterMode,
-        sortMode,
-        minRating,
-        maxCookingTime,
-        favoritesOnly,
-      },
+      cookbookRecipesInput(cookbookId, filters),
       { getNextPageParam: (lastPage) => lastPage.nextCursor }
     );
     const queryKey = infiniteQueryOptions.queryKey;
