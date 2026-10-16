@@ -242,10 +242,10 @@ export async function buildRecipeDTO(input: RecipeParseInput): Promise<FullRecip
     })
     .filter((line) => line.description.length > 0);
 
-  // Parse steps
-  const stepLines = splitNonEmptyLines(input.instructionsText).map(
-    (step) => (step.length <= MAX_HEADING_STEP_LENGTH && headingOf(step)) || step
-  );
+  // Parse steps; a separator line ("-", "•") says nothing and is no step.
+  const stepLines = splitNonEmptyLines(input.instructionsText)
+    .filter((step) => /[\p{L}\p{N}]/u.test(step))
+    .map((step) => (step.length <= MAX_HEADING_STEP_LENGTH && headingOf(step)) || step);
 
   // Parse tags from categories
   const tags = (input.categories || [])
