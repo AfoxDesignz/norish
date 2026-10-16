@@ -3,7 +3,7 @@ import { getUnits } from "@norish/shared-server/config/server-config-loader";
 import { saveImageBytes } from "@norish/shared-server/media/storage";
 import { FullRecipeInsertDTO } from "@norish/shared/contracts";
 import { inferSystemUsedFromParsed } from "@norish/shared/lib/determine-recipe-system";
-import { parseIngredientWithDefaults } from "@norish/shared/lib/helpers";
+import { parseIngredientWithDefaults, withoutListMarkers } from "@norish/shared/lib/helpers";
 
 /**
  * Parse human-readable duration strings like "30 min", "1 hr 15 min", "1h30m", "1 hour", "1:30", "1:00h"
@@ -227,8 +227,8 @@ export async function buildRecipeDTO(input: RecipeParseInput): Promise<FullRecip
 
   // Parse ingredients - split by newlines first, then parse each line
   const units = await getUnits();
-  const ingredientArray = splitNonEmptyLines(input.ingredientsText).flatMap((text) =>
-    parseIngredientWithDefaults(text, units).map((line) => ({ ...line, text }))
+  const ingredientArray = withoutListMarkers(splitNonEmptyLines(input.ingredientsText)).flatMap(
+    (text) => parseIngredientWithDefaults(text, units).map((line) => ({ ...line, text }))
   );
   const systemUsed = inferSystemUsedFromParsed(ingredientArray);
   const normalizedIngredients = ingredientArray

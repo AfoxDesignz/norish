@@ -273,7 +273,7 @@ describe("Recipe Keeper import", () => {
   it("keeps every word of a pasted list, and no separator as a step (#635)", async () => {
     const { dtos } = await importBlocks([
       recipeBlock({
-        ingredients: ["• 2 uova", "•", "Burro 20 g", "Scorsa di 1 limone"],
+        ingredients: ["• 2 uova", "•", "Burro 20 g", "Scorsa di 1 limone", ".80 g di Pecorino"],
         directions: ["-", "Montate le uova.", "-"],
       }),
     ]);
@@ -283,7 +283,7 @@ describe("Recipe Keeper import", () => {
         (line: { amount: number | null; ingredientName: string }) =>
           `${line.amount ?? ""} ${line.ingredientName}`
       )
-    ).toEqual(["2 uova", "20 Burro", "1 Scorsa di limone"]);
+    ).toEqual(["2 uova", "20 Burro", "1 Scorsa di limone", "80 di Pecorino"]);
     expect(dtos[0].steps.map((step: { step: string }) => step.step)).toEqual(["Montate le uova."]);
   });
 
