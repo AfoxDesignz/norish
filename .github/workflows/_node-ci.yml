@@ -131,6 +131,10 @@ jobs:
       # setup-uv stopped publishing floating major tags with v8; pin exactly.
       - name: Install uv
         uses: astral-sh/setup-uv@v10.0.1
+        # Its default cache key globs the whole checkout, following pnpm 12's workspace symlinks in
+        # node_modules back into the repo until the job times out.
+        with:
+          cache-dependency-glob: apps/parser-api/uv.lock
 
       # The production server boots the embedded parser and refuses to run
       # without its runtime; the shared setup skips it for everything else.
