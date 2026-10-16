@@ -50,8 +50,9 @@ export function stripPreparation(text: string): string {
  * "for garnish", "optional"). A piece is left alone, because those words name
  * foods too: "onion rings" are not onion, and "glass noodles" are not
  * noodles. A weight or a volume goes only at the start (`MEASURE_MAP_IDS`).
+ * Also the only units a line names without a number ("q.b. sale").
  */
-const STRIPPED_UNITS = new Set([
+export const VAGUE_UNITS: ReadonlySet<string> = new Set([
   "to_taste",
   "to_serve",
   "for_garnish",
@@ -140,7 +141,7 @@ export function spellingRules(
       ...(unit?.plural ?? []).map((form) => form?.name),
       ...(unit?.alternates ?? []),
     ];
-    const into = STRIPPED_UNITS.has(id)
+    const into = VAGUE_UNITS.has(id)
       ? either
       : CONTAINER_UNITS.has(id) || MEASURE_MAP_IDS.has(id)
         ? leading

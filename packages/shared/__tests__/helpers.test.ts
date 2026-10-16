@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { UnitsMap } from "@norish/config/zod/server-config";
+import defaultUnits from "@norish/config/units.default.json";
 import {
   addWeeks,
   avatarFilenameFromImagePath,
@@ -201,6 +202,67 @@ describe("parseIngredientWithDefaults", () => {
     expect(
       parseIngredientWithDefaults(["1 cup milk", "", "2 eggs"]).map((line) => line.description)
     ).toEqual(["milk", "eggs"]);
+  });
+});
+
+describe("parseIngredientWithDefaults keeps every word of a line (#635)", () => {
+  const parse = (line: string) => parseIngredientWithDefaults(line, defaultUnits as UnitsMap)[0];
+  const asWritten = (description: string) => ({
+    quantity: null,
+    unitOfMeasureID: null,
+    description,
+  });
+
+  it("reads past a list marker, and drops a line that is only one", () => {
+    expect(parse("• 2 uova")).toMatchObject({ quantity: 2, description: "uova" });
+    expect(parse("●1 limone")).toMatchObject({ quantity: 1, description: "limone" });
+    expect(parse("- sale e pepe")).toMatchObject(asWritten("sale e pepe"));
+    expect(parseIngredientWithDefaults(["•", "2 uova"], defaultUnits as UnitsMap)).toHaveLength(1);
+  });
+
+  it("still reads an amount and unit written at the end", () => {
+    expect(parse("Burro 20 g")).toMatchObject({
+      quantity: 20,
+      unitOfMeasureID: "gram",
+      description: "Burro",
+    });
+    expect(parse("limoni 0,5")).toMatchObject({ quantity: 0.5, description: "limoni" });
+  });
+
+  it("keeps the word after an amount at the end of a line, and the amount so it scales", () => {
+    expect(parse("Scorsa di 1 limone")).toMatchObject({
+      quantity: 1,
+      description: "Scorsa di limone",
+    });
+    expect(parse("patate dolci 4 grandi")).toMatchObject({
+      quantity: 4,
+      description: "patate dolci grandi",
+    });
+  });
+
+  it("reads a range as its lower end, and keeps a zero amount without a unit as written", () => {
+    expect(parse("2-3 rametti di menta")).toMatchObject({ quantity: 2 });
+    expect(parse("farina 00")).toMatchObject(asWritten("farina 00"));
+    expect(parse("0 to_taste Sale")).toMatchObject({
+      unitOfMeasureID: "to_taste",
+      description: "Sale",
+    });
+  });
+
+  it("reads a unit without a number only where it means an amount", () => {
+    expect(parse("q.b. sale")).toMatchObject({ unitOfMeasureID: "to_taste", description: "sale" });
+    expect(parse("un pizzico di sale")).toMatchObject({ unitOfMeasureID: "pinch" });
+    expect(parse("un po' di olio per ungere")).toMatchObject(
+      asWritten("un po' di olio per ungere")
+    );
+    expect(parse("in una sola fetta")).toMatchObject(asWritten("in una sola fetta"));
+  });
+
+  it("never reads a unit that leaves no words", () => {
+    expect(parse("Per decorare:")).toMatchObject({
+      ...asWritten("Per decorare:"),
+      isGroupHeader: true,
+    });
   });
 });
 

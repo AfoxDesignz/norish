@@ -1,3 +1,4 @@
+import type { Ingredient } from "parse-ingredient";
 import { decode } from "html-entities";
 import { jsonrepair } from "jsonrepair";
 import { parseIngredient } from "parse-ingredient";
@@ -6,6 +7,7 @@ import type { FlatUnitsMap, UnitsMap } from "@norish/config/zod/server-config";
 import type { FullRecipeInsertDTO } from "@norish/shared/contracts/dto/recipe";
 import type { MultiWordUnit } from "@norish/shared/lib/unit-localization";
 import { httpUrlSchema } from "@norish/shared/lib/schema";
+import { VAGUE_UNITS } from "@norish/shared/lib/spelling-keys";
 import {
   collectMultiWordUnits,
   findLeadingUnit,
@@ -80,12 +82,6 @@ export const parseJsonWithRepair = (input: string): any | null => {
 const UNIT_PLACEHOLDER = "norishmultiwordunit";
 
 /**
- * A list bullet a pasted line keeps: a dash, bullet or asterisk, then a space,
- * or a dash right against the amount (no amount is negative).
- */
-const LEADING_BULLET = /^\s*(?:[-–—•·*]\s+|[-–—](?=\d))/;
-
-/**
  * Hand `parse-ingredient` a line it can read, by collapsing a multi-word unit
  * name into one word it is told about.
  *
@@ -120,22 +116,22 @@ export function parseIngredientWithDefaults(
   input: string | string[],
   units: UnitsMap = {}
 ): ReturnType<typeof parseIngredient> {
-  const lines = Array.isArray(input) ? input : [input];
-  const merged: any[] = [];
+  const lines = (Array.isArray(input) ? input : [input]).flatMap((line) =>
+    line ? line.toString().split(/\r?\n/) : []
+  );
+  const merged: Ingredient[] = [];
 
   // Flatten locale-aware units for parse-ingredient library
   const flatUnits = flattenForLibrary(units);
   const multiWordUnits = collectMultiWordUnits(units);
 
   for (const line of lines) {
-    if (!line) continue;
+    const text = line.trim().replace(LIST_MARKER, "");
 
-    // Normalize comma decimals to periods (European format => US format), and
-    // take a bullet off, which the parser reads as a range or as the name.
-    const normalizedLine = line
-      .toString()
-      .replace(/(\d),(\d)/g, "$1.$2")
-      .replace(LEADING_BULLET, "");
+    if (!text) continue;
+
+    // Normalize comma decimals to periods (European format => US format)
+    const normalizedLine = text.replace(/(\d),(\d)/g, "$1.$2");
 
     const collapsed = withMultiWordUnitCollapsed(normalizedLine, multiWordUnits, flatUnits);
 
@@ -143,11 +139,50 @@ export function parseIngredientWithDefaults(
     const parsed = parseIngredient(collapsed.line, {
       additionalUOMs: collapsed.units,
     });
+    const restored = collapsed.unitText ? restoreUnitText(parsed, collapsed.unitText) : parsed;
 
-    merged.push(...(collapsed.unitText ? restoreUnitText(parsed, collapsed.unitText) : parsed));
+    merged.push(...restored.map((ingredient) => withEveryWord(ingredient, normalizedLine, text)));
   }
 
-  return merged as any;
+  return merged;
+}
+
+/** A list marker a pasted line opens with ("• 2 uova", "- 2 eggs"): layout, not words. */
+const LIST_MARKER = /^[•●○◦▪■□◆◇‣⁃∙·⚫*–—-]\s*/u;
+
+/** A character an amount is written with: a digit or a vulgar fraction. */
+const AMOUNT_CHAR = /[\d¼-¾⅐-⅞]/u;
+
+/** The parse with every word kept, and its amount, so the line still scales. parse-ingredient
+ * drops a word after an amount at the end ("Scorsa di 1 limone") and reads a unit with no number. */
+function withEveryWord(ingredient: Ingredient, line: string, text: string): Ingredient {
+  const { quantity, unitOfMeasureID, description } = ingredient;
+
+  // "farina 00" read as no flour; "Per decorare:" as the unit "for garnish" and the food ":"
+  if ((quantity === 0 && !unitOfMeasureID) || !/[\p{L}\p{N}]/u.test(description)) {
+    return asWritten(text);
+  }
+  if (quantity == null) {
+    return !unitOfMeasureID || VAGUE_UNITS.has(unitOfMeasureID) ? ingredient : asWritten(text);
+  }
+
+  const lastWord = line.match(/\S+$/)![0];
+  const dropped =
+    !unitOfMeasureID && !AMOUNT_CHAR.test(lastWord.at(-1)!) && !description.endsWith(lastWord);
+
+  return dropped ? { ...ingredient, description: `${description} ${lastWord}` } : ingredient;
+}
+
+/** A line kept whole: no amount, no unit, its words as the food. */
+function asWritten(text: string): Ingredient {
+  return {
+    quantity: null,
+    quantity2: null,
+    unitOfMeasureID: null,
+    unitOfMeasure: null,
+    description: text,
+    isGroupHeader: text.endsWith(":"),
+  };
 }
 
 /** Put the collapsed unit name back wherever the placeholder survived. */
