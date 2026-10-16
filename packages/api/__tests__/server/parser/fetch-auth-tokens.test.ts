@@ -114,7 +114,7 @@ describe("fetchRenderedPage – auth token injection", () => {
     expect(setFromPage()).toEqual({ cookies: undefined, visited: ["https://example.com/recipe"] });
   });
 
-  it("passes header tokens through as extraHTTPHeaders, exactly as configured", async () => {
+  it("sends no header token, which Obscura hands to other sites' scripts and not the page", async () => {
     const tokens = [
       makeToken({ name: "Authorization", value: "Bearer abc123", type: "header" }),
       makeToken({ name: "X-Custom", value: "custom-val", type: "header" }),
@@ -122,15 +122,7 @@ describe("fetchRenderedPage – auth token injection", () => {
 
     await fetchRenderedPage("https://example.com/recipe", tokens);
 
-    const headers = getExtraHTTPHeaders()!;
-
-    expect(headers["Authorization"]).toBe("Bearer abc123");
-    expect(headers["X-Custom"]).toBe("custom-val");
-
-    // The user's tokens are the only thing Norish sends.
-    expect(Object.keys(headers)).toHaveLength(2);
-
-    // No cookies to set
+    expect(getExtraHTTPHeaders()).toBeUndefined();
     expect(mockEvaluate).not.toHaveBeenCalled();
   });
 
@@ -160,11 +152,7 @@ describe("fetchRenderedPage – auth token injection", () => {
 
     await fetchRenderedPage("https://food.example.org/r/1", tokens);
 
-    // Verify header tokens merged
-    const headers = getExtraHTTPHeaders()!;
-
-    expect(headers["Authorization"]).toBe("Bearer xyz");
-    expect(headers["X-Api-Key"]).toBe("key-456");
+    expect(getExtraHTTPHeaders()).toBeUndefined();
 
     expect(setFromPage().cookies).toEqual([
       { name: "session", value: "sess-123" },
