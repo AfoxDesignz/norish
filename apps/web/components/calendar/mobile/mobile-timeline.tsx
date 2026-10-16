@@ -3,6 +3,7 @@
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from "@dnd-kit/core";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useCalendarContext } from "@/app/(app)/calendar/context";
+import { useReaderToday } from "@/components/reader-today";
 import { CalendarSkeletonMobile } from "@/components/skeleton/calendar-skeleton";
 import {
   DndContext,
@@ -31,14 +32,6 @@ import { SLOT_ORDER } from "./types";
 
 const mobileDragActivationDelayMs = 300;
 const mobileDragTolerancePx = 10;
-
-function startOfDay(date: Date): Date {
-  const d = new Date(date);
-
-  d.setHours(0, 0, 0, 0);
-
-  return d;
-}
 
 // An empty day, which most days are
 const ESTIMATED_DAY_HEIGHT = 64;
@@ -81,8 +74,8 @@ export function MobileTimeline({ onAddItem, onNoteClick, onRecipeClick }: Mobile
   );
 
   // Today tracking
-  const today = useMemo(() => startOfDay(new Date()), []);
-  const todayKey = useMemo(() => dateKey(today), [today]);
+  const todayKey = useReaderToday();
+  const today = useMemo(() => new Date(`${todayKey}T00:00:00`), [todayKey]);
   const todayIndex = useMemo(
     () => allDays.findIndex((d) => dateKey(d) === todayKey),
     [allDays, todayKey]
@@ -357,7 +350,9 @@ export function MobileTimeline({ onAddItem, onNoteClick, onRecipeClick }: Mobile
     [activeItem]
   );
 
-  if (isLoading) {
+  // Also before the window is measured, which the server and the hydrating render never are: with
+  // a seeded range the days draw on the first measured frame, without a request.
+  if (isLoading || virtualItems.length === 0) {
     return <CalendarSkeletonMobile />;
   }
 
