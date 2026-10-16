@@ -22,6 +22,8 @@ export function EmailPasswordForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, whileLoading] = usePending();
+  // Set once signed in, so the button stays busy while the redirect loads the app.
+  const [isLeaving, setIsLeaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
@@ -34,8 +36,9 @@ export function EmailPasswordForm({
           callbackURL: callbackUrl,
         })
         .then((result) => {
-          // On success Better Auth's redirect plugin loads `callbackURL`, the sign-in view transition.
+          // On success Better Auth's redirect plugin sets `location.href` to `callbackURL`.
           if (result.error) setError(result.error.message || t("errors.invalidCredentials"));
+          else setIsLeaving(true);
         })
         .catch(() => setError(t("errors.generic")))
     );
@@ -96,7 +99,7 @@ export function EmailPasswordForm({
         fullWidth
         className="mt-2 h-11"
         isDisabled={!email || !password}
-        isPending={isLoading}
+        isPending={isLoading || isLeaving}
         type="submit"
         variant="primary"
       >

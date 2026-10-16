@@ -21,6 +21,8 @@ export function SignupForm({ callbackUrl = "/" }: SignupFormProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, whileLoading] = usePending();
+  // Set once the account exists, so the button stays busy while the app loads.
+  const [isLeaving, setIsLeaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const passwordsMatch = password === confirmPassword;
   // Field-level rules live on their fields; the alert is for the server's answer.
@@ -49,7 +51,8 @@ export function SignupForm({ callbackUrl = "/" }: SignupFormProps) {
           if (result.error) {
             setError(result.error.message || t("errors.createFailed"));
           } else {
-            // A full load like sign-in's redirect, so the app arrives in the sign-in view transition.
+            // A full page load, like sign-in's redirect, so app/layout.tsx types it `sign-in`.
+            setIsLeaving(true);
             location.assign(safeOrigin(callbackUrl) ?? "/");
           }
         })
@@ -160,7 +163,7 @@ export function SignupForm({ callbackUrl = "/" }: SignupFormProps) {
       <Button
         className="mt-2"
         isDisabled={!isFormValid}
-        isPending={isLoading}
+        isPending={isLoading || isLeaving}
         type="submit"
         variant="primary"
       >
