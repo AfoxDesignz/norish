@@ -81,6 +81,14 @@ export async function renderPage(
   tokens?: SiteAuthTokenDecryptedDto[],
   isSettled?: (html: string) => boolean
 ): Promise<RenderedPage> {
+  // Only a web page reaches the browser, so a link stored before imports refused other schemes
+  // (file:, gopher:) is never rendered.
+  if (!/^https?:$/.test(URL.parse(targetUrl)?.protocol ?? "")) {
+    log.warn({ url: targetUrl }, "Refused to render a link that is not a web page");
+
+    return { html: "", status: null };
+  }
+
   let context: BrowserContext | undefined;
   let status: number | null = null;
 
