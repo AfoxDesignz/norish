@@ -219,13 +219,13 @@ export const RecipeDeleteInputSchema = z.object({
 });
 
 export const RecipeImportInputSchema = z.object({
-  // "www.site.com/recipe" names a page as well as a full link does, so a
-  // missing scheme is filled in rather than refused.
+  // "www.site.com/recipe" names a page as well as a full link does, so a missing scheme is filled
+  // in. Only a web page is accepted, passed on as parsed, so the host checked is the host fetched.
   url: z
     .string()
     .trim()
     .transform((url) => (/^[a-z][a-z\d+.-]*:\/\//i.test(url) ? url : `https://${url}`))
-    .pipe(z.url()),
+    .pipe(z.url({ protocol: /^https?$/, normalize: true })),
 });
 
 export const RecipeConvertInputSchema = z.object({

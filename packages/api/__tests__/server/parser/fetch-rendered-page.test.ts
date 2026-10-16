@@ -99,6 +99,15 @@ beforeEach(() => {
 });
 
 describe("fetchRenderedPage – rendered-page contract", () => {
+  it("never hands the browser a link that is not a web page", async () => {
+    mockGetBrowser.mockClear();
+    for (const url of ["file:///etc/passwd", "gopher://127.0.0.1:6379/_x", "not a link"]) {
+      await expect(renderPage(url), url).resolves.toEqual({ html: "", status: null });
+    }
+
+    expect(mockGetBrowser).not.toHaveBeenCalled();
+  });
+
   it("returns the HTML Obscura rendered", async () => {
     await expect(fetchRenderedPage("https://example.com/recipe")).resolves.toBe(
       "<html>rendered</html>"
