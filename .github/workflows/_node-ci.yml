@@ -29,6 +29,18 @@ jobs:
     name: Build, test & lint
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Tests whose code publishes realtime events need a live Redis, as the dev stack gives them
+    # locally; without one each publish waits out the client's 5 s command timeout.
+    services:
+      redis:
+        image: redis:8.10.1
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
