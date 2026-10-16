@@ -27,6 +27,8 @@ export const SEEDED_RECIPE_IMAGE = `/recipes/${SEEDED_RECIPE_ID}/primary.png`;
 export const SEEDED_RECIPE_DISH_COLOR = "#b05a2a";
 export const SEEDED_GROCERY_NAME = "Warm Set Oat Milk";
 export const SEEDED_NOTE_TITLE = "Warm Set Leftovers";
+export const SEEDED_COOKBOOK_ID = "7e300351-13a4-4bfb-8b40-7a1a5a5f8d02";
+export const SEEDED_COOKBOOK_TITLE = "Warm Set Breads";
 /** A food the household keeps, so the Pantry has a row offline. */
 export const SEEDED_PANTRY_FOOD = "warm set honey";
 /** The warmed recipe's one line, a food the household does not keep. */
@@ -115,6 +117,15 @@ async function seed(stack: ProductionStack): Promise<void> {
        values ($1, $2, $3, null, null, 0, 'metric')`,
       [SEEDED_RECIPE_ID, SEEDED_RECIPE_LINE, flourAlias.rows[0]!.id]
     );
+    await database.query(`insert into cookbooks (id, user_id, title) values ($1, $2, $3)`, [
+      SEEDED_COOKBOOK_ID,
+      userA.id,
+      SEEDED_COOKBOOK_TITLE,
+    ]);
+    await database.query(`insert into cookbook_recipes (cookbook_id, recipe_id) values ($1, $2)`, [
+      SEEDED_COOKBOOK_ID,
+      SEEDED_RECIPE_ID,
+    ]);
     await database.query(
       `insert into groceries (user_id, name, unit, amount, is_done) values ($1, $2, null, 2, false)`,
       [userA.id, SEEDED_GROCERY_NAME]

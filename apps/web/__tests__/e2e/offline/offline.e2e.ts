@@ -10,6 +10,8 @@ import type { OfflineHarness } from "./fixture";
 import { readProfilePreferences, setDevicePreferences } from "../harness/device-preferences";
 import {
   expect,
+  SEEDED_COOKBOOK_ID,
+  SEEDED_COOKBOOK_TITLE,
   SEEDED_GROCERY_NAME,
   SEEDED_NOTE_TITLE,
   SEEDED_PANTRY_FOOD,
@@ -137,6 +139,11 @@ test("backend-down unseen navigation boots every Warm Set surface", async () => 
   await expect(page.getByText(SEEDED_GROCERY_NAME).first()).toBeVisible();
   await page.goto("/calendar");
   await expect(page.getByText(SEEDED_NOTE_TITLE).first()).toBeVisible();
+
+  // A cookbook, with the members it held under the page's default filters.
+  await page.goto(`/cookbooks/${SEEDED_COOKBOOK_ID}`);
+  await expect(page.getByRole("heading", { name: SEEDED_COOKBOOK_TITLE })).toBeVisible();
+  await expect(page.getByText(SEEDED_RECIPE_NAME).first()).toBeVisible();
 
   // Unwarmed recipe id and unsupported route: the explicit unavailable state.
   await page.goto(`/recipes/${UNWARMED_RECIPE_ID}`);
