@@ -2,15 +2,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SiteAuthTokenDecryptedDto } from "@norish/shared/contracts/dto/site-auth-tokens";
-import { fetchRenderedPage } from "@norish/api/parser/fetch";
+import { fetchRenderedPage, headerScope } from "@norish/api/parser/fetch";
 
 // ---------------------------------------------------------------------------
 // Obscura is reached through Playwright; the browser object stays mocked so
 // these tests describe what Norish injects, not how Obscura applies it.
 // ---------------------------------------------------------------------------
-const { mockAddCookies, mockEvaluate, mockGoto, mockNewContext, mockGetBrowser } = vi.hoisted(
-  () => {
+const { mockAddCookies, mockCdpSend, mockEvaluate, mockGoto, mockNewContext, mockGetBrowser } =
+  vi.hoisted(() => {
     const mockAddCookies = vi.fn();
+    // Norish's Obscura echoes the scope it applied.
+    const mockCdpSend = vi.fn(async (_method: string, params: { scopeDomain?: string }) =>
+      params.scopeDomain ? { scopeDomain: params.scopeDomain } : {}
+    );
     const mockEvaluate = vi.fn().mockResolvedValue(undefined);
     const mockGoto = vi.fn().mockResolvedValue(undefined);
     const mockContent = vi.fn().mockResolvedValue("<html>test</html>");
@@ -18,6 +22,7 @@ const { mockAddCookies, mockEvaluate, mockGoto, mockNewContext, mockGetBrowser }
     const mockNewPage = vi.fn();
     const mockNewContext = vi.fn().mockImplementation(async () => ({
       addCookies: mockAddCookies,
+      newCDPSession: vi.fn().mockResolvedValue({ send: mockCdpSend }),
       newPage: mockNewPage.mockResolvedValue({
         goto: mockGoto,
         content: mockContent,
@@ -33,13 +38,13 @@ const { mockAddCookies, mockEvaluate, mockGoto, mockNewContext, mockGetBrowser }
 
     return {
       mockAddCookies,
+      mockCdpSend,
       mockEvaluate,
       mockGoto,
       mockNewContext,
       mockGetBrowser,
     };
-  }
-);
+  });
 
 vi.mock("@norish/api/obscura", () => ({
   getBrowser: mockGetBrowser,
@@ -114,16 +119,36 @@ describe("fetchRenderedPage – auth token injection", () => {
     expect(setFromPage()).toEqual({ cookies: undefined, visited: ["https://example.com/recipe"] });
   });
 
-  it("sends no header token, which Obscura hands to other sites' scripts and not the page", async () => {
+  it("sends header tokens to their own site only, through Obscura's scopeDomain", async () => {
     const tokens = [
       makeToken({ name: "Authorization", value: "Bearer abc123", type: "header" }),
       makeToken({ name: "X-Custom", value: "custom-val", type: "header" }),
     ];
 
-    await fetchRenderedPage("https://example.com/recipe", tokens);
+    await fetchRenderedPage("https://www.example.com/recipe", tokens);
 
+    expect(mockCdpSend.mock.calls).toEqual([
+      [
+        "Network.setExtraHTTPHeaders",
+        {
+          headers: { Authorization: "Bearer abc123", "X-Custom": "custom-val" },
+          scopeDomain: "example.com",
+        },
+      ],
+    ]);
+    // Never through the context, which would send them to every host.
     expect(getExtraHTTPHeaders()).toBeUndefined();
     expect(mockEvaluate).not.toHaveBeenCalled();
+  });
+
+  it("clears header tokens again on an Obscura that doesn't echo the scope", async () => {
+    mockCdpSend.mockResolvedValueOnce({});
+
+    await fetchRenderedPage("https://example.com/recipe", [
+      makeToken({ name: "Authorization", value: "Bearer abc123", type: "header" }),
+    ]);
+
+    expect(mockCdpSend.mock.calls.at(-1)).toEqual(["Network.setExtraHTTPHeaders", { headers: {} }]);
   });
 
   it("sets cookie tokens from the target's own origin, whose jar sends them to that host only", async () => {
@@ -185,5 +210,31 @@ describe("fetchRenderedPage – auth token injection", () => {
       { name: "token_b", value: "val-b", domain: "example.com" },
       { name: "token_c", value: "val-c", domain: "example.com" },
     ]);
+  });
+});
+
+describe("headerScope", () => {
+  const scope = (hostname: string, ...domains: string[]) =>
+    headerScope(
+      hostname,
+      domains.map((domain) => makeToken({ name: "X", value: "v", type: "header", domain }))
+    );
+
+  it("takes a token's domain when the host is on it", () => {
+    expect(scope("www.example.com", "example.com")).toBe("example.com");
+  });
+
+  it("widens a bare word to the host's labels from that word on", () => {
+    expect(scope("www.instagram.com", "instagram")).toBe("instagram.com");
+  });
+
+  it("keeps to the narrowest domain when tokens name several", () => {
+    expect(scope("www.instagram.com", "instagram.com", "www.instagram.com")).toBe(
+      "www.instagram.com"
+    );
+  });
+
+  it("falls back to the host itself for a domain it is not on", () => {
+    expect(scope("example.com", "other.test")).toBe("example.com");
   });
 });

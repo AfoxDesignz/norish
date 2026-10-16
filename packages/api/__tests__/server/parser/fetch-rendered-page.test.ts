@@ -92,6 +92,11 @@ beforeEach(() => {
   });
   mockNewContext.mockImplementation(async () => ({
     addCookies: vi.fn(),
+    newCDPSession: vi.fn().mockResolvedValue({
+      send: vi.fn(async (_method: string, params: { scopeDomain?: string }) => ({
+        scopeDomain: params.scopeDomain,
+      })),
+    }),
     newPage: mockNewPage,
     close: mockClose,
   }));
@@ -142,10 +147,12 @@ describe("fetchRenderedPage – rendered-page contract", () => {
     expect(contextOptions()).toEqual({});
   });
 
-  it("configures no headers even when the user has header tokens", async () => {
-    await fetchRenderedPage("https://example.com/recipe", [
-      makeToken({ name: "Authorization", value: "Bearer abc123", type: "header" }),
-    ]);
+  it("configures the context with nothing, header tokens included: they go to the page only", async () => {
+    await expect(
+      fetchRenderedPage("https://example.com/recipe", [
+        makeToken({ name: "Authorization", value: "Bearer abc123", type: "header" }),
+      ])
+    ).resolves.toBe("<html>rendered</html>");
 
     expect(contextOptions()).toEqual({});
   });

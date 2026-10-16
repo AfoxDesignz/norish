@@ -53,6 +53,48 @@ export interface RenderedPage {
   status: number | null;
 }
 
+/**
+ * Header tokens go only to hosts on their site, through the `scopeDomain` that Norish's Obscura
+ * (norish-recipes/obscura) adds and echoes. An Obscura that doesn't echo it would send them to every
+ * host the page loads from, so they are cleared again and the import goes without them.
+ */
+async function sendHeadersToTheirSite(
+  context: BrowserContext,
+  page: Page,
+  tokens: SiteAuthTokenDecryptedDto[],
+  targetUrl: string
+): Promise<void> {
+  const scopeDomain = headerScope(new URL(targetUrl).hostname, tokens);
+  const cdp = await context.newCDPSession(page);
+  const scoped = {
+    headers: Object.fromEntries(tokens.map((token) => [token.name, token.value])),
+    scopeDomain,
+  };
+  const reply = await cdp.send("Network.setExtraHTTPHeaders", scoped);
+
+  if (Reflect.get(reply, "scopeDomain") === scopeDomain) return;
+
+  await cdp.send("Network.setExtraHTTPHeaders", { headers: {} });
+  log.warn({ url: targetUrl }, "Obscura cannot keep header tokens to their site, so none are sent");
+}
+
+/** The narrowest token domain, as one the host is on: a bare "instagram" becomes "instagram.com". */
+export function headerScope(hostname: string, tokens: SiteAuthTokenDecryptedDto[]): string {
+  const labels = hostname.split(".");
+  const domains = tokens.map(({ domain }) => {
+    const lowered = domain.toLowerCase();
+
+    if (lowered.includes(".")) return isHostOnDomain(hostname, lowered) ? lowered : hostname;
+    const at = labels.indexOf(lowered);
+
+    return at < 0 ? hostname : labels.slice(at).join(".");
+  });
+
+  return domains.reduce((narrowest, domain) =>
+    domain.length > narrowest.length ? domain : narrowest
+  );
+}
+
 // `page.evaluate` runs in the page, where `document` exists; this package compiles without DOM types.
 declare const document: { cookie: string };
 
@@ -99,13 +141,16 @@ export async function renderPage(
   try {
     const browser = await getBrowser();
 
+    const headerTokens = tokens?.filter((t) => t.type === "header") ?? [];
     const cookieTokens = tokens?.filter((t) => t.type === "cookie") ?? [];
 
-    // A fresh context per fetch, so one importer's tokens never reach another's page. No header
-    // tokens: Obscura's stealth build sends extraHTTPHeaders to other sites' scripts, never the page.
+    // A fresh context per fetch, so one importer's tokens never reach another's page.
     context = await browser.newContext();
 
     const page = await context.newPage();
+
+    if (headerTokens.length > 0)
+      await sendHeadersToTheirSite(context, page, headerTokens, targetUrl);
 
     // Obscura never sends a cookie set over CDP but does send one a page sets, so the tokens are set
     // from the target's origin, for the token's domain when the target is on it, and stay within it.
