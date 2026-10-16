@@ -346,7 +346,7 @@ Moved to `.scratch/dependency-upgrades/` on 2026-10-14, where the maintainer cho
 ### React 19.3
 
 - `use(browser())` replaces every mounted-flag pattern: the theme switch, the language switch and any others a search finds.
-- One `<ViewTransition>` shared element: the recipe card's image into the recipe page's hero. Recipe prefetching usually has the data ready, and reduced motion skips the transition. Motion keeps every in-page animation, and there are no route cross-fades.
+- Page transitions: every page slides in by direction, and the navbar's tabs slide in their bar order (`components/page-transition.tsx`). A card-to-hero shared element was built first and dropped. Reduced motion skips them, and Motion keeps every in-page animation.
 - `next analyze` runs once against the precache, and its findings go in the ticket. Acting on them is a separate decision.
 
 ### React Compiler

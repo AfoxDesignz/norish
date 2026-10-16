@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { usePending } from "@/hooks/use-pending";
+import { safeOrigin } from "@/lib/back-destination";
 import { EnvelopeIcon, LockClosedIcon, UserIcon } from "@heroicons/react/24/outline";
 import { Button, Description, FieldError, InputGroup, Label, Link, TextField } from "@heroui/react";
 import { useTranslations } from "next-intl";
@@ -16,7 +16,6 @@ interface SignupFormProps {
 }
 export function SignupForm({ callbackUrl = "/" }: SignupFormProps) {
   const t = useTranslations("auth.signup");
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,7 +49,8 @@ export function SignupForm({ callbackUrl = "/" }: SignupFormProps) {
           if (result.error) {
             setError(result.error.message || t("errors.createFailed"));
           } else {
-            router.push(callbackUrl);
+            // A full load like sign-in's redirect, so the app arrives in the sign-in view transition.
+            location.assign(safeOrigin(callbackUrl) ?? "/");
           }
         })
         .catch(() => setError(t("errors.generic")))

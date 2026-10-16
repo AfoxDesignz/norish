@@ -3,7 +3,6 @@
 import { useCallback, useState } from "react";
 import AuthorChip from "@/components/recipes/author-chip";
 import OriginFlag from "@/components/recipes/origin-flag";
-import { RecipeImageTransition } from "@/components/recipes/recipe-image-transition";
 import { RECIPE_HERO_CHROME_BUTTON_CLASS } from "@/components/recipes/recipe-layout-constants";
 import MediaCarousel, { buildMediaItems } from "@/components/shared/media-carousel";
 import SmartMarkdownRenderer from "@/components/shared/smart-markdown-renderer";
@@ -92,10 +91,6 @@ type ReadonlyRecipeMediaProps = {
   topLeftContent?: React.ReactNode;
   topRightContent?: React.ReactNode;
   bottomRightContent?: React.ReactNode;
-  /** The recipe whose card image carries into this hero, on the recipe page only. */
-  transitionId?: string;
-  /** Whether this hero is the one on screen, where the page mounts two layouts. */
-  transitionActive?: boolean;
 };
 
 const categoryIcons: Record<RecipeCategory, typeof FireIcon> = {
@@ -130,8 +125,6 @@ export function ReadonlyRecipeMedia({
   topLeftContent,
   topRightContent,
   bottomRightContent,
-  transitionId,
-  transitionActive = true,
 }: ReadonlyRecipeMediaProps) {
   const t = useTranslations("recipes.carousel.videoPlayer");
   const mediaItems = buildMediaItems(recipe);
@@ -189,14 +182,7 @@ export function ReadonlyRecipeMedia({
 
   return (
     <div className={`relative overflow-hidden rounded-2xl ${className}`}>
-      {/* The media alone carries over from the card, not the chrome floating on it. */}
-      {transitionId ? (
-        <RecipeImageTransition active={transitionActive} recipeId={transitionId}>
-          <div className="h-full w-full">{carousel}</div>
-        </RecipeImageTransition>
-      ) : (
-        carousel
-      )}
+      {carousel}
 
       {topLeftRow}
       {(topRightContent || rightExpandControl) && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { use } from "react";
 import { IngredientIconsProvider } from "@/components/ingredients/ingredient-icon";
 import RecipePageTint from "@/components/recipes/recipe-page-tint";
 import { NotFoundView } from "@/components/shared/not-found-view";
@@ -18,11 +18,6 @@ function RecipePageContent() {
   const t = useTranslations("recipes.detail");
 
   useAutoConversion();
-
-  // Scroll to top when recipe page mounts
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
 
   // Still loading — show skeleton while data fetches
   if (isLoading) {

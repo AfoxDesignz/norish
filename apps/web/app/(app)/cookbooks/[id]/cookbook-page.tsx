@@ -3,7 +3,6 @@
 import type { CookbookQueryResult } from "@/hooks/cookbooks";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CookbookAddRecipesPanel } from "@/components/cookbooks/cookbook-add-recipes-panel";
 import { CookbookEditPanel, DeleteCookbookModal } from "@/components/cookbooks/cookbook-panels";
@@ -11,6 +10,7 @@ import RecipeViewModeToggle, {
   RecipeViewModeTabs,
 } from "@/components/dashboard/recipe-view-mode-toggle";
 import SearchInput from "@/components/dashboard/search-input";
+import { BackLink } from "@/components/page-transition";
 import { NotFoundView } from "@/components/shared/not-found-view";
 import RecipeGridSkeleton from "@/components/skeleton/recipe-grid-skeleton";
 import { usePermissionsContext } from "@/context/permissions-context";
@@ -57,13 +57,13 @@ function CookbookHeader({
       {/* A cookbook is reached from the Library and from a recipe that is
           in it, so the way back names wherever that was. */}
       <div className="w-fit">
-        <Link
+        <BackLink
           className="text-muted hover:text-foreground flex items-center gap-1 text-base no-underline"
           href={back.href}
         >
           <ArrowLeftIcon className="h-4 w-4" />
           {cookbook ? back.label : <Skeleton className="my-1 h-4 w-28 rounded-md" />}
-        </Link>
+        </BackLink>
       </div>
 
       <div className="flex min-h-10 flex-wrap items-center justify-between gap-3">

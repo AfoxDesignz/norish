@@ -12,8 +12,8 @@ import { dishTintStyle } from "@/lib/dish-tint";
  * scoped background so the tint reaches the ground around a centred column,
  * not just the column itself.
  *
- * `display: contents` keeps this out of layout entirely: wrapping a page in
- * it moves no pixel of the untinted rendering.
+ * A flex column like the page column around it, so wrapping a page moves no
+ * pixel, and a real box, so Next can scroll a newly opened recipe to its top.
  *
  * With nothing to tint with — no Dish Colour stored, or a reader whose
  * recipe page colour preference is `theme` — no attribute, no variables
@@ -34,9 +34,17 @@ export default function RecipePageTint({
   const style = dishTintStyle(colorMode === "dish" ? dishColor : null);
 
   return (
-    <div className="contents" data-dish-tint={style ? true : undefined} style={style}>
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      data-dish-tint={style ? true : undefined}
+      style={style}
+    >
       {style && (
-        <div aria-hidden className="bg-background pointer-events-none fixed inset-0 -z-10" />
+        // Fades in on mount; named so a page transition fades it in place instead of sliding it.
+        <div
+          aria-hidden
+          className="bg-background motion-safe:fade-in pointer-events-none fixed inset-0 -z-10 [view-transition-name:recipe-tint]"
+        />
       )}
       {children}
     </div>

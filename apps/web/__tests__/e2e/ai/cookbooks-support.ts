@@ -41,6 +41,27 @@ export function seedRecipe(name: string): Promise<string> {
   });
 }
 
+/** Seed a cookbook of the owner's holding these recipes, and return its id. */
+export function seedCookbook(title: string, recipeIds: string[]): Promise<string> {
+  return withDatabase(async (database) => {
+    const owner = await ownerId(database);
+    const result = await database.query<{ id: string }>(
+      `insert into cookbooks (user_id, title) values ($1, $2) returning id`,
+      [owner, title]
+    );
+    const id = result.rows[0]!.id;
+
+    for (const recipeId of recipeIds) {
+      await database.query(
+        `insert into cookbook_recipes (cookbook_id, recipe_id) values ($1, $2)`,
+        [id, recipeId]
+      );
+    }
+
+    return id;
+  });
+}
+
 /** Which recipes a cookbook holds, by title. */
 export function readCookbookMembers(title: string): Promise<string[]> {
   return withDatabase(async (database) => {

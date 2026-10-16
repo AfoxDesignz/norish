@@ -284,18 +284,136 @@
   }
 }
 
-/* A recipe card's image carries into the recipe's hero (RecipeImageTransition).
-   Nothing else moves: the page itself never cross-fades, and a reader who
-   prefers reduced motion gets no morph either. */
+/* View transitions. PageTransition gives each page the `page` class, links going back add
+   `nav-back` (components/page-transition.tsx), and app/layout.tsx types the sign-in. */
+:root {
+  --vt-ease: cubic-bezier(0.2, 0, 0, 1);
+  /* Where an arriving page starts: from the right going forward, from the left going back. */
+  --vt-from: 40px 0;
+}
+
+:root:active-view-transition-type(nav-back) {
+  --vt-from: -40px 0;
+}
+
+/* Clicks pass through the overlay; components/page-transition.tsx replays those on the named
+   layers, which ignore hits while they animate. */
+::view-transition {
+  pointer-events: none;
+}
+
+/* No route cross-fade: what sits outside the pages and bars changes at once. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
 }
 
-::view-transition-group(.morph) {
+/* Only the arriving page moves: Safari leaves an animated outgoing page standing under the new
+   one, and a plain `display: none` loses to its own styles there. */
+::view-transition-old(.page) {
+  display: none !important;
+}
+
+::view-transition-new(.page) {
+  animation: 300ms var(--vt-ease) both vt-in;
+}
+
+@keyframes vt-in {
+  from {
+    opacity: 0;
+    translate: var(--vt-from);
+  }
+}
+
+/* The recipe tint is a fixed underlay, named so it fades in place under the pages. The old tint
+   fades out here; the new one runs its own fade-in (recipe-page-tint.tsx), so it fades once. */
+::view-transition-group(root) {
+  z-index: -2;
+}
+
+::view-transition-group(recipe-tint) {
+  z-index: -1;
   animation-duration: 300ms;
 }
 
+::view-transition-new(recipe-tint) {
+  animation: none;
+}
+
+/* The navigation bars (`app-bar`) hold still above the moving pages. */
+::view-transition-group(.app-bar) {
+  z-index: 1;
+  animation: none;
+}
+
+::view-transition-old(.app-bar) {
+  display: none;
+}
+
+::view-transition-new(.app-bar) {
+  animation: none;
+}
+
+/* Signing in is a cross-document transition; app/layout.tsx skips every other one. */
+@view-transition {
+  navigation: auto;
+}
+
+/* Named only for sign-in, so every other navigation captures just the pages and bars. */
+:root:active-view-transition-type(sign-in) {
+  & [data-app-container] {
+    view-transition-name: app;
+  }
+
+  & [data-app-container] [data-brand-logo] {
+    view-transition-name: brand-logo;
+  }
+}
+
+::view-transition-old(auth-screen) {
+  animation: 320ms ease-in both vt-auth-leave;
+}
+
+@keyframes vt-auth-leave {
+  to {
+    opacity: 0;
+    scale: 0.94;
+    filter: blur(8px);
+  }
+}
+
+/* The auth screen's wordmark (auth-frame.tsx) flies into the navbar's logo. */
+::view-transition-group(brand-logo) {
+  animation-duration: 640ms;
+  animation-timing-function: var(--vt-ease);
+}
+
+::view-transition-new(app) {
+  animation: 520ms var(--vt-ease) 180ms both vt-app-arrive;
+}
+
+@keyframes vt-app-arrive {
+  from {
+    opacity: 0;
+    translate: 0 28px;
+    scale: 0.98;
+  }
+}
+
+/* The bars come in last, each from its own edge of the screen. */
+:root:active-view-transition-type(sign-in)::view-transition-new(.app-bar) {
+  animation: 480ms var(--vt-ease) 220ms both vt-in;
+}
+
+::view-transition-new(app-navbar) {
+  --vt-from: 0 -24px;
+}
+
+::view-transition-new(app-mobile-nav) {
+  --vt-from: 0 24px;
+}
+
+/* A reader who prefers reduced motion gets none of it. */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),

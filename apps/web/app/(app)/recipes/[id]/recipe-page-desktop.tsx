@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import ActionsMenu from "@/app/(app)/recipes/[id]/components/actions-menu";
 import AddToGroceries from "@/app/(app)/recipes/[id]/components/add-to-groceries-button";
 import CookbooksCard from "@/app/(app)/recipes/[id]/components/cookbooks-card";
@@ -11,6 +10,7 @@ import NutritionCard from "@/app/(app)/recipes/[id]/components/nutrition-card";
 import ProvenanceCard from "@/app/(app)/recipes/[id]/components/provenance-card";
 import StepsList from "@/app/(app)/recipes/[id]/components/steps-list";
 import SystemConvertMenu from "@/app/(app)/recipes/[id]/components/system-convert-menu";
+import { BackLink } from "@/components/page-transition";
 import AmountDisplayToggle from "@/components/recipes/amount-display-toggle";
 import AuthorChip from "@/components/recipes/author-chip";
 import {
@@ -22,7 +22,6 @@ import HeartButton from "@/components/shared/heart-button";
 import { useFavoritesMutation, useFavoritesQuery } from "@/hooks/favorites";
 import { useRatingQuery, useRatingsMutation } from "@/hooks/ratings";
 import { useBackDestination } from "@/hooks/use-back-destination";
-import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useHiddenItemVisibility } from "@/hooks/user/use-hidden-item-visibility";
 import { ArrowLeftIcon } from "@heroicons/react/16/solid";
 import { Card } from "@heroui/react";
@@ -47,8 +46,6 @@ export default function RecipePageDesktop() {
   const t = useTranslations("recipes.detail");
   const back = useBackDestination();
   const { showRatings, showFavorites } = useHiddenItemVisibility();
-  // Both layouts are mounted; the hero on screen is the one the card morphs into.
-  const isMobile = useIsMobile();
 
   const isFavorite = checkFavorite(recipe.id);
   const handleToggleFavorite = () => toggleFavorite(recipe.id);
@@ -58,13 +55,13 @@ export default function RecipePageDesktop() {
     <div className="hidden flex-col space-y-6 px-6 pb-10 md:flex">
       {/* Back link */}
       <div className="w-fit">
-        <Link
+        <BackLink
           className="text-muted hover:text-foreground flex items-center gap-1 text-base no-underline"
           href={back.href}
         >
           <ArrowLeftIcon className="h-4 w-4" />
           {back.label}
-        </Link>
+        </BackLink>
       </div>
 
       {/* Main content grid: 2 columns */}
@@ -119,8 +116,6 @@ export default function RecipePageDesktop() {
             }}
           >
             <ReadonlyRecipeMedia
-              transitionActive={!isMobile}
-              transitionId={recipe.id}
               className="h-[clamp(360px,42vw,520px)] rounded-2xl"
               mediaClassName="min-h-0"
               recipe={recipe}

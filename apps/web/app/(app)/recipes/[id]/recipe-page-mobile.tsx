@@ -1,4 +1,3 @@
-import Link from "next/link";
 import ActionsMenu from "@/app/(app)/recipes/[id]/components/actions-menu";
 import AddToGroceries from "@/app/(app)/recipes/[id]/components/add-to-groceries-button";
 import CookbooksCard from "@/app/(app)/recipes/[id]/components/cookbooks-card";
@@ -10,6 +9,7 @@ import NutritionCard from "@/app/(app)/recipes/[id]/components/nutrition-card";
 import ProvenanceCard from "@/app/(app)/recipes/[id]/components/provenance-card";
 import ServingsControl from "@/app/(app)/recipes/[id]/components/servings-control";
 import StepsList from "@/app/(app)/recipes/[id]/components/steps-list";
+import { BackLink } from "@/components/page-transition";
 import CookingTimeCard from "@/components/recipes/cooking-time-card";
 import { ReadonlyRecipeMedia } from "@/components/recipes/readonly-recipe-sections";
 import RecipeHeaderMobile from "@/components/recipes/recipe-header-mobile";
@@ -25,7 +25,6 @@ import { useFavoritesMutation, useFavoritesQuery } from "@/hooks/favorites";
 import { useRatingQuery, useRatingsMutation } from "@/hooks/ratings";
 import { useWorkedOutNutrition } from "@/hooks/recipes/use-worked-out-nutrition";
 import { useBackDestination } from "@/hooks/use-back-destination";
-import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useHiddenItemVisibility } from "@/hooks/user/use-hidden-item-visibility";
 import { ArrowLeftIcon } from "@heroicons/react/16/solid";
 import { Card } from "@heroui/react";
@@ -58,8 +57,6 @@ export default function RecipePageMobile() {
   const t = useTranslations("recipes.detail");
   const back = useBackDestination();
   const { showRatings, showFavorites, showNutrition } = useHiddenItemVisibility();
-  // Both layouts are mounted; the hero on screen is the one the card morphs into.
-  const isMobile = useIsMobile();
   const workedOut = useWorkedOutNutrition(recipe);
 
   const isFavorite = checkFavorite(recipe.id);
@@ -92,8 +89,6 @@ export default function RecipePageMobile() {
               shadow — so the content below can start with the recipe rather
               than with navigation (ADR-0020). */}
           <ReadonlyRecipeMedia
-            transitionActive={isMobile}
-            transitionId={recipe.id}
             aspectRatio="4/3"
             chromeClassName={RECIPE_HERO_CHROME_OFFSET_CLASS}
             className="h-full rounded-none shadow-none"
@@ -102,13 +97,13 @@ export default function RecipePageMobile() {
             rounded={false}
             showAuthorFallback={false}
             topLeftContent={
-              <Link
+              <BackLink
                 aria-label={back.label}
                 className={`${RECIPE_HERO_CHROME_BUTTON_CLASS} no-underline`}
                 href={back.href}
               >
                 <ArrowLeftIcon className="size-5" />
-              </Link>
+              </BackLink>
             }
             topRightContent={
               <>

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import MobileNav from "@/components/navbar/mobile-nav";
 import NavbarUserMenu from "@/components/navbar/navbar-user-menu";
+import { tabTransitionTypes } from "@/components/page-transition";
 import { useAutoHide } from "@/hooks/auto-hide";
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
@@ -36,7 +37,7 @@ export const Navbar = () => {
           y: isVisible ? 0 : -100,
           opacity: isVisible ? 1 : 0,
         }}
-        className="fixed top-4 left-1/2 z-[60] hidden w-full max-w-7xl -translate-x-1/2 px-4 md:block"
+        className="fixed top-4 left-1/2 z-[60] hidden w-full max-w-7xl -translate-x-1/2 px-4 [view-transition-class:app-bar] [view-transition-name:app-navbar] md:block"
         initial={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
         onMouseEnter={onHoverStart}
@@ -49,10 +50,13 @@ export const Navbar = () => {
           {/* Left */}
           <div className="flex min-w-0 items-center justify-start">
             <div className="max-w-fit">
+              {/* On sign-in, globals.css flies the login page's wordmark into this logo. */}
               <NextLink
+                data-brand-logo
                 aria-label="Go to home"
                 className="flex items-center"
                 href="/"
+                transitionTypes={tabTransitionTypes(pathname, "/")}
                 onClick={(e) => {
                   if (pathname === "/") {
                     e.preventDefault();
@@ -80,6 +84,7 @@ export const Navbar = () => {
                         isActive ? "text-accent font-semibold" : "text-foreground/80"
                       }`}
                       href={item.href}
+                      transitionTypes={tabTransitionTypes(pathname, item.href)}
                     >
                       {t(navLabelKeys[item.href] ?? "home")}
                     </NextLink>

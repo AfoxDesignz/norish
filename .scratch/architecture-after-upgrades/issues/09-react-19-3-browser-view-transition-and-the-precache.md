@@ -3,7 +3,7 @@
 **What to build:**
 
 - The theme and language switches render without a flicker, on React 19.3's `browser()` instead of a hand-rolled mounted flag.
-- Opening a recipe from its card carries the card's image into the recipe's hero, and readers who prefer reduced motion get no transition.
+- Moving between pages slides the page by direction, and readers who prefer reduced motion get no transition.
 - The maintainer learns what the service worker precache, downloaded again by every installed app each release, is made of.
 
 See `.scratch/architecture-after-upgrades/spec.md`, React 19.3.
@@ -13,14 +13,16 @@ See `.scratch/architecture-after-upgrades/spec.md`, React 19.3.
 **Status:** ready-for-agent
 
 - [x] Every mounted-flag pattern (found by search, including the theme switch and the language switch) uses `use(browser())` instead.
-- [x] One `<ViewTransition>` shared element runs from the recipe card's image to the recipe page's hero:
+- [x] Every page slides in on navigation, and the navbar's tabs slide in their bar order (this replaced the card-to-hero shared element on 2026-10-15):
   - [x] It is skipped under reduced motion.
   - [x] There are no route cross-fades, and Motion keeps every in-page animation.
-- [x] A browser E2E opens a recipe from its card with reduced motion on and off, and the recipe page arrives intact both ways.
+- [x] A browser E2E (`ai/page-transitions.e2e.ts`) opens a recipe from its card with reduced motion on and off, and the recipe page arrives intact both ways.
 - [x] `next analyze` runs once against the precache. Record here the largest contributors and anything that looks avoidable. Acting on it is a separate decision.
 
 ## Comments
 
+- 2026-10-15, review fixes: moves between recipe pages slide too (`app/(app)/recipes/template.tsx`), a back link returns the page to its scroll position, a tap made mid-slide is replayed once the slide ends (named layers ignore hits while they animate), the root no longer cross-fades, and the recipe tint fades once.
+- 2026-10-15: the shared element is gone. Mike rejected the card-to-hero morph after trying it, so pages slide instead (`components/page-transition.tsx`, Next's `<Link transitionTypes>`) and `recipe-image-transition.tsx` was deleted. The 2026-10-14 notes on the shared element below describe removed code.
 - 2026-10-14, implemented:
   - **`browser()` comes from `react-dom`, not `react`,** in 19.3.0 (`browser(reason?)`, a Usable). The theme and language switches now render their label inside `<Suspense>`, with the old "Loading…" row as the fallback and `use(browser(reason))` in the label. The `mounted` state, its effect and the `mounted` prop are gone.
   - **The search found three more flags, left as they are:**

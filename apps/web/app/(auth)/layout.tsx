@@ -5,7 +5,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <BaseProviders>
       <div
-        className="bg-background relative flex items-center justify-center overflow-hidden p-4"
+        className="bg-background relative flex items-center justify-center overflow-hidden p-4 [view-transition-name:auth-screen]"
         style={{ minHeight: "calc(100vh - env(safe-area-inset-top))" }}
       >
         {/* marks.css gates its draw and turn rules on `.js`, so a reader

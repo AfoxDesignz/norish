@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { usePending } from "@/hooks/use-pending";
 import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { Button, FieldError, InputGroup, Label, Link, TextField } from "@heroui/react";
@@ -20,7 +19,6 @@ export function EmailPasswordForm({
   registrationEnabled = false,
 }: EmailPasswordFormProps) {
   const t = useTranslations("auth.emailPassword");
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, whileLoading] = usePending();
@@ -36,11 +34,8 @@ export function EmailPasswordForm({
           callbackURL: callbackUrl,
         })
         .then((result) => {
-          if (result.error) {
-            setError(result.error.message || t("errors.invalidCredentials"));
-          } else {
-            router.push(callbackUrl);
-          }
+          // On success Better Auth's redirect plugin loads `callbackURL`, the sign-in view transition.
+          if (result.error) setError(result.error.message || t("errors.invalidCredentials"));
         })
         .catch(() => setError(t("errors.generic")))
     );
