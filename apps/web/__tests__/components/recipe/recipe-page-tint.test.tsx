@@ -5,6 +5,7 @@ import "@testing-library/jest-dom";
 import RecipePageTint from "@/components/recipes/recipe-page-tint";
 
 import type { RecipePageColorMode } from "@norish/shared/contracts/zod/device-preferences";
+import { APP_PAGE_COLUMN_CLASS } from "@norish/web/config/css-tokens";
 
 import { renderWithDevicePreferences } from "../../helpers/device-preferences";
 
@@ -66,8 +67,6 @@ describe("RecipePageTint", () => {
   it("lays out like the page column around it, as a real box Next can scroll to", () => {
     const { container } = renderTint("#c04020");
 
-    expect((container.firstElementChild as HTMLElement).className).toBe(
-      "flex min-h-0 flex-1 flex-col"
-    );
+    expect((container.firstElementChild as HTMLElement).className).toBe(APP_PAGE_COLUMN_CLASS);
   });
 });

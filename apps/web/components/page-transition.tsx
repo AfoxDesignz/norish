@@ -5,6 +5,8 @@ import { ViewTransition } from "react";
 import Link from "next/link";
 import { arriveWhereLeft } from "@/lib/scroll-memory";
 
+import { APP_PAGE_COLUMN_CLASS } from "@norish/web/config/css-tokens";
+
 // The transition type of a link back; globals.css slides those pages in from the left.
 export const NAV_BACK = ["nav-back"];
 // Next's guide maps untyped navigations to none; here they slide forward, so every page moves.
@@ -17,7 +19,7 @@ const SLIDES = { "nav-back": "nav-back", default: "nav-forward" };
 export function PageTransition({ children }: { children: ReactNode }) {
   return (
     <ViewTransition default="none" enter={SLIDES} exit={SLIDES}>
-      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      <div className={APP_PAGE_COLUMN_CLASS}>{children}</div>
     </ViewTransition>
   );
 }

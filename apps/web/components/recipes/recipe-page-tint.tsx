@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { useDevicePreference } from "@/context/device-preferences-context";
 import { dishTintStyle } from "@/lib/dish-tint";
 
+import { APP_PAGE_COLUMN_CLASS } from "@norish/web/config/css-tokens";
+
 /**
  * The one place a recipe page takes its hue from the dish (ADR-0023). The
  * scope carries two OKLCH channel variables and an attribute the CSS in
@@ -34,11 +36,7 @@ export default function RecipePageTint({
   const style = dishTintStyle(colorMode === "dish" ? dishColor : null);
 
   return (
-    <div
-      className="flex min-h-0 flex-1 flex-col"
-      data-dish-tint={style ? true : undefined}
-      style={style}
-    >
+    <div className={APP_PAGE_COLUMN_CLASS} data-dish-tint={style ? true : undefined} style={style}>
       {style && (
         // Fades in on mount; named so a page transition fades it in place instead of sliding it.
         <div
