@@ -15,6 +15,7 @@ import { CacheExpiration } from "serwist";
 
 import type { AppRouter } from "@norish/trpc/client";
 import { DEFAULT_RECIPE_FILTERS, toRecipesQueryFilters } from "@norish/shared-react/contexts";
+import { cookbookRecipesInput } from "@norish/shared-react/hooks/cookbooks";
 import { dateKey } from "@norish/shared/lib/helpers";
 
 const WARM_RECIPE_LIST_LIMIT = 100;
@@ -182,10 +183,11 @@ async function warmLibrary(trpc: WarmSetTRPC, queryClient: QueryClient): Promise
         queryClient.query(
           withWarmGcTime(trpc.cookbooks.memberIds.queryOptions({ cookbookId: id }))
         ),
+        // The cookbook page's own first page under the default filters, so Offline it reads this.
         queryClient.infiniteQuery(
           withWarmGcTime(
             trpc.cookbooks.recipes.infiniteQueryOptions(
-              { cookbookId: id, limit: WARM_RECIPE_LIST_LIMIT },
+              cookbookRecipesInput(id, toRecipesQueryFilters(DEFAULT_RECIPE_FILTERS)),
               { getNextPageParam: (lastPage) => lastPage.nextCursor }
             )
           )
