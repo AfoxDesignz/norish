@@ -1,4 +1,4 @@
-import { navTabPosition, tabTransitionTypes } from "@/components/navbar/nav-tabs";
+import { navTabPosition, slidesBack } from "@/components/navbar/nav-tabs";
 import { describe, expect, it } from "vitest";
 
 describe("navTabPosition", () => {
@@ -19,15 +19,15 @@ describe("navTabPosition", () => {
   });
 });
 
-describe("tabTransitionTypes", () => {
+describe("slidesBack", () => {
   it("slides a tab left of the current page in from the left", () => {
-    expect(tabTransitionTypes("/calendar", "/groceries")).toEqual(["nav-back"]);
-    expect(tabTransitionTypes("/settings", "/")).toEqual(["nav-back"]);
+    expect(slidesBack("/calendar", "/groceries")).toBe(true);
+    expect(slidesBack("/settings", "/")).toBe(true);
   });
 
   it("slides a tab to the right, or one opened from outside the tabs, forward", () => {
-    expect(tabTransitionTypes("/", "/calendar")).toBeUndefined();
-    expect(tabTransitionTypes("/groceries", "/settings?tab=user")).toBeUndefined();
-    expect(tabTransitionTypes("/recipes/abc", "/")).toBeUndefined();
+    expect(slidesBack("/", "/calendar")).toBe(false);
+    expect(slidesBack("/groceries", "/settings?tab=user")).toBe(false);
+    expect(slidesBack("/recipes/abc", "/")).toBe(false);
   });
 });

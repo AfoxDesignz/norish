@@ -1,6 +1,5 @@
 import type { ComponentProps } from "react";
 import NextLink from "next/link";
-import { NAV_BACK } from "@/components/page-transition";
 import { siteConfig } from "@/config/site";
 import { arriveAtTop } from "@/lib/scroll-memory";
 
@@ -26,9 +25,9 @@ export function navTabPosition(path: string) {
   );
 }
 
-/** A tab's transition types: a tab left of the current page slides in from the left. */
-export function tabTransitionTypes(pathname: string, href: string) {
-  return navTabPosition(href) < navTabPosition(pathname) ? NAV_BACK : undefined;
+/** Whether a tab slides in from the left: it sits left of the current page's tab. */
+export function slidesBack(pathname: string, href: string) {
+  return navTabPosition(href) < navTabPosition(pathname);
 }
 
 /**
@@ -46,10 +45,9 @@ export function NavTabLink({
       {...props}
       href={href}
       scroll={false}
-      transitionTypes={tabTransitionTypes(pathname, href)}
       onNavigate={(event) => {
         onNavigate?.(event);
-        arriveAtTop(href);
+        arriveAtTop(href, slidesBack(pathname, href));
       }}
     />
   );

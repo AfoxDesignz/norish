@@ -1,5 +1,5 @@
-// Every link navigation is a view transition, back links typed `nav-back`; browser back renders at
-// once (React's choice, so the browser restores scroll). Signing in or up is typed `sign-in`.
+// Every link navigation slides its page in, from the left for a back link or a tab to the left; browser
+// back renders at once (React's choice, so the browser restores scroll). Signing in is typed `sign-in`.
 import path from "node:path";
 import type { BrowserContext, Page } from "@playwright/test";
 
@@ -13,6 +13,7 @@ const PHONE_VIEWPORT = { width: 390, height: 844 };
 // The auth screen fades out, the app slides up, and the auth page's logo moves onto the navbar's.
 const SIGN_IN_HANDOVER = {
   types: ["sign-in"],
+  slide: null,
   animations: expect.arrayContaining([
     "::view-transition-group(brand-logo) -ua-view-transition-group-anim-brand-logo",
     "::view-transition-old(auth-screen) vt-auth-leave",
@@ -20,13 +21,17 @@ const SIGN_IN_HANDOVER = {
   ]),
 };
 
-/** A view transition: its types, and what animates once it is ready, as `<layer> <animation>`. */
-type Recorded = { types: string[]; animations: string[] };
+/**
+ * A view transition: its types, what animates once it is ready (as `<layer> <animation>`), and which
+ * way the arriving page slides in, if one does.
+ */
+type Slide = "forward" | "back" | null;
+type Recorded = { types: string[]; animations: string[]; slide: Slide };
 
 /** Records every view transition the page runs, same-document or not. */
 async function recordViewTransitions(context: BrowserContext): Promise<void> {
   await context.addInitScript(() => {
-    const seen: { types: string[]; animations: string[] }[] = [];
+    const seen: { types: string[]; animations: string[]; slide: string | null }[] = [];
     // React names a page's ViewTransition itself, so those layers read as `page`.
     const animations = () =>
       document
@@ -41,9 +46,22 @@ async function recordViewTransitions(context: BrowserContext): Promise<void> {
           return [`${layer.replace(/\(_[^)]*\)/, "(page)")} ${animation.animationName}`];
         })
         .sort((a, b) => a.localeCompare(b));
+    // A page's slide starts at `--vt-from`, which is negative coming from the left.
+    const slide = () => {
+      const page = document
+        .getAnimations()
+        .map((animation) => (animation.effect as KeyframeEffect | null)?.pseudoElement)
+        .find((layer) => layer?.startsWith("::view-transition-new(_"));
+
+      if (!page) return null;
+
+      const from = getComputedStyle(document.documentElement, page).getPropertyValue("--vt-from");
+
+      return from.trim().startsWith("-") ? "back" : "forward";
+    };
     const record = (transition: ViewTransition) =>
       transition.ready.then(
-        () => seen.push({ types: [...transition.types], animations: animations() }),
+        () => seen.push({ types: [...transition.types], animations: animations(), slide: slide() }),
         () => {}
       );
     const start = document.startViewTransition.bind(document);
@@ -72,8 +90,8 @@ function viewTransitions(page: Page): Promise<Recorded[]> {
   );
 }
 
-async function viewTransitionTypes(page: Page): Promise<string[][]> {
-  return (await viewTransitions(page)).map((transition) => transition.types);
+async function slides(page: Page): Promise<Slide[]> {
+  return (await viewTransitions(page)).map((transition) => transition.slide);
 }
 
 for (const reducedMotion of ["reduce", "no-preference"] as const) {
@@ -128,7 +146,9 @@ for (const reducedMotion of ["reduce", "no-preference"] as const) {
       await page.goBack();
       await expect(page.getByRole("heading", { name, exact: true, level: 1 })).toBeVisible();
 
-      await expect.poll(() => viewTransitionTypes(page)).toEqual([[], ["nav-back"]]);
+      await expect
+        .poll(() => slides(page))
+        .toEqual(reducedMotion === "reduce" ? [null, null] : ["forward", "back"]);
       const [opening, leaving] = await viewTransitions(page);
 
       if (reducedMotion === "reduce") {
@@ -161,7 +181,10 @@ test("moving from a recipe to its editor slides the page", async ({ page }) => {
   await expect
     .poll(() => viewTransitions(page))
     .toEqual([
-      expect.objectContaining({ types: [], animations: ["::view-transition-new(page) vt-in"] }),
+      expect.objectContaining({
+        animations: ["::view-transition-new(page) vt-in"],
+        slide: "forward",
+      }),
     ]);
 });
 
@@ -270,8 +293,8 @@ test("going back returns a page to where it was left, and a tab starts it at the
     await expect.poll(scrollY).toBe(0);
 
     await expect
-      .poll(() => viewTransitionTypes(page))
-      .toEqual([[], [], ["nav-back"], [], ["nav-back"]]);
+      .poll(() => slides(page))
+      .toEqual(["forward", "forward", "back", "forward", "back"]);
   } finally {
     await context.close();
   }
@@ -325,6 +348,38 @@ test("a back link returns a recipe to where it was scrolled, also when the recip
   }
 });
 
+test("the tabs slide in their bar order: Recipes, Groceries, Calendar, Settings", async ({
+  browser,
+  aiStack,
+}) => {
+  const context = await browser.newContext({
+    baseURL: aiStack.baseURL,
+    storageState: { cookies: aiStack.ownerCookies, origins: [] },
+    viewport: PHONE_VIEWPORT,
+  });
+
+  await recordViewTransitions(context);
+  const page = await context.newPage();
+  const tab = (name: string) => page.getByRole("link", { name, exact: true }).click();
+
+  try {
+    // Each tap follows the last at once, while the page it leaves may still commit Suspense retries.
+    await page.goto("/");
+    await tab("Calendar");
+    await expect(page).toHaveURL(/\/calendar$/);
+    await tab("Groceries");
+    await expect(page).toHaveURL(/\/groceries$/);
+    await tab("Settings");
+    await expect(page).toHaveURL(/\/settings\?tab=user$/);
+    await tab("Recipes");
+    await expect(page).toHaveURL(/\/$/);
+
+    await expect.poll(() => slides(page)).toEqual(["forward", "back", "forward", "back"]);
+  } finally {
+    await context.close();
+  }
+});
+
 for (const reducedMotion of ["reduce", "no-preference"] as const) {
   test(`signing in hands the auth screen over to the app in one transition (${reducedMotion})`, async ({
     browser,
@@ -346,7 +401,9 @@ for (const reducedMotion of ["reduce", "no-preference"] as const) {
       await expect
         .poll(() => viewTransitions(page))
         .toEqual([
-          reducedMotion === "reduce" ? { types: ["sign-in"], animations: [] } : SIGN_IN_HANDOVER,
+          reducedMotion === "reduce"
+            ? { types: ["sign-in"], animations: [], slide: null }
+            : SIGN_IN_HANDOVER,
         ]);
     } finally {
       await context.close();

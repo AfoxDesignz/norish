@@ -3,22 +3,22 @@
 import type { ComponentProps, ReactNode } from "react";
 import { ViewTransition } from "react";
 import Link from "next/link";
-import { arriveWhereLeft } from "@/lib/scroll-memory";
+import { usePathname } from "next/navigation";
+import { arrivesBack, arriveWhereLeft } from "@/lib/scroll-memory";
 
 import { APP_PAGE_COLUMN_CLASS } from "@norish/web/config/css-tokens";
-
-// The transition type of a link back; globals.css slides those pages in from the left.
-export const NAV_BACK = ["nav-back"];
-// Next's guide maps untyped navigations to none; here they slide forward, so every page moves.
-const SLIDES = { "nav-back": "nav-back", default: "nav-forward" };
 
 /**
  * The template of `(app)` and of `recipes`, so every navigation remounts one and slides it. The div
  * gives the browser one box per page to capture, whatever the page renders.
  */
 export function PageTransition({ children }: { children: ReactNode }) {
+  // The link records the direction (lib/scroll-memory.ts), not transitionTypes: React queues types
+  // on the root, and a transition or Suspense retry that commits before the navigation claims them.
+  const slide = arrivesBack(usePathname()) ? "nav-back" : "nav-forward";
+
   return (
-    <ViewTransition default="none" enter={SLIDES} exit={SLIDES}>
+    <ViewTransition default="none" enter={slide} exit={slide}>
       <div className={APP_PAGE_COLUMN_CLASS}>{children}</div>
     </ViewTransition>
   );
@@ -38,7 +38,6 @@ export function BackLink({
       {...props}
       href={href}
       scroll={false}
-      transitionTypes={NAV_BACK}
       onNavigate={(event) => {
         onNavigate?.(event);
         arriveWhereLeft(href);

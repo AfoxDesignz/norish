@@ -4,8 +4,8 @@ import type { VirtualItem } from "@tanstack/react-virtual";
 const scrollTops = new Map<string, number>();
 // A virtual list's measured rows by list key, so a revisit lays out at the remembered height.
 const listRows = new Map<string, VirtualItem[]>();
-// Where the navigation in flight should land, set by the link that started it.
-let arrival: { path: string; top: number } | null = null;
+// Where the navigation in flight should land and which way it slides in, set by its link.
+let arrival: { path: string; top: number; back: boolean } | null = null;
 
 const READER_INPUT = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
 
@@ -28,16 +28,21 @@ export function rememberedListRows(key: string): VirtualItem[] | undefined {
   return listRows.get(key);
 }
 
-/** For a link's `onNavigate`: the page it opens starts at the top. */
-export function arriveAtTop(href: string) {
-  arrival = { path: pathOf(href), top: 0 };
+/** For a link's `onNavigate`: its page opens at the top, sliding in from the left if `back`. */
+export function arriveAtTop(href: string, back: boolean) {
+  arrival = { path: pathOf(href), top: 0, back };
 }
 
 /** For a back link's `onNavigate`: the page it opens returns to where the reader left it. */
 export function arriveWhereLeft(href: string) {
   const path = pathOf(href);
 
-  arrival = { path, top: scrollTops.get(path) ?? 0 };
+  arrival = { path, top: scrollTops.get(path) ?? 0, back: true };
+}
+
+/** Whether the page committing at `pathname` was opened by a link going back. */
+export function arrivesBack(pathname: string) {
+  return arrival?.path === pathname && arrival.back;
 }
 
 /** Scrolls a page that just committed to where its link asked, and returns the cleanup. */
