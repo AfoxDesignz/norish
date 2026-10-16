@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, use, useCallback, useMemo, useState } from "react";
+import { useReaderToday } from "@/components/reader-today";
 import { useCalendarMutations } from "@/hooks/calendar/use-calendar-mutations";
 import { useCalendarQuery } from "@/hooks/calendar/use-calendar-query";
 import { useCalendarSubscription } from "@/hooks/calendar/use-calendar-subscription";
@@ -21,7 +22,11 @@ export function CalendarContextProvider({
   children,
   mode = "mobile",
 }: CalendarContextProviderProps) {
-  const [dateRange, setDateRange] = useState<CalendarDateRange>(() => getInitialDateRange(mode));
+  // The server's reading of today while hydrating, so a seeded range is the one asked for.
+  const today = useReaderToday();
+  const [dateRange, setDateRange] = useState<CalendarDateRange>(() =>
+    getInitialDateRange(mode, today)
+  );
   const [isExpandingRange, setIsExpandingRange] = useState(false);
 
   const startISO = dateKey(dateRange.start);
