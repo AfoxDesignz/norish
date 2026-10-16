@@ -28,6 +28,7 @@ Glossary: **Ingredient Catalogue**, **Compound Spelling**, and the amended Ingre
    - A sure answer is applied. An unsure one leaves the flag and a suggestion.
    - AI fixes flagged foods only; it may merge one into any food. A person's rename, parent or Mark distinct clears the flag, and an unflagged food is taken to be clean. Using a food changes nothing.
    - Fix catalogue (Ask AI rounds) applies sure answers the same way, and gains a re-check of every food not from the seed, the one way AI looks at clean foods again.
+   - Everything AI applied by itself is listed under **Done by AI** in the Suggestions panel, each change with an undo, until someone marks it seen (ticket 10).
 2. **Better answers.** Candidates are also found by AI's English reading of the name. The Decision acts at 0.5, as grocery linking does.
 3. **Names no food.** A recipe line AI is sure names no food points at nothing, as a heading does. It keeps its text, and the mint is removed.
 4. **Compound Spelling.** A spelling may name several foods, "and" or "or" (ADR-0040).
