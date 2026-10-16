@@ -10,10 +10,11 @@ import { seedRecipePhoto } from "./image-generation-support";
 
 const PHOTO = path.join(import.meta.dirname, "fixtures", "supplied-photo.jpg");
 const PHONE_VIEWPORT = { width: 390, height: 844 };
-// The auth screen lifts away, the app rises in, and the wordmark moves into the navbar.
+// The auth screen fades out, the app slides up, and the auth page's logo moves onto the navbar's.
 const SIGN_IN_HANDOVER = {
   types: ["sign-in"],
   animations: expect.arrayContaining([
+    "::view-transition-group(brand-logo) -ua-view-transition-group-anim-brand-logo",
     "::view-transition-old(auth-screen) vt-auth-leave",
     "::view-transition-new(app) vt-app-arrive",
   ]),
@@ -276,54 +277,82 @@ test("going back returns a page to where it was left, and a tab starts it at the
   }
 });
 
-test("a back link returns a recipe to where it was scrolled", async ({ page }) => {
+test("a back link returns a recipe to where it was scrolled, also when the recipe loads slowly", async ({
+  browser,
+  aiStack,
+}) => {
   const name = "Scrolled Stew";
   const id = await seedRecipe(name);
   const shelf = "Stew Shelf";
 
   await seedCookbook(shelf, [id]);
-  await page.setViewportSize({ width: 390, height: 500 });
+  // No service worker, so page.route sees the recipe's RSC requests.
+  const context = await browser.newContext({
+    baseURL: aiStack.baseURL,
+    storageState: { cookies: aiStack.ownerCookies, origins: [] },
+    viewport: { width: 390, height: 500 },
+    serviceWorkers: "block",
+  });
+  const page = await context.newPage();
   const scrollY = () => page.evaluate(() => Math.round(window.scrollY));
 
-  await page.goto(`/recipes/${id}`);
-  // The recipe's cookbooks come last on its page.
-  const cookbook = page.getByRole("link", { name: shelf }).filter({ visible: true });
-
-  await cookbook.scrollIntoViewIfNeeded();
-  const left = await scrollY();
-
-  expect(left).toBeGreaterThan(0);
-  await cookbook.click();
-  await expect(page).toHaveURL(/\/cookbooks\//);
-  await expect.poll(scrollY).toBe(0);
-
-  await page.getByRole("link", { name: `Back to ${name}` }).click();
-  await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
-  await expect.poll(scrollY).toBe(left);
-});
-
-test("signing in hands the auth screen over to the app in one transition", async ({
-  browser,
-  aiStack,
-}) => {
-  const context = await browser.newContext({ baseURL: aiStack.baseURL });
-
-  await recordViewTransitions(context);
-  const page = await context.newPage();
-
   try {
-    await page.goto("/login");
-    await page.getByLabel("Email").fill(OWNER.email);
-    await page.getByLabel("Password").fill(OWNER.password);
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await page.goto(`/recipes/${id}`);
+    // The recipe's cookbooks come last on its page.
+    const cookbook = page.getByRole("link", { name: shelf }).filter({ visible: true });
 
-    await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
-    await expect(page.getByRole("heading", { name: "Your library" })).toBeVisible();
-    await expect.poll(() => viewTransitions(page)).toEqual([SIGN_IN_HANDOVER]);
+    await cookbook.scrollIntoViewIfNeeded();
+    const left = await scrollY();
+
+    expect(left).toBeGreaterThan(0);
+    await cookbook.click();
+    await expect(page).toHaveURL(/\/cookbooks\//);
+    await expect.poll(scrollY).toBe(0);
+
+    // A slow recipe arrives as its loading.tsx skeleton first, too short to scroll back into.
+    await page.route(
+      (url) => url.pathname === `/recipes/${id}` && url.searchParams.has("_rsc"),
+      async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await route.continue();
+      }
+    );
+    await page.getByRole("link", { name: `Back to ${name}` }).click();
+    await expect(page).toHaveURL(new RegExp(`/recipes/${id}$`));
+    await expect.poll(scrollY).toBe(left);
   } finally {
     await context.close();
   }
 });
+
+for (const reducedMotion of ["reduce", "no-preference"] as const) {
+  test(`signing in hands the auth screen over to the app in one transition (${reducedMotion})`, async ({
+    browser,
+    aiStack,
+  }) => {
+    const context = await browser.newContext({ baseURL: aiStack.baseURL, reducedMotion });
+
+    await recordViewTransitions(context);
+    const page = await context.newPage();
+
+    try {
+      await page.goto("/login");
+      await page.getByLabel("Email").fill(OWNER.email);
+      await page.getByLabel("Password").fill(OWNER.password);
+      await page.getByRole("button", { name: "Sign in", exact: true }).click();
+
+      await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
+      await expect(page.getByRole("heading", { name: "Your library" })).toBeVisible();
+      await expect
+        .poll(() => viewTransitions(page))
+        .toEqual([
+          reducedMotion === "reduce" ? { types: ["sign-in"], animations: [] } : SIGN_IN_HANDOVER,
+        ]);
+    } finally {
+      await context.close();
+    }
+  });
+}
 
 test("creating an account hands the auth screen over to the app in the same transition", async ({
   browser,
