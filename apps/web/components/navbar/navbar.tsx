@@ -43,7 +43,7 @@ export const Navbar = () => {
           {/* Left */}
           <div className="flex min-w-0 items-center justify-start">
             <div className="max-w-fit">
-              {/* On sign-in, globals.css flies the login page's wordmark into this logo. */}
+              {/* On sign-in, globals.css moves the auth page's logo (`brand-logo`) onto this one. */}
               <NavTabLink
                 data-brand-logo
                 aria-label="Go to home"

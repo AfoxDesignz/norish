@@ -384,7 +384,7 @@
   }
 }
 
-/* The auth screen's wordmark (auth-frame.tsx) flies into the navbar's logo. */
+/* On sign-in, the auth page's logo (auth-frame.tsx) moves onto the navbar's. */
 ::view-transition-group(brand-logo) {
   animation-duration: 640ms;
   animation-timing-function: var(--vt-ease);

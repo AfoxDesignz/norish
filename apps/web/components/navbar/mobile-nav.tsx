@@ -99,8 +99,7 @@ export const MobileNav = () => {
           {/* Nav items - icon height, full width */}
           <div className={`flex h-12 flex-1 items-center px-3 ${barSurfaceClassName}`}>
             <div className="relative w-full">
-              {/* One pill slides between the tabs' columns on a CSS transition, which page scroll
-                  can't move. */}
+              {/* One pill slides between the tab columns, on a CSS `translate` transition. */}
               <span
                 aria-hidden
                 className={`pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center transition-[translate,opacity] duration-300 ease-(--vt-ease) motion-reduce:transition-none ${
