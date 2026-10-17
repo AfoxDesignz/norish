@@ -68,7 +68,7 @@ import { isFlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import { viewerAndHouseholdIds } from "@norish/shared/lib/household";
 import { catalogueLanguagesFor, chooseLocaleNames } from "@norish/shared/lib/ingredient-names";
 import { parseIngredientSearch } from "@norish/shared/lib/ingredient-search";
-import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
+import { cleanSpelling, ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import type { IngredientIcon } from "./icons";
 import { ingredientChanges } from "./changes";
@@ -340,8 +340,8 @@ export async function assertMayEditFood(
 
 /**
  * Add a spelling to any Ingredient, a seeded one included: open to everyone,
- * so a household's own words are understood. A spelling another Ingredient
- * already holds is refused; one this Ingredient holds already is a no-op.
+ * so a household's own words are understood. It is stored clean, as a recipe text is read
+ * (`cleanSpelling`). One another Ingredient holds is refused; one this Ingredient holds is a no-op.
  */
 export async function addAlias(
   actor: CatalogueActor,
@@ -357,7 +357,7 @@ async function addAliasIn(
   ingredientId: string,
   text: string
 ): Promise<CatalogueEdit> {
-  const cleaned = cleanIngredientText(text);
+  const cleaned = cleanSpelling(cleanIngredientText(text));
 
   if (!cleaned) throw new CatalogueEditError("empty");
   if (!(await findCatalogueIngredientOwner(tx, ingredientId))) {
@@ -381,7 +381,7 @@ async function addAliasIn(
 
 /**
  * Rename an Ingredient, which clears its flag. Follows `edit` on the
- * Ingredient. The new name becomes one of its spellings too, so a line that
+ * Ingredient. The new name becomes one of its spellings too, clean, so a line that
  * says the name resolves here rather than being asked about again; where
  * another Ingredient already holds that spelling, the name alone changes.
  */
@@ -411,12 +411,16 @@ async function renameIngredientIn(
   if (!renamed) throw new CatalogueEditError("not-found");
   // A person's own name settles it: a rename AI proposed is moot.
   await deleteSuggestionFor(ingredientId, tx, "rename");
-  await insertCatalogueAlias(tx, {
-    ingredientId,
-    text: cleaned,
-    fold: ingredientAliasFold(cleaned),
-    ownerId: actor.userId,
-  });
+  const spelling = cleanSpelling(cleaned);
+
+  if (spelling) {
+    await insertCatalogueAlias(tx, {
+      ingredientId,
+      text: spelling,
+      fold: ingredientAliasFold(spelling),
+      ownerId: actor.userId,
+    });
+  }
 
   return { changed: [ingredientId] };
 }

@@ -42,7 +42,7 @@ The household's catalogue fills up with things that are not foods and with foods
    - **Alternatives:** the line is in the pantry when any alternative is kept. Otherwise its first alternative goes on the list. Nutrition counts the first.
    - **Foods needed together:** each one gets the line's full amount.
    - **Display:** the line shows its first food's icon.
-3. **Spellings are clean names.** A text with preparation, brackets or an amount points at the clean spelling it reduces to, and is never added as a translation of its own. Double brackets are stripped whole. Before a text is read, stray punctuation, prices and notes are stripped. The seed's spellings keep their brackets, because there a bracket tells two foods apart ("paprika (vrucht)" is bell pepper); the seed loses only its stray marks. A translation a person types in the panel is stored as typed.
+3. **Spellings are clean names.** A text with preparation, brackets or an amount points at the clean spelling it reduces to, and is never added as a translation of its own. Double brackets are stripped whole. Before a text is read, stray punctuation, prices and notes are stripped. The seed's spellings keep their brackets, because there a bracket tells two foods apart ("paprika (vrucht)" is bell pepper); the seed loses only its stray marks. A translation a person types in the panel is stored clean, as a recipe text is read, so a recipe can match it.
 4. **Junk Lines are deleted.**
    - A line that still names nothing once cleaned and read is removed from the recipe: by AI when it is sure, otherwise its food is flagged with **Delete as junk**.
    - A colon line with no amount becomes a Heading.
@@ -92,7 +92,7 @@ The household's catalogue fills up with things that are not foods and with foods
 28. As the person keeping the catalogue, I want "gyoza vellen )", "baking soda )" and "cooked pasta of choice )" gone, so that the translations read like food names.
 29. As an administrator, I want seeded translations with stray marks ("3wu)", "|चौलाई}}") cleaned, so that the seed shows no broken text.
 30. As an administrator, I want seeded translations like "paprika (vrucht)" kept as written, so that the brackets still tell two foods apart.
-31. As the person keeping the catalogue, I want a translation I type in the panel kept as typed, so that my own words are never rewritten.
+31. As the person keeping the catalogue, I want a translation I type in the panel stored clean, so that a recipe writing it the same way finds it.
 32. As a cook, I want a recipe save to keep the food of every line I didn't change, so that saving never re-asks AI or moves an untouched line.
 33. As a cook, I want lines like "melted" and "overnight and drained" removed from my recipe, so that the ingredient list has no fragments.
 34. As a cook, I want a deleted junk line listed on Changed by AI with Undo, so that a line AI deleted wrongly comes back.

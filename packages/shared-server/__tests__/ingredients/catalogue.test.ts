@@ -29,7 +29,11 @@ import { publishIngredientChangesTo } from "@norish/shared-server/ingredients/ch
 import { resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
 import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 
-import { createTestUser, getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
+import {
+  createTestUser,
+  getSpellingTexts,
+  getTestDb,
+} from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
 describe("the ingredient catalogue", () => {
@@ -267,14 +271,21 @@ describe("the ingredient catalogue", () => {
     expect(typed?.ingredientId).toBe(onion.ingredientId);
   });
 
-  it("keeps a spelling a person types as typed, brackets and all", async () => {
-    const gyoza = await mint("gyoza vellen");
+  it("stores a spelling a person types clean, as a recipe text is read, single brackets kept", async () => {
+    const gyoza = await mint("gyoza");
 
     await addAlias(actor, gyoza.ingredientId, "Gyoza vellen ((diepvries))");
+    await addAlias(actor, gyoza.ingredientId, "gyoza (vers) )");
+    await renameIngredient(actor, gyoza.ingredientId, "Japanse gyoza ((vers))");
 
-    await expect(listSpellings(actor, gyoza.ingredientId)).resolves.toEqual(
-      expect.arrayContaining([expect.objectContaining({ text: "Gyoza vellen ((diepvries))" })])
-    );
+    await expect(getSpellingTexts(gyoza.ingredientId)).resolves.toEqual([
+      "Gyoza vellen",
+      "Japanse gyoza",
+      "gyoza",
+      "gyoza (vers)",
+    ]);
+    await expect(refusal(addAlias(actor, gyoza.ingredientId, "(($0.02))"))).resolves.toBe("empty");
+    expect((await mint("gyoza vellen ((diepvries))")).ingredientId).toBe(gyoza.ingredientId);
   });
 
   it("refuses a spelling another food already holds", async () => {

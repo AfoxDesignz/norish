@@ -38,6 +38,7 @@ import type { LocaleNames } from "@norish/shared/lib/ingredient-names";
 import { isCatalogueRefusal } from "@norish/shared/contracts/ingredient-catalogue";
 import { ingredientDisplayName } from "@norish/shared/lib/ingredient-names";
 import { groceryOnTheList } from "@norish/shared/lib/pantry";
+import { cleanSpelling } from "@norish/shared/lib/spelling-keys";
 
 import type { IconDraft } from "./ingredient-icon-field";
 import type { IngredientPick } from "./ingredient-picker";
@@ -369,9 +370,9 @@ function IngredientPanelContent({
     }
   };
 
-  /** A spelling typed joins the draft; the field clears for the next. */
+  /** A spelling typed joins the draft clean, as it is stored; the field clears for the next. */
   const stageAlias = () => {
-    const text = alias.trim();
+    const text = cleanSpelling(alias.trim());
 
     if (!text) return;
     if (!added.includes(text)) setAdded((current) => [...current, text]);

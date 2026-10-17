@@ -755,14 +755,14 @@ describe("IngredientsSettingsContent", () => {
     expect(where).toHaveTextContent("elsewhere");
   });
 
-  it("adds a household's own spelling, staged until Save", async () => {
+  it("adds a household's own spelling clean, staged until Save", async () => {
     render(<IngredientsSettingsContent />);
     const opened = await open("salt");
     await showSpellings(opened);
     const field = within(opened).getByTestId("ingredient-alias-input");
 
     await act(async () => {
-      fireEvent.change(field, { target: { value: " zout " } });
+      fireEvent.change(field, { target: { value: " zout ((fijn)) " } });
     });
     await act(async () => {
       fireEvent.keyDown(field, { key: "Enter" });
