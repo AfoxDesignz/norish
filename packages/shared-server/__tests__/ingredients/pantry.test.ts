@@ -94,6 +94,15 @@ describe("the Pantry through aliases", () => {
     expect(await listPantryIngredientsByUserIds(userIds)).toHaveLength(1);
   });
 
+  it("refuses a typed text that names no food, and adds nothing", async () => {
+    for (const name of ["($0.02)", "200g"]) {
+      await expect(
+        addToPantry(crypto.randomUUID(), { userId, userIds: [userId], name })
+      ).resolves.toBeNull();
+    }
+    expect(await listPantryIngredientsByUserIds([userId])).toEqual([]);
+  });
+
   it("keeps a picked food as picked, once per household", async () => {
     const [line] = await recipeLines("onions, diced");
     const first = await addPickedToPantry(crypto.randomUUID(), {

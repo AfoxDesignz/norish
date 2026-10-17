@@ -7,16 +7,16 @@ import { resolveIngredient, writeResolved } from "./resolver";
  * Put what a member typed in the Pantry: the text is resolved like any recipe
  * line, so "Onions" and "onions, chopped" are the one Ingredient, and a food
  * the household already has is answered with the item it holds rather than
- * a second one (`created: false`).
+ * a second one (`created: false`). Null where the text names no food.
  */
 export async function addToPantry(
   id: string,
   input: { userId: string; userIds: string[]; name: string }
-): Promise<{ item: PantryIngredientDto; created: boolean }> {
+): Promise<{ item: PantryIngredientDto; created: boolean } | null> {
   return await writeResolved(
     () => resolveIngredient(input.name, { userId: input.userId }),
     async (resolved) => {
-      if (!resolved) throw new Error("Failed to resolve pantry ingredient");
+      if (!resolved) return null;
 
       return await addPantryIngredient(id, {
         userId: input.userId,

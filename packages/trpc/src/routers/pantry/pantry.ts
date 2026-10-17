@@ -44,7 +44,11 @@ const add = authedProcedure.input(PantryIngredientAddSchema).mutation(async ({ c
       ? await addPickedToPantry(id, { ...actor, ingredientId: input.ingredientId })
       : await addToPantry(id, { ...actor, name: input.name });
 
-  if (!added) throw new TRPCError({ code: "NOT_FOUND", message: "Ingredient not found" });
+  if (!added) {
+    throw "ingredientId" in input
+      ? new TRPCError({ code: "NOT_FOUND", message: "Ingredient not found" })
+      : new TRPCError({ code: "BAD_REQUEST", message: "Names no food" });
+  }
   const { item, created } = added;
 
   if (created) {

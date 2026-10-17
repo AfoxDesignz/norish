@@ -144,6 +144,15 @@ describe("the Pantry", () => {
     expect(pantryRepository.listPantrySuggestions).toHaveBeenCalledWith(ctx.userIds);
   });
 
+  it("refuses a typed name that names no food", async () => {
+    addToPantry.mockResolvedValue(null);
+
+    await expect(caller.add({ id: OLIVE, name: "200g" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    expect(pantry.publish).not.toHaveBeenCalled();
+  });
+
   it("refuses a name that folds to nothing", async () => {
     await expect(caller.add({ name: "!?" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(addToPantry).not.toHaveBeenCalled();
