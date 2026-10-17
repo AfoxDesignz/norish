@@ -23,7 +23,11 @@ import {
 import { getConfig, setConfig } from "@norish/db/repositories/server-config";
 import { createLogger } from "@norish/shared-server/logger";
 import { ingredients as ingredientsRealtime } from "@norish/shared-server/realtime/ingredients";
-import { ingredientAliasFold, stripPreparation } from "@norish/shared/lib/spelling-keys";
+import {
+  ingredientAliasFold,
+  stripPreparation,
+  withoutStrayMarks,
+} from "@norish/shared/lib/spelling-keys";
 
 import { cleanIngredientText } from "../resolver";
 import { parseTaxonomy } from "./parse-taxonomy";
@@ -39,10 +43,15 @@ const MIN_KEPT_SHARE = 0.5;
 /** The largest file read: a guard against a mirror serving something else entirely. */
 const MAX_FILE_BYTES = 64 * 1024 * 1024;
 
+/** A seeded text cleaned of stray marks ("3wu)" is "3wu"); its brackets tell foods apart, so they stay. */
+function seedText(text: string): string {
+  return withoutStrayMarks(cleanIngredientText(text));
+}
+
 /** A taxonomy file, read and folded into the entries the seed applies. */
 export function seedEntriesOf(file: string): SeedEntry[] {
   return parseTaxonomy(file).flatMap((entry) => {
-    const name = cleanIngredientText(entry.name);
+    const name = seedText(entry.name);
 
     if (!name) return [];
 
@@ -54,7 +63,7 @@ export function seedEntriesOf(file: string): SeedEntry[] {
         parentOffId: entry.parentIds[0] ?? null,
         nutrition: entry.nutrition,
         aliases: entry.names.flatMap(({ text, locale }) => {
-          const cleaned = cleanIngredientText(text);
+          const cleaned = seedText(text);
 
           return cleaned ? [{ text: cleaned, fold: ingredientAliasFold(cleaned), locale }] : [];
         }),

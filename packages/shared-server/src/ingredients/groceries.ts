@@ -37,13 +37,13 @@ export async function resolveGroceryNames(
       : undefined;
   });
   const toResolve = texts.filter((text, index) => text && !lineAlias[index]);
-  const resolved = new Map(
-    (await resolveIngredients(toResolve, actor)).map((row) => [row.text, row])
-  );
+  const answers = await resolveIngredients(toResolve, actor);
+  const resolved = new Map(toResolve.map((text, index) => [text, answers[index]]));
 
   return texts.map((text, index) => {
     if (!text) return null;
 
+    // A typed text that names no food (")") is kept on the list with none.
     const answer = lineAlias[index] ?? resolved.get(text);
 
     return answer ? { aliasId: answer.aliasId, ingredientId: answer.ingredientId } : null;

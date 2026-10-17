@@ -537,10 +537,18 @@ export async function findIngredientsNamed(
   return await withParents(await candidatesFor(rows), excludeId);
 }
 
+/** A stored recipe line as it was resolved: its text, amount and unit, and its alias. */
+export interface RecipeLineAlias extends IngredientRef {
+  recipeId: string;
+  name: string;
+  amount: string | null;
+  unit: string | null;
+}
+
 /** Recipe lines' texts and the aliases they resolved to, by line id. */
 export async function findRecipeLineAliases(
   recipeIngredientIds: readonly string[]
-): Promise<Map<string, IngredientRef & { name: string }>> {
+): Promise<Map<string, RecipeLineAlias>> {
   const unique = Array.from(new Set(recipeIngredientIds));
 
   if (unique.length === 0) return new Map();
@@ -548,7 +556,10 @@ export async function findRecipeLineAliases(
   const rows = await db
     .select({
       id: recipeIngredients.id,
+      recipeId: recipeIngredients.recipeId,
       name: recipeIngredients.name,
+      amount: recipeIngredients.amount,
+      unit: recipeIngredients.unit,
       aliasId: ingredientAliases.id,
       ingredientId: ingredientAliases.ingredientId,
     })

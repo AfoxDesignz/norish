@@ -7,9 +7,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
+import { ingredients } from "@norish/db/schema";
 import { resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
 import { withResolvedIngredients } from "@norish/shared-server/ingredients/recipe-lines";
 
+import { getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
 describe("grocery names through aliases", () => {
@@ -89,6 +91,13 @@ describe("grocery names through aliases", () => {
     });
 
     expect(replayed).toEqual(first);
+  });
+
+  it("keeps a typed grocery that names no food without one, and mints nothing", async () => {
+    await expect(
+      resolveGroceryNames([{ name: ")" }, { name: "—" }, { name: "leeks" }], { userId })
+    ).resolves.toEqual([null, null, expect.objectContaining({ aliasId: expect.any(String) })]);
+    await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(1);
   });
 
   it("has nothing to resolve for a grocery with no name", async () => {

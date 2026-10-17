@@ -10,6 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import type { SeedEntry } from "@norish/db/repositories/ingredient-seed";
 import type { DecisionQuestions } from "@norish/shared-server/ai/runtime/runtime";
+import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
 import { withTransaction } from "@norish/db/drizzle";
 import {
   findIngredientAncestors,
@@ -31,10 +32,14 @@ import {
   isAIEnabled,
   isDecisionUseEnabled,
 } from "@norish/shared-server/config/server-config-loader";
+import {
+  updateResolvedRecipe,
+  withResolvedIngredients,
+} from "@norish/shared-server/ingredients/recipe-lines";
 import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
-import { getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
+import { getSpellingTexts, getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
 vi.mock("@norish/shared-server/ai/runtime/runtime", () => ({
@@ -192,6 +197,79 @@ describe("ingredient resolver, rung 3", () => {
       ingredientId: onion.ingredientId,
     });
     expect(vi.mocked(decide)).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives a known food only the clean spelling of a text AI joined to it", async () => {
+    const onion = await known("onion");
+
+    decides("Is onion", 0.95);
+    await expect(resolveOne("2 onion bulbs (diced)")).resolves.toMatchObject({
+      ingredientId: onion.ingredientId,
+    });
+
+    await expect(getSpellingTexts(onion.ingredientId)).resolves.toEqual(["onion", "onion bulbs"]);
+  });
+
+  it("keeps the foods of a saved recipe's unchanged lines, and resolves only the edited one", async () => {
+    const shallot = await known("shallot");
+    const carrot = await known("carrot");
+    const tomato = await known("tomato");
+    await known("onion");
+    await known("leek");
+    const recipeId = crypto.randomUUID();
+    const lines = [
+      // An import named the food; the line's own text would need AI to connect.
+      {
+        ingredientId: null,
+        ingredientName: "onion bulbs, chopped",
+        foodText: "shallot",
+        amount: 2,
+        unit: null,
+        order: 0,
+      },
+      { ingredientId: null, ingredientName: "leek", amount: 1, unit: null, order: 1 },
+      {
+        ingredientId: null,
+        ingredientName: "GR CHERRYTOMATEN",
+        foodText: "tomato",
+        amount: 150,
+        unit: null,
+        order: 2,
+      },
+    ];
+
+    await createRecipeWithRefs(
+      recipeId,
+      userId,
+      await withResolvedIngredients(
+        { name: "Soup", systemUsed: "metric", recipeIngredients: lines },
+        { userId }
+      )
+    );
+    const [kept, edited, reparsed] = (await getRecipeFull(recipeId))!.recipeIngredients;
+
+    await updateResolvedRecipe(
+      recipeId,
+      userId,
+      {
+        systemUsed: "metric",
+        recipeIngredients: [
+          { id: kept!.id, ingredientName: "onion bulbs, chopped", amount: 2, unit: null, order: 0 },
+          { id: edited!.id, ingredientName: "carrots", amount: 1, unit: null, order: 1 },
+          // The editor shows "150 GR CHERRYTOMATEN" and parses it back with the unit apart.
+          { id: reparsed!.id, ingredientName: "CHERRYTOMATEN", amount: 150, unit: "GR", order: 2 },
+        ],
+      },
+      { userId }
+    );
+
+    expect((await getRecipeFull(recipeId))?.recipeIngredients).toMatchObject([
+      { id: kept!.id, ingredientId: shallot.ingredientId },
+      { id: edited!.id, ingredientId: carrot.ingredientId },
+      { id: reparsed!.id, ingredientId: tomato.ingredientId },
+    ]);
+    expect(vi.mocked(decide)).not.toHaveBeenCalled();
+    expect(vi.mocked(generateStructured)).not.toHaveBeenCalled();
   });
 
   it("acts on a Decision exactly at the threshold, and asks the language model just below it", async () => {

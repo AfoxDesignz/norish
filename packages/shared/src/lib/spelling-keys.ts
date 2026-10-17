@@ -29,6 +29,80 @@ export function ingredientAliasFold(text: string): string {
  */
 const MENTION = /(^|\s)@[\p{L}\p{N}_.]+/gu;
 
+/** A mark at a text's start that is no part of a name: "+ / - :", list bullets, wiki pipes. */
+const LEADING_MARK = /[\s+\-–—/:;,|*•·~]/u;
+
+/** The same at its end, and a bracket opened there, which closes nothing. */
+const TRAILING_MARK = /[\s+\-–—/:;,|*•·~([{]/u;
+
+function withoutEdgeMarks(text: string): string {
+  let start = 0;
+  let end = text.length;
+
+  while (start < end && LEADING_MARK.test(text[start]!)) start += 1;
+  while (end > start && TRAILING_MARK.test(text[end - 1]!)) end -= 1;
+
+  return text.slice(start, end);
+}
+
+const OPENER_OF: Readonly<Record<string, string>> = { ")": "(", "]": "[", "}": "{" };
+const OPENERS = new Set(Object.values(OPENER_OF));
+
+/**
+ * The text without a closing bracket that never opened ("3wu)", "|चौलाई}}") and the marks at
+ * its edges; one never closed stays, as preparation to the end (`stripPreparation`).
+ */
+export function withoutStrayMarks(text: string): string {
+  const open: string[] = [];
+  let kept = "";
+
+  for (const char of text) {
+    const opener = OPENER_OF[char];
+
+    if (OPENERS.has(char)) open.push(char);
+    else if (opener && open.at(-1) !== opener) {
+      kept += " ";
+      continue;
+    } else if (opener) open.pop();
+    kept += char;
+  }
+
+  return withoutEdgeMarks(kept).replace(/\s+/g, " ");
+}
+
+/** Brackets doubled around a note: "((ontdooid))", "{{…}}", stripped whole. */
+const DOUBLED_BRACKETS = /\(\s*\([^()]*\)\s*\)|\[\s*\[[^[\]]*\]\s*\]|\{\s*\{[^{}]*\}\s*\}/g;
+
+/** A price a recipe site writes beside its food: "$0.02", "€1,50", "0,02 €". */
+const PRICE = /\p{Sc}\s?\d+(?:[.,]\d+)?|(?<![\d.,])\d+(?:[.,]\d+)?\s?\p{Sc}/gu;
+
+/** A note a recipe refers to: "(Note 1)", "(see notes 2 & 3)". */
+const NOTE = /[([][^()[\]]*\bnotes?\b[^()[\]]*[)\]]/giu;
+
+/** A bracket a price or note left empty. */
+const EMPTY_BRACKETS = /\(\s*\)|\[\s*\]|\{\s*\}/g;
+
+/**
+ * The text a spelling is read from, without stray marks, doubled brackets, prices and notes
+ * (ADR-0037); cleaned until nothing changes, so cleaning it again reads the same.
+ */
+export function cleanSpelling(text: string): string {
+  let clean = text;
+
+  for (let last = ""; clean !== last;) {
+    last = clean;
+    clean = withoutStrayMarks(
+      clean
+        .replace(PRICE, " ")
+        .replace(NOTE, " ")
+        .replace(DOUBLED_BRACKETS, " ")
+        .replace(EMPTY_BRACKETS, " ")
+    );
+  }
+
+  return clean;
+}
+
 /**
  * The text with its preparation stripped: brackets removed, then cut at the
  * first comma. A bracket never closed ("onion (red, diced") is a preparation
@@ -36,12 +110,12 @@ const MENTION = /(^|\s)@[\p{L}\p{N}_.]+/gu;
  * either, wherever it stands: "@blueband_nl Finesse" is "Finesse".
  */
 export function stripPreparation(text: string): string {
-  return stripBracketed(text)
-    .replace(/[([].*/, " ")
-    .split(",")[0]!
-    .replace(MENTION, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return withoutStrayMarks(
+    stripBracketed(text)
+      .replace(/[([].*/, " ")
+      .split(",")[0]!
+      .replace(MENTION, " ")
+  );
 }
 
 /**
@@ -308,7 +382,8 @@ function foodWordRange(words: readonly string[], rules: SpellingRules): [number,
 }
 
 /**
- * A text's keys: its fold (rung 1); its bare name, the text without its
+ * A text's keys: its clean text (`cleanSpelling`), which the rest are read
+ * from; its fold (rung 1); its bare name, the text without its
  * preparation after a comma or in brackets, and that name's fold (rung 2,
  * empty where nothing is left); and its plain name, the bare name without
  * the units map's phrases, a container, weight or volume at its start,
@@ -317,6 +392,7 @@ function foodWordRange(words: readonly string[], rules: SpellingRules): [number,
  * plain name.
  */
 export interface SpellingKeys {
+  clean: string;
   fold: string;
   bare: string;
   bareFold: string;
@@ -365,7 +441,8 @@ export function spellingKeys(
   text: string,
   rules: SpellingRules = BASE_SPELLING_RULES
 ): SpellingKeys {
-  const bare = stripPreparation(text);
+  const clean = cleanSpelling(text);
+  const bare = stripPreparation(clean);
   const bareFold = bare ? ingredientAliasFold(bare) : "";
   const words = foldWordsOf(bare);
   const range = foodWordRange(
@@ -382,7 +459,8 @@ export function spellingKeys(
   const plain = plainFold ? textOfRange(bare, words, range) : bare;
 
   return {
-    fold: ingredientAliasFold(text),
+    clean,
+    fold: ingredientAliasFold(clean),
     bare,
     bareFold,
     plain,

@@ -29,7 +29,7 @@ import {
   refreshIngredientCatalogue,
 } from "@norish/shared-server/ingredients/seed/catalogue-seed";
 
-import { getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
+import { getSpellingTexts, getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
 const excerpt = readFileSync(join(__dirname, "fixtures", "ingredients-taxonomy.txt"), "utf8");
@@ -102,6 +102,27 @@ describe("the ingredient catalogue seed", () => {
         ownerId: null,
         flagged: false,
       });
+    });
+
+    it("cleans its spellings of stray marks and keeps the brackets that tell foods apart", async () => {
+      await applySeedFile(
+        `${excerpt}\n\nen: bell pepper\nnl: paprika (vrucht)\n\nen: paprika\nnl: paprika\n\n` +
+          `en: honey\nak: 3wu)\n\nen: amaranth\nhi: |चौलाई}}\n`
+      );
+
+      const bellPepper = await resolve("bell pepper");
+      const honey = await resolve("honey");
+      const amaranth = await resolve("amaranth");
+
+      await expect(resolve("paprika (vrucht)")).resolves.toMatchObject({
+        ingredientId: bellPepper.ingredientId,
+      });
+      expect((await resolve("paprika")).ingredientId).not.toBe(bellPepper.ingredientId);
+      await expect(getSpellingTexts(bellPepper.ingredientId)).resolves.toContain(
+        "paprika (vrucht)"
+      );
+      await expect(getSpellingTexts(honey.ingredientId)).resolves.toEqual(["3wu", "honey"]);
+      await expect(getSpellingTexts(amaranth.ingredientId)).resolves.toEqual(["amaranth", "चौलाई"]);
     });
 
     it("places each food under the first food it is a kind of", async () => {

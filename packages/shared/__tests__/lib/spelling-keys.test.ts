@@ -5,11 +5,13 @@ import type { PantryIngredientDto } from "@norish/shared/contracts";
 import defaultUnits from "@norish/config/units.default.json";
 import { pantryIngredientFor } from "@norish/shared/lib/pantry";
 import {
+  cleanSpelling,
   foodKey,
   ingredientAliasFold,
   spellingKeys,
   spellingRules,
   stripPreparation,
+  withoutStrayMarks,
 } from "@norish/shared/lib/spelling-keys";
 
 import { SPELLING_CASES } from "./spelling-cases";
@@ -60,6 +62,73 @@ describe("spelling keys", () => {
     expect(foodKey("@kikkoman sojasaus", phrases)).toBe(foodKey("sojasaus", phrases));
   });
 
+  it("reads a text without stray marks, doubled brackets, prices and notes", () => {
+    for (const text of [
+      "gyoza vellen ((ontdooid))",
+      "gyoza vellen (ontdooid)",
+      "12 gyoza vellen",
+    ]) {
+      expect(foodKey(text, phrases)).toBe("gyoza vellen");
+    }
+    expect(spellingKeys("gyoza vellen ((ontdooid))", phrases)).toMatchObject({
+      fold: "gyoza vellen",
+      bare: "gyoza vellen",
+      plain: "gyoza vellen",
+    });
+    expect(spellingKeys("baking soda (($0.02))", phrases).fold).toBe("baking soda");
+    expect(spellingKeys("baking soda ($0.02)", phrases).fold).toBe("baking soda");
+    expect(spellingKeys("baking soda €0,02", phrases).fold).toBe("baking soda");
+    expect(spellingKeys("baking soda 0,02 €", phrases).fold).toBe("baking soda");
+    expect(spellingKeys("sugar (Note 1)", phrases).fold).toBe("sugar");
+    expect(spellingKeys("sugar (see notes 2 & 3)", phrases).fold).toBe("sugar");
+    for (const text of ["+ eggs", "/ eggs", "- eggs", ": eggs"]) {
+      expect(spellingKeys(text, phrases)).toMatchObject({ bare: "eggs", plain: "eggs" });
+    }
+    // A bracket that pairs stays for rung 1: the seed spells foods apart by it.
+    expect(spellingKeys("paprika (vrucht)", phrases)).toMatchObject({
+      fold: "paprika vrucht",
+      bare: "paprika",
+    });
+  });
+
+  it("leaves no key ending in a bracket that never opened", () => {
+    for (const text of ["baking soda )", "olijfolie basilicum))", "3wu)", "gyoza vellen )"]) {
+      for (const key of Object.values(spellingKeys(text, phrases))) {
+        expect(key).not.toMatch(/[)\]}]$/);
+      }
+    }
+    expect(spellingKeys("baking soda )", phrases).bare).toBe("baking soda");
+  });
+
+  it("cleans a seeded spelling of its stray marks and keeps the brackets that pair", () => {
+    expect(withoutStrayMarks("3wu)")).toBe("3wu");
+    expect(withoutStrayMarks("|चौलाई}}")).toBe("चौलाई");
+    expect(withoutStrayMarks("paprika (vrucht)")).toBe("paprika (vrucht)");
+    expect(withoutStrayMarks("aroma [mela]")).toBe("aroma [mela]");
+    expect(withoutStrayMarks("half-and-half")).toBe("half-and-half");
+    expect(withoutStrayMarks("1,5% melk")).toBe("1,5% melk");
+    expect(withoutStrayMarks("salt {fine}")).toBe("salt {fine}");
+    expect(withoutStrayMarks("{chef} salt")).toBe("{chef} salt");
+    // A bracket opened at the very end closes nothing.
+    expect(withoutStrayMarks("olie )(")).toBe("olie");
+  });
+
+  it("cleans a text to a fixed point, so a clean text reads the same cleaned again", () => {
+    for (const text of [
+      "((x) (Note 1))",
+      "salt (Note 1) -",
+      "(Note 2) - salt",
+      "olie )(",
+      "a ($1) (b)",
+    ]) {
+      const clean = cleanSpelling(text);
+
+      expect(cleanSpelling(clean)).toBe(clean);
+      expect(spellingKeys(text, phrases).clean).toBe(clean);
+    }
+    expect(cleanSpelling("(Note 2) - salt")).toBe("salt");
+  });
+
   it("keys a punctuation-only text by its lowercase self, never by nothing", () => {
     expect(ingredientAliasFold("!!!")).toBe("!!!");
     expect(foodKey("!!!")).toBe("!!!");
@@ -68,6 +137,7 @@ describe("spelling keys", () => {
 
   it("answers both rungs' keys for a text", () => {
     expect(spellingKeys("Onions, Diced", phrases)).toEqual({
+      clean: "Onions, Diced",
       fold: "onions diced",
       bare: "Onions",
       bareFold: "onions",
@@ -99,7 +169,7 @@ describe("spelling keys", () => {
 
   it("names the food without the punctuation at the edges of its words", () => {
     expect(spellingKeys("(2.7lbs) - Fresh Salmon, Cut Into 5 Fillets", phrases)).toMatchObject({
-      bare: "- Fresh Salmon",
+      bare: "Fresh Salmon",
       bareFold: "fresh salmon",
       plain: "Fresh Salmon",
       plainFold: "fresh salmon",

@@ -14,9 +14,11 @@ import { mintIngredientWithAliases } from "@norish/db/repositories/ingredient-al
 import { mergeCatalogueIngredients } from "@norish/db/repositories/ingredient-relocation";
 import { addPantryIngredient } from "@norish/db/repositories/pantry";
 import { setConfig } from "@norish/db/repositories/server-config";
+import { ingredients } from "@norish/db/schema";
 import { onIngredientsMinted } from "@norish/shared-server/ingredients/minted";
 import { withResolvedIngredients } from "@norish/shared-server/ingredients/recipe-lines";
 import {
+  cleanIngredientText,
   findIngredientFor,
   forgetSpellingRules,
   ingredientFor,
@@ -26,6 +28,7 @@ import {
 } from "@norish/shared-server/ingredients/resolver";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
+import { getSpellingTexts, getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
 describe("ingredient resolver", () => {
@@ -313,6 +316,62 @@ describe("ingredient resolver", () => {
     await expect(resolveIngredient("Leeks", { userId })).resolves.toMatchObject({ text: "Leeks" });
   });
 
+  it("points a text with brackets or an amount at its clean spelling, never one of its own", async () => {
+    const resolved = [];
+
+    for (const text of [
+      "gyoza vellen ((ontdooid))",
+      "gyoza vellen (ontdooid)",
+      "12 gyoza vellen",
+    ]) {
+      resolved.push(await resolveOne(text));
+    }
+
+    expect(new Set(resolved.map((row) => row.aliasId)).size).toBe(1);
+    await expect(getSpellingTexts(resolved[0]!.ingredientId)).resolves.toEqual(["gyoza vellen"]);
+    await expect(ingredientFor(resolved[0]!.aliasId)).resolves.toMatchObject({
+      name: "gyoza vellen",
+    });
+  });
+
+  it("mints a text that is all brackets under its words, without them", async () => {
+    const salt = await resolveOne("(salt)");
+
+    await expect(getSpellingTexts(salt.ingredientId)).resolves.toEqual(["salt"]);
+    expect((await resolveOne("(salt")).ingredientId).toBe(salt.ingredientId);
+  });
+
+  it("reads a text past stray marks, prices, notes and a leading mark, and answers it as written", async () => {
+    const soda = await resolveOne("baking soda");
+
+    for (const text of [
+      "baking soda )",
+      "baking soda (($0.02))",
+      "baking soda $0.02",
+      "baking soda (Note 1)",
+      "+ baking soda",
+      "/ baking soda",
+      "- baking soda",
+      ": baking soda",
+    ]) {
+      await expect(resolveOne(text)).resolves.toEqual({
+        text: cleanIngredientText(text),
+        aliasId: soda.aliasId,
+        ingredientId: soda.ingredientId,
+      });
+    }
+    await expect(getSpellingTexts(soda.ingredientId)).resolves.toEqual(["baking soda"]);
+  });
+
+  it("answers no food for a text with no letter or digit once cleaned, and mints nothing", async () => {
+    await expect(resolveIngredients([")", "—", "($0.02)"], { userId })).resolves.toEqual([
+      null,
+      null,
+      null,
+    ]);
+    await expect(getTestDb().select().from(ingredients)).resolves.toEqual([]);
+  });
+
   it("a mint that loses the race for one of its spellings joins the winner with the other", async () => {
     // Another request minted "onions, diced" between this mint's read and write.
     const [winner] = await mintIngredientWithAliases({
@@ -440,6 +499,55 @@ describe("ingredient resolver", () => {
       // "# Sauce" folds like "sauce", and still never became a spelling of it.
       await expect(findIngredientFor("# For the topping:")).resolves.toBeNull();
       expect((await resolveOne("sauce")).ingredientId).toBe(sauce.ingredientId);
+    });
+
+    it("stores no food for a colon line with no amount, and reads one with an amount as before", async () => {
+      const olie = await resolveOne("olie");
+      const recipeId = crypto.randomUUID();
+
+      await createRecipeWithRefs(
+        recipeId,
+        userId,
+        await withResolvedIngredients(
+          {
+            name: "Salade",
+            systemUsed: "metric",
+            recipeIngredients: [
+              { ...line("Voor de salade:", 0), amount: null },
+              { ...line("olie:", 1), unit: "tbsp" },
+            ],
+          },
+          { userId }
+        )
+      );
+
+      expect((await getRecipeFull(recipeId))?.recipeIngredients).toMatchObject([
+        { ingredientName: "Voor de salade:", ingredientId: null },
+        { ingredientName: "olie:", ingredientId: olie.ingredientId },
+      ]);
+      await expect(findIngredientFor("Voor de salade")).resolves.toBeNull();
+    });
+
+    it("keeps a line's price as written while its food is read without it", async () => {
+      const soda = await resolveOne("baking soda");
+      const recipeId = crypto.randomUUID();
+
+      await createRecipeWithRefs(
+        recipeId,
+        userId,
+        await withResolvedIngredients(
+          {
+            name: "Cookies",
+            systemUsed: "metric",
+            recipeIngredients: [{ ...line("baking soda ($0.02)", 0), unit: "tsp" }],
+          },
+          { userId }
+        )
+      );
+
+      expect((await getRecipeFull(recipeId))?.recipeIngredients).toMatchObject([
+        { ingredientName: "baking soda ($0.02)", ingredientId: soda.ingredientId },
+      ]);
     });
 
     it("keeps a line that is an amount alone as naming no food, and mints nothing for it", async () => {

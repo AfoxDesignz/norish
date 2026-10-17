@@ -1,19 +1,24 @@
-import type { IngredientResolutions } from "@norish/db/repositories/ingredients";
+import type { IngredientRef, RecipeLineAlias } from "@norish/db/repositories/ingredient-aliases";
 import type { MutationOutcome } from "@norish/db/repositories/mutation-outcomes";
 import type {
   CreateRecipeResult,
   WithIngredientResolutions,
 } from "@norish/db/repositories/recipes";
 import type { FullRecipeInsertDTO, FullRecipeUpdateDTO } from "@norish/shared/contracts";
-import { findIngredientNamesByIds } from "@norish/db/repositories/ingredient-aliases";
+import {
+  findIngredientNamesByIds,
+  findRecipeLineAliases,
+} from "@norish/db/repositories/ingredient-aliases";
 import { createRecipeWithRefs, updateRecipeWithRefs } from "@norish/db/repositories/recipes";
 import { getUnits } from "@norish/shared-server/config/server-config-loader";
-import { lineFoodText, namesNoFood } from "@norish/shared/lib/ingredient-text";
+import { lineFoodText, lineNamesNoFood } from "@norish/shared/lib/ingredient-text";
 
 import type { ResolveActor } from "./resolver";
 import { cleanIngredientText, resolveIngredients, writeResolved } from "./resolver";
 
 interface RecipeLineInput {
+  /** The stored line this one saves over, if any. */
+  id?: string;
   ingredientId?: string | null;
   ingredientName?: string;
   amount?: unknown;
@@ -32,14 +37,16 @@ interface RecipeLineInput {
  * `ingredientName` as written; a line that names only an Ingredient by id is
  * given that Ingredient's name as its text. A line left with no text is
  * dropped, as the recipe write always skipped it, and one that names no
- * food (a heading, a text with no letter or digit) is written as it is. A
- * line's food is resolved from the `foodText` it names, else from
- * `lineFoodText`; a text written twice is read the first way.
+ * food (a heading, a text with no letter or digit, a colon line with no
+ * amount) is written as it is. A line's food is resolved from the `foodText`
+ * it names, else from `lineFoodText`; a text written twice is read the first
+ * way. A line saved over one of `recipeId` keeps that line's food while its
+ * `lineFoodText` is unchanged, so only edited and new lines are resolved.
  */
 export async function withResolvedIngredients<
   L extends RecipeLineInput,
   P extends { recipeIngredients?: L[] },
->(payload: P, actor: ResolveActor): Promise<WithIngredientResolutions<P>> {
+>(payload: P, actor: ResolveActor, recipeId?: string): Promise<WithIngredientResolutions<P>> {
   const lines = payload.recipeIngredients;
 
   if (!lines?.length) return { ...payload, ingredientResolutions: new Map() };
@@ -60,12 +67,33 @@ export async function withResolvedIngredients<
     return text ? [{ ...line, ingredientName: text }] : [];
   });
   const units = await getUnits();
+  const stored = recipeId
+    ? await findRecipeLineAliases(written.flatMap((line) => (line.id ? [line.id] : [])))
+    : new Map<string, RecipeLineAlias>();
+  const resolved = new Map<string, IngredientRef | null>();
   const foodTexts = new Map<string, string>();
 
   for (const line of written) {
+    const kept = line.id ? stored.get(line.id) : undefined;
+
+    if (
+      kept &&
+      kept.recipeId === recipeId &&
+      lineFoodText({ text: kept.name, amount: kept.amount, unit: kept.unit }, units) ===
+        lineFoodText({ text: line.ingredientName, amount: line.amount, unit: line.unit }, units) &&
+      !resolved.has(line.ingredientName)
+    ) {
+      resolved.set(line.ingredientName, { aliasId: kept.aliasId, ingredientId: kept.ingredientId });
+    }
+  }
+  for (const line of written) {
     const text = line.ingredientName;
 
-    if (text && !namesNoFood(text) && !foodTexts.has(text)) {
+    if (
+      !lineNamesNoFood({ text, amount: line.amount }) &&
+      !resolved.has(text) &&
+      !foodTexts.has(text)
+    ) {
       foodTexts.set(
         text,
         cleanIngredientText(line.foodText ?? "") ||
@@ -75,12 +103,12 @@ export async function withResolvedIngredients<
   }
 
   const foods = await resolveIngredients([...foodTexts.values()], actor);
-  const resolved: IngredientResolutions = new Map(
-    [...foodTexts.keys()].map((text, index) => [
-      text,
-      { aliasId: foods[index]!.aliasId, ingredientId: foods[index]!.ingredientId },
-    ])
-  );
+
+  [...foodTexts.keys()].forEach((text, index) => {
+    const food = foods[index];
+
+    resolved.set(text, food ? { aliasId: food.aliasId, ingredientId: food.ingredientId } : null);
+  });
 
   return { ...payload, recipeIngredients: written, ingredientResolutions: resolved };
 }
@@ -110,7 +138,7 @@ export function updateResolvedRecipe(
   version?: number
 ): Promise<MutationOutcome<void>> {
   return writeResolved(
-    () => withResolvedIngredients(payload, actor),
+    () => withResolvedIngredients(payload, actor, recipeId),
     (resolved) => updateRecipeWithRefs(recipeId, userId, resolved, version)
   );
 }

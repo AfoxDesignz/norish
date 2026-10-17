@@ -16,6 +16,7 @@ import {
 import { getIngredientWords, getUnits } from "@norish/shared-server/config/server-config-loader";
 import { dbLogger } from "@norish/shared-server/logger";
 import { stripHtmlTags } from "@norish/shared/lib/helpers";
+import { namesNoFood } from "@norish/shared/lib/ingredient-text";
 import { inflectedReadings, spellingKeys, spellingRules } from "@norish/shared/lib/spelling-keys";
 
 import type { AIResolution } from "../ai/resolution/ingredient-resolution";
@@ -29,7 +30,8 @@ import { announceMinted } from "./minted";
  * text as written here and stores the alias that comes back; the text itself
  * is kept by the caller and shown as written.
  *
- * The resolution order for one text:
+ * The resolution order for one text, read without its stray marks, prices
+ * and notes (`cleanSpelling`), where one that names no food stops at once:
  *   1. an alias whose fold is the text's fold;
  *   2. an alias whose fold is the text's with preparation stripped — the part
  *      after the first comma and anything in brackets ("onions, diced" and
@@ -42,10 +44,12 @@ import { announceMinted } from "./minted";
  *   (both keys are `@norish/shared/lib/spelling-keys`, which the clients
  *   match unresolved text on too);
  *   3. what AI makes of it (`ai/resolution/ingredient-resolution`): a Decision, or the language
- *      model — a known food it is sure the text names takes the text as a
- *      new spelling, so the next occurrence is a rung-1 match;
- *   4. a new Ingredient with the text as its first alias, under the food AI
- *      said it is a kind of, if any.
+ *      model — a known food it is sure the text names takes the text's
+ *      clean spelling, so the next occurrence is a rung-1 or rung-2 match;
+ *   4. a new Ingredient under the food AI said it is a kind of, if any.
+ *
+ * A mint or a join gives the food only the text's clean spelling, its plain
+ * name else its bare one, never the text as written (ADR-0037).
  *
  * A mint that no sure AI answer vouched for is flagged, so a person can merge
  * it or mark it distinct. One AI placed nowhere is filed under the longest
@@ -64,9 +68,10 @@ import { announceMinted } from "./minted";
  * words of every language, plurals and diminutives at rung 2, and a
  * quantity left at a name's start. 4: a social media mention names no food.
  * 5: a weight or a volume at a name's start, with or without its number.
- * 6: a joining word left at a name's start ("di farina").
+ * 6: a joining word left at a name's start ("di farina"). 7: stray marks,
+ * doubled brackets, prices and notes are no part of a name ("baking soda )").
  */
-export const RUNG_VERSION = 6;
+export const RUNG_VERSION = 7;
 
 /** Who the resolution is for: the owner of anything it mints. */
 export interface ResolveActor {
@@ -89,9 +94,10 @@ export interface ResolvedIngredient extends IngredientRef {
 }
 
 /**
- * A text as the first two rungs read it: its fold, its folds with the
- * preparation stripped, the other readings of its plain name as the same
- * food (its plurals and diminutives), and the rules it was read by.
+ * A text as the first two rungs read it: as written, its keys (clean, its
+ * fold, its folds with the preparation stripped), the other readings of its
+ * plain name as the same food (its plurals and diminutives), and the rules
+ * it was read by.
  */
 interface Spelling extends SpellingKeys {
   text: string;
@@ -182,30 +188,30 @@ export function cleanIngredientText(text: string): string {
   return stripHtmlTags(text).replace(/\s+/g, " ").trim();
 }
 
+/** Whether a text names no food as written or once cleaned (`namesNoFood`): markup alone, ")", "($0.02)". */
+function spellingNamesNoFood(spelling: Spelling): boolean {
+  return namesNoFood(spelling.text) || namesNoFood(spelling.clean);
+}
+
 /**
- * Resolve texts as written to aliases, one per text and in the same order.
- * Texts that resolve alike share their answer, so one recipe that says
- * "onions" twice mints one Ingredient.
+ * Resolve texts as written to aliases, one per text and in the same order,
+ * null for a text that names no food. Texts that resolve alike share their
+ * answer, so one recipe that says "onions" twice mints one Ingredient.
  */
 export async function resolveIngredients(
   texts: readonly string[],
   actor: ResolveActor,
   options: ResolveOptions = {}
-): Promise<ResolvedIngredient[]> {
-  const cleaned = texts.map(cleanIngredientText);
-
-  if (cleaned.some((text) => text.length === 0)) {
-    throw new Error("Ingredient text cannot be empty");
-  }
-
+): Promise<Array<ResolvedIngredient | null>> {
   const rules = await currentRules();
-  const spellings = cleaned.map((text) => spellingOf(text, rules));
+  const asWritten = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
+  const spellings = asWritten.filter((spelling) => !spellingNamesNoFood(spelling));
   const known = await knownAliases(spellings);
   const answers = await askAboutUnknown(
     spellings.filter((spelling) => !matchKnown(spelling, known)),
     options
   );
-  const resolved: ResolvedIngredient[] = [];
+  const resolved = new Map<Spelling, ResolvedIngredient>();
   const minted = new Set<string>();
 
   for (const spelling of spellings) {
@@ -222,7 +228,7 @@ export async function resolveIngredients(
         answer.kind === "same"
           ? await addIngredientAliases({
               ingredientId: answer.ingredientId,
-              aliases: spellingAliases(spelling),
+              aliases: [cleanAlias(spelling)],
               ownerId: actor.userId,
               locale: actor.locale ?? null,
             })
@@ -247,9 +253,9 @@ export async function resolveIngredients(
       if (!joined) for (const row of rows) minted.add(row.ingredientId);
     }
 
-    const alias = match ?? known.get(spelling.fold)!;
+    const alias = match ?? matchKnown(spelling, known)!;
 
-    resolved.push({
+    resolved.set(spelling, {
       text: spelling.text,
       aliasId: alias.aliasId,
       ingredientId: alias.ingredientId,
@@ -259,7 +265,7 @@ export async function resolveIngredients(
   // What the administrator turned on for new foods follows someone's action, never a pass with AI off.
   if (options.ai !== false) await announceMinted([...minted]);
 
-  return resolved;
+  return asWritten.map((spelling) => resolved.get(spelling) ?? null);
 }
 
 /** Spellings the first two rungs resolve alike: "onions, diced" and "onions (2)" are one question (`foodKey`). */
@@ -295,7 +301,7 @@ async function askAboutUnknown(
     const answered = await Promise.all(
       batch.map(async ([, spelling]) => {
         const words = await parentFromWords(spelling);
-        const answer = await askWhatFoodThisIs(spelling.text, spelling.bare, {
+        const answer = await askWhatFoodThisIs(spelling.clean, spelling.bare, {
           wordsParent: words,
         });
 
@@ -310,25 +316,22 @@ async function askAboutUnknown(
 }
 
 /**
- * Resolve one text as written, or answer null where it is markup alone and so
- * names no food. For the callers that take a single name from a person.
+ * Resolve one text as written, or answer null where it names no food. For
+ * the callers that take a single name from a person.
  */
 export async function resolveIngredient(
   text: string,
   actor: ResolveActor,
   options: ResolveOptions = {}
 ): Promise<ResolvedIngredient | null> {
-  if (!cleanIngredientText(text)) return null;
-
   const [resolved] = await resolveIngredients([text], actor, options);
 
   return resolved ?? null;
 }
 
 /**
- * Rung 4. The Ingredient is named for the text without its preparation — its
- * plain name — and that name and the bare one become aliases beside the
- * text, so "onions, diced" first and "onions" or "onions, sliced" later are
+ * Rung 4. The Ingredient is named for its clean spelling, which is its one
+ * alias, so "onions, diced" first and "onions" or "onions, sliced" later are
  * the one food. Flagged unless a sure AI answer said it is a food of its own;
  * placed under the food AI said it is a kind of, where it said so, else under
  * the one its words suggest, with a suggestion to confirm where that was a
@@ -339,9 +342,11 @@ async function mint(
   actor: ResolveActor,
   { flagReason, parent }: { flagReason: FlagReason | null; parent: ParentFromWords | null }
 ): Promise<IngredientAliasRow[]> {
+  const alias = cleanAlias(spelling);
+
   return await mintIngredientWithAliases({
-    name: spelling.plainFold ? spelling.plain : spelling.text,
-    aliases: spellingAliases(spelling),
+    name: alias.text,
+    aliases: [alias],
     ownerId: actor.userId,
     locale: actor.locale ?? null,
     flagged: flagReason !== null,
@@ -445,16 +450,18 @@ export async function plainNameOf(text: string): Promise<{ text: string; fold: s
     : null;
 }
 
-/** The aliases a spelling gives its food: the text, and its bare and plain names where they differ. */
-function spellingAliases({ text, fold, bare, bareFold, plain, plainFold }: Spelling) {
-  const aliases = [{ text, fold }];
+/** The one alias a spelling gives its food: its plain name, else its bare one, else its words ("(salt)" is "salt"). */
+function cleanAlias({ clean, fold, bare, bareFold, plain, plainFold }: Spelling) {
+  if (plainFold) return { text: plain, fold: plainFold };
+  if (bareFold) return { text: bare, fold: bareFold };
 
-  if (bareFold && bareFold !== fold) aliases.push({ text: bare, fold: bareFold });
-  if (plainFold && plainFold !== fold && plainFold !== bareFold) {
-    aliases.push({ text: plain, fold: plainFold });
-  }
-
-  return aliases;
+  return {
+    text: clean
+      .replace(/[()[\]{}]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
+    fold,
+  };
 }
 
 /** The Ingredient an alias points at. */

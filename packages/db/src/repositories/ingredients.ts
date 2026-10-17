@@ -21,7 +21,7 @@ import {
   RecipeIngredientSelectWithNameSchema,
   RecipeIngredientsInsertBaseSchema,
 } from "@norish/shared/contracts/zod/recipe-ingredients";
-import { namesNoFood } from "@norish/shared/lib/ingredient-text";
+import { lineNamesNoFood } from "@norish/shared/lib/ingredient-text";
 import { normalizeUnit } from "@norish/shared/lib/unit-localization";
 
 export async function getUnitsForNormalization(): Promise<UnitsMap> {
@@ -45,30 +45,34 @@ export async function findIngredientById(id: string): Promise<IngredientDto | nu
 
 /**
  * What the ingredient resolver answered for a recipe's line texts: each text
- * as written, and the alias and Ingredient it resolved to. The resolver lives
- * above this package, so a recipe write is handed its answers rather than
- * minting anything itself; every line's text must be here.
+ * as written, and the alias and Ingredient it resolved to, or null where it
+ * names no food. The resolver lives above this package, so a recipe write is
+ * handed its answers rather than minting anything itself; every line's text
+ * must be here.
  */
-export type IngredientResolutions = ReadonlyMap<string, IngredientRef>;
+export type IngredientResolutions = ReadonlyMap<string, IngredientRef | null>;
 
 /**
  * The row values a recipe line is written with: its text as written, the
  * alias that text resolved to, and that alias's Ingredient. A line with no
  * text is not a line and is skipped; one that names no food (a heading, a
- * text with no letter or digit) keeps no alias.
+ * text with no letter or digit, a colon line with no amount) keeps no alias.
  */
 export function resolvedRecipeLineValues(
-  ingredientName: string | undefined,
+  { ingredientName, amount }: { ingredientName?: string; amount?: unknown },
   resolutions: IngredientResolutions
 ): { name: string; ingredientAliasId: string | null } | null {
   if (!ingredientName) return null;
-  if (namesNoFood(ingredientName)) return { name: ingredientName, ingredientAliasId: null };
+  if (lineNamesNoFood({ text: ingredientName, amount })) {
+    return { name: ingredientName, ingredientAliasId: null };
+  }
 
   const resolved = resolutions.get(ingredientName);
 
-  if (!resolved) throw new Error(`Ingredient text was not resolved: ${ingredientName}`);
+  if (resolved === undefined)
+    throw new Error(`Ingredient text was not resolved: ${ingredientName}`);
 
-  return { name: ingredientName, ingredientAliasId: resolved.aliasId };
+  return { name: ingredientName, ingredientAliasId: resolved?.aliasId ?? null };
 }
 
 export async function attachIngredientsToRecipeByInputTx(
@@ -90,7 +94,7 @@ export async function attachIngredientsToRecipeByInputTx(
   const units = await getUnitsForNormalization();
 
   const rows = items.flatMap((ri) => {
-    const line = resolvedRecipeLineValues(ri.ingredientName, resolutions);
+    const line = resolvedRecipeLineValues(ri, resolutions);
 
     if (!line) return [];
 

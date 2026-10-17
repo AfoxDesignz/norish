@@ -1354,7 +1354,7 @@ async function syncRecipeIngredientsTx(
   const retainedIds = new Set<string>();
 
   for (const [index, ingredient] of inputs.entries()) {
-    const line = resolvedRecipeLineValues(ingredient.ingredientName, resolutions);
+    const line = resolvedRecipeLineValues(ingredient, resolutions);
 
     if (!line) continue;
 

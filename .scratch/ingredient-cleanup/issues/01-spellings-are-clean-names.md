@@ -6,14 +6,25 @@ See `CONTEXT.md` (Ingredient Alias, Junk Line) and ADR-0037's second 2026-10-17 
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Resolving "gyoza vellen ((ontdooid))", "gyoza vellen (ontdooid)" and "12 gyoza vellen" gives one alias, whose text is "gyoza vellen"; no alias with brackets or a number is created.
-- [ ] Spelling keys strip nested and doubled brackets whole, and no key ends in a stray ")".
-- [ ] Prices, "(Note n)" notes and a leading "+", "/", "-" or ":" are stripped before reading, and the line's own text is unchanged.
-- [ ] A colon line with no amount stores no food; a colon line with an amount is read as before.
-- [ ] A grocery typed as ")" or "—" is saved with no food and mints no Ingredient.
-- [ ] Seed entries lose stray marks and keep balanced brackets; "paprika (vrucht)" still resolves to bell pepper exactly.
-- [ ] A translation added in the panel keeps its text as typed.
-- [ ] Saving a recipe after editing one line resolves only that line; the other lines keep their foods without asking AI (asserted with AI mocked at the runtime).
-- [ ] Resolver and spelling-key tests cover the cases above against a real database; `pnpm lint`, `pnpm typecheck`, `pnpm test:run`, `pnpm i18n:check` and `pnpm build` pass.
+- [x] Resolving "gyoza vellen ((ontdooid))", "gyoza vellen (ontdooid)" and "12 gyoza vellen" gives one alias, whose text is "gyoza vellen"; no alias with brackets or a number is created.
+- [x] Spelling keys strip nested and doubled brackets whole, and no key ends in a stray ")".
+- [x] Prices, "(Note n)" notes and a leading "+", "/", "-" or ":" are stripped before reading, and the line's own text is unchanged.
+- [x] A colon line with no amount stores no food; a colon line with an amount is read as before.
+- [x] A grocery typed as ")" or "—" is saved with no food and mints no Ingredient.
+- [x] Seed entries lose stray marks and keep balanced brackets; "paprika (vrucht)" still resolves to bell pepper exactly.
+- [x] A translation added in the panel keeps its text as typed.
+- [x] Saving a recipe after editing one line resolves only that line; the other lines keep their foods without asking AI (asserted with AI mocked at the runtime).
+- [x] Resolver and spelling-key tests cover the cases above against a real database; `pnpm lint`, `pnpm typecheck`, `pnpm test:run`, `pnpm i18n:check` and `pnpm build` pass.
+
+## Comments
+
+2026-10-17, implemented:
+
+- The nested-bracket strip ("((ontdooid))") had already landed on 2026-10-15 (5c17fba51); production's 0.25 predates it. This adds what was still missing: `cleanSpelling` in `@norish/shared/lib/spelling-keys` (stray closers, edge marks, doubled brackets, prices, notes, cleaned to a fixed point) under every spelling key, and `withoutStrayMarks` for the seed.
+- A mint or an AI join adds one alias, the clean spelling (plain, else bare, else the words of a text that is all brackets). `resolveIngredients` answers null for a text that names no food, so a typed ")" grocery mints nothing, and a pantry text like "200g" is refused with a 400 instead of a 500.
+- A save keeps a stored line's food while its `lineFoodText` is unchanged, not its exact text, amount and unit: the web editor re-parses each row as "amount unit name", so "GR CHERRYTOMATEN" (150, no unit) comes back as "CHERRYTOMATEN" with unit "GR", and the literal rule would resolve it again.
+- `RUNG_VERSION` is 7, per its own rule, so the startup recheck reads old undecided mints with the cleaning once.
+- Release notes and docs are left to ticket 09.
+

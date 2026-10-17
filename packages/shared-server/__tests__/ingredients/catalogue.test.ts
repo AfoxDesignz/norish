@@ -267,6 +267,16 @@ describe("the ingredient catalogue", () => {
     expect(typed?.ingredientId).toBe(onion.ingredientId);
   });
 
+  it("keeps a spelling a person types as typed, brackets and all", async () => {
+    const gyoza = await mint("gyoza vellen");
+
+    await addAlias(actor, gyoza.ingredientId, "Gyoza vellen ((diepvries))");
+
+    await expect(listSpellings(actor, gyoza.ingredientId)).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ text: "Gyoza vellen ((diepvries))" })])
+    );
+  });
+
   it("refuses a spelling another food already holds", async () => {
     const onion = await mint("onion");
     await mint("garlic");
