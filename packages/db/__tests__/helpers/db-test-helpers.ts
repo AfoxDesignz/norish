@@ -304,6 +304,16 @@ export async function getRecipeIngredients(recipeId: string) {
   return rows.map(({ line, ingredientId }) => ({ ...line, ingredientId }));
 }
 
+/** The texts of an Ingredient's spellings, sorted. */
+export async function getSpellingTexts(ingredientId: string): Promise<string[]> {
+  const rows = await getTestDb()
+    .select({ text: schema.ingredientAliases.text })
+    .from(schema.ingredientAliases)
+    .where(eq(schema.ingredientAliases.ingredientId, ingredientId));
+
+  return rows.map((row) => row.text).sort();
+}
+
 /**
  * Get all recipe steps for a recipe
  */

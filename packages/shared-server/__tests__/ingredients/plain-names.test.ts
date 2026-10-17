@@ -15,7 +15,7 @@ import {
   listIngredientSuggestions,
   upsertIngredientSuggestion,
 } from "@norish/db/repositories/ingredient-suggestions";
-import { ingredientAliases, ingredients } from "@norish/db/schema";
+import { ingredients } from "@norish/db/schema";
 import { generateStructured } from "@norish/shared-server/ai/runtime/runtime";
 import { isAIEnabled } from "@norish/shared-server/config/server-config-loader";
 import { renameIngredient } from "@norish/shared-server/ingredients/catalogue";
@@ -31,7 +31,7 @@ import {
 } from "@norish/shared-server/ingredients/suggestions";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
-import { getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
+import { getSpellingTexts, getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
 vi.mock("@norish/shared-server/ai/runtime/runtime", () => ({
@@ -91,15 +91,6 @@ describe("Plain Names", () => {
     return found!;
   }
 
-  async function spellings(id: string) {
-    const rows = await getTestDb()
-      .select({ text: ingredientAliases.text })
-      .from(ingredientAliases)
-      .where(eq(ingredientAliases.ingredientId, id));
-
-    return rows.map((it) => it.text);
-  }
-
   async function suggestionFor(id: string) {
     return (await listIngredientSuggestions()).find((it) => it.ingredientId === id) ?? null;
   }
@@ -131,7 +122,7 @@ describe("Plain Names", () => {
     });
     expect(await suggestionFor(tonijn)).toBeNull();
     // The old name stays a spelling, so lines written so still find the food.
-    expect(await spellings(tonijn)).toContain("Lekkerste Tonijn Uit Blik");
+    expect(await getSpellingTexts(tonijn)).toContain("Lekkerste Tonijn Uit Blik");
     expect((await listNameableIngredients(actor)).map((it) => it.id)).not.toContain(tonijn);
   });
 
@@ -191,7 +182,7 @@ describe("Plain Names", () => {
     });
 
     await confirmSuggestion(actor, (await suggestionFor(voordeel))!.id);
-    expect(await spellings(lekkerste)).toEqual(
+    expect(await getSpellingTexts(lekkerste)).toEqual(
       expect.arrayContaining(["Lekkerste Tonijn Uit Blik", "Voordeel Tonijn Uit Blik"])
     );
   });
@@ -283,7 +274,7 @@ describe("Plain Names", () => {
       flagged: true,
       nameSettled: true,
     });
-    expect(await spellings(tonijn)).toEqual(
+    expect(await getSpellingTexts(tonijn)).toEqual(
       expect.arrayContaining(["Lekkerste Tonijn Uit Blik", "tonijn uit blik"])
     );
   });
