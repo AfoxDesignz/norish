@@ -13,7 +13,6 @@ import type { SeedEntry } from "@norish/db/repositories/ingredient-seed";
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
 import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
-import { mintIngredientWithAliases } from "@norish/db/repositories/ingredient-aliases";
 import {
   applyIngredientSeed,
   listSeededIngredientIds,
@@ -27,7 +26,7 @@ import { readIngredientSeedState } from "@norish/shared-server/ingredients/seed/
 import { recheckUndecidedMintsOnRungChange } from "@norish/shared-server/ingredients/seed/recheck-mints";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
-import { getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
+import { getTestDb, mintTestFood } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
 function entry(offId: string, ...names: string[]): SeedEntry {
@@ -74,16 +73,13 @@ describe("looking at old Flagged Ingredients again", () => {
 
   /** A mint as the resolver made it before its rules changed: the text whole, flagged. */
   async function legacyMint(text: string): Promise<string> {
-    const [row] = await mintIngredientWithAliases({
-      name: text,
-      aliases: [{ text, fold: ingredientAliasFold(text) }],
+    const minted = await mintTestFood(text, {
       ownerId: actor.userId,
-      locale: null,
       flagged: true,
       flagReason: "upgrade",
     });
 
-    return row!.ingredientId;
+    return minted.ingredientId;
   }
 
   async function shown(id: string) {

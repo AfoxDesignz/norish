@@ -28,7 +28,11 @@ import {
 } from "@norish/shared-server/ingredients/resolver";
 import { DEFAULT_INGREDIENT_WORDS, ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
-import { getSpellingTexts, getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
+import {
+  getSpellingTexts,
+  getTestDb,
+  mintTestFood,
+} from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
 describe("ingredient resolver", () => {
@@ -660,15 +664,7 @@ describe("ingredient resolver", () => {
   describe("a line joining foods", () => {
     /** A food Norish knows, spelled in a language. */
     async function food(text: string, locale: string | null) {
-      const [row] = await mintIngredientWithAliases({
-        name: text,
-        aliases: [{ text, fold: ingredientAliasFold(text) }],
-        ownerId: null,
-        locale,
-        flagged: false,
-      });
-
-      return row!.ingredientId;
+      return (await mintTestFood(text, { locale })).ingredientId;
     }
 
     /** Save a recipe with these line texts and answer its lines as read back. */

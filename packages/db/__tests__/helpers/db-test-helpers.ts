@@ -11,11 +11,14 @@ import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 
+import type { MintIngredientInput } from "@norish/db/repositories/ingredient-aliases";
 import type { FullRecipeDTO, MeasurementSystem } from "@norish/shared/contracts";
 import { encrypt, hashToken } from "@norish/config/crypto";
 import { getRecipeFull } from "@norish/db";
+import { mintIngredientWithAliases } from "@norish/db/repositories/ingredient-aliases";
 import { isFirstLineFood, writeRecipeLineFoodsTx } from "@norish/db/repositories/ingredients";
 import * as schema from "@norish/db/schema";
+import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 const { Pool } = pg;
 
@@ -164,6 +167,23 @@ export async function createTestIngredient(
   });
 
   return ingredient;
+}
+
+/** A food Norish knows by one spelling, minted as the resolver would; shared, unflagged. */
+export async function mintTestFood(
+  text: string,
+  options: Partial<Omit<MintIngredientInput, "name" | "aliases">> = {}
+) {
+  const [row] = await mintIngredientWithAliases({
+    name: text,
+    aliases: [{ text, fold: ingredientAliasFold(text) }],
+    ownerId: null,
+    locale: null,
+    flagged: false,
+    ...options,
+  });
+
+  return row!;
 }
 
 /**
