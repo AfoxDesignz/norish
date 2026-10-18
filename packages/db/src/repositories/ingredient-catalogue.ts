@@ -588,8 +588,11 @@ export async function deleteCatalogueIngredient(tx: DbTransaction, id: string): 
   await tx.delete(ingredients).where(eq(ingredients.id, id));
 }
 
-/** Whether anything names the `ingredients` row the outer statement is on, by `rowsNaming`. */
-export const ingredientIsNamed = (() => {
+/**
+ * Whether anything names the `ingredients` row the outer statement is on, by `rowsNaming`. Built
+ * per call, so importing this module runs no query builder.
+ */
+export function ingredientIsNamed(): SQL {
   const naming = rowsNaming(sql`${ingredients}.id`);
   const any = (table: PgTable, where: SQL | undefined) =>
     exists(
@@ -605,7 +608,7 @@ export const ingredientIsNamed = (() => {
     any(recurringGroceries, naming.recurringGroceries),
     any(pantryIngredients, naming.pantry)
   )})`;
-})();
+}
 
 /**
  * Clear the mark on own Ingredients named again, delete those unnamed for 90 nights and no
@@ -617,7 +620,7 @@ export async function sweepUnusedCatalogueIngredients(tx: DbTransaction): Promis
   await tx
     .update(ingredients)
     .set({ unusedSince: null })
-    .where(and(own, isNotNull(ingredients.unusedSince), ingredientIsNamed));
+    .where(and(own, isNotNull(ingredients.unusedSince), ingredientIsNamed()));
 
   // ponytail: a line saved this instant onto a food going now is unlinked; lock aliases if it bites.
   const deleted = await tx
@@ -627,7 +630,7 @@ export async function sweepUnusedCatalogueIngredients(tx: DbTransaction): Promis
         own,
         // Half a day's slack: night 90 deletes what night 0 marked, whichever started earlier.
         lte(ingredients.unusedSince, sql`now() - interval '89 days 12 hours'`),
-        sql`not ${ingredientIsNamed}`,
+        sql`not ${ingredientIsNamed()}`,
         // A parent waits for its children; its mark stands, so it goes the night after the last.
         sql`not exists (select 1 from ${ingredients} c where c.parent_id = ${ingredients}.id)`
       )
@@ -637,7 +640,7 @@ export async function sweepUnusedCatalogueIngredients(tx: DbTransaction): Promis
   await tx
     .update(ingredients)
     .set({ unusedSince: sql`now()` })
-    .where(and(own, isNull(ingredients.unusedSince), sql`not ${ingredientIsNamed}`));
+    .where(and(own, isNull(ingredients.unusedSince), sql`not ${ingredientIsNamed()}`));
 
   return deleted.map((row) => row.id);
 }

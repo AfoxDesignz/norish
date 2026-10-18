@@ -387,7 +387,7 @@ async function removeUnusedDropped(tx: DbTransaction, listed: readonly string[])
         listed.length > 0
           ? sql`${ingredients.offId} <> all(${sql.param([...listed])}::text[])`
           : undefined,
-        sql`not ${ingredientIsNamed}`,
+        sql`not ${ingredientIsNamed()}`,
         sql`not ${usedById(aisleLinks)}`,
         sql`not ${usedById(storeProductLinks)}`,
         sql`not ${usedById(ingredientStorePreferences)}`,
