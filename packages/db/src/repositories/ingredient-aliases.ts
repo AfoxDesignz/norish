@@ -14,6 +14,7 @@ import {
 import { CATALOGUE_LANGUAGES, chooseLocaleNames } from "@norish/shared/lib/ingredient-names";
 
 import { isConstraintViolation } from "./constraint-violation";
+import { isFirstLineFood } from "./ingredients";
 
 /**
  * The Ingredient Alias rows the ingredient resolver reads and writes. Nothing
@@ -568,18 +569,15 @@ export async function findRecipeLineAliases(
     .from(recipeIngredients)
     .leftJoin(
       recipeIngredientFoods,
-      eq(recipeIngredientFoods.recipeIngredientId, recipeIngredients.id)
+      and(eq(recipeIngredientFoods.recipeIngredientId, recipeIngredients.id), isFirstLineFood())
     )
     .leftJoin(ingredientAliases, eq(recipeIngredientFoods.ingredientAliasId, ingredientAliases.id))
-    .where(inArray(recipeIngredients.id, unique))
-    .orderBy(asc(recipeIngredientFoods.position));
-  const lines = new Map<string, RecipeLineAlias>();
+    .where(inArray(recipeIngredients.id, unique));
 
-  for (const { id, aliasId, ingredientId, ...line } of rows) {
-    if (!lines.has(id)) {
-      lines.set(id, { ...line, food: aliasId && ingredientId ? { aliasId, ingredientId } : null });
-    }
-  }
-
-  return lines;
+  return new Map(
+    rows.map(({ id, aliasId, ingredientId, ...line }) => [
+      id,
+      { ...line, food: aliasId && ingredientId ? { aliasId, ingredientId } : null },
+    ])
+  );
 }
