@@ -5,18 +5,15 @@ import type { NutritionCodes } from "@norish/db/schema";
 import { db } from "@norish/db/drizzle";
 import {
   aisleLinks,
-  groceries,
   ingredientAliases,
   ingredientNutritionCorrections,
   ingredients,
   ingredientStorePreferences,
   ingredientSuggestions,
-  pantryIngredients,
-  recipeIngredientFoods,
-  recurringGroceries,
   storeProductLinks,
 } from "@norish/db/schema";
 
+import { ingredientIsNamed } from "./ingredient-catalogue";
 import { findIngredientAncestors, lockTree } from "./ingredient-relocation";
 
 /**
@@ -372,18 +369,12 @@ export async function applyIngredientSeed(entries: readonly SeedEntry[]): Promis
 
 /** Remove the seeded Ingredients the file no longer lists, where nothing uses them. */
 async function removeUnusedDropped(tx: DbTransaction, listed: readonly string[]): Promise<number> {
-  const usedThroughAlias = (table: typeof recipeIngredientFoods | typeof groceries) => sql`exists (
-    select 1 from ${ingredientAliases} a join ${table} r on r.ingredient_alias_id = a.id
-    where a.ingredient_id = ${ingredients.id})`;
   const usedById = (
     table:
       | typeof aisleLinks
       | typeof storeProductLinks
       | typeof ingredientStorePreferences
       | typeof ingredientNutritionCorrections
-      | typeof pantryIngredients
-      | typeof recurringGroceries
-      | typeof groceries
   ) => sql`exists (select 1 from ${table} r where r.ingredient_id = ${ingredients.id})`;
 
   const removed = await tx
@@ -396,11 +387,7 @@ async function removeUnusedDropped(tx: DbTransaction, listed: readonly string[])
         listed.length > 0
           ? sql`${ingredients.offId} <> all(${sql.param([...listed])}::text[])`
           : undefined,
-        sql`not ${usedThroughAlias(recipeIngredientFoods)}`,
-        sql`not ${usedThroughAlias(groceries)}`,
-        sql`not ${usedById(recurringGroceries)}`,
-        sql`not ${usedById(groceries)}`,
-        sql`not ${usedById(pantryIngredients)}`,
+        sql`not ${ingredientIsNamed}`,
         sql`not ${usedById(aisleLinks)}`,
         sql`not ${usedById(storeProductLinks)}`,
         sql`not ${usedById(ingredientStorePreferences)}`,
