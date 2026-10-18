@@ -195,3 +195,49 @@ describe("recurrence/parser Ukrainian locale", () => {
     expect(parseRecurrence("Ліки через тиждень", config).recurrence).toBeNull();
   });
 });
+
+describe("recurrence/parser yearly", () => {
+  const config = defaultRecurrenceConfig as RecurrenceConfig;
+
+  it.each([
+    ["waterfilter yearly", "en", 1],
+    ["waterfilter every year", "en", 1],
+    ["waterfilter every 2 years", "en", 2],
+    ["waterfilter jaarlijks", "nl", 1],
+    ["waterfilter elk jaar", "nl", 1],
+    ["waterfilter 매년", "ko", 1],
+    ["waterfilter cada año", "es", 1],
+    ["waterfilter hvert år", "da", 1],
+    ["waterfilter chaque année", "fr", 1],
+    ["waterfilter ogni anno", "it", 1],
+    ["waterfilter щороку", "uk", 1],
+    ["waterfilter кожен рік", "uk", 1],
+  ])("parses %s", (text, locale, interval) => {
+    const result = parseRecurrence(text, config);
+
+    expect(result.recurrence).toMatchObject({ rule: "year", interval });
+    expect(result.matchedLocale).toBe(locale);
+    expect(result.cleanText).toBe("waterfilter");
+  });
+
+  it("has a year's unit words in every locale", () => {
+    for (const locale of Object.values(config.locales)) {
+      expect(locale.unitWords.year?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("reads an administrator's set from before years as it did", () => {
+    const en = config.locales.en!;
+    const before: RecurrenceConfig = {
+      locales: {
+        en: {
+          ...en,
+          unitWords: { day: en.unitWords.day, week: en.unitWords.week, month: en.unitWords.month },
+        },
+      },
+    };
+
+    expect(parseRecurrence("milk every week", before).recurrence).toMatchObject({ rule: "week" });
+    expect(parseRecurrence("every year", before).recurrence).toBeNull();
+  });
+});

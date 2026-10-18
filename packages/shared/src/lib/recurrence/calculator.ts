@@ -2,6 +2,7 @@ import {
   addDays,
   addMonths,
   addWeeks,
+  addYears,
   format,
   getDay,
   isAfter,
@@ -85,6 +86,13 @@ export function calculateNextOccurrence(
         while (isBefore(nextDate, today)) {
           nextDate = addMonths(nextDate, pattern.interval);
         }
+      }
+      break;
+
+    case "year":
+      nextDate = isNewItem ? today : addYears(baseDate, pattern.interval);
+      while (isBefore(nextDate, today)) {
+        nextDate = addYears(nextDate, pattern.interval);
       }
       break;
 

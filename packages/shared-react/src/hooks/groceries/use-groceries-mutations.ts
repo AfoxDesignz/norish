@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import type { UnitsMap } from "@norish/config/zod/server-config";
 import type { GroceryDto, RecurringGroceryDto } from "@norish/shared/contracts";
 import type { RecurrencePattern } from "@norish/shared/contracts/recurrence";
+import { recurrencePatternOf } from "@norish/shared/contracts/recurrence";
 import { parseIngredientWithDefaults } from "@norish/shared/lib/helpers";
 import { createClientLogger } from "@norish/shared/lib/logger";
 import { createClientId } from "@norish/shared/lib/operation-helpers";
@@ -481,11 +482,7 @@ export function createUseGroceriesMutations({
 
           if (recurring) {
             const today = getTodayString();
-            const pattern = {
-              rule: recurring.recurrenceRule as "day" | "week" | "month",
-              interval: recurring.recurrenceInterval,
-              weekday: recurring.recurrenceWeekday ?? undefined,
-            };
+            const pattern = recurrencePatternOf(recurring);
             const nextDate = calculateNextOccurrence(
               pattern,
               recurring.nextPlannedFor,

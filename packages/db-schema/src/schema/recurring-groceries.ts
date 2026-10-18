@@ -26,7 +26,7 @@ export const recurringGroceries = pgTable(
     amount: numeric("amount", { precision: 10, scale: 3 }),
 
     // Recurrence pattern
-    recurrenceRule: text("recurrence_rule").notNull(), // 'day', 'week', 'month'
+    recurrenceRule: text("recurrence_rule").notNull(), // 'day', 'week', 'month', 'year'
     recurrenceInterval: integer("recurrence_interval").notNull().default(1),
     recurrenceWeekday: integer("recurrence_weekday"), // 0-6 (Sunday-Saturday), NULL if not weekly
 

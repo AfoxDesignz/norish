@@ -19,7 +19,8 @@
       "unitWords": {
         "day": ["day", "days", "daily"],
         "week": ["week", "weeks", "weekly"],
-        "month": ["month", "months", "monthly"]
+        "month": ["month", "months", "monthly"],
+        "year": ["year", "years", "yearly", "annually"]
       },
       "weekdayWords": {
         "sunday": 0,
@@ -40,7 +41,7 @@
       "intervalHints": []
     },
     "nl": {
-      "everyWords": ["elke", "ieder", "iedere"],
+      "everyWords": ["elk", "elke", "ieder", "iedere"],
       "otherWords": ["andere"],
       "onWords": ["op"],
       "numberWords": {
@@ -58,7 +59,8 @@
       "unitWords": {
         "day": ["dag", "dagen", "dagelijks"],
         "week": ["week", "weken", "wekelijks", "weekelijks"],
-        "month": ["maand", "maanden", "maandelijks"]
+        "month": ["maand", "maanden", "maandelijks"],
+        "year": ["jaar", "jaren", "jaarlijks"]
       },
       "weekdayWords": {
         "zondag": 0,
@@ -122,7 +124,8 @@
       "unitWords": {
         "day": ["일", "하루", "매일"],
         "week": ["주", "매주", "주일"],
-        "month": ["월", "개월", "매월"]
+        "month": ["월", "개월", "매월"],
+        "year": ["년", "해", "매년"]
       },
       "weekdayWords": {
         "일요일": 0,
@@ -177,7 +180,8 @@
       "unitWords": {
         "day": ["dia", "dias", "día", "días", "diario"],
         "week": ["semana", "semanas", "semanal"],
-        "month": ["mes", "meses", "mensual"]
+        "month": ["mes", "meses", "mensual"],
+        "year": ["año", "años", "anual"]
       },
       "weekdayWords": {
         "domingo": 0,
@@ -227,7 +231,8 @@
       "unitWords": {
         "day": ["dag", "dage", "dagligt", "daglig"],
         "week": ["uge", "uger", "ugentligt", "ugentlig"],
-        "month": ["måned", "måneder", "månedligt", "månedlig"]
+        "month": ["måned", "måneder", "månedligt", "månedlig"],
+        "year": ["år", "årligt", "årlig"]
       },
       "weekdayWords": {
         "søndag": 0,
@@ -282,7 +287,8 @@
       "unitWords": {
         "day": ["jour", "jours", "quotidien", "quotidienne"],
         "week": ["semaine", "semaines", "hebdomadaire"],
-        "month": ["mois", "mensuel", "mensuelle"]
+        "month": ["mois", "mensuel", "mensuelle"],
+        "year": ["an", "ans", "année", "années", "annuel", "annuelle"]
       },
       "weekdayWords": {
         "dimanche": 0,
@@ -328,7 +334,8 @@
       "unitWords": {
         "day": ["giorno", "giorni", "giornaliero", "quotidiano"],
         "week": ["settimana", "settimane", "settimanale"],
-        "month": ["mese", "mesi", "mensile"]
+        "month": ["mese", "mesi", "mensile"],
+        "year": ["anno", "anni", "annuale"]
       },
       "weekdayWords": {
         "domenica": 0,
@@ -389,7 +396,8 @@
       "unitWords": {
         "day": ["день", "дні", "днів", "дня"],
         "week": ["тиждень", "тижні", "тижнів", "тижня"],
-        "month": ["місяць", "місяці", "місяців", "місяця"]
+        "month": ["місяць", "місяці", "місяців", "місяця"],
+        "year": ["рік", "роки", "років", "року"]
       },
       "weekdayWords": {
         "неділя": 0,
@@ -442,6 +450,11 @@
           "phrases": ["щомісяця", "щомісячно", "раз на місяць"],
           "interval": 1,
           "rule": "month"
+        },
+        {
+          "phrases": ["щороку", "щорічно", "раз на рік"],
+          "interval": 1,
+          "rule": "year"
         }
       ]
     }

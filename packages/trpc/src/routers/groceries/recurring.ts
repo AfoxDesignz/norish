@@ -19,6 +19,7 @@ import { resolveGroceryName } from "@norish/shared-server/ingredients/groceries"
 import { writeResolved } from "@norish/shared-server/ingredients/resolver";
 import { trpcLogger as log } from "@norish/shared-server/logger";
 import { groceries } from "@norish/shared-server/realtime/groceries";
+import { RECURRENCE_RULES, recurrencePatternOf } from "@norish/shared/contracts/recurrence";
 import {
   clientMintedId,
   DetachRecurringGroceryInputSchema,
@@ -39,7 +40,7 @@ const createRecurring = authedProcedure
       name: z.string(),
       amount: z.number().nullable(),
       unit: z.string().nullable(),
-      recurrenceRule: z.enum(["day", "week", "month"]),
+      recurrenceRule: z.enum(RECURRENCE_RULES),
       recurrenceInterval: z.number().min(1),
       recurrenceWeekday: z.number().nullable(),
       nextPlannedFor: z.string(),
@@ -158,7 +159,7 @@ const updateRecurring = authedProcedure
         name: z.string().optional(),
         amount: z.number().nullable().optional(),
         unit: z.string().nullable().optional(),
-        recurrenceRule: z.enum(["day", "week", "month"]).optional(),
+        recurrenceRule: z.enum(RECURRENCE_RULES).optional(),
         recurrenceInterval: z.number().min(1).optional(),
         recurrenceWeekday: z.number().nullable().optional(),
         nextPlannedFor: z.string().optional(),
@@ -488,11 +489,7 @@ const checkRecurring = authedProcedure
         } | null = null;
 
         if (isDone) {
-          const pattern = {
-            rule: recurringGrocery.recurrenceRule as "day" | "week" | "month",
-            interval: recurringGrocery.recurrenceInterval,
-            weekday: recurringGrocery.recurrenceWeekday ?? undefined,
-          };
+          const pattern = recurrencePatternOf(recurringGrocery);
 
           const nextDate = calculateNextOccurrence(
             pattern,

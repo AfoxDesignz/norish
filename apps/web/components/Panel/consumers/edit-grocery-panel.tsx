@@ -16,6 +16,7 @@ import { useTranslations } from "next-intl";
 import type { GroceryDto, RecurringGroceryDto, StoreDto } from "@norish/shared/contracts";
 import type { RecurrencePattern } from "@norish/shared/contracts/recurrence";
 import { useGroceryFormState } from "@norish/shared-react/hooks";
+import { recurrencePatternOf } from "@norish/shared/contracts/recurrence";
 
 type EditGroceryPanelProps = {
   open: boolean;
@@ -84,11 +85,7 @@ export default function EditGroceryPanel({
       setHasStoreChanged(false);
       setProductValid(true);
       if (recurringGrocery) {
-        setConfirmedPattern({
-          rule: recurringGrocery.recurrenceRule as "day" | "week" | "month",
-          interval: recurringGrocery.recurrenceInterval,
-          weekday: recurringGrocery.recurrenceWeekday ?? undefined,
-        });
+        setConfirmedPattern(recurrencePatternOf(recurringGrocery));
       } else {
         setConfirmedPattern(null);
       }
