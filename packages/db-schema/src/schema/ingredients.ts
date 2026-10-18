@@ -68,7 +68,7 @@ export interface NutritionCodes {
  * proposes no other, and the recheck never renames it from the words.
  *
  * `unusedSince` is when the nightly sweep first found nothing naming an own Ingredient; only
- * the sweep sets and clears it, and deletes the food after 30 days.
+ * the sweep sets and clears it, and deletes the food after 90 days.
  */
 export const ingredients = pgTable(
   "ingredients",

@@ -50,7 +50,7 @@ The household's catalogue fills up with things that are not foods and with foods
    - A Grocery or Pantry Ingredient a person typed is never deleted; it points at no food when it names none.
 5. **Delete always works, and unused foods leave.**
    - Deleting a food or a translation is no longer refused. The recipe lines and Groceries behind it keep their text and point at no food, and its Pantry Ingredients go.
-   - A food someone's action minted is deleted once no recipe line, Grocery, recurring grocery or Pantry Ingredient has named it for a month. A seeded food is never deleted, by this or by AI.
+   - A food someone's action minted is deleted once no recipe line, Grocery, recurring grocery or Pantry Ingredient has named it for three months. A seeded food is never deleted, by this or by AI.
    - Recurring groceries learn "yearly" / "jaarlijks", so a yearly purchase keeps its food.
 6. **One cleanup when the release first starts:**
    - seeded stray marks are cleaned;
@@ -106,7 +106,7 @@ The household's catalogue fills up with things that are not foods and with foods
 42. As the person keeping the catalogue, I want the delete dialog to say how many lines, groceries and pantry entries it unlinks, so that I know what I'm doing.
 43. As the person keeping the catalogue, I want to remove a translation a line uses, so that a wrong translation can go without a merge.
 44. As a household member, I want a deleted food's Pantry Ingredient to go with it, so that the Pantry holds only foods.
-45. As the person keeping the catalogue, I want a one-off purchase deleted once nothing has named it for a month, so that the catalogue doesn't collect one-offs.
+45. As the person keeping the catalogue, I want a one-off purchase deleted once nothing has named it for three months, so that the catalogue doesn't collect one-offs.
 46. As a shopper, I want a recurring grocery to keep its food alive, so that the dishwasher salt keeps its aisle between trips.
 47. As a shopper, I want to set a grocery to recur yearly ("yearly", "jaarlijks"), so that a yearly purchase keeps its food and aisle.
 48. As an administrator, I want the cleanup to run once by itself when the release first starts, so that an upgrade needs no manual step.
@@ -180,7 +180,7 @@ A recipe save keeps the foods of every line whose text, amount and unit are unch
 
 - **Delete** an Ingredient or a translation in use: allowed. Recipe lines lose that food from their list; groceries and recurring groceries keep their text and point at no food; Pantry Ingredients are deleted. The confirm dialog shows the counts.
   - A food flagged for an unsure junk answer offers **Delete as junk** instead. That also deletes its recipe lines, and records them as AI Changes so they can be restored.
-- **The monthly sweep** is a new scheduled task beside the existing ones. Every night it sets or clears `unused_since` on own foods by whether a recipe line, Grocery, recurring grocery or Pantry Ingredient points at them, and deletes those unused for 30 days. Seeded foods are skipped. The same task sweeps AI Changes, and enqueues the nightly retry.
+- **The unused-food sweep** is a new scheduled task beside the existing ones. Every night it sets or clears `unused_since` on own foods by whether a recipe line, Grocery, recurring grocery or Pantry Ingredient points at them, and deletes those unused for 90 days. Seeded foods are skipped. The same task sweeps AI Changes, and enqueues the nightly retry.
 - **The one-time cleanup** runs at startup, after the seed, once per cleanup version recorded in the ingredient seed state, the way the recheck pass is versioned:
   1. clean stray marks in seeded spellings;
   2. give dirty spellings with a clean fold ("gyoza vellen )") their clean text;
@@ -227,7 +227,7 @@ A good test drives the system through the same door a household does: hand texts
 
 - **The resolver**, against a real database (prior art: `resolver.test.ts`, `resolver-ai.test.ts`). Cleaning and double brackets: "gyoza vellen ((ontdooid))" and "12 gyoza vellen" name one translation, "gyoza vellen". Mints add only the clean spelling. The and/or/of split, with "mac and cheese", "juice of a lemon", "boter of olie" and "water of kokosmelk" as cases from the real set. AI split only when sure. Junk and tool answers. Unsure "same" joins and records an AI Change. A colon line is no food. A recipe save keeps unchanged lines' foods.
 - **The background pass**, against a real database (prior art: `review.test.ts`, `plain-names.test.ts`, which it replaces, and the ingredient review worker test). Every answer kind applies and records its AI Change. Unsure answers flag. Keep and Undo per kind, including restoring a deleted junk line at its position. An undone change is never made again. Decided and seeded foods are skipped. The icon job is enqueued only for foods that survive without an icon.
-- **Catalogue edits** (prior art: `catalogue.test.ts`, `recheck-mints.test.ts`, `catalogue-seed.test.ts`). Deleting in use unlinks lines and groceries and removes pantry rows. The monthly sweep across 30 days, with recurring groceries keeping a food alive and seeded foods never deleted. The one-time cleanup, step by step, on a scenario modelled on the real data. The seed's stray-mark cleaning keeps "paprika (vrucht)".
+- **Catalogue edits** (prior art: `catalogue.test.ts`, `recheck-mints.test.ts`, `catalogue-seed.test.ts`). Deleting in use unlinks lines and groceries and removes pantry rows. The unused-food sweep across 90 days, with recurring groceries keeping a food alive and seeded foods never deleted. The one-time cleanup, step by step, on a scenario modelled on the real data. The seed's stray-mark cleaning keeps "paprika (vrucht)".
 - **Pure readers** in `@norish/shared`, in their existing unit tests: spelling-key cleaning, pantry coverage for alternatives, nutrition first and each, recurrence "yearly".
 - **The browser,** in `ingredient-catalogue.e2e.ts` (`ai` project, AI stack fixture):
   - a recipe with "zout en peper" puts two groceries on the list;

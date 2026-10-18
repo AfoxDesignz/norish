@@ -4,7 +4,7 @@
  * looking after a Flagged Ingredient clears its flag, a household's own word
  * joins the food it names, a delete leaves the lines and groceries behind a
  * food with their text and no food, and the nightly sweep deletes own foods
- * nothing has named for 30 days. The edit policy's matrix is pinned at the
+ * nothing has named for 90 days. The edit policy's matrix is pinned at the
  * procedures; here the editor is the Ingredient's owner.
  */
 import { eq, inArray, sql } from "drizzle-orm";
@@ -494,13 +494,13 @@ describe("the ingredient catalogue", () => {
       return row?.unusedSince ?? null;
     }
 
-    it("deletes an own food nothing has named for 30 days, and keeps one unused for 29", async () => {
+    it("deletes an own food nothing has named for 90 days, and keeps one unused for 89", async () => {
       const box = await mint("action grote doos");
       const lights = await mint("kerstverlichting");
 
       await sweepUnusedIngredients();
-      await unusedFor(box.ingredientId, 30);
-      await unusedFor(lights.ingredientId, 29);
+      await unusedFor(box.ingredientId, 90);
+      await unusedFor(lights.ingredientId, 89);
       announced = [];
       await sweepUnusedIngredients();
 
@@ -511,11 +511,11 @@ describe("the ingredient catalogue", () => {
       expect(announced).toEqual([[box.ingredientId]]);
     });
 
-    it("deletes on the 30th night a food the first night marked, though this run started earlier in the day", async () => {
+    it("deletes on the 90th night a food the first night marked, though this run started earlier in the day", async () => {
       const tin = await mint("taartvorm 26 cm");
 
       await sweepUnusedIngredients();
-      await unusedFor(tin.ingredientId, 30, 1);
+      await unusedFor(tin.ingredientId, 90, 1);
       await sweepUnusedIngredients();
 
       await expect(ingredientFor(tin.aliasId)).resolves.toBeNull();
@@ -536,7 +536,7 @@ describe("the ingredient catalogue", () => {
         ingredientId: oven.ingredientId,
       });
       await sweepUnusedIngredients();
-      for (const food of [fries, nora, treats]) await unusedFor(food.ingredientId, 40);
+      for (const food of [fries, nora, treats]) await unusedFor(food.ingredientId, 100);
 
       // The child something uses keeps its parent; an unused child goes before its parent.
       await sweepUnusedIngredients();
@@ -561,7 +561,7 @@ describe("the ingredient catalogue", () => {
         ingredientAliasId: salt.aliasId,
         ingredientId: salt.ingredientId,
       });
-      await unusedFor(salt.ingredientId, 40);
+      await unusedFor(salt.ingredientId, 100);
       await sweepUnusedIngredients();
 
       await expect(unusedSince(salt.ingredientId)).resolves.toBeNull();
@@ -591,8 +591,8 @@ describe("the ingredient catalogue", () => {
       await expect(unusedSince(filter.ingredientId)).resolves.toBeNull();
       await expect(unusedSince(seeded!.id)).resolves.toBeNull();
 
-      await unusedFor(filter.ingredientId, 40);
-      await unusedFor(seeded!.id, 40);
+      await unusedFor(filter.ingredientId, 100);
+      await unusedFor(seeded!.id, 100);
       await sweepUnusedIngredients();
 
       const left = await getTestDb()

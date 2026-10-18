@@ -538,7 +538,7 @@ const named = sql`(
   or exists (select 1 from ${pantryIngredients} p where p.ingredient_id = ${ingredients}.id))`;
 
 /**
- * Clear the mark on own Ingredients named again, delete those unnamed for 30 nights and no
+ * Clear the mark on own Ingredients named again, delete those unnamed for 90 nights and no
  * one's parent, mark the rest; seeded ones (an `off_id`) are never touched. The caller holds the tree lock.
  */
 export async function sweepUnusedCatalogueIngredients(tx: DbTransaction): Promise<string[]> {
@@ -555,8 +555,8 @@ export async function sweepUnusedCatalogueIngredients(tx: DbTransaction): Promis
     .where(
       and(
         own,
-        // Half a day's slack: night 30 deletes what night 0 marked, whichever started earlier.
-        lte(ingredients.unusedSince, sql`now() - interval '29 days 12 hours'`),
+        // Half a day's slack: night 90 deletes what night 0 marked, whichever started earlier.
+        lte(ingredients.unusedSince, sql`now() - interval '89 days 12 hours'`),
         sql`not ${named}`,
         // A parent waits for its children; its mark stands, so it goes the night after the last.
         sql`not exists (select 1 from ${ingredients} c where c.parent_id = ${ingredients}.id)`

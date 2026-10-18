@@ -483,7 +483,7 @@ export async function deleteIngredient(
   });
 }
 
-/** The nightly sweep: delete own Ingredients nothing has named for 30 days; seeded ones stay. */
+/** The nightly sweep: delete own Ingredients nothing has named for 90 days; seeded ones stay. */
 export async function sweepUnusedIngredients(): Promise<{ deleted: number }> {
   const deleted = await withTransaction(async (tx) => {
     await lockTree(tx);

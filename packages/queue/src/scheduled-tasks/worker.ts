@@ -94,7 +94,7 @@ async function processScheduledTask(job: Job<ScheduledTaskJobData>): Promise<voi
     }
 
     case "ingredient-sweep": {
-      // Own foods nothing has named for 30 days go; a seeded one never does.
+      // Own foods nothing has named for 90 days go; a seeded one never does.
       const result = await sweepUnusedIngredients();
 
       log.info({ deleted: result.deleted }, "Ingredient sweep completed");
