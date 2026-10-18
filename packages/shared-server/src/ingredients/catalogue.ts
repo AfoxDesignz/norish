@@ -581,7 +581,8 @@ export async function moveAlias(
 
 /**
  * Remove a spelling. Follows `edit` on the alias. An Ingredient keeps at
- * least one; what wrote this one keeps its text and names no food.
+ * least one; what wrote this one keeps its text and its food, under another
+ * of the food's spellings.
  */
 export async function removeAlias(actor: CatalogueActor, aliasId: string): Promise<CatalogueEdit> {
   return await inEdit((tx) => removeAliasIn(tx, actor, aliasId));

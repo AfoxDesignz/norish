@@ -17,14 +17,14 @@ export const RecipeIngredientsInsertBaseSchema = createInsertSchema(recipeIngred
 
 export const RecipeIngredientsUpdateBaseSchema = createUpdateSchema(recipeIngredients);
 
-// A line's as-written text travels as `ingredientName`, and its alias stays on
-// the server: clients read and write the text.
+// A line's as-written text travels as `ingredientName`, and its foods stay on
+// the server: clients read and write the text, and see the first food.
 export const RecipeIngredientsWithIdSchema = RecipeIngredientsSelectBaseSchema.omit({
   updatedAt: true,
   createdAt: true,
   recipeId: true,
   name: true,
-  ingredientAliasId: true,
+  joined: true,
 }).extend({
   ingredientName: z.string(),
   ingredientId: z.string().nullable(),
@@ -41,7 +41,7 @@ export const RecipeIngredientSelectWithNameSchema = RecipeIngredientsSelectBaseS
 
 export const RecipeIngredientInputBaseSchema = RecipeIngredientsInsertBaseSchema.omit({
   name: true,
-  ingredientAliasId: true,
+  joined: true,
 })
   .partial({
     recipeId: true,

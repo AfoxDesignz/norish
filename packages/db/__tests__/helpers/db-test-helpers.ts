@@ -7,13 +7,14 @@
  */
 
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 
 import type { FullRecipeDTO, MeasurementSystem } from "@norish/shared/contracts";
 import { encrypt, hashToken } from "@norish/config/crypto";
 import { getRecipeFull } from "@norish/db";
+import { isFirstLineFood } from "@norish/db/repositories/ingredients";
 import * as schema from "@norish/db/schema";
 
 const { Pool } = pg;
@@ -243,7 +244,6 @@ export async function createTestRecipeIngredients(
     .insert(schema.recipeIngredients)
     .values({
       recipeId,
-      ingredientAliasId: alias?.id ?? null,
       name: overrides.name ?? "Test ingredient",
       amount: overrides.amount ?? "1",
       unit: overrides.unit ?? "cup",
@@ -253,6 +253,14 @@ export async function createTestRecipeIngredients(
       updatedAt: overrides.updatedAt ?? new Date(),
     })
     .returning();
+
+  if (alias) {
+    await db.insert(schema.recipeIngredientFoods).values({
+      recipeIngredientId: recipeIngredient!.id,
+      position: 0,
+      ingredientAliasId: alias.id,
+    });
+  }
 
   return recipeIngredient;
 }
@@ -288,7 +296,7 @@ export async function createTestRecipeStep(
 export async function getRecipeIngredients(recipeId: string) {
   const db = getTestDb();
 
-  // A line reaches its Ingredient through its alias.
+  // A line reaches its Ingredient through its first food's alias.
   const rows = await db
     .select({
       line: schema.recipeIngredients,
@@ -296,8 +304,15 @@ export async function getRecipeIngredients(recipeId: string) {
     })
     .from(schema.recipeIngredients)
     .leftJoin(
+      schema.recipeIngredientFoods,
+      and(
+        eq(schema.recipeIngredientFoods.recipeIngredientId, schema.recipeIngredients.id),
+        isFirstLineFood
+      )
+    )
+    .leftJoin(
       schema.ingredientAliases,
-      eq(schema.ingredientAliases.id, schema.recipeIngredients.ingredientAliasId)
+      eq(schema.ingredientAliases.id, schema.recipeIngredientFoods.ingredientAliasId)
     )
     .where(sql`${schema.recipeIngredients.recipeId} = ${recipeId}`);
 

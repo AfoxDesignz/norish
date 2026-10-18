@@ -1,6 +1,6 @@
 import type { SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import type { DbTransaction } from "@norish/db/drizzle";
@@ -12,11 +12,13 @@ import {
   ingredients,
   ingredientSuggestions,
   pantryIngredients,
+  recipeIngredientFoods,
   recipeIngredients,
   recipes,
   recurringGroceries,
 } from "@norish/db/schema";
 import { viewerAndHouseholdIds } from "@norish/shared/lib/household";
+import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import type { RecipeListContext } from "./recipes";
 import { buildOwnerPolicyCondition } from "./recipes";
@@ -417,12 +419,35 @@ export async function insertCatalogueAlias(
 }
 
 /**
- * Remove a spelling; the foreign keys unlink its lines and Groceries and delete its Pantry
- * Ingredients, and the food kept beside a Grocery's alias is cleared here.
+ * Remove a spelling. Its lines, Groceries, recurring groceries and Pantry Ingredients move to
+ * another spelling of the same food, the one folded as its name, else the oldest, so nothing
+ * loses its food. The caller holds the Ingredient and has kept it a spelling besides this one.
  */
 export async function deleteCatalogueAlias(tx: DbTransaction, aliasId: string): Promise<void> {
-  for (const table of [groceries, recurringGroceries]) {
-    await tx.update(table).set({ ingredientId: null }).where(eq(table.ingredientAliasId, aliasId));
+  const [food] = await tx
+    .select({ id: ingredients.id, name: ingredients.name })
+    .from(ingredientAliases)
+    .innerJoin(ingredients, eq(ingredients.id, ingredientAliases.ingredientId))
+    .where(eq(ingredientAliases.id, aliasId));
+
+  if (!food) return;
+
+  const [heir] = await tx
+    .select({ id: ingredientAliases.id })
+    .from(ingredientAliases)
+    .where(and(eq(ingredientAliases.ingredientId, food.id), ne(ingredientAliases.id, aliasId)))
+    .orderBy(
+      desc(sql`${ingredientAliases.fold} = ${ingredientAliasFold(food.name)}`),
+      asc(ingredientAliases.createdAt),
+      asc(ingredientAliases.id)
+    )
+    .limit(1);
+
+  for (const table of [recipeIngredientFoods, groceries, recurringGroceries, pantryIngredients]) {
+    await tx
+      .update(table)
+      .set({ ingredientAliasId: heir!.id })
+      .where(eq(table.ingredientAliasId, aliasId));
   }
   await tx.delete(ingredientAliases).where(eq(ingredientAliases.id, aliasId));
 }
@@ -465,7 +490,15 @@ export async function listIngredientUses(
       .select({ id: recipes.id, name: recipes.name, visible: sql<boolean>`${openable}` })
       .from(recipeIngredients)
       .innerJoin(recipes, eq(recipes.id, recipeIngredients.recipeId))
-      .where(inArray(recipeIngredients.ingredientAliasId, spellings))
+      .where(
+        inArray(
+          recipeIngredients.id,
+          db
+            .select({ id: recipeIngredientFoods.recipeIngredientId })
+            .from(recipeIngredientFoods)
+            .where(inArray(recipeIngredientFoods.ingredientAliasId, spellings))
+        )
+      )
       .orderBy(asc(sql`lower(${recipes.name})`)),
     db
       .select({
@@ -529,7 +562,7 @@ export async function deleteCatalogueIngredient(tx: DbTransaction, id: string): 
  */
 const named = sql`(
   exists (select 1 from ${ingredientAliases} a where a.ingredient_id = ${ingredients}.id and (
-    exists (select 1 from ${recipeIngredients} r where r.ingredient_alias_id = a.id)
+    exists (select 1 from ${recipeIngredientFoods} r where r.ingredient_alias_id = a.id)
     or exists (select 1 from ${groceries} g where g.ingredient_alias_id = a.id)
     or exists (select 1 from ${recurringGroceries} g where g.ingredient_alias_id = a.id)
     or exists (select 1 from ${pantryIngredients} p where p.ingredient_alias_id = a.id)))

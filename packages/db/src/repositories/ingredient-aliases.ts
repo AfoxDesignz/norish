@@ -8,6 +8,7 @@ import {
   ingredientAliases,
   ingredients,
   ingredientSuggestions,
+  recipeIngredientFoods,
   recipeIngredients,
 } from "@norish/db/schema";
 import { CATALOGUE_LANGUAGES, chooseLocaleNames } from "@norish/shared/lib/ingredient-names";
@@ -537,7 +538,7 @@ export async function findIngredientsNamed(
   return await withParents(await candidatesFor(rows), excludeId);
 }
 
-/** A stored recipe line as it was resolved: its text, amount and unit, and its alias, if it names a food. */
+/** A stored recipe line as it was resolved: its text, amount and unit, and its first food, if it names one. */
 export interface RecipeLineAlias {
   recipeId: string;
   name: string;
@@ -546,7 +547,7 @@ export interface RecipeLineAlias {
   food: IngredientRef | null;
 }
 
-/** Recipe lines' texts and the aliases they resolved to, by line id; a line naming no food has none. */
+/** Recipe lines' texts and the first foods they resolved to, by line id; a line naming no food has none. */
 export async function findRecipeLineAliases(
   recipeIngredientIds: readonly string[]
 ): Promise<Map<string, RecipeLineAlias>> {
@@ -565,13 +566,20 @@ export async function findRecipeLineAliases(
       ingredientId: ingredientAliases.ingredientId,
     })
     .from(recipeIngredients)
-    .leftJoin(ingredientAliases, eq(recipeIngredients.ingredientAliasId, ingredientAliases.id))
-    .where(inArray(recipeIngredients.id, unique));
+    .leftJoin(
+      recipeIngredientFoods,
+      eq(recipeIngredientFoods.recipeIngredientId, recipeIngredients.id)
+    )
+    .leftJoin(ingredientAliases, eq(recipeIngredientFoods.ingredientAliasId, ingredientAliases.id))
+    .where(inArray(recipeIngredients.id, unique))
+    .orderBy(asc(recipeIngredientFoods.position));
+  const lines = new Map<string, RecipeLineAlias>();
 
-  return new Map(
-    rows.map(({ id, aliasId, ingredientId, ...line }) => [
-      id,
-      { ...line, food: aliasId && ingredientId ? { aliasId, ingredientId } : null },
-    ])
-  );
+  for (const { id, aliasId, ingredientId, ...line } of rows) {
+    if (!lines.has(id)) {
+      lines.set(id, { ...line, food: aliasId && ingredientId ? { aliasId, ingredientId } : null });
+    }
+  }
+
+  return lines;
 }

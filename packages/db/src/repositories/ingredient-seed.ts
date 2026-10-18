@@ -12,7 +12,7 @@ import {
   ingredientStorePreferences,
   ingredientSuggestions,
   pantryIngredients,
-  recipeIngredients,
+  recipeIngredientFoods,
   recurringGroceries,
   storeProductLinks,
 } from "@norish/db/schema";
@@ -372,7 +372,7 @@ export async function applyIngredientSeed(entries: readonly SeedEntry[]): Promis
 
 /** Remove the seeded Ingredients the file no longer lists, where nothing uses them. */
 async function removeUnusedDropped(tx: DbTransaction, listed: readonly string[]): Promise<number> {
-  const usedThroughAlias = (table: typeof recipeIngredients | typeof groceries) => sql`exists (
+  const usedThroughAlias = (table: typeof recipeIngredientFoods | typeof groceries) => sql`exists (
     select 1 from ${ingredientAliases} a join ${table} r on r.ingredient_alias_id = a.id
     where a.ingredient_id = ${ingredients.id})`;
   const usedById = (
@@ -396,7 +396,7 @@ async function removeUnusedDropped(tx: DbTransaction, listed: readonly string[])
         listed.length > 0
           ? sql`${ingredients.offId} <> all(${sql.param([...listed])}::text[])`
           : undefined,
-        sql`not ${usedThroughAlias(recipeIngredients)}`,
+        sql`not ${usedThroughAlias(recipeIngredientFoods)}`,
         sql`not ${usedThroughAlias(groceries)}`,
         sql`not ${usedById(recurringGroceries)}`,
         sql`not ${usedById(groceries)}`,

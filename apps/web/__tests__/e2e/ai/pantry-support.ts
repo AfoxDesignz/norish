@@ -92,9 +92,11 @@ export function seedRecipeWithIngredients(name: string, lines: string[]): Promis
       );
 
       await database.query(
-        `insert into recipe_ingredients
-           (recipe_id, name, ingredient_alias_id, amount, unit, "order", system_used)
-         values ($1, $2, $3, null, null, $4, 'metric')`,
+        `with line as (
+           insert into recipe_ingredients (recipe_id, name, amount, unit, "order", system_used)
+           values ($1, $2, null, null, $4, 'metric') returning id)
+         insert into recipe_ingredient_foods (recipe_ingredient_id, position, ingredient_alias_id)
+         select id, 0, $3::uuid from line`,
         [recipeId, line, alias.rows[0]!.id, index]
       );
     }

@@ -161,8 +161,11 @@ export async function seedNutritionScenario(databaseUrl: string): Promise<Nutrit
 
     for (const [index, [text, amount, unit, food]] of LINES.entries()) {
       await client.query(
-        `insert into recipe_ingredients (recipe_id, name, ingredient_alias_id, amount, unit, "order", system_used)
-         values ($1, $2, $3, $4, $5, $6, 'metric')`,
+        `with line as (
+           insert into recipe_ingredients (recipe_id, name, amount, unit, "order", system_used)
+           values ($1, $2, $4, $5, $6, 'metric') returning id)
+         insert into recipe_ingredient_foods (recipe_ingredient_id, position, ingredient_alias_id)
+         select id, 0, $3::uuid from line`,
         [recipeId, text, aliasIds[food], amount, unit, index]
       );
     }
@@ -181,7 +184,7 @@ export async function forgetRungVersion(databaseUrl: string): Promise<void> {
   });
 }
 
-/** Which Ingredient a recipe line's alias points at now. */
+/** Which Ingredient a recipe line's first food points at now. */
 export async function lineIngredient(
   databaseUrl: string,
   recipeId: string,
@@ -190,8 +193,10 @@ export async function lineIngredient(
   return await connected(databaseUrl, async (client) => {
     const { rows } = await client.query<{ ingredient_id: string }>(
       `select a.ingredient_id from recipe_ingredients r
-       join ingredient_aliases a on a.id = r.ingredient_alias_id
-       where r.recipe_id = $1 and r.name = $2`,
+       join recipe_ingredient_foods f on f.recipe_ingredient_id = r.id
+       join ingredient_aliases a on a.id = f.ingredient_alias_id
+       where r.recipe_id = $1 and r.name = $2
+       order by f.position limit 1`,
       [recipeId, text]
     );
 

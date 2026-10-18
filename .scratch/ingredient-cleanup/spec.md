@@ -49,7 +49,7 @@ The household's catalogue fills up with things that are not foods and with foods
    - A line naming a tool stays and names no food.
    - A Grocery or Pantry Ingredient a person typed is never deleted; it points at no food when it names none.
 5. **Delete always works, and unused foods leave.**
-   - Deleting a food or a translation is no longer refused. The recipe lines and Groceries behind it keep their text and point at no food, and its Pantry Ingredients go.
+   - Deleting a food or a translation is no longer refused. A deleted food's recipe lines and Groceries keep their text and point at no food, and its Pantry Ingredients go. What a removed translation wrote keeps its food, under another of the food's spellings.
    - A food someone's action minted is deleted once no recipe line, Grocery, recurring grocery or Pantry Ingredient has named it for three months. A seeded food is never deleted, by this or by AI.
    - Recurring groceries learn "yearly" / "jaarlijks", so a yearly purchase keeps its food.
 6. **One cleanup when the release first starts:**
@@ -178,8 +178,9 @@ A recipe save keeps the foods of every line whose text, amount and unit are unch
 
 **Catalogue edits**
 
-- **Delete** an Ingredient or a translation in use: allowed. Recipe lines lose that food from their list; groceries and recurring groceries keep their text and point at no food; Pantry Ingredients are deleted. The confirm dialog shows the counts.
+- **Delete** an Ingredient in use: allowed. Recipe lines lose that food from their list; groceries and recurring groceries keep their text and point at no food; Pantry Ingredients are deleted. The confirm dialog shows the counts.
   - A food flagged for an unsure junk answer offers **Delete as junk** instead. That also deletes its recipe lines, and records them as AI Changes so they can be restored.
+- **Remove** a translation in use: allowed. Its line food rows, groceries, recurring groceries and Pantry Ingredients move to another spelling of the same food: the one whose fold is the food's name, else the oldest. Nothing loses its food, and nothing moves to a parent. A wrong translation is fixed with Move, which carries its lines to the right food.
 - **The unused-food sweep** is a new scheduled task beside the existing ones. Every night it sets or clears `unused_since` on own foods by whether a recipe line, Grocery, recurring grocery or Pantry Ingredient points at them, and deletes those unused for 90 days. Seeded foods are skipped. The same task sweeps AI Changes, and enqueues the nightly retry.
 - **The one-time cleanup** runs at startup, after the seed, once per cleanup version recorded in the ingredient seed state, the way the recheck pass is versioned:
   1. clean stray marks in seeded spellings;

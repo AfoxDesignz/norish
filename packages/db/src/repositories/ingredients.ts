@@ -1,7 +1,9 @@
-import { eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { eq, inArray, sql } from "drizzle-orm";
 import z from "zod";
 
 import type { UnitsMap } from "@norish/config/zod/server-config";
+import type { DbTransaction } from "@norish/db/drizzle";
 import type { IngredientRef } from "@norish/db/repositories/ingredient-aliases";
 import type { IngredientDto } from "@norish/shared/contracts/dto/ingredient";
 import type { MeasurementSystem } from "@norish/shared/contracts/dto/recipe";
@@ -14,7 +16,7 @@ import { ServerConfigKeys, UnitsConfigSchema } from "@norish/config/zod/server-c
 import { db } from "@norish/db/drizzle";
 import { dbLogger } from "@norish/db/logger";
 import { getConfig } from "@norish/db/repositories/server-config";
-import { ingredients, recipeIngredients } from "@norish/db/schema";
+import { ingredients, recipeIngredientFoods, recipeIngredients } from "@norish/db/schema";
 import { IngredientSelectBaseSchema } from "@norish/shared/contracts/zod";
 import {
   RecipeIngredientInputSchema,
@@ -53,18 +55,18 @@ export async function findIngredientById(id: string): Promise<IngredientDto | nu
 export type IngredientResolutions = ReadonlyMap<string, IngredientRef | null>;
 
 /**
- * The row values a recipe line is written with: its text as written, the
- * alias that text resolved to, and that alias's Ingredient. A line with no
- * text is not a line and is skipped; one that names no food (a heading, a
- * text with no letter or digit, a colon line with no amount) keeps no alias.
+ * What a recipe line is written with: its text as written, and the aliases
+ * of the foods that text resolved to, in order. A line with no text is not a
+ * line and is skipped; one that names no food (a heading, a text with no
+ * letter or digit, a colon line with no amount) names none.
  */
 export function resolvedRecipeLineValues(
   { ingredientName, amount }: { ingredientName?: string; amount?: unknown },
   resolutions: IngredientResolutions
-): { name: string; ingredientAliasId: string | null } | null {
+): { name: string; aliasIds: string[] } | null {
   if (!ingredientName) return null;
   if (lineNamesNoFood({ text: ingredientName, amount })) {
-    return { name: ingredientName, ingredientAliasId: null };
+    return { name: ingredientName, aliasIds: [] };
   }
 
   const resolved = resolutions.get(ingredientName);
@@ -72,7 +74,41 @@ export function resolvedRecipeLineValues(
   if (resolved === undefined)
     throw new Error(`Ingredient text was not resolved: ${ingredientName}`);
 
-  return { name: ingredientName, ingredientAliasId: resolved?.aliasId ?? null };
+  return { name: ingredientName, aliasIds: resolved ? [resolved.aliasId] : [] };
+}
+
+/**
+ * Keeps, of a join of `recipeIngredientFoods`, each line's first food: the
+ * one a reader of "the line's food" reads. Columns by raw name, so the outer
+ * row is never the subquery's own.
+ */
+export const isFirstLineFood = sql`not exists (select 1 from ${recipeIngredientFoods} earlier
+  where earlier.recipe_ingredient_id = ${recipeIngredientFoods}.recipe_ingredient_id
+    and earlier.position < ${recipeIngredientFoods}.position)`;
+
+/** Write each line's foods in order, over the ones it had. */
+export async function writeRecipeLineFoodsTx(
+  tx: DbTransaction,
+  lines: ReadonlyArray<{ id: string; aliasIds: readonly string[] }>
+): Promise<void> {
+  if (lines.length === 0) return;
+
+  await tx.delete(recipeIngredientFoods).where(
+    inArray(
+      recipeIngredientFoods.recipeIngredientId,
+      lines.map((line) => line.id)
+    )
+  );
+
+  const rows = lines.flatMap(({ id, aliasIds }) =>
+    aliasIds.map((ingredientAliasId, position) => ({
+      recipeIngredientId: id,
+      position,
+      ingredientAliasId,
+    }))
+  );
+
+  if (rows.length > 0) await tx.insert(recipeIngredientFoods).values(rows);
 }
 
 export async function attachIngredientsToRecipeByInputTx(
@@ -93,15 +129,17 @@ export async function attachIngredientsToRecipeByInputTx(
   // Get units config for normalization
   const units = await getUnitsForNormalization();
 
+  const foods: Array<{ id: string; aliasIds: string[] }> = [];
   const rows = items.flatMap((ri) => {
     const line = resolvedRecipeLineValues(ri, resolutions);
 
     if (!line) return [];
+    foods.push({ id: randomUUID(), aliasIds: line.aliasIds });
 
     return [
       {
         recipeId: ri.recipeId,
-        ...line,
+        name: line.name,
         amount: ri.amount != null ? Number(ri.amount) : null,
         unit: normalizeUnit(ri.unit ?? "", units), // ← Normalize unit to canonical ID
         order: ri.order,
@@ -120,13 +158,13 @@ export async function attachIngredientsToRecipeByInputTx(
     throw new Error("Invalid recipeIngredients insert payload");
   }
 
+  // Ids made here, so each line's foods are written against its own row.
   const inserted = await tx
     .insert(recipeIngredients)
-    .values(validatedRows.data)
-    .onConflictDoNothing()
+    .values(validatedRows.data.map((row, index) => ({ ...row, id: foods[index]!.id })))
     .returning();
 
-  if (!inserted.length) return [];
+  await writeRecipeLineFoodsTx(tx, foods);
 
   const insertedWithNames = inserted.map((ri: any) => ({
     ...ri,

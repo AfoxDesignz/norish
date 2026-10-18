@@ -8,11 +8,13 @@ import {
   ingredients,
   nutritionFoods,
   nutritionRules,
+  recipeIngredientFoods,
   recipeIngredients,
   recipes,
 } from "@norish/db/schema";
 
 import type { RecipeListContext } from "./recipes";
+import { isFirstLineFood } from "./ingredients";
 import { buildOwnerPolicyCondition } from "./recipes";
 
 /**
@@ -193,10 +195,15 @@ export async function countIngredientLinesByUnit(
     .select({ unit: recipeIngredients.unit, lines: sql<number>`count(*)::int` })
     .from(recipeIngredients)
     .innerJoin(recipes, eq(recipes.id, recipeIngredients.recipeId))
-    .innerJoin(ingredientAliases, eq(ingredientAliases.id, recipeIngredients.ingredientAliasId))
+    .innerJoin(
+      recipeIngredientFoods,
+      eq(recipeIngredientFoods.recipeIngredientId, recipeIngredients.id)
+    )
+    .innerJoin(ingredientAliases, eq(ingredientAliases.id, recipeIngredientFoods.ingredientAliasId))
     .where(
       and(
         eq(ingredientAliases.ingredientId, ingredientId),
+        isFirstLineFood,
         or(
           eq(recipeIngredients.systemUsed, recipes.systemUsed),
           sql`not exists (select 1 from ${recipeIngredients} own

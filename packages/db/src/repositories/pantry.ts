@@ -9,6 +9,7 @@ import { ingredients, pantryIngredients } from "@norish/db/schema";
 import { PantryIngredientSelectSchema, PantrySuggestionSchema } from "@norish/shared/contracts/zod";
 
 import { findLocaleNames } from "./ingredient-aliases";
+import { isFirstLineFood } from "./ingredients";
 
 /** The connection a caller is already inside, or the shared one. */
 type Db = typeof db | DbTransaction;
@@ -253,10 +254,12 @@ export async function listPantrySuggestions(userIds: string[]): Promise<PantrySu
       select a.ingredient_id, count(distinct r.id)::int as recipe_count
       from recipes r
       join recipe_ingredients ri on ri.recipe_id = r.id
-      join ingredient_aliases a on a.id = ri.ingredient_alias_id
+      join recipe_ingredient_foods on recipe_ingredient_foods.recipe_ingredient_id = ri.id
+      join ingredient_aliases a on a.id = recipe_ingredient_foods.ingredient_alias_id
       where r.user_id in (${members})
         and ltrim(ri.name) not like '#%'
         and position('(id:' in ri.name) = 0
+        and ${isFirstLineFood}
       group by a.ingredient_id
     )
     select i.id as ingredient_id, i.name, used.recipe_count

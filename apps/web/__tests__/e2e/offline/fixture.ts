@@ -113,8 +113,11 @@ async function seed(stack: ProductionStack): Promise<void> {
     );
 
     await database.query(
-      `insert into recipe_ingredients (recipe_id, name, ingredient_alias_id, amount, unit, "order", system_used)
-       values ($1, $2, $3, null, null, 0, 'metric')`,
+      `with line as (
+         insert into recipe_ingredients (recipe_id, name, amount, unit, "order", system_used)
+         values ($1, $2, null, null, 0, 'metric') returning id)
+       insert into recipe_ingredient_foods (recipe_ingredient_id, position, ingredient_alias_id)
+       select id, 0, $3::uuid from line`,
       [SEEDED_RECIPE_ID, SEEDED_RECIPE_LINE, flourAlias.rows[0]!.id]
     );
     await database.query(`insert into cookbooks (id, user_id, title) values ($1, $2, $3)`, [

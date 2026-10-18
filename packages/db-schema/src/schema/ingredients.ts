@@ -103,7 +103,8 @@ export const ingredients = pgTable(
  * Ingredient Aliases: every spelling, plural, preparation-bearing variant and
  * translation of an Ingredient ever seen. The fold is the one grocery folding
  * of the text and is unique, so one spelling means one food instance-wide.
- * Merging Ingredients moves aliases; nothing that points at an alias moves.
+ * Merging Ingredients moves aliases; what points at an alias moves only when
+ * the alias is removed, to another spelling of the same food.
  *
  * `ownerId` is whoever added the alias, null for the seed; `seeded` marks an
  * alias the catalogue seed wrote, which a refresh of the seed may rewrite.

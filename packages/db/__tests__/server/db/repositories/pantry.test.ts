@@ -18,6 +18,7 @@ import {
 import {
   ingredients,
   pantryIngredients,
+  recipeIngredientFoods,
   recipeIngredients,
   recipes,
   users,
@@ -239,12 +240,18 @@ describe("pantry ingredients", () => {
       for (const [order, name] of lines.entries()) {
         const at = foods.indexOf(name);
 
-        await db.insert(recipeIngredients).values({
-          recipeId: row!.id,
-          name,
-          ingredientAliasId: at >= 0 ? resolved[at]!.aliasId : null,
-          order: String(order),
-        });
+        const [line] = await db
+          .insert(recipeIngredients)
+          .values({ recipeId: row!.id, name, order: String(order) })
+          .returning({ id: recipeIngredients.id });
+
+        if (at >= 0) {
+          await db.insert(recipeIngredientFoods).values({
+            recipeIngredientId: line!.id,
+            position: 0,
+            ingredientAliasId: resolved[at]!.aliasId,
+          });
+        }
       }
     }
 

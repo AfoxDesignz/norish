@@ -16,6 +16,7 @@ import {
   ingredientAliases,
   ingredients,
   pantryIngredients,
+  recipeIngredientFoods,
   recipeIngredients,
   recurringGroceries,
 } from "@norish/db/schema";
@@ -89,8 +90,12 @@ describe("the ingredient catalogue", () => {
     const pointers = { ingredientAliasId: food.aliasId, ingredientId: food.ingredientId };
     const [line] = await db
       .insert(recipeIngredients)
-      .values({ recipeId: recipe.id, name: text, ingredientAliasId: food.aliasId })
+      .values({ recipeId: recipe.id, name: text })
       .returning({ id: recipeIngredients.id });
+
+    await db
+      .insert(recipeIngredientFoods)
+      .values({ recipeIngredientId: line!.id, position: 0, ingredientAliasId: food.aliasId });
     const [grocery] = await db
       .insert(groceries)
       .values({ userId: actor.userId, name: text, ...pointers })
@@ -115,8 +120,12 @@ describe("the ingredient catalogue", () => {
   async function namedBy(rows: { line: string; grocery: string; recurring: string }) {
     const db = getTestDb();
     const [line] = await db
-      .select({ name: recipeIngredients.name, aliasId: recipeIngredients.ingredientAliasId })
+      .select({ name: recipeIngredients.name, aliasId: recipeIngredientFoods.ingredientAliasId })
       .from(recipeIngredients)
+      .leftJoin(
+        recipeIngredientFoods,
+        eq(recipeIngredientFoods.recipeIngredientId, recipeIngredients.id)
+      )
       .where(eq(recipeIngredients.id, rows.line));
     const [grocery] = await db
       .select({
@@ -135,11 +144,11 @@ describe("the ingredient catalogue", () => {
       .from(recurringGroceries)
       .where(eq(recurringGroceries.id, rows.recurring));
     const pantry = await db
-      .select({ id: pantryIngredients.id })
+      .select({ aliasId: pantryIngredients.ingredientAliasId })
       .from(pantryIngredients)
       .where(eq(pantryIngredients.userId, actor.userId));
 
-    return { line, grocery, recurring, pantry: pantry.length };
+    return { line, grocery, recurring, pantry: pantry.map((row) => row.aliasId) };
   }
 
   function refusal(promise: Promise<unknown>) {
@@ -293,7 +302,7 @@ describe("the ingredient catalogue", () => {
       line: { name: "1 deegroller", aliasId: null },
       grocery: { name: "1 deegroller", aliasId: null, ingredientId: null },
       recurring: { name: "1 deegroller", aliasId: null, ingredientId: null },
-      pantry: 0,
+      pantry: [],
     });
   });
 
@@ -366,23 +375,46 @@ describe("the ingredient catalogue", () => {
     );
   });
 
-  it("removes a spelling something uses: what wrote it keeps its text and names no food", async () => {
+  /** Spellings added to a food one after another, so each is younger than the last. */
+  async function spell(ingredientId: string, texts: string[]) {
+    for (const text of texts) await addAlias(actor, ingredientId, text);
+
+    return await resolveIngredients(texts, { userId: actor.userId });
+  }
+
+  it("removes a spelling something uses: what wrote it keeps its text and its food, under the spelling that is the food's name", async () => {
     const dough = await mint("dough");
-
-    await addAlias(actor, dough.ingredientId, "deegroller");
-
-    const [roller] = await resolveIngredients(["deegroller"], { userId: actor.userId });
+    const [, roller] = await spell(dough.ingredientId, ["deeg", "deegroller"]);
     const rows = await nameEverywhere(roller!, "deegroller");
 
     await removeAlias(actor, roller!.aliasId);
 
+    const named = { aliasId: dough.aliasId, ingredientId: dough.ingredientId };
+
     await expect(namedBy(rows)).resolves.toEqual({
-      line: { name: "deegroller", aliasId: null },
-      grocery: { name: "deegroller", aliasId: null, ingredientId: null },
-      recurring: { name: "deegroller", aliasId: null, ingredientId: null },
-      pantry: 0,
+      line: { name: "deegroller", aliasId: dough.aliasId },
+      grocery: { name: "deegroller", ...named },
+      recurring: { name: "deegroller", ...named },
+      pantry: [dough.aliasId],
     });
-    await expect(getSpellingTexts(dough.ingredientId)).resolves.toEqual(["dough"]);
+    await expect(getSpellingTexts(dough.ingredientId)).resolves.toEqual(["deeg", "dough"]);
+  });
+
+  it("moves what wrote a removed spelling to the food's oldest one, where the name's own is the one removed", async () => {
+    const dough = await mint("dough");
+    const [deeg] = await spell(dough.ingredientId, ["deeg", "pâte"]);
+    const rows = await nameEverywhere(dough, "dough");
+
+    await removeAlias(actor, dough.aliasId);
+
+    const named = { aliasId: deeg!.aliasId, ingredientId: dough.ingredientId };
+
+    await expect(namedBy(rows)).resolves.toEqual({
+      line: { name: "dough", aliasId: deeg!.aliasId },
+      grocery: { name: "dough", ...named },
+      recurring: { name: "dough", ...named },
+      pantry: [deeg!.aliasId],
+    });
   });
 
   it("says why a food is flagged, and sends the viewer's spellings with the rest on request", async () => {
