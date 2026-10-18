@@ -124,6 +124,8 @@ let report: unknown = null;
 let suggestions: unknown[] = [];
 /** What `uses` answers: where the open food is still used. */
 let uses: unknown = undefined;
+/** Whether `uses` is still being read. */
+let usesPending = false;
 /** What `get` answers for a food the list no longer lists. */
 let ownItem: unknown = undefined;
 /** What `kinds` answers per parent, for the rows folded out under it. */
@@ -254,7 +256,7 @@ vi.mock("@tanstack/react-query", () => ({
       case "ingredients.get":
         return { data: enabled ? ownItem : undefined, isFetching: false, isPending: false };
       case "ingredients.uses":
-        return { data: enabled ? uses : undefined, isFetching: false, isPending: false };
+        return { data: enabled ? uses : undefined, isFetching: false, isPending: usesPending };
       case "ingredients.suggestions":
         return { data: suggestions, isFetching: false, isPending: false };
       case "ingredients.reviewReport":
@@ -488,6 +490,7 @@ describe("IngredientsSettingsContent", () => {
     items = [onion, salt];
     everySpelling = [];
     uses = undefined;
+    usesPending = false;
     runningRound = null;
     iconScope = undefined;
     iconRound = null;
@@ -751,6 +754,31 @@ describe("IngredientsSettingsContent", () => {
     expect(where).toHaveTextContent("onions · done");
     expect(where).toHaveTextContent("pantry");
     expect(where).toHaveTextContent("elsewhere");
+  });
+
+  it("holds Delete until it has read what the delete touches", async () => {
+    usesPending = true;
+    render(<IngredientsSettingsContent />);
+    const opened = await open("onion");
+
+    await act(async () => {
+      fireEvent.click(within(opened).getByTestId("ingredient-delete"));
+    });
+
+    expect(screen.getByTestId("ingredient-delete-confirm")).toBeDisabled();
+    await act(async () => {
+      uses = {
+        recipes: [],
+        groceries: [],
+        pantry: false,
+        elsewhere: 0,
+        counts: { recipeLines: 0, groceries: 0, pantry: 0 },
+      };
+      usesPending = false;
+      cache.changed();
+    });
+
+    expect(screen.getByTestId("ingredient-delete-confirm")).toBeEnabled();
   });
 
   it("adds a household's own spelling clean, staged until Save", async () => {
