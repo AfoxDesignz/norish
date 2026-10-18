@@ -266,13 +266,22 @@ export const LocaleConfigSchema = z.object({
   otherWords: z.array(z.string()),
   onWords: z.array(z.string()),
   numberWords: z.record(z.string(), z.number().int().positive()),
-  unitWords: z.record(z.string(), z.array(z.string())),
+  unitWords: z.object({
+    day: z.array(z.string()),
+    week: z.array(z.string()),
+    month: z.array(z.string()),
+    year: z.array(z.string()),
+  }),
   weekdayWords: z.record(z.string(), z.number().int().min(0).max(6)),
   intervalHints: z.array(IntervalHintSchema),
 });
 
+export const RecurrenceLocalesSchema = z.record(z.string(), LocaleConfigSchema);
+
+/** The recurrence words as stored, with whether an administrator edited them. */
 export const RecurrenceConfigSchema = z.object({
-  locales: z.record(z.string(), LocaleConfigSchema),
+  locales: RecurrenceLocalesSchema,
+  isOverridden: z.boolean().default(false),
 });
 
 export type RecurrenceConfig = z.infer<typeof RecurrenceConfigSchema>;

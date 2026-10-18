@@ -5,7 +5,7 @@ import {
   ContentIndicatorsSchema,
   IngredientWordsMapSchema,
   PromptsConfigSchema,
-  RecurrenceConfigSchema,
+  RecurrenceLocalesSchema,
   ServerConfigKeys,
   TimerKeywordsInputSchema,
   UnitsMapSchema,
@@ -115,8 +115,8 @@ const updateIngredientWords = adminProcedure.input(z.string()).mutation(async ({
 });
 
 /**
- * Update recurrence config.
- * Accepts a JSON string that gets parsed and validated.
+ * Update the recurrence words per language. Accepts a JSON string, parsed and validated, and
+ * marks the words as the administrator's, so a release's new words no longer replace them.
  */
 const updateRecurrenceConfig = adminProcedure.input(z.string()).mutation(async ({ input, ctx }) => {
   log.info({ userId: ctx.user.id }, "Updating recurrence config");
@@ -129,13 +129,18 @@ const updateRecurrenceConfig = adminProcedure.input(z.string()).mutation(async (
     return { success: false, error: "Invalid JSON format" };
   }
 
-  const result = RecurrenceConfigSchema.safeParse(parsed);
+  const result = RecurrenceLocalesSchema.safeParse(parsed);
 
   if (!result.success) {
     return { success: false, error: result.error.message };
   }
 
-  await setConfig(ServerConfigKeys.RECURRENCE_CONFIG, result.data, ctx.user.id, false);
+  await setConfig(
+    ServerConfigKeys.RECURRENCE_CONFIG,
+    { locales: result.data, isOverridden: true },
+    ctx.user.id,
+    false
+  );
 
   return { success: true };
 });

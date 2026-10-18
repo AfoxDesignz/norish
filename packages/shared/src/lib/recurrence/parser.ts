@@ -399,7 +399,7 @@ function unitWordsOf(config: RecurrenceLocaleConfig): Array<[RecurrenceRule, str
     ["day", config.unitWords.day],
     ["week", config.unitWords.week],
     ["month", config.unitWords.month],
-    ["year", config.unitWords.year ?? []],
+    ["year", config.unitWords.year],
   ];
 }
 

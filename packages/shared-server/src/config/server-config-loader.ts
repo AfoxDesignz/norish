@@ -152,7 +152,7 @@ export async function getTimerKeywords(): Promise<TimerKeywordsConfig> {
 export async function getRecurrenceConfig(): Promise<RecurrenceConfig> {
   const value = await getConfig<RecurrenceConfig>(ServerConfigKeys.RECURRENCE_CONFIG);
 
-  return value ?? (defaultRecurrenceConfig as RecurrenceConfig);
+  return value ?? { locales: defaultRecurrenceConfig.locales, isOverridden: false };
 }
 
 /**

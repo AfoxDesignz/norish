@@ -24,8 +24,8 @@ import {
   DEFAULT_INGREDIENT_PERMISSION_POLICY,
   DEFAULT_JOB_RETENTION,
   DEFAULT_RECIPE_PERMISSION_POLICY,
-  IngredientWordsConfigSchema,
   IngredientWordsMapSchema,
+  RecurrenceLocalesSchema,
   ServerConfigKeys,
   UnitsConfigSchema,
 } from "@norish/db/zodSchemas/server-config";
@@ -91,7 +91,7 @@ const REQUIRED_CONFIGS: ConfigDefinition[] = [
   },
   {
     key: ServerConfigKeys.RECURRENCE_CONFIG,
-    getDefaultValue: () => defaultRecurrenceConfig,
+    getDefaultValue: () => ({ ...defaultRecurrenceConfig, isOverridden: false }),
     sensitive: false,
     description: `Recurrence config (${Object.keys(defaultRecurrenceConfig.locales).length} locales)`,
   },
@@ -190,7 +190,16 @@ export async function seedServerConfig(): Promise<void> {
   await syncUnits();
   await syncLocales();
   await syncTimerKeywords();
-  await syncIngredientWords();
+  await syncShippedWords(
+    ServerConfigKeys.INGREDIENT_WORDS,
+    "words",
+    IngredientWordsMapSchema.parse(defaultIngredientWords)
+  );
+  await syncShippedWords(
+    ServerConfigKeys.RECURRENCE_CONFIG,
+    "locales",
+    RecurrenceLocalesSchema.parse(defaultRecurrenceConfig.locales)
+  );
 
   if (seededCount === 0) {
     serverLogger.info("All server configuration keys present");
@@ -532,35 +541,28 @@ function sortedJson(value: unknown): string {
 }
 
 /**
- * Seed the ingredient words (ADR-0037), and carry the words Norish ships into
- * a row the administrator has not edited, as the units and timer keywords
- * are; an edited row is left alone.
+ * Seed words Norish ships, such as the ingredient words (ADR-0037) and the recurrence words, and
+ * carry them into a row the administrator has not edited; an edited row is left alone.
  */
-async function syncIngredientWords(): Promise<void> {
-  const stored = IngredientWordsConfigSchema.safeParse(
-    await getConfig<unknown>(ServerConfigKeys.INGREDIENT_WORDS)
-  );
+async function syncShippedWords(
+  key: ServerConfigKey,
+  field: "words" | "locales",
+  shipped: unknown
+): Promise<void> {
+  const stored = await getConfig<Record<string, unknown>>(key);
 
-  if (stored.success && stored.data.isOverridden) {
-    serverLogger.debug("Ingredient words are overridden by admin, skipping file sync");
+  if (stored?.isOverridden === true) {
+    serverLogger.debug({ key }, "Words are overridden by admin, skipping file sync");
 
     return;
   }
 
-  const shipped = IngredientWordsMapSchema.parse(defaultIngredientWords);
+  if (stored && sortedJson(stored[field]) === sortedJson(shipped)) return;
 
-  if (stored.success && sortedJson(stored.data.words) === sortedJson(shipped)) return;
-
-  await setConfig(
-    ServerConfigKeys.INGREDIENT_WORDS,
-    { words: shipped, isOverridden: false },
-    null,
-    false
-  );
+  await setConfig(key, { [field]: shipped, isOverridden: false }, null, false);
   serverLogger.info(
-    stored.success
-      ? "Updated ingredient words from default file (content changed)"
-      : "Seeded ingredient words from default config file"
+    { key },
+    stored ? "Updated words from default file (content changed)" : "Seeded words from default file"
   );
 }
 

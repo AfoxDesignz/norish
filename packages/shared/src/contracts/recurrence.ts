@@ -15,8 +15,7 @@ export type RecurrenceLocaleConfig = {
     day: string[];
     week: string[];
     month: string[];
-    /** Absent from an administrator's set edited before years were known. */
-    year?: string[];
+    year: string[];
   };
   weekdayWords: Record<string, number>;
   intervalHints: Array<{

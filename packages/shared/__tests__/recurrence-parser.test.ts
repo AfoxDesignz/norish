@@ -222,23 +222,8 @@ describe("recurrence/parser yearly", () => {
 
   it("has a year's unit words in every locale", () => {
     for (const locale of Object.values(config.locales)) {
-      expect(locale.unitWords.year?.length).toBeGreaterThan(0);
+      expect(locale.unitWords.year.length).toBeGreaterThan(0);
     }
-  });
-
-  it("reads an administrator's set from before years as it did", () => {
-    const en = config.locales.en!;
-    const before: RecurrenceConfig = {
-      locales: {
-        en: {
-          ...en,
-          unitWords: { day: en.unitWords.day, week: en.unitWords.week, month: en.unitWords.month },
-        },
-      },
-    };
-
-    expect(parseRecurrence("milk every week", before).recurrence).toMatchObject({ rule: "week" });
-    expect(parseRecurrence("every year", before).recurrence).toBeNull();
   });
 });
 

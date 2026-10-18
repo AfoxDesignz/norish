@@ -21,7 +21,7 @@ export function getDefaultConfigValue(key: ServerConfigKey): unknown {
     case ServerConfigKeys.CONTENT_INDICATORS:
       return defaultContentIndicators;
     case ServerConfigKeys.RECURRENCE_CONFIG:
-      return defaultRecurrenceConfig;
+      return { ...defaultRecurrenceConfig, isOverridden: false };
     case ServerConfigKeys.SCHEDULER_CLEANUP_MONTHS:
       return 3;
     case ServerConfigKeys.JOB_RETENTION:

@@ -40,7 +40,7 @@ interface AdminSettingsContextValue {
   contentIndicators: ContentIndicatorsConfig | undefined;
   units: UnitsMap | undefined;
   ingredientWords: IngredientWordsMap | undefined;
-  recurrenceConfig: RecurrenceConfig | undefined;
+  recurrenceLocales: RecurrenceConfig["locales"] | undefined;
   aiConfig: AIConfig | undefined;
   videoConfig: VideoConfig | undefined;
   imageGenerationConfig: ImageGenerationConfig | undefined;
@@ -141,8 +141,9 @@ export function AdminSettingsProvider({ children }: { children: ReactNode }) {
     configs[ServerConfigKeys.INGREDIENT_WORDS] as
       { words: IngredientWordsMap; isOverridden: boolean } | undefined
   )?.words;
-  const recurrenceConfig = configs[ServerConfigKeys.RECURRENCE_CONFIG] as
-    RecurrenceConfig | undefined;
+  const recurrenceLocales = (
+    configs[ServerConfigKeys.RECURRENCE_CONFIG] as RecurrenceConfig | undefined
+  )?.locales;
   const aiConfig = configs[ServerConfigKeys.AI_CONFIG] as AIConfig | undefined;
   const videoConfig = configs[ServerConfigKeys.VIDEO_CONFIG] as VideoConfig | undefined;
   const imageGenerationConfig = configs[ServerConfigKeys.IMAGE_GENERATION_CONFIG] as
@@ -351,7 +352,7 @@ export function AdminSettingsProvider({ children }: { children: ReactNode }) {
     contentIndicators,
     units,
     ingredientWords,
-    recurrenceConfig,
+    recurrenceLocales,
     aiConfig,
     videoConfig,
     imageGenerationConfig,
