@@ -188,7 +188,7 @@ const updateRecurring = authedProcedure
         const outcome = await writeResolved(
           async () =>
             data.name !== undefined
-              ? await resolveGroceryName({ name: data.name }, { userId: ctx.user.id })
+              ? await resolveGroceryName({ name: data.name, groceryId }, { userId: ctx.user.id })
               : null,
           (ingredient) =>
             updateRecurringGroceryWithGrocery(
@@ -289,7 +289,11 @@ const detachRecurring = authedProcedure
         }
 
         const outcome = await writeResolved(
-          () => resolveGroceryName({ name: parsedIngredient.description }, { userId: ctx.user.id }),
+          () =>
+            resolveGroceryName(
+              { name: parsedIngredient.description, groceryId },
+              { userId: ctx.user.id }
+            ),
           (ingredient) =>
             detachRecurringGrocery({
               recurringGroceryId,

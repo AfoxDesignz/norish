@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
 import { withTransaction } from "@norish/db/drizzle";
 import { deleteCatalogueIngredient } from "@norish/db/repositories/ingredient-catalogue";
-import { ingredients } from "@norish/db/schema";
+import { groceries, ingredients } from "@norish/db/schema";
 import { resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
 import { withResolvedIngredients } from "@norish/shared-server/ingredients/recipe-lines";
 
@@ -83,6 +83,32 @@ describe("grocery names through aliases", () => {
       resolveGroceryNames([{ name: "deegroller", recipeIngredientId: line.id }], { userId })
     ).resolves.toEqual([null]);
     await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(0);
+  });
+
+  it("keeps a grocery's having no food while an edit leaves its text alone, and resolves a new text", async () => {
+    const [food] = await resolveGroceryNames([{ name: "deegroller" }], { userId });
+    const [grocery] = await getTestDb()
+      .insert(groceries)
+      .values({
+        userId,
+        name: "deegroller",
+        ingredientAliasId: food!.aliasId,
+        ingredientId: food!.ingredientId,
+      })
+      .returning({ id: groceries.id });
+
+    await withTransaction((tx) => deleteCatalogueIngredient(tx, food!.ingredientId));
+
+    await expect(
+      resolveGroceryNames([{ name: "Deegroller", groceryId: grocery!.id }], { userId })
+    ).resolves.toEqual([null]);
+    await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(0);
+
+    const [renamed] = await resolveGroceryNames([{ name: "deeg", groceryId: grocery!.id }], {
+      userId,
+    });
+
+    expect(renamed).toEqual(expect.objectContaining({ aliasId: expect.any(String) }));
   });
 
   it("resolves the text of a recipe line renamed on its way to the list", async () => {

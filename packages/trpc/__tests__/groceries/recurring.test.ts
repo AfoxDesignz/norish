@@ -6,6 +6,7 @@ import { recurringGroceriesProcedures } from "@norish/trpc/routers/groceries/rec
 // Import test utilities
 import { createMockCallerContext } from "../calendar/test-utils";
 import { createGrocery } from "../mocks/db";
+import { resolveGroceryName } from "../mocks/ingredient-groceries";
 import { assertHouseholdAccess } from "../mocks/permissions";
 import { groceries } from "../mocks/realtime/groceries";
 import { stores } from "../mocks/realtime/stores";
@@ -197,6 +198,40 @@ describe("recurring groceries procedures", () => {
   });
 
   describe("updateRecurring", () => {
+    it("resolves its name knowing the grocery it keeps on the list, as a detach does", async () => {
+      const recurringGroceryId = crypto.randomUUID();
+      const groceryId = crypto.randomUUID();
+      const caller = recurringGroceriesProcedures.createCaller(createMockCallerContext(ctx));
+
+      updateRecurringGroceryWithGrocery.mockResolvedValue({ stale: true });
+      detachRecurringGrocery.mockResolvedValue({ stale: true });
+
+      await caller.updateRecurring({
+        recurringGroceryId,
+        recurringVersion: 1,
+        groceryId,
+        groceryVersion: 1,
+        data: { name: "Melk" },
+      });
+      await caller.detachRecurring({
+        recurringGroceryId,
+        recurringVersion: 1,
+        groceryId,
+        groceryVersion: 1,
+        raw: "Melk",
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(resolveGroceryName).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Melk", groceryId }),
+        { userId: ctx.user.id }
+      );
+      expect(resolveGroceryName).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Test", groceryId }),
+        { userId: ctx.user.id }
+      );
+    });
+
     it("updates recurring grocery and linked grocery item", async () => {
       const mockRecurring = createMockRecurringGrocery({
         id: "r1",

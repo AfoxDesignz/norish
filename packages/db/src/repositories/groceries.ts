@@ -14,6 +14,8 @@ import {
   GroceryUpdateBaseSchema,
 } from "@norish/shared/contracts/zod";
 
+import type { IngredientRef } from "./ingredient-aliases";
+
 export async function getGroceryById(id: string): Promise<GroceryDto | null> {
   const [row] = await db.select().from(groceries).where(eq(groceries.id, id)).limit(1);
 
@@ -36,6 +38,30 @@ export async function getGroceriesByIds(ids: string[]): Promise<GroceryDto[]> {
   if (!parsed.success) throw new Error("Failed to parse groceries by ids");
 
   return parsed.data;
+}
+
+/** Groceries' texts and the food each names, by id; one naming no food has none (ADR-0037). */
+export async function findGroceryFoods(
+  ids: readonly string[]
+): Promise<Map<string, { name: string | null; food: IngredientRef | null }>> {
+  if (ids.length === 0) return new Map();
+
+  const rows = await db
+    .select({
+      id: groceries.id,
+      name: groceries.name,
+      aliasId: groceries.ingredientAliasId,
+      ingredientId: groceries.ingredientId,
+    })
+    .from(groceries)
+    .where(inArray(groceries.id, [...new Set(ids)]));
+
+  return new Map(
+    rows.map(({ id, name, aliasId, ingredientId }) => [
+      id,
+      { name, food: aliasId && ingredientId ? { aliasId, ingredientId } : null },
+    ])
+  );
 }
 
 export async function listGroceriesByUser(

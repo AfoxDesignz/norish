@@ -108,8 +108,8 @@ const update = authedProcedure.input(GroceryUpdateInputSchema).mutation(({ ctx, 
         });
       }
 
-      // A grocery from a recipe line keeps the line's food while its text
-      // still says what the line says; an amount or Store edit re-points nothing.
+      // A grocery keeps its food while its text is unchanged, so an amount or
+      // Store edit re-points nothing; one from a recipe line also follows the line.
       const [current] = await getGroceriesByIds([groceryId]);
       const updatedGroceries = await writeResolved(
         () =>
@@ -117,6 +117,7 @@ const update = authedProcedure.input(GroceryUpdateInputSchema).mutation(({ ctx, 
             {
               name: parsedIngredient.description,
               recipeIngredientId: current?.recipeIngredientId ?? null,
+              groceryId,
             },
             { userId: ctx.user.id }
           ),

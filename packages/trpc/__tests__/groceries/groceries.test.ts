@@ -613,7 +613,7 @@ describe("stale grocery updates", () => {
     );
   });
 
-  it("resolves an edited grocery knowing the recipe line it came from", async () => {
+  it("resolves an edited grocery knowing the grocery it edits and the recipe line it came from", async () => {
     const groceryId = crypto.randomUUID();
     const recipeIngredientId = crypto.randomUUID();
 
@@ -630,7 +630,7 @@ describe("stale grocery updates", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(resolveGroceryName).toHaveBeenCalledWith(
-      expect.objectContaining({ recipeIngredientId }),
+      expect.objectContaining({ recipeIngredientId, groceryId }),
       { userId: ctx.user.id }
     );
   });
