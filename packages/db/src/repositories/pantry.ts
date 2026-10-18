@@ -259,7 +259,7 @@ export async function listPantrySuggestions(userIds: string[]): Promise<PantrySu
       where r.user_id in (${members})
         and ltrim(ri.name) not like '#%'
         and position('(id:' in ri.name) = 0
-        and ${isFirstLineFood}
+        and ${isFirstLineFood()}
       group by a.ingredient_id
     )
     select i.id as ingredient_id, i.name, used.recipe_count

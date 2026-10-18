@@ -126,7 +126,7 @@ export async function countRecipeUses(): Promise<Map<string, number>> {
     .select({ id: ingredientAliases.ingredientId, uses: sql<number>`count(*)::int` })
     .from(recipeIngredientFoods)
     .innerJoin(ingredientAliases, eq(ingredientAliases.id, recipeIngredientFoods.ingredientAliasId))
-    .where(isFirstLineFood)
+    .where(isFirstLineFood())
     .groupBy(ingredientAliases.ingredientId);
 
   return new Map(rows.map((row) => [row.id, row.uses]));

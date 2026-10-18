@@ -307,7 +307,7 @@ export async function getRecipeIngredients(recipeId: string) {
       schema.recipeIngredientFoods,
       and(
         eq(schema.recipeIngredientFoods.recipeIngredientId, schema.recipeIngredients.id),
-        isFirstLineFood
+        isFirstLineFood()
       )
     )
     .leftJoin(

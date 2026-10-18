@@ -203,7 +203,7 @@ export async function countIngredientLinesByUnit(
     .where(
       and(
         eq(ingredientAliases.ingredientId, ingredientId),
-        isFirstLineFood,
+        isFirstLineFood(),
         or(
           eq(recipeIngredients.systemUsed, recipes.systemUsed),
           sql`not exists (select 1 from ${recipeIngredients} own

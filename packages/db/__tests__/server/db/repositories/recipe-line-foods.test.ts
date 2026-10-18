@@ -1,11 +1,12 @@
 // @vitest-environment node
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { getRecipeFull } from "@norish/db";
 import { db } from "@norish/db/drizzle";
-import { writeRecipeLineFoodsTx } from "@norish/db/repositories/ingredients";
+import { isFirstLineFood, writeRecipeLineFoodsTx } from "@norish/db/repositories/ingredients";
 import * as schema from "@norish/db/schema";
 
 import {
@@ -66,6 +67,24 @@ describe("a recipe line's foods", () => {
 
     await names(oil, butter);
     expect((await line()).ingredientId).toBe(oil.id);
+  });
+
+  it("keeps each line's first food under any name the table is read by", async () => {
+    await names(butter, oil);
+    const f = alias(schema.recipeIngredientFoods, "f");
+
+    await expect(
+      db
+        .select({ aliasId: f.ingredientAliasId })
+        .from(f)
+        .where(and(eq(f.recipeIngredientId, lineId), isFirstLineFood(f)))
+    ).resolves.toEqual([{ aliasId: butter.aliasId }]);
+    await expect(
+      db
+        .select({ aliasId: schema.recipeIngredientFoods.ingredientAliasId })
+        .from(schema.recipeIngredientFoods)
+        .where(and(eq(schema.recipeIngredientFoods.recipeIngredientId, lineId), isFirstLineFood()))
+    ).resolves.toEqual([{ aliasId: butter.aliasId }]);
   });
 
   it("closes up when a food is deleted, and names none once every food is gone", async () => {

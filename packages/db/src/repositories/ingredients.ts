@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { eq, inArray, sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import type { PgTable } from "drizzle-orm/pg-core";
+import { eq, getTableName, inArray, sql } from "drizzle-orm";
 import z from "zod";
 
 import type { UnitsMap } from "@norish/config/zod/server-config";
@@ -78,13 +80,16 @@ export function resolvedRecipeLineValues(
 }
 
 /**
- * Keeps, of a join of `recipeIngredientFoods`, each line's first food: the
- * one a reader of "the line's food" reads. Columns by raw name, so the outer
- * row is never the subquery's own.
+ * Keeps each line's first food of `foods`, the line foods table under its own name or an alias.
+ * The outer rows are named by that name, so no bare column binds to the subquery's own table.
  */
-export const isFirstLineFood = sql`not exists (select 1 from ${recipeIngredientFoods} earlier
-  where earlier.recipe_ingredient_id = ${recipeIngredientFoods}.recipe_ingredient_id
-    and earlier.position < ${recipeIngredientFoods}.position)`;
+export function isFirstLineFood(foods: PgTable = recipeIngredientFoods): SQL {
+  const outer = sql.identifier(getTableName(foods));
+
+  return sql`not exists (select 1 from ${recipeIngredientFoods} earlier
+    where earlier.recipe_ingredient_id = ${outer}.recipe_ingredient_id
+      and earlier.position < ${outer}.position)`;
+}
 
 /** Write each line's foods in order, over the ones it had. */
 export async function writeRecipeLineFoodsTx(
