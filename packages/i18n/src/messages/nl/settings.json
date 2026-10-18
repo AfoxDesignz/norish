@@ -390,7 +390,12 @@
     "rename": "Hernoemen",
     "delete": "Verwijderen",
     "deleteTitle": "{name} verwijderen?",
-    "deleteConfirm": "De vertalingen gaan mee, en wat je huishouden Norish erover leerde. Een ingrediënt dat een recept, boodschap of voorraaditem nog gebruikt kan niet weg; voeg het dan samen.",
+    "deleteConfirm": "De vertalingen gaan mee, en wat je huishouden Norish erover leerde.",
+    "deleteTouches": {
+      "recipeLines": "{count, plural, one {# receptregel houdt zijn tekst, zonder dit ingrediënt} other {# receptregels houden hun tekst, zonder dit ingrediënt}}",
+      "groceries": "{count, plural, one {# boodschap houdt zijn tekst, zonder dit ingrediënt} other {# boodschappen houden hun tekst, zonder dit ingrediënt}}",
+      "pantry": "{count, plural, one {# voorraaditem gaat weg} other {# voorraaditems gaan weg}}"
+    },
     "markDistinct": "Markeer als apart",
     "summary": "{spellings, plural, one {# vertaling} other {# vertalingen}}{kinds, plural, =0 {} one {, # soort} other {, # soorten}}{parent, select, none {} other {, hoofdingrediënt: {parent}}}",
     "askAI": "Vraag AI",
@@ -550,8 +555,6 @@
       "name-taken": "Een ander ingrediënt heeft deze naam al",
       "spelling-taken": "Deze vertaling hoort al bij een ander ingrediënt",
       "last-alias": "Een ingrediënt houdt minstens één vertaling",
-      "alias-in-use": "Recepten of boodschappen gebruiken deze vertaling nog",
-      "ingredient-in-use": "Recepten, boodschappen of de voorraad gebruiken dit ingrediënt nog",
       "same-ingredient": "Een ingrediënt kan niet met zichzelf worden samengevoegd",
       "cycle": "Een ingrediënt kan geen soort van zichzelf zijn",
       "empty": "Voer een naam in",

@@ -390,7 +390,12 @@
     "rename": "Umbenennen",
     "delete": "Löschen",
     "deleteTitle": "{name} löschen?",
-    "deleteConfirm": "Die Übersetzungen gehen mit, und was Ihr Haushalt Norish darüber beigebracht hat. Eine Zutat, die ein Rezept, ein Einkauf oder der Vorrat noch verwendet, kann nicht gelöscht werden; führen Sie sie stattdessen zusammen.",
+    "deleteConfirm": "Die Übersetzungen gehen mit, und was Ihr Haushalt Norish darüber beigebracht hat.",
+    "deleteTouches": {
+      "recipeLines": "{count, plural, one {# Rezeptzeile behält ihren Text, ohne die Zutat} other {# Rezeptzeilen behalten ihren Text, ohne die Zutat}}",
+      "groceries": "{count, plural, one {# Einkauf behält seinen Text, ohne die Zutat} other {# Einkäufe behalten ihren Text, ohne die Zutat}}",
+      "pantry": "{count, plural, one {# Vorratseintrag wird entfernt} other {# Vorratseinträge werden entfernt}}"
+    },
     "markDistinct": "Als eigenständig markieren",
     "summary": "{spellings, plural, one {# Übersetzung} other {# Übersetzungen}}{kinds, plural, =0 {} one {, # Sorte} other {, # Sorten}}{parent, select, none {} other {, übergeordnet: {parent}}}",
     "askAI": "KI fragen",
@@ -550,8 +555,6 @@
       "name-taken": "Eine andere Zutat hat bereits diesen Namen",
       "spelling-taken": "Diese Übersetzung gehört bereits zu einer anderen Zutat",
       "last-alias": "Eine Zutat behält mindestens eine Übersetzung",
-      "alias-in-use": "Rezepte oder Einkäufe verwenden diese Übersetzung noch",
-      "ingredient-in-use": "Rezepte, Einkäufe oder der Vorrat verwenden diese Zutat noch",
       "same-ingredient": "Eine Zutat kann nicht mit sich selbst zusammengeführt werden",
       "cycle": "Eine Zutat kann keine Sorte ihrer selbst sein",
       "empty": "Geben Sie einen Namen ein",

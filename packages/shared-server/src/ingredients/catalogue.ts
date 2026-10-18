@@ -43,12 +43,11 @@ import {
   findCatalogueIngredientOwner,
   findIngredientIdByFold,
   insertCatalogueAlias,
-  isAliasInUse,
-  isIngredientInUse,
   keepIngredientDistinct,
   listCatalogueAliasesOf,
   listCatalogueIngredients,
   renameCatalogueIngredient,
+  sweepUnusedCatalogueIngredients,
 } from "@norish/db/repositories/ingredient-catalogue";
 import { setIngredientIcon } from "@norish/db/repositories/ingredient-icons";
 import {
@@ -121,8 +120,6 @@ export interface IngredientSpelling {
   locale: string | null;
   seeded: boolean;
   canRemove: boolean;
-  /** Something points at it, so it may be moved but not removed. */
-  inUse: boolean;
 }
 
 /** One Ingredient as the page shows it: what it is, and what the viewer may do to it. */
@@ -235,7 +232,6 @@ function spelling(
     locale: alias.locale ?? null,
     seeded: alias.seeded ?? false,
     canRemove: may(alias.ownerId),
-    inUse: alias.inUse ?? false,
   };
 }
 
@@ -289,16 +285,12 @@ async function inEdit<T extends CatalogueEdit>(run: (tx: DbTransaction) => Promi
   return edit;
 }
 
-/** A write the database refused on a constraint (`23505` unique, `23503` foreign key), as this edit's refusal. */
-async function refusedOn<T>(
-  code: "23505" | "23503",
-  refusal: CatalogueRefusal,
-  write: () => Promise<T>
-): Promise<T> {
+/** A write the database refused on a unique constraint (`23505`), as this edit's refusal. */
+async function refusedOn<T>(refusal: CatalogueRefusal, write: () => Promise<T>): Promise<T> {
   try {
     return await write();
   } catch (error) {
-    if (isConstraintViolation(error, code)) throw new CatalogueEditError(refusal);
+    if (isConstraintViolation(error, "23505")) throw new CatalogueEditError(refusal);
     throw error;
   }
 }
@@ -404,7 +396,7 @@ async function renameIngredientIn(
   if (!cleaned) throw new CatalogueEditError("empty");
   await assertMayEditIngredient(tx, actor, ingredientId);
 
-  const renamed = await refusedOn("23505", "name-taken", () =>
+  const renamed = await refusedOn("name-taken", () =>
     renameCatalogueIngredient(tx, ingredientId, cleaned)
   );
 
@@ -472,9 +464,8 @@ async function setParentIn(
 }
 
 /**
- * Delete an Ingredient nothing uses, its spellings with it. Follows `edit` on
- * the Ingredient. One a recipe line, grocery or Pantry Ingredient still
- * points at is refused: merging is how those are given another food.
+ * Delete an Ingredient and its spellings; follows `edit`. Its lines and Groceries keep their
+ * text and name no food, and its Pantry Ingredients go, since the Pantry holds only foods.
  */
 export async function deleteIngredient(
   actor: CatalogueActor,
@@ -486,16 +477,23 @@ export async function deleteIngredient(
     // a merge into this Ingredient must not land while it goes.
     await lockTree(tx);
     if ((await lockIngredients(tx, [ingredientId])) < 1) throw new CatalogueEditError("not-found");
-    if (await isIngredientInUse(tx, ingredientId)) {
-      throw new CatalogueEditError("ingredient-in-use");
-    }
-    // Something may have come to point at one of its spellings since the check.
-    await refusedOn("23503", "ingredient-in-use", () =>
-      deleteCatalogueIngredient(tx, ingredientId)
-    );
+    await deleteCatalogueIngredient(tx, ingredientId);
 
     return { changed: [ingredientId] };
   });
+}
+
+/** The nightly sweep: delete own Ingredients nothing has named for 30 days; seeded ones stay. */
+export async function sweepUnusedIngredients(): Promise<{ deleted: number }> {
+  const deleted = await withTransaction(async (tx) => {
+    await lockTree(tx);
+
+    return await sweepUnusedCatalogueIngredients(tx);
+  });
+
+  if (deleted.length > 0) await ingredientChanges().changed(deleted);
+
+  return { deleted: deleted.length };
 }
 
 /**
@@ -571,7 +569,7 @@ export async function moveAlias(
 
     const to =
       targetId ??
-      (await refusedOn("23505", "name-taken", () =>
+      (await refusedOn("name-taken", () =>
         insertCatalogueIngredient(tx, { name: alias.text, ownerId: actor.userId })
       ));
 
@@ -583,7 +581,7 @@ export async function moveAlias(
 
 /**
  * Remove a spelling. Follows `edit` on the alias. An Ingredient keeps at
- * least one, and a spelling something points at stays until it is moved.
+ * least one; what wrote this one keeps its text and names no food.
  */
 export async function removeAlias(actor: CatalogueActor, aliasId: string): Promise<CatalogueEdit> {
   return await inEdit((tx) => removeAliasIn(tx, actor, aliasId));
@@ -608,9 +606,7 @@ async function removeAliasIn(
   if ((await countAliasesOf(tx, alias.ingredientId)) <= 1) {
     throw new CatalogueEditError("last-alias");
   }
-  if (await isAliasInUse(tx, aliasId)) throw new CatalogueEditError("alias-in-use");
-  // Something may have come to point at it since the check.
-  await refusedOn("23503", "alias-in-use", () => deleteCatalogueAlias(tx, aliasId));
+  await deleteCatalogueAlias(tx, aliasId);
 
   return { changed: [alias.ingredientId] };
 }

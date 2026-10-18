@@ -1,6 +1,6 @@
 import type { SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import type { DbTransaction } from "@norish/db/drizzle";
@@ -51,21 +51,7 @@ export interface CatalogueAlias {
   ownerId: string | null;
   locale?: string | null;
   seeded?: boolean;
-  /** Whether a recipe line, grocery, recurring grocery or Pantry Ingredient points at it. */
-  inUse?: boolean;
 }
-
-/**
- * Whether anything points at the spelling a read of `ingredient_aliases`
- * is on. Qualified by hand: a single-table select renders its columns bare,
- * and a bare `id` inside the subquery would be the referencing row's own.
- */
-const aliasInUse = sql<boolean>`(${or(
-  ...[recipeIngredients, groceries, recurringGroceries, pantryIngredients].map(
-    (table) =>
-      sql`exists (select 1 from ${table} where ${table.ingredientAliasId} = ${ingredientAliases}.${sql.identifier("id")})`
-  )
-)})`;
 
 /** Who owns a row of the catalogue, which is what the edit policy is asked about. */
 export interface CatalogueOwner {
@@ -171,7 +157,6 @@ export async function listCatalogueIngredients(query: {
       ownerId: ingredientAliases.ownerId,
       locale: ingredientAliases.locale,
       seeded: ingredientAliases.seeded,
-      inUse: aliasInUse,
       ingredientId: ingredientAliases.ingredientId,
     })
     .from(ingredientAliases)
@@ -201,7 +186,6 @@ export async function listCatalogueAliasesOf(ingredientId: string): Promise<Cata
       ownerId: ingredientAliases.ownerId,
       locale: ingredientAliases.locale,
       seeded: ingredientAliases.seeded,
-      inUse: aliasInUse,
     })
     .from(ingredientAliases)
     .where(eq(ingredientAliases.ingredientId, ingredientId))
@@ -432,56 +416,15 @@ export async function insertCatalogueAlias(
   return row ?? null;
 }
 
-/** Whether a recipe line, grocery, recurring grocery or Pantry Ingredient points at a spelling. */
-export async function isAliasInUse(tx: DbTransaction, aliasId: string): Promise<boolean> {
-  const references = await Promise.all(
-    [recipeIngredients, groceries, recurringGroceries, pantryIngredients].map((table) =>
-      tx
-        .select({ one: sql`1` })
-        .from(table)
-        .where(eq(table.ingredientAliasId, aliasId))
-        .limit(1)
-    )
-  );
-
-  return references.some((rows) => rows.length > 0);
-}
-
 /**
- * Remove a spelling. The caller holds its Ingredient and has kept it a
- * spelling and found nothing pointing at this one; something that came to
- * point at it since throws a foreign-key violation.
+ * Remove a spelling; the foreign keys unlink its lines and Groceries and delete its Pantry
+ * Ingredients, and the food kept beside a Grocery's alias is cleared here.
  */
 export async function deleteCatalogueAlias(tx: DbTransaction, aliasId: string): Promise<void> {
+  for (const table of [groceries, recurringGroceries]) {
+    await tx.update(table).set({ ingredientId: null }).where(eq(table.ingredientAliasId, aliasId));
+  }
   await tx.delete(ingredientAliases).where(eq(ingredientAliases.id, aliasId));
-}
-
-/**
- * Whether a recipe line, grocery, recurring grocery or Pantry Ingredient
- * points at an Ingredient, directly or through one of its spellings.
- */
-export async function isIngredientInUse(tx: DbTransaction, id: string): Promise<boolean> {
-  const references = await Promise.all(
-    [recipeIngredients, groceries, recurringGroceries, pantryIngredients].map((table) =>
-      tx
-        .select({ one: sql`1` })
-        .from(table)
-        .innerJoin(ingredientAliases, eq(ingredientAliases.id, table.ingredientAliasId))
-        .where(eq(ingredientAliases.ingredientId, id))
-        .limit(1)
-    )
-  );
-  const byIngredient = await Promise.all(
-    [groceries, recurringGroceries, pantryIngredients].map((table) =>
-      tx
-        .select({ one: sql`1` })
-        .from(table)
-        .where(eq(table.ingredientId, id))
-        .limit(1)
-    )
-  );
-
-  return [...references, ...byIngredient].some((rows) => rows.length > 0);
 }
 
 /** Where an Ingredient is used, as one viewer may see it. */
@@ -494,12 +437,14 @@ export interface IngredientUses {
   pantry: boolean;
   /** The uses the viewer may not see: other households' lists, recipes they cannot open. */
   elsewhere: number;
+  /** Everything a delete touches, the viewer's or not; groceries include recurring ones. */
+  counts: { recipeLines: number; groceries: number; pantry: number };
 }
 
 /**
- * Everything `isIngredientInUse` counts, listed for a viewer: recipes under
- * the recipe view policy, groceries and the Pantry for their household, and
- * how many uses are someone else's.
+ * What names an Ingredient, listed for a viewer: recipes under the recipe
+ * view policy, groceries and the Pantry for their household, and how many
+ * uses are someone else's.
  */
 export async function listIngredientUses(
   viewer: RecipeListContext,
@@ -562,19 +507,67 @@ export async function listIngredientUses(
     elsewhere: [...lines, ...groceryRows, ...recurringRows, ...pantryRows].filter(
       (row) => !row.visible
     ).length,
+    counts: {
+      recipeLines: lines.length,
+      groceries: groceryRows.length + recurringRows.length,
+      pantry: pantryRows.length,
+    },
   };
 }
 
 /**
- * Delete an Ingredient, with every spelling it was known by and what the
- * household taught Norish about it (Product Links, Aisle Links, store
- * preferences). Its children become Ingredients of their own. The caller
- * holds the tree lock and the row and has found nothing using it; something
- * that came to point at one of its spellings since throws a foreign-key
- * violation.
+ * Delete an Ingredient with its spellings and links; the foreign keys unlink its lines and
+ * Groceries, delete its Pantry Ingredients and orphan its children. The caller holds the tree lock.
  */
 export async function deleteCatalogueIngredient(tx: DbTransaction, id: string): Promise<void> {
   await tx.delete(ingredients).where(eq(ingredients.id, id));
+}
+
+/**
+ * Whether a line, Grocery, recurring grocery or Pantry Ingredient names the `ingredients` row.
+ * Columns by raw name: bare ones would bind to the subqueries' own tables.
+ */
+const named = sql`(
+  exists (select 1 from ${ingredientAliases} a where a.ingredient_id = ${ingredients}.id and (
+    exists (select 1 from ${recipeIngredients} r where r.ingredient_alias_id = a.id)
+    or exists (select 1 from ${groceries} g where g.ingredient_alias_id = a.id)
+    or exists (select 1 from ${recurringGroceries} g where g.ingredient_alias_id = a.id)
+    or exists (select 1 from ${pantryIngredients} p where p.ingredient_alias_id = a.id)))
+  or exists (select 1 from ${groceries} g where g.ingredient_id = ${ingredients}.id)
+  or exists (select 1 from ${recurringGroceries} g where g.ingredient_id = ${ingredients}.id)
+  or exists (select 1 from ${pantryIngredients} p where p.ingredient_id = ${ingredients}.id))`;
+
+/**
+ * Clear the mark on own Ingredients named again, delete those unnamed for 30 nights, mark the
+ * rest; seeded ones (an `off_id`) are never touched. The caller holds the tree lock.
+ */
+export async function sweepUnusedCatalogueIngredients(tx: DbTransaction): Promise<string[]> {
+  const own = isNull(ingredients.offId);
+
+  await tx
+    .update(ingredients)
+    .set({ unusedSince: null })
+    .where(and(own, isNotNull(ingredients.unusedSince), named));
+
+  // ponytail: a line saved this instant onto a food going now is unlinked; lock aliases if it bites.
+  const deleted = await tx
+    .delete(ingredients)
+    .where(
+      and(
+        own,
+        // Half a day's slack: night 30 deletes what night 0 marked, whichever started earlier.
+        lte(ingredients.unusedSince, sql`now() - interval '29 days 12 hours'`),
+        sql`not ${named}`
+      )
+    )
+    .returning({ id: ingredients.id });
+
+  await tx
+    .update(ingredients)
+    .set({ unusedSince: sql`now()` })
+    .where(and(own, isNull(ingredients.unusedSince), sql`not ${named}`));
+
+  return deleted.map((row) => row.id);
 }
 
 /**

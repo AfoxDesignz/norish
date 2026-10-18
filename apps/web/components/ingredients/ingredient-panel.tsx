@@ -17,7 +17,6 @@ import { usePermissionsContext } from "@/context/permissions-context";
 import { useSpellingRules } from "@/hooks/config";
 import { useGroceriesQuery } from "@/hooks/groceries";
 import { usePantryMutations, usePantryQuery } from "@/hooks/pantry";
-import { showActionToast } from "@/lib/ui/action-toast";
 import { showSafeErrorToast } from "@/lib/ui/safe-error-toast";
 import {
   ArrowUturnLeftIcon,
@@ -119,10 +118,6 @@ export function IngredientPanel({
     enabled: open && ownId !== null && item === null,
   });
   const current: IngredientItem | null = item ?? own.data ?? null;
-  // Where a food is still used opens from the toast of a refused delete,
-  // which has closed the food's panel by then: so beside it, not in it.
-  const [usesOf, setUsesOf] = useState<{ id: string; name: string } | null>(null);
-  const [usesOpen, setUsesOpen] = useState(false);
 
   if (current && current !== shown) setShown(current);
 
@@ -130,31 +125,16 @@ export function IngredientPanel({
   if (!shown || (open && id !== null && shown.id !== id && !current)) return null;
 
   return (
-    <>
-      <IngredientPanelContent
-        // Another food is another panel: its fields start from that food.
-        key={shown.id}
-        item={shown}
-        nested={nested}
-        open={open}
-        reviewing={reviewing}
-        onChanged={onChanged}
-        onClose={onClose}
-        onShowUses={(food) => {
-          setUsesOf(food);
-          setUsesOpen(true);
-        }}
-      />
-      {usesOf ? (
-        <IngredientUsesPanel
-          ingredientId={usesOf.id}
-          name={usesOf.name}
-          nested={nested}
-          open={usesOpen}
-          onClose={() => setUsesOpen(false)}
-        />
-      ) : null}
-    </>
+    <IngredientPanelContent
+      // Another food is another panel: its fields start from that food.
+      key={shown.id}
+      item={shown}
+      nested={nested}
+      open={open}
+      reviewing={reviewing}
+      onChanged={onChanged}
+      onClose={onClose}
+    />
   );
 }
 
@@ -165,7 +145,6 @@ function IngredientPanelContent({
   reviewing,
   onClose,
   onChanged,
-  onShowUses,
 }: {
   item: IngredientItem;
   open: boolean;
@@ -173,8 +152,6 @@ function IngredientPanelContent({
   reviewing: boolean;
   onClose: () => void;
   onChanged?: () => void;
-  /** Something still uses the food: open where. */
-  onShowUses: (food: { id: string; name: string }) => void;
 }) {
   const t = useTranslations("settings.ingredients");
   const tActions = useTranslations("common.actions");
@@ -205,6 +182,7 @@ function IngredientPanelContent({
   const [alias, setAlias] = useState("");
   const [relocation, setRelocation] = useState<Relocation | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showingUses, setShowingUses] = useState(false);
   const suggestions = useIngredientSuggestions();
   const suggestion = suggestions.suggestions.find((it) => it.ingredient.id === item.id) ?? null;
   // A parent AI proposes is a draft to save; one the words of the name gave
@@ -264,19 +242,6 @@ function IngredientPanelContent({
       void cache.rollback();
       const refusal = refusalOf(error);
 
-      // Something still uses the food: the toast opens where.
-      if (refusal === "alias-in-use" || refusal === "ingredient-in-use") {
-        showActionToast(t("errors.title"), {
-          description: t(`errors.${refusal}`),
-          variant: "danger",
-          action: {
-            label: t("uses.show"),
-            onPress: () => onShowUses({ id: item.id, name: displayName }),
-          },
-        });
-
-        return false;
-      }
       showSafeErrorToast({
         title: t("errors.title"),
         description: refusal ? t(`errors.${refusal}`) : t("errors.unknown"),
@@ -513,7 +478,7 @@ function IngredientPanelContent({
         ) : (
           spelling.text
         )}
-        {spelling.canRemove && !spelling.inUse ? (
+        {spelling.canRemove ? (
           <button
             aria-label={
               pendingRemoval
@@ -871,10 +836,22 @@ function IngredientPanelContent({
       />
 
       <DeleteIngredientModal
+        ingredientId={item.id}
         isOpen={deleting}
         name={displayName}
         onClose={() => setDeleting(false)}
         onConfirm={confirmDelete}
+        onShowUses={() => {
+          setDeleting(false);
+          setShowingUses(true);
+        }}
+      />
+
+      <IngredientUsesPanel
+        ingredientId={item.id}
+        name={displayName}
+        open={showingUses}
+        onClose={() => setShowingUses(false)}
       />
     </Panel>
   );
@@ -920,13 +897,11 @@ function PantryRow({
 function IngredientUsesPanel({
   ingredientId,
   name,
-  nested,
   open,
   onClose,
 }: {
   ingredientId: string;
   name: string;
-  nested: boolean;
   open: boolean;
   onClose: () => void;
 }) {
@@ -946,7 +921,7 @@ function IngredientUsesPanel({
 
   return (
     <Panel
-      nested={nested}
+      nested
       open={open}
       title={t("title", { name })}
       onOpenChange={(isOpen) => {

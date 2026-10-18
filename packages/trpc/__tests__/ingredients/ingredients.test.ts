@@ -28,8 +28,6 @@ const catalogue = vi.hoisted(() => ({
   findCatalogueIngredientOwner: vi.fn(),
   findIngredientIdByFold: vi.fn(),
   insertCatalogueAlias: vi.fn(),
-  isAliasInUse: vi.fn(),
-  isIngredientInUse: vi.fn(),
   listCatalogueAliasesOf: vi.fn(),
   listCatalogueIngredients: vi.fn(),
   renameCatalogueIngredient: vi.fn(),
@@ -168,8 +166,6 @@ beforeEach(() => {
   relocation.insertCatalogueIngredient.mockResolvedValue(UIEN);
   catalogue.renameCatalogueIngredient.mockResolvedValue({ id: ONION });
   catalogue.keepIngredientDistinct.mockResolvedValue({ id: ONION });
-  catalogue.isAliasInUse.mockResolvedValue(false);
-  catalogue.isIngredientInUse.mockResolvedValue(false);
   catalogue.insertCatalogueAlias.mockResolvedValue({ id: ALIAS, text: "Onion", ownerId: ME });
 });
 
@@ -960,16 +956,6 @@ describe("refusals", () => {
     expect(ingredientsRealtime.published).toHaveLength(0);
   });
 
-  it("refuses to delete an Ingredient something still uses", async () => {
-    catalogue.isIngredientInUse.mockResolvedValue(true);
-
-    await expect(callerFor().remove({ ingredientId: ONION })).rejects.toMatchObject({
-      code: "CONFLICT",
-      message: "ingredient-in-use",
-    });
-    expect(ingredientsRealtime.published).toHaveLength(0);
-  });
-
   it("refuses to merge an Ingredient into itself", async () => {
     await expect(callerFor().merge({ sourceId: ONION, targetId: ONION })).rejects.toMatchObject({
       code: "BAD_REQUEST",
@@ -986,17 +972,11 @@ describe("refusals", () => {
     });
   });
 
-  it("refuses to remove an Ingredient's last alias, or one something points at", async () => {
+  it("refuses to remove an Ingredient's last alias", async () => {
     relocation.countAliasesOf.mockResolvedValueOnce(1);
     await expect(callerFor().removeAlias({ aliasId: ALIAS })).rejects.toMatchObject({
       code: "CONFLICT",
       message: "last-alias",
-    });
-
-    catalogue.isAliasInUse.mockResolvedValueOnce(true);
-    await expect(callerFor().removeAlias({ aliasId: ALIAS })).rejects.toMatchObject({
-      code: "CONFLICT",
-      message: "alias-in-use",
     });
   });
 
@@ -1090,7 +1070,6 @@ describe("the list", () => {
               locale: null,
               seeded: false,
               canRemove: true,
-              inUse: false,
             },
           ],
           hiddenSpellings: 1,
@@ -1103,21 +1082,13 @@ describe("the list", () => {
   it("lists every spelling of one Ingredient on request", async () => {
     withPolicy("household");
     catalogue.listCatalogueAliasesOf.mockResolvedValue([
-      { id: ALIAS, text: "onions", ownerId: HOUSEMATE, inUse: true },
+      { id: ALIAS, text: "onions", ownerId: HOUSEMATE },
       { id: "seeded-alias", text: "ui", ownerId: null, locale: "nl", seeded: true },
     ]);
 
-    // A spelling something points at keeps canRemove, which moving it needs, and says it is in use.
     await expect(callerFor().spellings({ ingredientId: ONION })).resolves.toEqual([
-      { id: ALIAS, text: "onions", locale: null, seeded: false, canRemove: true, inUse: true },
-      {
-        id: "seeded-alias",
-        text: "ui",
-        locale: "nl",
-        seeded: true,
-        canRemove: false,
-        inUse: false,
-      },
+      { id: ALIAS, text: "onions", locale: null, seeded: false, canRemove: true },
+      { id: "seeded-alias", text: "ui", locale: "nl", seeded: true, canRemove: false },
     ]);
   });
 });

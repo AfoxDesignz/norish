@@ -3,7 +3,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
-  listCatalogueAliasesOf,
   listCatalogueIngredients,
   listIngredientUses,
 } from "@norish/db/repositories/ingredient-catalogue";
@@ -87,8 +86,8 @@ describe("listCatalogueIngredients search", () => {
 });
 
 /**
- * What still uses a food: the spellings something points at, and the uses
- * one viewer may see, the rest counted.
+ * What still uses a food: the uses one viewer may see, the rest counted, and
+ * everything a delete would touch.
  */
 describe("ingredient uses", () => {
   const testBase = new RepositoryTestBase("test_ingredient_uses");
@@ -132,26 +131,7 @@ describe("ingredient uses", () => {
     await testBase.teardown();
   });
 
-  it("marks a spelling something points at as in use", async () => {
-    const [row] = await listCatalogueIngredients({
-      search: null,
-      flaggedOnly: false,
-      limit: 10,
-      offset: 0,
-    });
-
-    expect(row!.aliases.map(({ text, inUse }) => [text, inUse])).toEqual([
-      ["kipfilet", true],
-      ["kipfilet met de hand", true],
-    ]);
-    await getTestDb().delete(schema.recipeIngredients);
-    expect((await listCatalogueAliasesOf(chickenId)).map(({ inUse }) => inUse)).toEqual([
-      false,
-      true,
-    ]);
-  });
-
-  it("lists the uses the viewer may see, a recipe once, and counts the rest", async () => {
+  it("lists the uses the viewer may see, a recipe once, and counts everything a delete touches", async () => {
     expect(
       await listIngredientUses(
         { userId: me.id, householdUserIds: null, isServerAdmin: false },
@@ -164,6 +144,7 @@ describe("ingredient uses", () => {
       ],
       pantry: true,
       elsewhere: 1,
+      counts: { recipeLines: 2, groceries: 2, pantry: 1 },
     });
   });
 });

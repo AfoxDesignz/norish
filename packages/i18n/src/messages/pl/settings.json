@@ -390,7 +390,12 @@
     "rename": "Zmień nazwę",
     "delete": "Usuń",
     "deleteTitle": "Usunąć {name}?",
-    "deleteConfirm": "Jego tłumaczenia odchodzą razem z nim, a także to, czego Twoje gospodarstwo nauczyło Norish o nim. Składnika, którego nadal używa przepis, zakup lub spiżarnia, nie można usunąć; zamiast tego go scal.",
+    "deleteConfirm": "Jego tłumaczenia odchodzą razem z nim, a także to, czego Twoje gospodarstwo nauczyło Norish o nim.",
+    "deleteTouches": {
+      "recipeLines": "{count, plural, one {# wiersz przepisu zachowa swój tekst, bez tego składnika} few {# wiersze przepisów zachowają swój tekst, bez tego składnika} many {# wierszy przepisów zachowa swój tekst, bez tego składnika} other {# wiersza przepisów zachowa swój tekst, bez tego składnika}}",
+      "groceries": "{count, plural, one {# zakup zachowa swój tekst, bez tego składnika} few {# zakupy zachowają swój tekst, bez tego składnika} many {# zakupów zachowa swój tekst, bez tego składnika} other {# zakupu zachowa swój tekst, bez tego składnika}}",
+      "pantry": "{count, plural, one {# pozycja spiżarni zostanie usunięta} few {# pozycje spiżarni zostaną usunięte} many {# pozycji spiżarni zostanie usuniętych} other {# pozycji spiżarni zostanie usunięte}}"
+    },
     "markDistinct": "Oznacz jako odrębny",
     "summary": "{spellings, plural, one {# tłumaczenie} few {# tłumaczenia} other {# tłumaczeń}}{kinds, plural, =0 {} one {, # rodzaj} few {, # rodzaje} many {, # rodzajów} other {, # rodzaju}}{parent, select, none {} other {, nadrzędny: {parent}}}",
     "askAI": "Zapytaj AI",
@@ -550,8 +555,6 @@
       "name-taken": "Inny składnik ma już tę nazwę",
       "spelling-taken": "Ta tłumaczenie należy już do innego składnika",
       "last-alias": "Składnik zachowuje co najmniej jedną tłumaczenie",
-      "alias-in-use": "Przepisy lub zakupy nadal używają tej tłumaczeń",
-      "ingredient-in-use": "Przepisy, zakupy lub spiżarnia nadal używają tego składnika",
       "same-ingredient": "Składnika nie można scalić z samym sobą",
       "cycle": "Składnik nie może być rodzajem samego siebie",
       "empty": "Wpisz nazwę",

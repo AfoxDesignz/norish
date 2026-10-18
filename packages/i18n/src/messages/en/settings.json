@@ -390,7 +390,12 @@
     "rename": "Rename",
     "delete": "Delete",
     "deleteTitle": "Delete {name}?",
-    "deleteConfirm": "Its translations go with it, and what your household taught Norish about it. An ingredient a recipe, grocery or pantry item still uses cannot be deleted; merge it instead.",
+    "deleteConfirm": "Its translations go with it, and what your household taught Norish about it.",
+    "deleteTouches": {
+      "recipeLines": "{count, plural, one {# recipe line keeps its text without it} other {# recipe lines keep their text without it}}",
+      "groceries": "{count, plural, one {# grocery keeps its text without it} other {# groceries keep their text without it}}",
+      "pantry": "{count, plural, one {# pantry item is removed} other {# pantry items are removed}}"
+    },
     "markDistinct": "Mark distinct",
     "summary": "{spellings, plural, one {# translation} other {# translations}}{kinds, plural, =0 {} one {, # kind} other {, # kinds}}{parent, select, none {} other {, parent: {parent}}}",
     "askAI": "Ask AI",
@@ -550,8 +555,6 @@
       "name-taken": "Another ingredient already has this name",
       "spelling-taken": "This translation already belongs to another ingredient",
       "last-alias": "An ingredient keeps at least one translation",
-      "alias-in-use": "Recipes or groceries still use this translation",
-      "ingredient-in-use": "Recipes, groceries or the pantry still use this ingredient",
       "same-ingredient": "An ingredient cannot be merged into itself",
       "cycle": "An ingredient cannot be a kind of itself",
       "empty": "Enter a name",

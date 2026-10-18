@@ -390,7 +390,12 @@
     "rename": "Rinomina",
     "delete": "Elimina",
     "deleteTitle": "Eliminare {name}?",
-    "deleteConfirm": "Le sue traduzioni vanno con esso, e ciò che la tua famiglia ha insegnato a Norish al riguardo. Un ingrediente ancora usato da una ricetta, una spesa o la dispensa non può essere eliminato; uniscilo invece.",
+    "deleteConfirm": "Le sue traduzioni vanno con esso, e ciò che la tua famiglia ha insegnato a Norish al riguardo.",
+    "deleteTouches": {
+      "recipeLines": "{count, plural, one {# riga di ricetta mantiene il suo testo, senza questo ingrediente} other {# righe di ricetta mantengono il loro testo, senza questo ingrediente}}",
+      "groceries": "{count, plural, one {# voce della spesa mantiene il suo testo, senza questo ingrediente} other {# voci della spesa mantengono il loro testo, senza questo ingrediente}}",
+      "pantry": "{count, plural, one {# voce della dispensa viene rimossa} other {# voci della dispensa vengono rimosse}}"
+    },
     "markDistinct": "Segna come distinto",
     "summary": "{spellings, plural, one {# traduzione} other {# traduzioni}}{kinds, plural, =0 {} one {, # tipo} other {, # tipi}}{parent, select, none {} other {, genitore: {parent}}}",
     "askAI": "Chiedi all'IA",
@@ -550,8 +555,6 @@
       "name-taken": "Un altro ingrediente ha già questo nome",
       "spelling-taken": "Questa traduzione appartiene già a un altro ingrediente",
       "last-alias": "Un ingrediente conserva almeno una traduzione",
-      "alias-in-use": "Ricette o spesa usano ancora questa traduzione",
-      "ingredient-in-use": "Ricette, spesa o dispensa usano ancora questo ingrediente",
       "same-ingredient": "Un ingrediente non può essere unito a se stesso",
       "cycle": "Un ingrediente non può essere un tipo di se stesso",
       "empty": "Inserisci un nome",

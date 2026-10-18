@@ -8,8 +8,8 @@ import { versionColumn } from "./shared";
  * A recipe line. `name` is the line's text as written ("onions, diced"),
  * which is what the recipe shows; `ingredientAliasId` is the Ingredient Alias
  * the resolver resolved that text to, and through it the Ingredient. The alias
- * is the line's only pointer at its food (ADR-0037); it is null only on a `#`
- * heading, which names no food.
+ * is the line's only pointer at its food (ADR-0037); it is null on a line that
+ * names no food, a `#` heading or one whose food was deleted.
  */
 export const recipeIngredients = pgTable(
   "recipe_ingredients",
@@ -19,7 +19,9 @@ export const recipeIngredients = pgTable(
       .notNull()
       .references(() => recipes.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    ingredientAliasId: uuid("ingredient_alias_id").references(() => ingredientAliases.id),
+    ingredientAliasId: uuid("ingredient_alias_id").references(() => ingredientAliases.id, {
+      onDelete: "set null",
+    }),
     amount: numeric("amount", { precision: 10, scale: 3 }),
     unit: text("unit"),
     order: numeric("order"),

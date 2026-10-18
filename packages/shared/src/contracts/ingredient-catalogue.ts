@@ -9,8 +9,6 @@ export const CATALOGUE_REFUSALS = [
   "name-taken",
   "spelling-taken",
   "last-alias",
-  "alias-in-use",
-  "ingredient-in-use",
   "same-ingredient",
   "cycle",
   "empty",

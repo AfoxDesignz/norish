@@ -390,7 +390,12 @@
     "rename": "Nimeä uudelleen",
     "delete": "Poista",
     "deleteTitle": "Poistetaanko {name}?",
-    "deleteConfirm": "Sen käännökset lähtevät mukana, samoin se mitä kotitaloutesi on opettanut Norishille siitä. Ainesosaa, jota resepti, ostos tai ruokakomero yhä käyttää, ei voi poistaa; yhdistä se sen sijaan.",
+    "deleteConfirm": "Sen käännökset lähtevät mukana, samoin se mitä kotitaloutesi on opettanut Norishille siitä.",
+    "deleteTouches": {
+      "recipeLines": "{count, plural, one {# reseptin rivi säilyttää tekstinsä ilman ainesosaa} other {# reseptien riviä säilyttää tekstinsä ilman ainesosaa}}",
+      "groceries": "{count, plural, one {# ostos säilyttää tekstinsä ilman ainesosaa} other {# ostosta säilyttää tekstinsä ilman ainesosaa}}",
+      "pantry": "{count, plural, one {# ruokakomeron tuote poistetaan} other {# ruokakomeron tuotetta poistetaan}}"
+    },
     "markDistinct": "Merkitse erilliseksi",
     "summary": "{spellings, plural, one {# käännös} other {# käännöstä}}{kinds, plural, =0 {} one {, # laji} other {, # lajia}}{parent, select, none {} other {, yläkäsite: {parent}}}",
     "askAI": "Kysy tekoälyltä",
@@ -550,8 +555,6 @@
       "name-taken": "Toisella ainesosalla on jo tämä nimi",
       "spelling-taken": "Tämä käännös kuuluu jo toiselle ainesosalle",
       "last-alias": "Ainesosalla on aina vähintään yksi käännös",
-      "alias-in-use": "Reseptit tai ostokset käyttävät vielä tätä käännöstä",
-      "ingredient-in-use": "Reseptit, ostokset tai ruokakomero käyttävät yhä tätä ainesosaa",
       "same-ingredient": "Ainesosaa ei voi yhdistää itseensä",
       "cycle": "Ainesosa ei voi olla oma lajikkeensa",
       "empty": "Anna nimi",

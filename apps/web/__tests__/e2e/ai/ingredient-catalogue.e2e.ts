@@ -411,7 +411,7 @@ test("merging it into the food that holds an Aisle Link files its grocery in tha
     .toEqual(["red onion", "uitjes"]);
 });
 
-test("a food nothing uses can be deleted, and one a grocery uses cannot", async () => {
+test("a food nothing uses can be deleted, and so can one a grocery uses, which stays on the list", async () => {
   await page.goto("/settings?tab=ingredients");
 
   await ingredientRow("shallot").getByTestId("ingredient-toggle").click();
@@ -421,15 +421,21 @@ test("a food nothing uses can be deleted, and one a grocery uses cannot", async 
   await expect(ingredientRow("shallot")).toHaveCount(0);
   await expect.poll(() => readIngredientOf("shallot")).toBeNull();
 
-  // "red onion" is on the grocery list: it stays, and the page says why.
+  // "red onion" is on the grocery list: the dialog says so, and the grocery keeps its text.
   await ingredientRow("onion").getByTestId("ingredient-kinds-toggle").click();
   await ingredientRow("red onion").getByTestId("ingredient-toggle").click();
   await ingredientPanel("red onion").getByTestId("ingredient-delete").click();
+  await expect(page.getByTestId("ingredient-delete-touches")).toHaveText(
+    /grocer(y keeps its|ies keep their) text without it/
+  );
   await page.getByTestId("ingredient-delete-confirm").click();
-  await expect(
-    page.getByText("Recipes, groceries or the pantry still use this ingredient")
-  ).toBeVisible();
-  await expect(ingredientRow("red onion")).toHaveCount(1);
+  await expect(ingredientRow("red onion")).toHaveCount(0);
+  await expect.poll(() => readIngredientOf("red onion")).toBeNull();
+
+  await page.goto("/groceries");
+  await expect(page.locator('[data-grocery-name="red onion"]').first()).toBeVisible();
+  // With no food it has no aisle, so it leaves its parent's.
+  await expect.poll(() => rowsIn(AISLE)).toEqual(["uitjes"]);
 });
 
 test("cleaning names with AI proposes each food's plain name, which confirmed renames it", async ({

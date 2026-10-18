@@ -2,15 +2,23 @@
 /**
  * The catalogue as the Ingredients page edits it, against a real database:
  * looking after a Flagged Ingredient clears its flag, a household's own word
- * joins the food it names, and nothing an edit does can leave a recipe line
- * or a grocery without its food. The edit policy's matrix is pinned at the
+ * joins the food it names, a delete leaves the lines and groceries behind a
+ * food with their text and no food, and the nightly sweep deletes own foods
+ * nothing has named for 30 days. The edit policy's matrix is pinned at the
  * procedures; here the editor is the Ingredient's owner.
  */
-import { sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
-import { groceries } from "@norish/db/schema";
+import {
+  groceries,
+  ingredientAliases,
+  ingredients,
+  pantryIngredients,
+  recipeIngredients,
+  recurringGroceries,
+} from "@norish/db/schema";
 import {
   addAlias,
   CatalogueEditError,
@@ -24,12 +32,14 @@ import {
   renameIngredient,
   saveDraft,
   setParent,
+  sweepUnusedIngredients,
 } from "@norish/shared-server/ingredients/catalogue";
 import { publishIngredientChangesTo } from "@norish/shared-server/ingredients/changes";
 import { resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
 import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 
 import {
+  createTestRecipe,
   createTestUser,
   getSpellingTexts,
   getTestDb,
@@ -70,6 +80,66 @@ describe("the ingredient catalogue", () => {
     const [resolved] = await resolveIngredients([text], { userId: actor.userId });
 
     return resolved!;
+  }
+
+  /** A recipe line, a Grocery, a recurring grocery and a Pantry Ingredient, each naming `food` as `text`. */
+  async function nameEverywhere(food: { aliasId: string; ingredientId: string }, text: string) {
+    const db = getTestDb();
+    const recipe = await createTestRecipe(actor.userId);
+    const pointers = { ingredientAliasId: food.aliasId, ingredientId: food.ingredientId };
+    const [line] = await db
+      .insert(recipeIngredients)
+      .values({ recipeId: recipe.id, name: text, ingredientAliasId: food.aliasId })
+      .returning({ id: recipeIngredients.id });
+    const [grocery] = await db
+      .insert(groceries)
+      .values({ userId: actor.userId, name: text, ...pointers })
+      .returning({ id: groceries.id });
+    const [recurring] = await db
+      .insert(recurringGroceries)
+      .values({
+        userId: actor.userId,
+        name: text,
+        ...pointers,
+        recurrenceRule: "week",
+        nextPlannedFor: "2027-01-01",
+      })
+      .returning({ id: recurringGroceries.id });
+
+    await db.insert(pantryIngredients).values({ userId: actor.userId, ...pointers });
+
+    return { line: line!.id, grocery: grocery!.id, recurring: recurring!.id };
+  }
+
+  /** What the rows `nameEverywhere` wrote point at now. */
+  async function namedBy(rows: { line: string; grocery: string; recurring: string }) {
+    const db = getTestDb();
+    const [line] = await db
+      .select({ name: recipeIngredients.name, aliasId: recipeIngredients.ingredientAliasId })
+      .from(recipeIngredients)
+      .where(eq(recipeIngredients.id, rows.line));
+    const [grocery] = await db
+      .select({
+        name: groceries.name,
+        aliasId: groceries.ingredientAliasId,
+        ingredientId: groceries.ingredientId,
+      })
+      .from(groceries)
+      .where(eq(groceries.id, rows.grocery));
+    const [recurring] = await db
+      .select({
+        name: recurringGroceries.name,
+        aliasId: recurringGroceries.ingredientAliasId,
+        ingredientId: recurringGroceries.ingredientId,
+      })
+      .from(recurringGroceries)
+      .where(eq(recurringGroceries.id, rows.recurring));
+    const pantry = await db
+      .select({ id: pantryIngredients.id })
+      .from(pantryIngredients)
+      .where(eq(pantryIngredients.userId, actor.userId));
+
+    return { line, grocery, recurring, pantry: pantry.length };
   }
 
   function refusal(promise: Promise<unknown>) {
@@ -212,20 +282,19 @@ describe("the ingredient catalogue", () => {
     await expect(refusal(deleteIngredient(actor, saffron.ingredientId))).resolves.toBe("not-found");
   });
 
-  it("keeps an Ingredient a grocery still points at, for a merge to give it another food", async () => {
-    const onion = await mint("onion");
+  it("deletes an Ingredient something uses: its lines and groceries keep their text and name no food, and it leaves the Pantry", async () => {
+    const roller = await mint("deegroller");
+    const rows = await nameEverywhere(roller, "1 deegroller");
 
-    await getTestDb().insert(groceries).values({
-      userId: actor.userId,
-      name: "onion",
-      ingredientAliasId: onion.aliasId,
-      ingredientId: onion.ingredientId,
+    await deleteIngredient(actor, roller.ingredientId);
+
+    await expect(ingredientFor(roller.aliasId)).resolves.toBeNull();
+    await expect(namedBy(rows)).resolves.toEqual({
+      line: { name: "1 deegroller", aliasId: null },
+      grocery: { name: "1 deegroller", aliasId: null, ingredientId: null },
+      recurring: { name: "1 deegroller", aliasId: null, ingredientId: null },
+      pantry: 0,
     });
-
-    await expect(refusal(deleteIngredient(actor, onion.ingredientId))).resolves.toBe(
-      "ingredient-in-use"
-    );
-    await expect(ingredientFor(onion.aliasId)).resolves.toMatchObject({ name: "onion" });
   });
 
   it("refuses a name another Ingredient goes by, in any case", async () => {
@@ -297,29 +366,23 @@ describe("the ingredient catalogue", () => {
     );
   });
 
-  it("removes a spelling nothing points at, and keeps one a grocery points at", async () => {
-    const onion = await mint("onion");
+  it("removes a spelling something uses: what wrote it keeps its text and names no food", async () => {
+    const dough = await mint("dough");
 
-    await addAlias(actor, onion.ingredientId, "ajuin");
-    await addAlias(actor, onion.ingredientId, "ui");
+    await addAlias(actor, dough.ingredientId, "deegroller");
 
-    const [ui] = await resolveIngredients(["ui"], { userId: actor.userId });
-    const [ajuin] = await resolveIngredients(["ajuin"], { userId: actor.userId });
+    const [roller] = await resolveIngredients(["deegroller"], { userId: actor.userId });
+    const rows = await nameEverywhere(roller!, "deegroller");
 
-    await getTestDb().insert(groceries).values({
-      userId: actor.userId,
-      name: "ui",
-      ingredientAliasId: ui!.aliasId,
-      ingredientId: ui!.ingredientId,
+    await removeAlias(actor, roller!.aliasId);
+
+    await expect(namedBy(rows)).resolves.toEqual({
+      line: { name: "deegroller", aliasId: null },
+      grocery: { name: "deegroller", aliasId: null, ingredientId: null },
+      recurring: { name: "deegroller", aliasId: null, ingredientId: null },
+      pantry: 0,
     });
-
-    await expect(refusal(removeAlias(actor, ui!.aliasId))).resolves.toBe("alias-in-use");
-    await removeAlias(actor, ajuin!.aliasId);
-
-    const [again] = await resolveIngredients(["ajuin"], { userId: actor.userId });
-
-    // Gone: "ajuin" is a new food again.
-    expect(again!.ingredientId).not.toBe(onion.ingredientId);
+    await expect(getSpellingTexts(dough.ingredientId)).resolves.toEqual(["dough"]);
   });
 
   it("says why a food is flagged, and sends the viewer's spellings with the rest on request", async () => {
@@ -411,5 +474,106 @@ describe("the ingredient catalogue", () => {
         )
       )
     ).resolves.toBe("forbidden");
+  });
+
+  describe("the nightly sweep of unused foods", () => {
+    /** Backdate the sweep's mark, as though it had found the food unused `days` (and `hours` less) ago. */
+    async function unusedFor(ingredientId: string, days: number, hours = 0) {
+      await getTestDb()
+        .update(ingredients)
+        .set({ unusedSince: sql`now() - make_interval(days => ${days}, hours => ${-hours})` })
+        .where(eq(ingredients.id, ingredientId));
+    }
+
+    async function unusedSince(ingredientId: string) {
+      const [row] = await getTestDb()
+        .select({ unusedSince: ingredients.unusedSince })
+        .from(ingredients)
+        .where(eq(ingredients.id, ingredientId));
+
+      return row?.unusedSince ?? null;
+    }
+
+    it("deletes an own food nothing has named for 30 days, and keeps one unused for 29", async () => {
+      const box = await mint("action grote doos");
+      const lights = await mint("kerstverlichting");
+
+      await sweepUnusedIngredients();
+      await unusedFor(box.ingredientId, 30);
+      await unusedFor(lights.ingredientId, 29);
+      announced = [];
+      await sweepUnusedIngredients();
+
+      await expect(ingredientFor(box.aliasId)).resolves.toBeNull();
+      await expect(ingredientFor(lights.aliasId)).resolves.toMatchObject({
+        name: "kerstverlichting",
+      });
+      expect(announced).toEqual([[box.ingredientId]]);
+    });
+
+    it("deletes on the 30th night a food the first night marked, though this run started earlier in the day", async () => {
+      const tin = await mint("taartvorm 26 cm");
+
+      await sweepUnusedIngredients();
+      await unusedFor(tin.ingredientId, 30, 1);
+      await sweepUnusedIngredients();
+
+      await expect(ingredientFor(tin.aliasId)).resolves.toBeNull();
+    });
+
+    it("clears the mark once something names the food again", async () => {
+      const salt = await mint("vaatwaszout");
+
+      await sweepUnusedIngredients();
+      await expect(unusedSince(salt.ingredientId)).resolves.not.toBeNull();
+
+      await getTestDb().insert(groceries).values({
+        userId: actor.userId,
+        name: "vaatwaszout",
+        ingredientAliasId: salt.aliasId,
+        ingredientId: salt.ingredientId,
+      });
+      await unusedFor(salt.ingredientId, 40);
+      await sweepUnusedIngredients();
+
+      await expect(unusedSince(salt.ingredientId)).resolves.toBeNull();
+      await expect(ingredientFor(salt.aliasId)).resolves.toMatchObject({ name: "vaatwaszout" });
+    });
+
+    it("keeps a food only a recurring grocery names, and never deletes a seeded one", async () => {
+      const filter = await mint("waterfilter");
+      const [seeded] = await getTestDb()
+        .insert(ingredients)
+        .values({ name: "amaranth", offId: "en:amaranth" })
+        .returning({ id: ingredients.id });
+      const [seededAlias] = await getTestDb()
+        .insert(ingredientAliases)
+        .values({ text: "amaranth", fold: "amaranth", ingredientId: seeded!.id, seeded: true })
+        .returning({ id: ingredientAliases.id });
+
+      await getTestDb().insert(recurringGroceries).values({
+        userId: actor.userId,
+        name: "waterfilter",
+        ingredientAliasId: filter.aliasId,
+        ingredientId: filter.ingredientId,
+        recurrenceRule: "year",
+        nextPlannedFor: "2027-06-01",
+      });
+      await sweepUnusedIngredients();
+      await expect(unusedSince(filter.ingredientId)).resolves.toBeNull();
+      await expect(unusedSince(seeded!.id)).resolves.toBeNull();
+
+      await unusedFor(filter.ingredientId, 40);
+      await unusedFor(seeded!.id, 40);
+      await sweepUnusedIngredients();
+
+      const left = await getTestDb()
+        .select({ id: ingredients.id })
+        .from(ingredients)
+        .where(inArray(ingredients.id, [filter.ingredientId, seeded!.id]));
+
+      expect(left).toHaveLength(2);
+      await expect(ingredientFor(seededAlias!.id)).resolves.toMatchObject({ name: "amaranth" });
+    });
   });
 });

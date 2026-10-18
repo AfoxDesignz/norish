@@ -116,8 +116,6 @@ const REFUSAL_CODES: Record<CatalogueRefusal, TRPCError["code"]> = {
   "name-taken": "CONFLICT",
   "spelling-taken": "CONFLICT",
   "last-alias": "CONFLICT",
-  "alias-in-use": "CONFLICT",
-  "ingredient-in-use": "CONFLICT",
   "same-ingredient": "BAD_REQUEST",
   cycle: "CONFLICT",
   empty: "BAD_REQUEST",

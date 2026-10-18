@@ -5,7 +5,6 @@
  */
 import { useSyncExternalStore } from "react";
 import IngredientsSettingsContent from "@/app/(app)/settings/ingredients/components/ingredients-settings-content";
-import { showActionToast } from "@/lib/ui/action-toast";
 import { showSafeErrorToast } from "@/lib/ui/safe-error-toast";
 import { toast } from "@heroui/react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
@@ -31,7 +30,6 @@ type Item = {
     locale?: string | null;
     seeded?: boolean;
     canRemove: boolean;
-    inUse?: boolean;
   }>;
 };
 
@@ -623,16 +621,14 @@ describe("IngredientsSettingsContent", () => {
     expect(within(theirs).getByTestId("ingredient-alias-input")).toBeInTheDocument();
   });
 
-  it("keeps the cross off a spelling something uses, which may still be moved", async () => {
-    items = [
-      { ...onion, aliases: [{ id: "a-onion", text: "onion", canRemove: true, inUse: true }] },
-    ];
+  it("offers the cross on a spelling the viewer may remove, whatever uses it", async () => {
+    items = [{ ...onion, aliases: [{ id: "a-onion", text: "onion", canRemove: true }] }];
     render(<IngredientsSettingsContent />);
     const opened = await open("onion");
 
     await showSpellings(opened);
 
-    expect(within(opened).queryByRole("button", { name: "removeAlias" })).toBeNull();
+    expect(within(opened).getByRole("button", { name: "removeAlias" })).toBeInTheDocument();
     expect(within(opened).getByTestId("ingredient-alias-move")).toBeInTheDocument();
   });
 
@@ -718,13 +714,13 @@ describe("IngredientsSettingsContent", () => {
     );
   });
 
-  it("opens where a food is still used from the toast of a refused delete", async () => {
-    mutations.remove.mockRejectedValueOnce(new Error("ingredient-in-use"));
+  it("says what a delete touches before it is confirmed, and opens where", async () => {
     uses = {
       recipes: [{ id: "r1", name: "Saté" }],
       groceries: [{ name: "onions", done: true, recurring: false }],
       pantry: true,
       elsewhere: 2,
+      counts: { recipeLines: 3, groceries: 0, pantry: 1 },
     };
     render(<IngredientsSettingsContent />);
     const opened = await open("onion");
@@ -732,18 +728,20 @@ describe("IngredientsSettingsContent", () => {
     await act(async () => {
       fireEvent.click(within(opened).getByTestId("ingredient-delete"));
     });
+
+    const touches = screen.getByTestId("ingredient-delete-touches");
+
+    // Only what it touches: no groceries use this one.
+    expect(
+      within(touches)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent)
+    ).toEqual(["deleteTouches.recipeLines", "deleteTouches.pantry"]);
     await act(async () => {
-      fireEvent.click(screen.getByTestId("ingredient-delete-confirm"));
+      fireEvent.click(screen.getByRole("button", { name: "uses.show" }));
     });
 
-    expect(showSafeErrorToast).not.toHaveBeenCalled();
-    const [, options] = vi.mocked(showActionToast).mock.calls[0]!;
-
-    expect(options.description).toBe("errors.ingredient-in-use");
-    await act(async () => {
-      options.action.onPress();
-    });
-
+    expect(mutations.remove).not.toHaveBeenCalled();
     const where = screen.getByTestId("ingredient-uses");
 
     expect(within(where).getByRole("link", { name: "Saté" })).toHaveAttribute(

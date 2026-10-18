@@ -390,7 +390,12 @@
     "rename": "Gi nytt navn",
     "delete": "Slett",
     "deleteTitle": "Slette {name}?",
-    "deleteConfirm": "Oversettelsene følger med, og det husstanden din har lært Norish om den. En ingrediens som en oppskrift, en handlevare eller spiskammeret fortsatt bruker, kan ikke slettes; slå den sammen i stedet.",
+    "deleteConfirm": "Oversettelsene følger med, og det husstanden din har lært Norish om den.",
+    "deleteTouches": {
+      "recipeLines": "{count, plural, one {# oppskriftslinje beholder teksten sin, uten ingrediensen} other {# oppskriftslinjer beholder teksten sin, uten ingrediensen}}",
+      "groceries": "{count, plural, one {# handlevare beholder teksten sin, uten ingrediensen} other {# handlevarer beholder teksten sin, uten ingrediensen}}",
+      "pantry": "{count, plural, one {# vare i spiskammeret fjernes} other {# varer i spiskammeret fjernes}}"
+    },
     "markDistinct": "Marker som egen",
     "summary": "{spellings, plural, one {# oversettelse} other {# oversettelser}}{kinds, plural, =0 {} one {, # type} other {, # typer}}{parent, select, none {} other {, overordnet: {parent}}}",
     "askAI": "Spør AI",
@@ -550,8 +555,6 @@
       "name-taken": "En annen ingrediens har allerede dette navnet",
       "spelling-taken": "Denne oversettelsen tilhører allerede en annen ingrediens",
       "last-alias": "En ingrediens beholder minst én oversettelse",
-      "alias-in-use": "Oppskrifter eller innkjøp bruker fortsatt denne oversettelsen",
-      "ingredient-in-use": "Oppskrifter, handlelister eller spiskammeret bruker fortsatt denne ingrediensen",
       "same-ingredient": "En ingrediens kan ikke slås sammen med seg selv",
       "cycle": "En ingrediens kan ikke være en type av seg selv",
       "empty": "Skriv inn et navn",

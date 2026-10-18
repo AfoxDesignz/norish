@@ -15,9 +15,13 @@ export const recurringGroceries = pgTable(
     // Item details
     name: text("name").notNull(),
     /** The Ingredient Alias the name resolved to (ADR-0037). */
-    ingredientAliasId: uuid("ingredient_alias_id").references(() => ingredientAliases.id),
+    ingredientAliasId: uuid("ingredient_alias_id").references(() => ingredientAliases.id, {
+      onDelete: "set null",
+    }),
     /** The alias's Ingredient, kept beside it as a Grocery keeps its own. */
-    ingredientId: uuid("ingredient_id").references(() => ingredients.id),
+    ingredientId: uuid("ingredient_id").references(() => ingredients.id, {
+      onDelete: "set null",
+    }),
     unit: text("unit"),
     amount: numeric("amount", { precision: 10, scale: 3 }),
 

@@ -66,6 +66,9 @@ export interface NutritionCodes {
  * `nameSettled` says the name is its Plain Name for good: AI gave it, or a
  * person named the food, took a proposed name or turned one down. AI
  * proposes no other, and the recheck never renames it from the words.
+ *
+ * `unusedSince` is when the nightly sweep first found nothing naming an own Ingredient; only
+ * the sweep sets and clears it, and deletes the food after 30 days.
  */
 export const ingredients = pgTable(
   "ingredients",
@@ -84,6 +87,7 @@ export const ingredients = pgTable(
     nutritionCodes: jsonb("nutrition_codes").$type<NutritionCodes>(),
     icon: text("icon"),
     nameSettled: boolean("name_settled").notNull().default(false),
+    unusedSince: timestamp("unused_since", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     ...versionColumn,
   },

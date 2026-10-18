@@ -390,7 +390,12 @@
     "rename": "Renommer",
     "delete": "Supprimer",
     "deleteTitle": "Supprimer {name} ?",
-    "deleteConfirm": "Ses traductions partent avec lui, ainsi que ce que votre foyer a appris à Norish à son sujet. Un ingrédient encore utilisé par une recette, une course ou le garde-manger ne peut pas être supprimé ; fusionnez-le plutôt.",
+    "deleteConfirm": "Ses traductions partent avec lui, ainsi que ce que votre foyer a appris à Norish à son sujet.",
+    "deleteTouches": {
+      "recipeLines": "{count, plural, one {# ligne de recette garde son texte, sans cet ingrédient} other {# lignes de recette gardent leur texte, sans cet ingrédient}}",
+      "groceries": "{count, plural, one {# course garde son texte, sans cet ingrédient} other {# courses gardent leur texte, sans cet ingrédient}}",
+      "pantry": "{count, plural, one {# article du garde-manger est retiré} other {# articles du garde-manger sont retirés}}"
+    },
     "markDistinct": "Marquer comme distinct",
     "summary": "{spellings, plural, one {# traduction} other {# traductions}}{kinds, plural, =0 {} one {, # sorte} other {, # sortes}}{parent, select, none {} other {, parent: {parent}}}",
     "askAI": "Demander à l'IA",
@@ -550,8 +555,6 @@
       "name-taken": "Un autre ingrédient porte déjà ce nom",
       "spelling-taken": "Cette traduction appartient déjà à un autre ingrédient",
       "last-alias": "Un ingrédient garde au moins une traduction",
-      "alias-in-use": "Des recettes ou des courses utilisent encore cette traduction",
-      "ingredient-in-use": "Des recettes, des courses ou le garde-manger utilisent encore cet ingrédient",
       "same-ingredient": "Un ingrédient ne peut pas être fusionné avec lui-même",
       "cycle": "Un ingrédient ne peut pas être une variété de lui-même",
       "empty": "Saisissez un nom",

@@ -390,7 +390,12 @@
     "rename": "이름 바꾸기",
     "delete": "삭제",
     "deleteTitle": "{name}을(를) 삭제할까요?",
-    "deleteConfirm": "이 재료의 번역와 가족이 Norish에 알려준 내용이 함께 사라집니다. 레시피, 장보기 목록 또는 식료품 저장실에서 아직 사용 중인 재료는 삭제할 수 없으니 대신 병합하세요.",
+    "deleteConfirm": "이 재료의 번역과 가족이 Norish에 알려준 내용이 함께 사라집니다.",
+    "deleteTouches": {
+      "recipeLines": "{count, plural, other {레시피 줄 #개는 텍스트를 유지하지만 이 재료와의 연결이 사라집니다}}",
+      "groceries": "{count, plural, other {장보기 항목 #개는 텍스트를 유지하지만 이 재료와의 연결이 사라집니다}}",
+      "pantry": "{count, plural, other {식료품 저장실 항목 #개가 삭제됩니다}}"
+    },
     "markDistinct": "별개로 표시",
     "summary": "번역 {spellings}개{kinds, plural, =0 {} other {, 종류 #}}{parent, select, none {} other {, 상위: {parent}}}",
     "askAI": "AI에게 묻기",
@@ -550,8 +555,6 @@
       "name-taken": "다른 재료가 이미 이 이름을 사용합니다",
       "spelling-taken": "이 번역는 이미 다른 재료에 속해 있습니다",
       "last-alias": "재료에는 최소 하나의 번역가 남아야 합니다",
-      "alias-in-use": "레시피나 장보기 목록이 아직 이 번역를 사용합니다",
-      "ingredient-in-use": "레시피, 장보기 목록 또는 식료품 저장실에서 아직 이 재료를 사용하고 있습니다",
       "same-ingredient": "재료를 자기 자신과 병합할 수 없습니다",
       "cycle": "재료는 자기 자신의 한 종류가 될 수 없습니다",
       "empty": "이름을 입력하세요",

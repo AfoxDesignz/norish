@@ -4,6 +4,7 @@ import { requireQueueApiHandler } from "@norish/queue/api-handlers";
 import { cleanupOldCalendarData } from "@norish/queue/scheduler/old-calendar-cleanup";
 import { cleanupOldGroceries } from "@norish/queue/scheduler/old-groceries-cleanup";
 import { checkRecurringGroceries } from "@norish/queue/scheduler/recurring-grocery-check";
+import { sweepUnusedIngredients } from "@norish/shared-server/ingredients/catalogue";
 import { sweepIngredientIcons } from "@norish/shared-server/ingredients/icon-drafts";
 import { refreshIngredientCatalogue } from "@norish/shared-server/ingredients/seed/catalogue-seed";
 import { recheckUndecidedMintsOnRungChange } from "@norish/shared-server/ingredients/seed/recheck-mints";
@@ -89,6 +90,14 @@ async function processScheduledTask(job: Job<ScheduledTaskJobData>): Promise<voi
       // A first seed that arrived after the upgrade (an offline first boot):
       // what was minted without it is looked at again against it.
       if (result === "applied") await recheckUndecidedMintsOnRungChange();
+      break;
+    }
+
+    case "ingredient-sweep": {
+      // Own foods nothing has named for 30 days go; a seeded one never does.
+      const result = await sweepUnusedIngredients();
+
+      log.info({ deleted: result.deleted }, "Ingredient sweep completed");
       break;
     }
 

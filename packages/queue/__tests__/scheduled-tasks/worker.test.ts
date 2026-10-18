@@ -14,6 +14,7 @@ import { startScheduledTasksWorker } from "@norish/queue/scheduled-tasks/worker"
 const scheduler = vi.hoisted(() => ({ checkRecurringGroceries: vi.fn() }));
 const seed = vi.hoisted(() => ({ refreshIngredientCatalogue: vi.fn() }));
 const recheck = vi.hoisted(() => ({ recheckUndecidedMintsOnRungChange: vi.fn() }));
+const catalogue = vi.hoisted(() => ({ sweepUnusedIngredients: vi.fn() }));
 const captured = vi.hoisted(() => ({
   processor: undefined as ((job: unknown) => Promise<unknown>) | undefined,
 }));
@@ -42,6 +43,7 @@ vi.mock("@norish/queue/scheduler/old-calendar-cleanup", () => ({
 vi.mock("@norish/queue/scheduler/old-groceries-cleanup", () => ({ cleanupOldGroceries: vi.fn() }));
 vi.mock("@norish/shared-server/ingredients/seed/catalogue-seed", () => seed);
 vi.mock("@norish/shared-server/ingredients/seed/recheck-mints", () => recheck);
+vi.mock("@norish/shared-server/ingredients/catalogue", () => catalogue);
 vi.mock("@norish/shared-server/logger", () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
@@ -93,5 +95,11 @@ describe("startScheduledTasksWorker", () => {
     await expect(captured.processor!(jobFor("ingredient-catalogue-refresh"))).rejects.toThrow(
       "HTTP 503"
     );
+  });
+
+  it("sweeps the catalogue of foods nothing names", async () => {
+    catalogue.sweepUnusedIngredients.mockResolvedValueOnce({ deleted: 2 });
+    await captured.processor!(jobFor("ingredient-sweep"));
+    expect(catalogue.sweepUnusedIngredients).toHaveBeenCalledTimes(1);
   });
 });
