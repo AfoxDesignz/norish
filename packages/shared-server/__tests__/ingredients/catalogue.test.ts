@@ -594,6 +594,50 @@ describe("the ingredient catalogue", () => {
       await expect(ingredientFor(fries.aliasId)).resolves.not.toBeNull();
     });
 
+    it.each([
+      ["a recipe line", "line"],
+      ["a Grocery through its spelling", "grocery-spelling"],
+      ["a Grocery through the food alone", "grocery-food"],
+      ["a recurring grocery through its spelling", "recurring-spelling"],
+      ["a recurring grocery through the food alone", "recurring-food"],
+      ["a Pantry Ingredient", "pantry"],
+    ] as const)("keeps a food %s names", async (_, by) => {
+      const food = await mint("ijsblokjesvorm");
+      const db = getTestDb();
+      const spelling = { ingredientAliasId: food.aliasId };
+      const itself = { ingredientId: food.ingredientId };
+      const repeat = { recurrenceRule: "week", nextPlannedFor: "2027-01-01" };
+
+      if (by === "line") {
+        const recipe = await createTestRecipe(actor.userId);
+
+        await insertTestRecipeLine({ recipeId: recipe.id, name: "ijsblokjesvorm" }, food.aliasId);
+      }
+      if (by === "grocery-spelling" || by === "grocery-food") {
+        await db.insert(groceries).values({
+          userId: actor.userId,
+          name: "ijsblokjesvorm",
+          ...(by === "grocery-spelling" ? spelling : itself),
+        });
+      }
+      if (by === "recurring-spelling" || by === "recurring-food") {
+        await db.insert(recurringGroceries).values({
+          userId: actor.userId,
+          name: "ijsblokjesvorm",
+          ...repeat,
+          ...(by === "recurring-spelling" ? spelling : itself),
+        });
+      }
+      if (by === "pantry")
+        await db.insert(pantryIngredients).values({ userId: actor.userId, ...itself });
+
+      await unusedFor(food.ingredientId, 100);
+      await sweepUnusedIngredients();
+
+      await expect(unusedSince(food.ingredientId)).resolves.toBeNull();
+      await expect(ingredientFor(food.aliasId)).resolves.not.toBeNull();
+    });
+
     it("clears the mark once something names the food again", async () => {
       const salt = await mint("vaatwaszout");
 
