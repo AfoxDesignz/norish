@@ -44,6 +44,7 @@ import {
   createTestUser,
   getSpellingTexts,
   getTestDb,
+  insertTestRecipeLine,
 } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
@@ -88,14 +89,7 @@ describe("the ingredient catalogue", () => {
     const db = getTestDb();
     const recipe = await createTestRecipe(actor.userId);
     const pointers = { ingredientAliasId: food.aliasId, ingredientId: food.ingredientId };
-    const [line] = await db
-      .insert(recipeIngredients)
-      .values({ recipeId: recipe.id, name: text })
-      .returning({ id: recipeIngredients.id });
-
-    await db
-      .insert(recipeIngredientFoods)
-      .values({ recipeIngredientId: line!.id, position: 0, ingredientAliasId: food.aliasId });
+    const line = await insertTestRecipeLine({ recipeId: recipe.id, name: text }, food.aliasId);
     const [grocery] = await db
       .insert(groceries)
       .values({ userId: actor.userId, name: text, ...pointers })
@@ -113,7 +107,7 @@ describe("the ingredient catalogue", () => {
 
     await db.insert(pantryIngredients).values({ userId: actor.userId, ...pointers });
 
-    return { line: line!.id, grocery: grocery!.id, recurring: recurring!.id };
+    return { line: line.id, grocery: grocery!.id, recurring: recurring!.id };
   }
 
   /** What the rows `nameEverywhere` wrote point at now. */

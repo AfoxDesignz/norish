@@ -15,17 +15,10 @@ import {
   listPantryIngredientsByUserIds,
   listPantrySuggestions,
 } from "@norish/db/repositories/pantry";
-import {
-  ingredients,
-  pantryIngredients,
-  recipeIngredientFoods,
-  recipeIngredients,
-  recipes,
-  users,
-} from "@norish/db/schema";
+import { ingredients, pantryIngredients, recipes, users } from "@norish/db/schema";
 
 import { resolveIngredients } from "../../../../../shared-server/src/ingredients/resolver";
-import { createTestUser, getTestDb } from "../../../helpers/db-test-helpers";
+import { createTestUser, getTestDb, insertTestRecipeLine } from "../../../helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../helpers/repository-test-base";
 
 const OLIVE = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -240,18 +233,10 @@ describe("pantry ingredients", () => {
       for (const [order, name] of lines.entries()) {
         const at = foods.indexOf(name);
 
-        const [line] = await db
-          .insert(recipeIngredients)
-          .values({ recipeId: row!.id, name, order: String(order) })
-          .returning({ id: recipeIngredients.id });
-
-        if (at >= 0) {
-          await db.insert(recipeIngredientFoods).values({
-            recipeIngredientId: line!.id,
-            position: 0,
-            ingredientAliasId: resolved[at]!.aliasId,
-          });
-        }
+        await insertTestRecipeLine(
+          { recipeId: row!.id, name, order: String(order) },
+          at >= 0 ? resolved[at]!.aliasId : null
+        );
       }
     }
 

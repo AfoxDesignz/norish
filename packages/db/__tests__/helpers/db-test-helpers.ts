@@ -14,7 +14,7 @@ import pg from "pg";
 import type { FullRecipeDTO, MeasurementSystem } from "@norish/shared/contracts";
 import { encrypt, hashToken } from "@norish/config/crypto";
 import { getRecipeFull } from "@norish/db";
-import { isFirstLineFood } from "@norish/db/repositories/ingredients";
+import { isFirstLineFood, writeRecipeLineFoodsTx } from "@norish/db/repositories/ingredients";
 import * as schema from "@norish/db/schema";
 
 const { Pool } = pg;
@@ -227,6 +227,23 @@ export async function createTestRecipeShare(
 /**
  * Create test recipe ingredients
  */
+/** Insert a recipe line and, where it names one, its food at position 0, as the app writes them. */
+export async function insertTestRecipeLine(
+  values: typeof schema.recipeIngredients.$inferInsert,
+  aliasId?: string | null
+) {
+  const db = getTestDb();
+  const [line] = await db.insert(schema.recipeIngredients).values(values).returning();
+
+  if (aliasId) {
+    await db.transaction((tx) =>
+      writeRecipeLineFoodsTx(tx, [{ id: line!.id, aliasIds: [aliasId] }])
+    );
+  }
+
+  return line!;
+}
+
 export async function createTestRecipeIngredients(
   recipeId: string,
   ingredientId: string,
@@ -240,9 +257,8 @@ export async function createTestRecipeIngredients(
     .where(eq(schema.ingredientAliases.ingredientId, ingredientId))
     .limit(1);
 
-  const [recipeIngredient] = await db
-    .insert(schema.recipeIngredients)
-    .values({
+  return await insertTestRecipeLine(
+    {
       recipeId,
       name: overrides.name ?? "Test ingredient",
       amount: overrides.amount ?? "1",
@@ -251,18 +267,9 @@ export async function createTestRecipeIngredients(
       systemUsed,
       createdAt: overrides.createdAt ?? new Date(),
       updatedAt: overrides.updatedAt ?? new Date(),
-    })
-    .returning();
-
-  if (alias) {
-    await db.insert(schema.recipeIngredientFoods).values({
-      recipeIngredientId: recipeIngredient!.id,
-      position: 0,
-      ingredientAliasId: alias.id,
-    });
-  }
-
-  return recipeIngredient;
+    },
+    alias?.id
+  );
 }
 
 /**
