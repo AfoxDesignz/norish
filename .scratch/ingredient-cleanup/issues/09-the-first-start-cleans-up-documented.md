@@ -13,6 +13,7 @@ Then the docs:
 - the target version's release notes, with an upgrade note saying this runs by itself and deletes junk lines;
 - the release notes also name ticket 02's changes: delete always works (the dialog's counts), own foods unused for 90 days are deleted nightly, and groceries can repeat yearly;
 - an upgrade note that recurrence words an administrator edited before this release are replaced once by the shipped ones, which now carry years and seven more languages; words edited after it stay;
+- the release notes also name ticket 04's change: a recipe line naming several foods ("zout en peper", "boter of olie") points at each, for the pantry, the add-to-groceries panel and nutrition; and an upgrade note that Ingredient Words an administrator edited keep no joining words (`together`, `alternatives`) until added or the defaults restored;
 - the Ingredients page in the docs, rewritten for applied changes, Changed by AI and delete;
 - screenshots shot as whole panel windows off a running instance.
 

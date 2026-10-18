@@ -18,14 +18,25 @@ See `CONTEXT.md` (Ingredient Alias, Ingredient Words, Pantry Ingredient, Ingredi
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] "zout en peper", "boter of olie", "water of kokosmelk" and "parmezaanse kaas en/of pijnboompitten" (with both parts known) resolve to two foods with the right join.
-- [ ] "mac and cheese" (known whole), "juice of a lemon" (all English), "handful of arugula" (one part not a food) and "Arla Skyr Peach & Passionfruit" (a part not known) stay one food.
-- [ ] The joining words ship in every language's Ingredient Words, and an administrator's edited set is honoured.
-- [ ] Pantry: "boter of olie" is in the pantry when only olie is kept. With "zout en peper" and only zout kept, peper goes on the list and zout shows as stocked.
-- [ ] Add to groceries: "2 el boter en suiker" adds 2 el boter and 2 el suiker; "boter of olie" adds boter.
-- [ ] Nutrition counts "100 g boter of olie" as 100 g boter, and "100 g ham en kaas" as 100 g of each.
-- [ ] The line shows the first food's icon; both foods' "where used" panels list the line.
-- [ ] Browser: a recipe with "zout en peper" added to the groceries puts "zout" and "peper" on the list as two groceries (catalogue spec, `ai` project).
-- [ ] All `CONTRIBUTING.md` gates pass.
+- [x] "zout en peper", "boter of olie", "water of kokosmelk" and "parmezaanse kaas en/of pijnboompitten" (with both parts known) resolve to two foods with the right join.
+- [x] "mac and cheese" (known whole), "juice of a lemon" (all English), "handful of arugula" (one part not a food) and "Arla Skyr Peach & Passionfruit" (a part not known) stay one food.
+- [x] The joining words ship in every language's Ingredient Words, and an administrator's edited set is honoured.
+- [x] Pantry: "boter of olie" is in the pantry when only olie is kept. With "zout en peper" and only zout kept, peper goes on the list and zout shows as stocked.
+- [x] Add to groceries: "2 el boter en suiker" adds 2 el boter and 2 el suiker; "boter of olie" adds boter.
+- [x] Nutrition counts "100 g boter of olie" as 100 g boter, and "100 g ham en kaas" as 100 g of each.
+- [x] The line shows the first food's icon; both foods' "where used" panels list the line.
+- [x] Browser: a recipe with "zout en peper" added to the groceries puts "zout" and "peper" on the list as two groceries (catalogue spec, `ai` project).
+- [x] All `CONTRIBUTING.md` gates pass.
+
+## Comments
+
+2026-10-18, implemented:
+
+- The joining words are two new kinds of Ingredient Words, `together` and `alternatives`, shipped for all 15 languages; `joinedParts` (spelling-keys) splits a name at them, never inside brackets, and not where "and" and "or" are mixed. The admin settings page lists them.
+- `resolveLineFoods` reads a recipe line not known whole by its words before AI is asked. Parts that are one food name it alone ("spring onions or scallions"). Groceries and the Pantry still resolve one food (ticket 05).
+- The "of" rule is data: a joining word that is some language's connector (only English "of" today) splits only where a part's spelling is known to be in another language. A household's own spellings carry no locale, so "zest of lemon" with a minted "zest" stays one; such a name waits for AI (ticket 08).
+- `getRecipeFull` sends `joined` and each food with its spelling (`foods`) for a line naming several; `ingredientId` stays the first, so icons need nothing. `foodsToBuy` (shared) expands lines for the add-to-groceries panel and nutrition, whose split rows are named by the food's spelling; the nutrition estimator reads amounts from the same expansion.
+- The Pantry's suggestions and the icon round's use counts count every food of a line; the spoon measure reads lines as nutrition does.
+- An administrator's edited Ingredient Words keep no joining words after the upgrade (an edited set no longer follows a release); the upgrade note is ticket 09's.
