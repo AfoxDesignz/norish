@@ -521,6 +521,34 @@ describe("the ingredient catalogue", () => {
       await expect(ingredientFor(tin.aliasId)).resolves.toBeNull();
     });
 
+    it("keeps a parent while it has a child, and deletes it the night after its last child goes", async () => {
+      const fries = await mint("zoete aardappel friet");
+      const oven = await mint("ovenfriet zoete aardappel");
+      const nora = await mint("nora brokken");
+      const treats = await mint("smul rondjes nora");
+
+      await setParent(actor, oven.ingredientId, fries.ingredientId);
+      await setParent(actor, treats.ingredientId, nora.ingredientId);
+      await getTestDb().insert(groceries).values({
+        userId: actor.userId,
+        name: "ovenfriet zoete aardappel",
+        ingredientAliasId: oven.aliasId,
+        ingredientId: oven.ingredientId,
+      });
+      await sweepUnusedIngredients();
+      for (const food of [fries, nora, treats]) await unusedFor(food.ingredientId, 40);
+
+      // The child something uses keeps its parent; an unused child goes before its parent.
+      await sweepUnusedIngredients();
+      await expect(ingredientFor(fries.aliasId)).resolves.not.toBeNull();
+      await expect(ingredientFor(treats.aliasId)).resolves.toBeNull();
+      await expect(ingredientFor(nora.aliasId)).resolves.not.toBeNull();
+
+      await sweepUnusedIngredients();
+      await expect(ingredientFor(nora.aliasId)).resolves.toBeNull();
+      await expect(ingredientFor(fries.aliasId)).resolves.not.toBeNull();
+    });
+
     it("clears the mark once something names the food again", async () => {
       const salt = await mint("vaatwaszout");
 

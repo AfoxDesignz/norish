@@ -33,7 +33,7 @@ See `CONTEXT.md` (Ingredient) and ADR-0037's second 2026-10-17 amendment.
 - The delete dialog reads the existing `uses` query, which now also returns `counts` across the instance, and lists only the non-zero ones. Confirm waits until they are read. "Show where" opens the existing where-used panel, which the removed refusal toast used to open.
 - A recipe save, and a grocery added from a recipe line, keep "no food" for an unchanged stored line. Otherwise the next save of the recipe would mint the deleted food again.
 - The sweep is the scheduled task `ingredient-sweep`. "Own" means no `off_id`, like Clean names. `owner_id` is not used, because deleting a user nulls it. Night 30 deletes what night 0 marked, with half a day of slack for start-time jitter. A line saved onto a food at the instant the sweep deletes it is unlinked; this is marked `ponytail:` in the code.
-- "Named" is only the four rows the spec lists. An own food that is only a Parent Ingredient is deleted, and its children lose their parent. This is an open question for Mike.
+- A food is not deleted while it has a child, and its mark stays, so it goes the night after its last child does (Mike, 2026-10-18). On the production copy, 77 own foods are named by nothing; 3 of them are parents, and only "zoete aardappel friet" has a child something uses, so the cleanup loses that one food.
 - Year words are in the eight languages the recurrence config has; the other eight locales have no parser words at all, as before. The display words are in all 16. Dutch gained "elk" ("elk jaar"). The repeat panel gained a Yearly option.
 - Release notes are left to ticket 09: the delete dialog, the 30-day sweep and yearly groceries.
 
