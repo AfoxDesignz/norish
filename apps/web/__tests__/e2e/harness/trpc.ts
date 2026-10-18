@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { APIRequestContext, APIResponse, Page } from "@playwright/test";
 import { request } from "@playwright/test";
 
 import type { SessionCookies } from "./auth";
@@ -48,6 +48,29 @@ export async function callTrpc<T>(
   procedure: string,
   ...input: [] | [unknown]
 ): Promise<T> {
+  return await overHttp(baseURL, cookies, procedure, (api, path) =>
+    input.length ? api.post(path, { data: { json: input[0] } }) : api.get(path)
+  );
+}
+
+/** One tRPC query that takes input, over HTTP as the reader the cookies sign in. */
+export async function queryTrpc<T>(
+  baseURL: string,
+  cookies: SessionCookies,
+  procedure: string,
+  input: unknown
+): Promise<T> {
+  return await overHttp(baseURL, cookies, procedure, (api, path) =>
+    api.get(path, { params: { input: JSON.stringify({ json: input }) } })
+  );
+}
+
+async function overHttp<T>(
+  baseURL: string,
+  cookies: SessionCookies,
+  procedure: string,
+  send: (api: APIRequestContext, path: string) => Promise<APIResponse>
+): Promise<T> {
   const api = await request.newContext({
     baseURL,
     extraHTTPHeaders: {
@@ -57,10 +80,7 @@ export async function callTrpc<T>(
   });
 
   try {
-    const path = `/api/trpc/${procedure}`;
-    const response = input.length
-      ? await api.post(path, { data: { json: input[0] } })
-      : await api.get(path);
+    const response = await send(api, `/api/trpc/${procedure}`);
 
     if (!response.ok()) throw new Error(`${procedure} failed: ${response.status()}`);
 

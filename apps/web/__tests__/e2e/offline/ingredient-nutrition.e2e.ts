@@ -202,7 +202,12 @@ test("a legacy salt to taste line lands on salt once the resolver's rules change
   offlineHarness,
 }) => {
   expect(
-    await lineIngredient(offlineHarness.databaseUrl, scenario!.recipeId, "salt to taste")
+    await lineIngredient(
+      offlineHarness.baseURL,
+      await pageA.context().cookies(),
+      scenario!.recipeId,
+      "salt to taste"
+    )
   ).toBe(scenario!.legacyId);
 
   // An upgrade that brings new rules is a boot under a newer rung version.
@@ -221,6 +226,11 @@ test("a legacy salt to taste line lands on salt once the resolver's rules change
   await expect(rows.first()).toHaveAttribute("data-flagged", "false");
 
   expect(
-    await lineIngredient(offlineHarness.databaseUrl, scenario!.recipeId, "salt to taste")
+    await lineIngredient(
+      offlineHarness.baseURL,
+      await pageA.context().cookies(),
+      scenario!.recipeId,
+      "salt to taste"
+    )
   ).toBe(scenario!.ingredientIds.salt);
 });

@@ -1,6 +1,8 @@
 import type { Client } from "pg";
 
+import type { SessionCookies } from "../harness/auth";
 import { insertRecipeLine, withDatabase } from "../harness/database";
+import { queryTrpc } from "../harness/trpc";
 
 /**
  * Seeding for the Ingredient Nutrition browser spec. The stack applies the
@@ -175,24 +177,20 @@ export async function forgetRungVersion(databaseUrl: string): Promise<void> {
   });
 }
 
-/** Which Ingredient a recipe line's first food points at now. */
+/** Which Ingredient a recipe line points at now, as the reader's recipe has it. */
 export async function lineIngredient(
-  databaseUrl: string,
+  baseURL: string,
+  cookies: SessionCookies,
   recipeId: string,
   text: string
 ): Promise<string | null> {
-  return await withDatabase(databaseUrl, async (client) => {
-    const { rows } = await client.query<{ ingredient_id: string }>(
-      `select a.ingredient_id from recipe_ingredients r
-       join recipe_ingredient_foods f on f.recipe_ingredient_id = r.id
-       join ingredient_aliases a on a.id = f.ingredient_alias_id
-       where r.recipe_id = $1 and r.name = $2
-       order by f.position limit 1`,
-      [recipeId, text]
-    );
+  const recipe = await queryTrpc<{
+    recipeIngredients: Array<{ ingredientName: string; ingredientId: string | null }>;
+  }>(baseURL, cookies, "recipes.get", { id: recipeId });
 
-    return rows[0]?.ingredient_id ?? null;
-  });
+  return (
+    recipe.recipeIngredients.find((line) => line.ingredientName === text)?.ingredientId ?? null
+  );
 }
 
 /** Take the scenario away again, so the offline suite after it finds what it seeded. */
