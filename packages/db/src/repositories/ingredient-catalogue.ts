@@ -1,6 +1,19 @@
 import type { SQL } from "drizzle-orm";
-import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
+import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import type { DbTransaction } from "@norish/db/drizzle";
@@ -469,6 +482,27 @@ export interface IngredientUses {
 }
 
 /**
+ * What names a food, one condition per table: a line's food through its spelling, and a Grocery,
+ * recurring grocery or Pantry Ingredient through its spelling or the food itself.
+ */
+function rowsNaming(food: string | SQL) {
+  const spellings = db
+    .select({ id: ingredientAliases.id })
+    .from(ingredientAliases)
+    .where(eq(ingredientAliases.ingredientId, food));
+  const through = (
+    table: typeof groceries | typeof recurringGroceries | typeof pantryIngredients
+  ) => or(inArray(table.ingredientAliasId, spellings), eq(table.ingredientId, food));
+
+  return {
+    lineFoods: inArray(recipeIngredientFoods.ingredientAliasId, spellings),
+    groceries: through(groceries),
+    recurringGroceries: through(recurringGroceries),
+    pantry: through(pantryIngredients),
+  };
+}
+
+/**
  * What names an Ingredient, listed for a viewer: recipes under the recipe
  * view policy, groceries and the Pantry for their household, and how many
  * uses are someone else's.
@@ -477,12 +511,7 @@ export async function listIngredientUses(
   viewer: RecipeListContext,
   ingredientId: string
 ): Promise<IngredientUses> {
-  const spellings = db
-    .select({ id: ingredientAliases.id })
-    .from(ingredientAliases)
-    .where(eq(ingredientAliases.ingredientId, ingredientId));
-  const ours = (table: typeof groceries | typeof recurringGroceries | typeof pantryIngredients) =>
-    or(inArray(table.ingredientAliasId, spellings), eq(table.ingredientId, ingredientId));
+  const naming = rowsNaming(ingredientId);
   const household = (userId: AnyPgColumn) =>
     sql<boolean>`${inArray(userId, viewerAndHouseholdIds(viewer))}`;
   const openable = (await buildOwnerPolicyCondition(viewer, recipes.userId, "view")) ?? sql`true`;
@@ -498,7 +527,7 @@ export async function listIngredientUses(
           db
             .select({ id: recipeIngredientFoods.recipeIngredientId })
             .from(recipeIngredientFoods)
-            .where(inArray(recipeIngredientFoods.ingredientAliasId, spellings))
+            .where(naming.lineFoods)
         )
       )
       .orderBy(asc(sql`lower(${recipes.name})`)),
@@ -511,7 +540,7 @@ export async function listIngredientUses(
       })
       .from(groceries)
       // A repeating grocery's copy on the list is listed and counted once, as the repeat.
-      .where(and(ours(groceries), isNull(groceries.recurringGroceryId)))
+      .where(and(naming.groceries, isNull(groceries.recurringGroceryId)))
       .orderBy(asc(groceries.isDone), asc(sql`lower(${groceries.name})`)),
     db
       .select({
@@ -520,11 +549,11 @@ export async function listIngredientUses(
         visible: household(recurringGroceries.userId),
       })
       .from(recurringGroceries)
-      .where(ours(recurringGroceries)),
+      .where(naming.recurringGroceries),
     db
       .select({ visible: household(pantryIngredients.userId) })
       .from(pantryIngredients)
-      .where(ours(pantryIngredients)),
+      .where(naming.pantry),
   ]);
   // A recipe naming the food on several lines is listed once.
   const openRecipes = new Map(lines.filter((line) => line.visible).map((line) => [line.id, line]));
@@ -559,19 +588,24 @@ export async function deleteCatalogueIngredient(tx: DbTransaction, id: string): 
   await tx.delete(ingredients).where(eq(ingredients.id, id));
 }
 
-/**
- * Whether a line, Grocery, recurring grocery or Pantry Ingredient names the `ingredients` row.
- * Columns by raw name: bare ones would bind to the subqueries' own tables.
- */
-const named = sql`(
-  exists (select 1 from ${ingredientAliases} a where a.ingredient_id = ${ingredients}.id and (
-    exists (select 1 from ${recipeIngredientFoods} r where r.ingredient_alias_id = a.id)
-    or exists (select 1 from ${groceries} g where g.ingredient_alias_id = a.id)
-    or exists (select 1 from ${recurringGroceries} g where g.ingredient_alias_id = a.id)
-    or exists (select 1 from ${pantryIngredients} p where p.ingredient_alias_id = a.id)))
-  or exists (select 1 from ${groceries} g where g.ingredient_id = ${ingredients}.id)
-  or exists (select 1 from ${recurringGroceries} g where g.ingredient_id = ${ingredients}.id)
-  or exists (select 1 from ${pantryIngredients} p where p.ingredient_id = ${ingredients}.id))`;
+/** Whether anything names the `ingredients` row the outer statement is on, by `rowsNaming`. */
+const named = (() => {
+  const naming = rowsNaming(sql`${ingredients}.id`);
+  const any = (table: PgTable, where: SQL | undefined) =>
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(table)
+        .where(where)
+    );
+
+  return sql`(${or(
+    any(recipeIngredientFoods, naming.lineFoods),
+    any(groceries, naming.groceries),
+    any(recurringGroceries, naming.recurringGroceries),
+    any(pantryIngredients, naming.pantry)
+  )})`;
+})();
 
 /**
  * Clear the mark on own Ingredients named again, delete those unnamed for 90 nights and no
