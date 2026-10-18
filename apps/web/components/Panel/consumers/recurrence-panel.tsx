@@ -19,7 +19,7 @@ import { calculateNextOccurrence, getTodayString } from "@norish/shared/lib/recu
 import {
   formatNextOccurrence,
   formatRecurrenceSummary,
-  recurrenceUnit,
+  recurrenceUnitKey,
 } from "@norish/shared/lib/recurrence/formatter";
 
 type RecurrencePanelProps = {
@@ -204,7 +204,7 @@ export function RecurrencePanel({
               />
               <div className="bg-surface-secondary flex-1 rounded-lg px-2 py-2.5 text-center">
                 <span className="text-foreground text-xl font-bold">{pattern.interval}</span>
-                <span className="text-muted ml-1.5 text-xs">{t(recurrenceUnit(pattern))}</span>
+                <span className="text-muted ml-1.5 text-xs">{t(recurrenceUnitKey(pattern))}</span>
               </div>
               <IconActionButton
                 action="increase"

@@ -54,8 +54,8 @@ const DEFAULT_TRANSLATIONS: RecurrenceTranslations = {
 
 const UNIT_PLURALS = { day: "days", week: "weeks", month: "months", year: "years" } as const;
 
-/** The unit word a pattern reads in, singular or plural: an English word and a translation key alike. */
-export function recurrenceUnit({
+/** The translation key of the unit word a pattern reads in, singular or plural. */
+export function recurrenceUnitKey({
   rule,
   interval,
 }: RecurrencePattern): RecurrenceRule | (typeof UNIT_PLURALS)[RecurrenceRule] {
@@ -80,7 +80,7 @@ export function formatRecurrenceSummary(
   const intervalText =
     interval === 1 ? t.every : interval === 2 ? t.everyOther : `${t.every} ${interval}`;
 
-  const unitText = t[recurrenceUnit(pattern)];
+  const unitText = t[recurrenceUnitKey(pattern)];
 
   // Build weekday text if applicable
   let weekdayText = "";
@@ -180,7 +180,7 @@ export function formatRecurrenceAsText(pattern: RecurrencePattern): string {
   }
 
   // Add unit
-  text += ` ${recurrenceUnit(pattern)}`;
+  text += ` ${DEFAULT_TRANSLATIONS[recurrenceUnitKey(pattern)]}`;
 
   // Add weekday if specified
   if (weekday !== undefined) {
