@@ -36,9 +36,10 @@ describe("a recipe line's foods", () => {
     return { id: ingredient.id, aliasId: alias!.id };
   }
 
-  const names = (...foods: Array<{ aliasId: string }>) =>
+  /** Writes the line's foods, in order. */
+  const foods = (...list: Array<{ aliasId: string }>) =>
     db.transaction((tx) =>
-      writeRecipeLineFoodsTx(tx, [{ id: lineId, aliasIds: foods.map((f) => f.aliasId) }])
+      writeRecipeLineFoodsTx(tx, [{ id: lineId, aliasIds: list.map((f) => f.aliasId) }])
     );
 
   const line = async () => (await getRecipeFull(recipeId))!.recipeIngredients[0]!;
@@ -62,15 +63,15 @@ describe("a recipe line's foods", () => {
   });
 
   it("reads the first food in order, as each write lists them", async () => {
-    await names(butter, oil);
+    await foods(butter, oil);
     expect((await line()).ingredientId).toBe(butter.id);
 
-    await names(oil, butter);
+    await foods(oil, butter);
     expect((await line()).ingredientId).toBe(oil.id);
   });
 
   it("keeps each line's first food under any name the table is read by", async () => {
-    await names(butter, oil);
+    await foods(butter, oil);
     const f = alias(schema.recipeIngredientFoods, "f");
 
     await expect(
@@ -88,7 +89,7 @@ describe("a recipe line's foods", () => {
   });
 
   it("reads the next food once the first is deleted, and none once every food is gone", async () => {
-    await names(butter, oil);
+    await foods(butter, oil);
 
     await db.delete(schema.ingredients).where(eq(schema.ingredients.id, butter.id));
     expect(await line()).toMatchObject({ ingredientName: "boter of olie", ingredientId: oil.id });
