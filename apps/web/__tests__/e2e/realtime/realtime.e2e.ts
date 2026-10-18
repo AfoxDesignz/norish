@@ -25,6 +25,7 @@ import { dropSocket, expect, socketLedger, test, waitForSocket } from "./fixture
 import {
   addGrocery,
   callMutation,
+  callQuery,
   openGroceries,
   rawSocket,
   readGrocery,
@@ -160,6 +161,98 @@ test("grocery create, update and delete reach the other browser without a reload
 
   expect(deleted.ok).toBe(true);
   await expect(rowFor(pageB, "realtime-melk-hernoemd")).toHaveCount(0);
+});
+
+test("a typed name joining two foods is a grocery each, in both browsers", async () => {
+  // A name splits only where every part is a known food; a Pantry add makes them known.
+  for (const name of ["realtime-zout", "realtime-peper"]) {
+    expect((await callMutation(pageA, stack.baseURL, "pantry.add", { name })).ok).toBe(true);
+  }
+
+  await pageA.getByRole("button", { name: "Add Item" }).click();
+  await pageA
+    .getByPlaceholder("e.g., 2 lbs chicken breast")
+    .fill("realtime-zout en realtime-peper");
+  await pageA.getByRole("button", { name: "Add", exact: true }).click();
+  await pageA.getByRole("button", { name: "Close panel" }).click();
+
+  for (const page of [pageA, pageB]) {
+    await expect(rowFor(page, "realtime-zout")).toBeVisible();
+    await expect(rowFor(page, "realtime-peper")).toBeVisible();
+    await expect(rowFor(page, "realtime-zout en realtime-peper")).toHaveCount(0);
+  }
+});
+
+test("a rename, a repeating grocery and a Pantry add joining two foods are a row per food", async () => {
+  const names = (rows: Array<{ name: string | null }>) => rows.map((row) => row.name);
+  const list = () =>
+    callQuery<{
+      groceries: Array<{ id: string; name: string; version: number }>;
+      recurringGroceries: Array<{ name: string; recurrenceRule: string }>;
+    }>(pageA, stack.baseURL, "groceries.list");
+  const typed = (name: string) => ({ name, amount: null, unit: null, isDone: false });
+
+  // Each part is a known food first: a Pantry add or a typed grocery mints it.
+  for (const name of ["realtime-olie", "realtime-ui", "realtime-knoflook"]) {
+    expect((await callMutation(pageA, stack.baseURL, "pantry.add", { name })).ok).toBe(true);
+  }
+  for (const name of ["realtime-boter", "realtime-kaas", "realtime-ham"]) {
+    expect((await callMutation(pageA, stack.baseURL, "groceries.create", [typed(name)])).ok).toBe(
+      true
+    );
+  }
+
+  const boter = (await list()).groceries.find((grocery) => grocery.name === "realtime-boter")!;
+
+  expect(
+    (
+      await callMutation(pageA, stack.baseURL, "groceries.update", {
+        groceryId: boter.id,
+        raw: "realtime-boter en realtime-olie",
+        version: boter.version,
+      })
+    ).ok
+  ).toBe(true);
+  expect(
+    (
+      await callMutation(pageA, stack.baseURL, "groceries.createRecurring", {
+        name: "realtime-ui en realtime-knoflook",
+        amount: null,
+        unit: null,
+        recurrenceRule: "week",
+        recurrenceInterval: 1,
+        recurrenceWeekday: null,
+        nextPlannedFor: new Date().toISOString().slice(0, 10),
+      })
+    ).ok
+  ).toBe(true);
+  expect(
+    (
+      await callMutation(pageA, stack.baseURL, "pantry.add", {
+        name: "realtime-kaas en realtime-ham",
+      })
+    ).ok
+  ).toBe(true);
+
+  for (const name of ["realtime-boter", "realtime-olie", "realtime-ui", "realtime-knoflook"]) {
+    await expect(rowFor(pageB, name)).toBeVisible();
+  }
+  await expect
+    .poll(async () => names((await list()).recurringGroceries))
+    .toEqual(expect.arrayContaining(["realtime-ui", "realtime-knoflook"]));
+  await expect
+    .poll(async () => names(await callQuery(pageA, stack.baseURL, "pantry.list")))
+    .toEqual(expect.arrayContaining(["realtime-kaas", "realtime-ham"]));
+
+  const joined = [
+    "realtime-boter en realtime-olie",
+    "realtime-ui en realtime-knoflook",
+    "realtime-kaas en realtime-ham",
+  ];
+  const { groceries, recurringGroceries } = await list();
+  const stored = [...names(groceries), ...names(recurringGroceries)];
+
+  for (const name of joined) expect(stored).not.toContain(name);
 });
 
 test("a validation failure toasts only the browser that caused it", async () => {

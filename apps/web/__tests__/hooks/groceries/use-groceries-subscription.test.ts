@@ -201,6 +201,53 @@ describe("useGroceriesSubscription", () => {
       expect(cachedData?.groceries).toHaveLength(1);
     });
 
+    it("puts the server's rows in place of one held since it was typed, as a name that split replays", async () => {
+      queryClient.setQueryData(
+        mockQueryKey,
+        createMockGroceriesData([createMockGrocery({ id: "g1", name: "zout en peper" })], [])
+      );
+
+      renderHook(() => useGroceriesSubscription(), {
+        wrapper: createTestWrapper(queryClient),
+      });
+
+      const zout = createMockGrocery({ id: "g1", name: "zout" });
+      const peper = createMockGrocery({ id: "g2", name: "peper" });
+
+      act(() => {
+        subscriptionCallbacks.onCreated!(emitPayload({ groceries: [zout, peper] }));
+      });
+
+      const cachedData =
+        queryClient.getQueryData<ReturnType<typeof createMockGroceriesData>>(mockQueryKey);
+
+      expect(cachedData?.groceries.map((grocery) => grocery.name).sort()).toEqual([
+        "peper",
+        "zout",
+      ]);
+    });
+
+    it("keeps a held row changed since its create", async () => {
+      const checked = createMockGrocery({ id: "g1", name: "Milk", isDone: true, version: 2 });
+
+      queryClient.setQueryData(mockQueryKey, createMockGroceriesData([checked], []));
+
+      renderHook(() => useGroceriesSubscription(), {
+        wrapper: createTestWrapper(queryClient),
+      });
+
+      act(() => {
+        subscriptionCallbacks.onCreated!(
+          emitPayload({ groceries: [{ ...checked, isDone: false, version: 1 }] })
+        );
+      });
+
+      expect(
+        queryClient.getQueryData<ReturnType<typeof createMockGroceriesData>>(mockQueryKey)
+          ?.groceries
+      ).toEqual([checked]);
+    });
+
     it("shifts existing groceries in the same store when a new grocery is created", async () => {
       const existingGrocery = createMockGrocery({
         id: "g1",

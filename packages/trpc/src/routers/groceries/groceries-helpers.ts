@@ -24,7 +24,7 @@ import {
   getStoreOwnerId,
   upsertIngredientStorePreference,
 } from "@norish/db/repositories/stores";
-import { resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
+import { groceryParts, resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
 import { writeResolved } from "@norish/shared-server/ingredients/resolver";
 import { trpcLogger as log } from "@norish/shared-server/logger";
 import { groceries } from "@norish/shared-server/realtime/groceries";
@@ -152,7 +152,17 @@ export async function createGroceriesData(
 
   for (const storeId of named) await assertStoreAccess(ctx, storeId);
 
-  for (const grocery of input) {
+  // A Grocery names one food: a name whose words join foods is a grocery per food, merged alone.
+  const parts = await groceryParts(input);
+  const perFood = input.flatMap((grocery, index) =>
+    parts[index]!.map((name, part) => ({
+      ...grocery,
+      id: part === 0 ? grocery.id : undefined,
+      name,
+    }))
+  );
+
+  for (const grocery of perFood) {
     const normalizedName = normalizeForMerge(grocery.name);
     const recipeKey = grocery.recipeIngredientId ?? "manual";
     const recurringKey = grocery.recurringGroceryId ?? "none";

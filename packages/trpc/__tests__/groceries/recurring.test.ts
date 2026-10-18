@@ -5,7 +5,8 @@ import { recurringGroceriesProcedures } from "@norish/trpc/routers/groceries/rec
 
 // Import test utilities
 import { createMockCallerContext } from "../calendar/test-utils";
-import { createGrocery } from "../mocks/db";
+import { createGroceries, createGrocery, listGroceriesByUsers } from "../mocks/db";
+import { parseIngredientWithDefaults } from "../mocks/helpers";
 import { resolveGroceryName } from "../mocks/ingredient-groceries";
 import { assertHouseholdAccess } from "../mocks/permissions";
 import { groceries } from "../mocks/realtime/groceries";
@@ -164,6 +165,55 @@ describe("recurring groceries procedures", () => {
       );
     });
 
+    it("repeats each food a name joins as a recurring grocery of its own, on the same rule", async () => {
+      const clientId = crypto.randomUUID();
+
+      createRecurringGrocery.mockImplementation(async (data: { id: string; name: string }) =>
+        createMockRecurringGrocery({ id: data.id, name: data.name })
+      );
+      createGrocery.mockImplementation(async (id: string, data: { name: string }) => ({
+        created: createMockGrocery({ id, name: data.name }),
+        shifted: [],
+      }));
+
+      const result = await recurringGroceriesProcedures
+        .createCaller(createMockCallerContext(ctx))
+        .createRecurring({
+          id: clientId,
+          name: "zout en peper",
+          amount: 1,
+          unit: null,
+          recurrenceRule: "month",
+          recurrenceInterval: 2,
+          recurrenceWeekday: null,
+          nextPlannedFor: "2025-12-01",
+        });
+      const rule = {
+        recurrenceRule: "month",
+        recurrenceInterval: 2,
+        recurrenceWeekday: null,
+        nextPlannedFor: "2025-12-01",
+      };
+
+      expect(result.recurringGrocery).toMatchObject({ id: clientId, name: "zout" });
+      expect(createRecurringGrocery).toHaveBeenCalledWith(
+        expect.objectContaining({ id: clientId, name: "zout", ...rule })
+      );
+      expect(createRecurringGrocery).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "peper", ingredientAliasId: "alias:peper", ...rule })
+      );
+      for (const name of ["zout", "peper"]) {
+        expect(groceries.publish).toHaveBeenCalledWith(
+          "recurringCreated",
+          {
+            recurringGrocery: expect.objectContaining({ name }),
+            grocery: expect.objectContaining({ name }),
+          },
+          { householdKey: ctx.householdKey }
+        );
+      }
+    });
+
     it("resolves the name once, for the recurring grocery and the line it puts on the list", async () => {
       createRecurringGrocery.mockImplementation(async (data: { name: string }) =>
         createMockRecurringGrocery({ name: data.name })
@@ -229,6 +279,98 @@ describe("recurring groceries procedures", () => {
       expect(resolveGroceryName).toHaveBeenCalledWith(
         expect.objectContaining({ name: "Test", groceryId }),
         { userId: ctx.user.id }
+      );
+    });
+
+    it("renames to the first food a name joins and repeats the rest on the same rule", async () => {
+      const recurringGroceryId = crypto.randomUUID();
+      const groceryId = crypto.randomUUID();
+      const renamed = createMockRecurringGrocery({
+        id: recurringGroceryId,
+        name: "zout",
+        recurrenceRule: "month",
+        recurrenceInterval: 2,
+        nextPlannedFor: "2025-12-01",
+      });
+
+      updateRecurringGroceryWithGrocery.mockResolvedValue({
+        stale: false,
+        value: { recurringGrocery: renamed, grocery: createMockGrocery({ id: groceryId }) },
+      });
+      createRecurringGrocery.mockImplementation(async (data: { id: string; name: string }) =>
+        createMockRecurringGrocery(data)
+      );
+      createGrocery.mockImplementation(async (id: string, data: { name: string }) => ({
+        created: createMockGrocery({ id, name: data.name }),
+        shifted: [],
+      }));
+
+      await recurringGroceriesProcedures
+        .createCaller(createMockCallerContext(ctx))
+        .updateRecurring({
+          recurringGroceryId,
+          recurringVersion: 1,
+          groceryId,
+          groceryVersion: 1,
+          data: { name: "zout en peper" },
+        });
+
+      await vi.waitFor(() =>
+        expect(createRecurringGrocery).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: "peper",
+            recurrenceRule: "month",
+            recurrenceInterval: 2,
+            nextPlannedFor: "2025-12-01",
+          })
+        )
+      );
+      expect(updateRecurringGroceryWithGrocery).toHaveBeenCalledWith(
+        expect.objectContaining({ id: recurringGroceryId, name: "zout" }),
+        expect.anything()
+      );
+    });
+
+    it("detaches a grocery renamed to a name joining foods as a grocery per food", async () => {
+      const recurringGroceryId = crypto.randomUUID();
+      const groceryId = crypto.randomUUID();
+
+      parseIngredientWithDefaults.mockReturnValueOnce([
+        { description: "zout en peper", quantity: 1, unitOfMeasure: null },
+      ]);
+      detachRecurringGrocery.mockResolvedValue({
+        stale: false,
+        value: createMockGrocery({ id: groceryId, name: "zout" }),
+      });
+      listGroceriesByUsers.mockResolvedValue([]);
+      createGroceries.mockImplementation(
+        async (items: Array<{ id: string; groceries: { name: string | null } }>) => ({
+          created: items.map(({ id, groceries }) =>
+            createMockGrocery({ id, name: groceries.name })
+          ),
+          shifted: [],
+        })
+      );
+
+      await recurringGroceriesProcedures
+        .createCaller(createMockCallerContext(ctx))
+        .detachRecurring({
+          recurringGroceryId,
+          recurringVersion: 1,
+          groceryId,
+          groceryVersion: 1,
+          raw: "zout en peper",
+        });
+
+      await vi.waitFor(() =>
+        expect(groceries.publish).toHaveBeenCalledWith(
+          "created",
+          { groceries: [expect.objectContaining({ name: "peper" })] },
+          { householdKey: ctx.householdKey }
+        )
+      );
+      expect(detachRecurringGrocery).toHaveBeenCalledWith(
+        expect.objectContaining({ grocery: expect.objectContaining({ name: "zout" }) })
       );
     });
 

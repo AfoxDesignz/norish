@@ -231,6 +231,46 @@ describe("useGroceriesMutations", () => {
       });
     });
 
+    it("puts every grocery a typed name became on the list, in place of the one typed", () => {
+      queryClient.setQueryData(
+        ["groceries", "list"],
+        createMockGroceriesData([createMockGrocery({ id: "existing", name: "Milk" })], [])
+      );
+
+      const { result } = renderHook(() => useGroceriesMutations(), {
+        wrapper: createTestWrapper(queryClient),
+      });
+
+      act(() => result.current.createGrocery("zout en peper"));
+
+      const [[sent], options] = _mockMutations.create.mock.calls.at(-1) as [
+        [{ id: string }],
+        { onSuccess: (result: unknown) => void },
+      ];
+      const zout = createMockGrocery({ id: sent.id, name: "zout" });
+      const peper = createMockGrocery({ id: "peper", name: "peper" });
+
+      act(() =>
+        options.onSuccess({
+          ids: [zout.id, peper.id],
+          createdGroceries: [zout, peper],
+          updatedGroceries: [],
+          returnedGroceries: [zout, peper],
+        })
+      );
+
+      const data = queryClient.getQueryData<ReturnType<typeof createMockGroceriesData>>([
+        "groceries",
+        "list",
+      ]);
+
+      expect(data?.groceries.map((grocery) => grocery.name).sort()).toEqual([
+        "Milk",
+        "peper",
+        "zout",
+      ]);
+    });
+
     it("removes an optimistic grocery and reports a failed Outbox admission", () => {
       queryClient.setQueryData(
         ["groceries", "list"],

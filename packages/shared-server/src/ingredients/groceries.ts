@@ -4,7 +4,7 @@ import { findRecipeLineAliases } from "@norish/db/repositories/ingredient-aliase
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import type { ResolveActor } from "./resolver";
-import { cleanIngredientText, resolveIngredients } from "./resolver";
+import { cleanIngredientText, resolveIngredients, typedParts } from "./resolver";
 
 /** A grocery's name as written, the recipe line it was added from, and the grocery it edits, if any. */
 export interface GroceryName {
@@ -13,29 +13,19 @@ export interface GroceryName {
   groceryId?: string | null;
 }
 
-/**
- * The alias each grocery's name resolves to, in order; null for a grocery
- * with no name. An edit that leaves a grocery's text alone keeps its food, or
- * its having none (its food deleted), so only a new text is a new question. A
- * grocery added from a recipe line under that line's own text takes the line's
- * alias, or its having none, so the list and the recipe agree on the food; one
- * whose text was changed on its way to the list is resolved from what it now
- * says. Everything else — typed by hand, repeating, replayed after being
- * added offline — is resolved like any recipe line.
- */
-export async function resolveGroceryNames(
-  items: readonly GroceryName[],
-  actor: ResolveActor
-): Promise<Array<IngredientRef | null>> {
+/** The food an item keeps, if any: an edit's unchanged text, or a one-food line's own text. */
+async function keptFoods(
+  items: readonly GroceryName[]
+): Promise<Array<{ food: IngredientRef | null } | undefined>> {
   const [lines, edited] = await Promise.all([
     findRecipeLineAliases(
       items.flatMap((item) => (item.recipeIngredientId ? [item.recipeIngredientId] : []))
     ),
     findGroceryFoods(items.flatMap((item) => (item.groceryId ? [item.groceryId] : []))),
   ]);
-  const texts = items.map((item) => cleanIngredientText(item.name ?? ""));
-  const kept = items.map((item, index) => {
-    const fold = texts[index] && ingredientAliasFold(texts[index]);
+
+  return items.map((item) => {
+    const fold = ingredientAliasFold(cleanIngredientText(item.name ?? ""));
     const grocery = item.groceryId ? edited.get(item.groceryId) : undefined;
     const line = item.recipeIngredientId ? lines.get(item.recipeIngredientId) : undefined;
 
@@ -44,10 +34,22 @@ export async function resolveGroceryNames(
       return grocery;
     }
 
-    return line && ingredientAliasFold(line.name) === fold
+    return line && line.foods.length <= 1 && ingredientAliasFold(line.name) === fold
       ? { food: line.foods[0] ?? null }
       : undefined;
   });
+}
+
+/**
+ * The alias each grocery's name resolves to, null for none, read like a recipe line's text; a name
+ * that keeps its food (`keptFoods`), or its having none, is not asked again.
+ */
+export async function resolveGroceryNames(
+  items: readonly GroceryName[],
+  actor: ResolveActor
+): Promise<Array<IngredientRef | null>> {
+  const texts = items.map((item) => cleanIngredientText(item.name ?? ""));
+  const kept = await keptFoods(items);
   const toResolve = texts.filter((text, index) => text && !kept[index]);
   const answers = await resolveIngredients(toResolve, actor);
   const resolved = new Map(toResolve.map((text, index) => [text, answers[index]]));
@@ -61,6 +63,30 @@ export async function resolveGroceryNames(
 
     return answer ? { aliasId: answer.aliasId, ingredientId: answer.ingredientId } : null;
   });
+}
+
+/**
+ * The names each grocery's name stands for, as a Grocery names one food (`typedParts`): "zout en
+ * peper" is "zout" and "peper", "boter of olie" is "boter". A kept name (`keptFoods`) stays whole.
+ */
+export async function groceryParts<N extends string | null>(
+  items: ReadonlyArray<GroceryName & { name: N }>
+): Promise<Array<[N | string, ...Array<N | string>]>> {
+  const [kept, split] = await Promise.all([
+    keptFoods(items),
+    typedParts(items.map((item) => item.name ?? "")),
+  ]);
+
+  return items.map((item, index) => (!kept[index] && split[index]) || [item.name]);
+}
+
+/** `groceryParts` for one name. */
+export async function groceryPartsOf<N extends string | null>(
+  item: GroceryName & { name: N }
+): Promise<[N | string, ...Array<N | string>]> {
+  const [parts] = await groceryParts([item]);
+
+  return parts!;
 }
 
 /**

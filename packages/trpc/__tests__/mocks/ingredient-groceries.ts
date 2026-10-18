@@ -19,3 +19,12 @@ export const ingredientColumns = (
 export const resolveGroceryName = vi.fn(async (grocery: { name: string | null }) =>
   ingredientColumns((await resolveGroceryNames([grocery]))[0])
 );
+
+/** "x en y" stands for a grocery each, as a name whose words join two foods does. */
+export const groceryParts = vi.fn(async (items: ReadonlyArray<{ name: string | null }>) =>
+  items.map((item) => item.name?.split(" en ") ?? [item.name])
+);
+
+export const groceryPartsOf = vi.fn(
+  async (item: { name: string | null }) => (await groceryParts([item]))[0]
+);

@@ -158,12 +158,15 @@ function reconcileCreatedGroceries(
 
   const createdToInsert: GroceryDto[] = [];
 
+  // A name joining foods comes back as a grocery per food, so ids pair with what was sent only 1:1.
+  const paired = ids.length === optimisticGroceries.length;
+
   ids.forEach((id, index) => {
-    const optimistic = optimisticGroceries[index];
+    const optimistic = paired ? optimisticGroceries[index] : undefined;
+    const grocery = returnedById.get(id) ?? (optimistic && { ...optimistic, id });
 
-    if (!optimistic) return;
+    if (!grocery) return;
 
-    const grocery = returnedById.get(id) ?? { ...optimistic, id };
     const created = createdById.get(id);
     const existingIndex = groceries.findIndex((existing) => existing.id === id);
 

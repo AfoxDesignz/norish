@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import type { GroceryIngredientColumns } from "@norish/shared-server/ingredients/groceries";
-import type { GroceryInsertDto } from "@norish/shared/contracts";
+import type { GroceryInsertDto, RecurringGroceryDto } from "@norish/shared/contracts";
 import { assertHouseholdAccess } from "@norish/auth/permissions";
 import { createGrocery } from "@norish/db";
 import {
@@ -15,7 +15,7 @@ import {
   updateRecurringGroceryWithGrocery,
 } from "@norish/db/repositories/recurring-groceries";
 import { getUnits } from "@norish/shared-server/config/server-config-loader";
-import { resolveGroceryName } from "@norish/shared-server/ingredients/groceries";
+import { groceryPartsOf, resolveGroceryName } from "@norish/shared-server/ingredients/groceries";
 import { writeResolved } from "@norish/shared-server/ingredients/resolver";
 import { trpcLogger as log } from "@norish/shared-server/logger";
 import { groceries } from "@norish/shared-server/realtime/groceries";
@@ -28,10 +28,100 @@ import {
 import { parseIngredientWithDefaults } from "@norish/shared/lib/helpers";
 import { calculateNextOccurrence, getTodayString } from "@norish/shared/lib/recurrence/calculator";
 
+import type { GroceryProcedureContext } from "./groceries-helpers";
 import { authedProcedure } from "../../middleware";
 import { router } from "../../trpc";
 import { noticeGroceries } from "../stores/pricing";
-import { rememberStorePreference } from "./groceries-helpers";
+import { createGroceriesData, rememberStorePreference } from "./groceries-helpers";
+
+/** A recurring grocery to create: its id, name, amount and rule, and its first grocery's Store. */
+type RecurringOf = Pick<
+  RecurringGroceryDto,
+  | "id"
+  | "name"
+  | "amount"
+  | "unit"
+  | "recurrenceRule"
+  | "recurrenceInterval"
+  | "recurrenceWeekday"
+  | "nextPlannedFor"
+> & { storeId?: string | null; purchaseAmount?: number | null };
+
+/** Create a recurring grocery and the grocery it puts on the list, and tell the household. */
+async function createRecurringOf(ctx: GroceryProcedureContext, recurring: RecurringOf) {
+  const id = crypto.randomUUID();
+  const recurringData = {
+    id: recurring.id,
+    userId: ctx.user.id,
+    name: recurring.name,
+    amount: recurring.amount,
+    unit: recurring.unit,
+    recurrenceRule: recurring.recurrenceRule,
+    recurrenceInterval: recurring.recurrenceInterval,
+    recurrenceWeekday: recurring.recurrenceWeekday,
+    nextPlannedFor: recurring.nextPlannedFor,
+    lastCheckedDate: null,
+  };
+  const created = await writeResolved(
+    () => resolveGroceryName({ name: recurring.name }, { userId: ctx.user.id }),
+    (ingredient) =>
+      createRecurringGrocery({
+        ...recurringData,
+        ingredientAliasId: ingredient.ingredientAliasId,
+        ingredientId: ingredient.ingredientId,
+      })
+  );
+  // The grocery asks again: an exact alias match, unless the food moved
+  // in between, in which case it follows.
+  const groceryOf = (ingredient: GroceryIngredientColumns): GroceryInsertDto => ({
+    userId: ctx.user.id,
+    name: created.name,
+    ingredientAliasId: ingredient.ingredientAliasId,
+    ingredientId: ingredient.ingredientId,
+    unit: created.unit || null,
+    amount: created.amount,
+    purchaseAmount: recurring.purchaseAmount,
+    isDone: false,
+    recurringGroceryId: created.id,
+    recipeIngredientId: null,
+    storeId: recurring.storeId ?? null,
+  });
+
+  const { created: grocery, shifted } = await writeResolved(
+    () => resolveGroceryName({ name: created.name }, { userId: ctx.user.id }),
+    (ingredient) => createGrocery(id, groceryOf(ingredient), ctx.userIds)
+  );
+
+  // A repeating grocery is a grocery on the list like any other: its Store
+  // is asked what it knows about the name, exactly as the add panel asks.
+  await noticeGroceries(ctx, [grocery]);
+
+  log.info(
+    { userId: ctx.user.id, recurringId: created.id, groceryId: id },
+    "Recurring grocery created"
+  );
+  // The siblings it made room among carry new versions now; every screen
+  // hears so, or its next write on one of them is refused as stale.
+  if (shifted.length > 0) {
+    void groceries.publish(
+      "updated",
+      {
+        changedGroceries: shifted,
+      },
+      { householdKey: ctx.householdKey }
+    );
+  }
+  void groceries.publish(
+    "recurringCreated",
+    {
+      recurringGrocery: created,
+      grocery,
+    },
+    { householdKey: ctx.householdKey }
+  );
+
+  return { recurringGrocery: created, grocery, shifted };
+}
 
 const createRecurring = authedProcedure
   .input(
@@ -49,87 +139,25 @@ const createRecurring = authedProcedure
     })
   )
   .mutation(async ({ ctx, input }) => {
-    const id = crypto.randomUUID();
-
     log.info(
       { userId: ctx.user.id, rule: input.recurrenceRule, interval: input.recurrenceInterval },
       "Creating recurring grocery"
     );
 
-    const recurringId = input.id ?? crypto.randomUUID();
-    const recurringData = {
-      id: recurringId,
-      userId: ctx.user.id,
-      name: input.name,
-      amount: input.amount,
-      unit: input.unit,
-      recurrenceRule: input.recurrenceRule,
-      recurrenceInterval: input.recurrenceInterval,
-      recurrenceWeekday: input.recurrenceWeekday,
-      nextPlannedFor: input.nextPlannedFor,
-      lastCheckedDate: null,
-    };
-
     try {
-      const created = await writeResolved(
-        () => resolveGroceryName({ name: input.name }, { userId: ctx.user.id }),
-        (ingredient) =>
-          createRecurringGrocery({
-            ...recurringData,
-            ingredientAliasId: ingredient.ingredientAliasId,
-            ingredientId: ingredient.ingredientId,
-          })
-      );
-      // The grocery asks again: an exact alias match, unless the food moved
-      // in between, in which case it follows.
-      const groceryOf = (ingredient: GroceryIngredientColumns): GroceryInsertDto => ({
-        userId: ctx.user.id,
-        name: created.name,
-        ingredientAliasId: ingredient.ingredientAliasId,
-        ingredientId: ingredient.ingredientId,
-        unit: created.unit || null,
-        amount: created.amount,
-        purchaseAmount: input.purchaseAmount,
-        isDone: false,
-        recurringGroceryId: created.id,
-        recipeIngredientId: null,
-        storeId: input.storeId ?? null,
+      // A name whose words join foods repeats each on its rule, the first under the client's id.
+      const [name, ...others] = await groceryPartsOf({ name: input.name });
+      const created = await createRecurringOf(ctx, {
+        ...input,
+        id: input.id ?? crypto.randomUUID(),
+        name,
       });
 
-      const { created: grocery, shifted } = await writeResolved(
-        () => resolveGroceryName({ name: created.name }, { userId: ctx.user.id }),
-        (ingredient) => createGrocery(id, groceryOf(ingredient), ctx.userIds)
-      );
-
-      // A repeating grocery is a grocery on the list like any other: its Store
-      // is asked what it knows about the name, exactly as the add panel asks.
-      await noticeGroceries(ctx, [grocery]);
-
-      log.info(
-        { userId: ctx.user.id, recurringId: created.id, groceryId: id },
-        "Recurring grocery created"
-      );
-      // The siblings it made room among carry new versions now; every screen
-      // hears so, or its next write on one of them is refused as stale.
-      if (shifted.length > 0) {
-        void groceries.publish(
-          "updated",
-          {
-            changedGroceries: shifted,
-          },
-          { householdKey: ctx.householdKey }
-        );
+      for (const other of others) {
+        await createRecurringOf(ctx, { ...input, id: crypto.randomUUID(), name: other });
       }
-      void groceries.publish(
-        "recurringCreated",
-        {
-          recurringGrocery: created,
-          grocery,
-        },
-        { householdKey: ctx.householdKey }
-      );
 
-      return { recurringGrocery: created, grocery, shifted };
+      return created;
     } catch (err) {
       log.error({ err, userId: ctx.user.id }, "Failed to create recurring grocery");
       void groceries.publish(
@@ -183,12 +211,16 @@ const updateRecurring = authedProcedure
 
         await assertHouseholdAccess(ctx.user.id, ownerId);
 
-        // A new name is a new question: it is resolved, and the grocery the
-        // recurring one keeps on the list takes the same answer.
+        // A new name is resolved, and the grocery on the list takes the same answer; one
+        // joining foods renames it to the first and repeats the rest on its rule.
+        const [name, ...others] =
+          data.name === undefined
+            ? [undefined]
+            : await groceryPartsOf({ name: data.name, groceryId });
         const outcome = await writeResolved(
           async () =>
-            data.name !== undefined
-              ? await resolveGroceryName({ name: data.name, groceryId }, { userId: ctx.user.id })
+            name !== undefined
+              ? await resolveGroceryName({ name, groceryId }, { userId: ctx.user.id })
               : null,
           (ingredient) =>
             updateRecurringGroceryWithGrocery(
@@ -196,6 +228,7 @@ const updateRecurring = authedProcedure
                 id: recurringGroceryId,
                 version: recurringVersion,
                 ...data,
+                name,
                 // An unchanged name keeps the food it had.
                 ingredientAliasId: ingredient?.ingredientAliasId,
                 ingredientId: ingredient?.ingredientId,
@@ -242,6 +275,14 @@ const updateRecurring = authedProcedure
           },
           { householdKey: ctx.householdKey }
         );
+
+        for (const other of others) {
+          await createRecurringOf(ctx, {
+            ...outcome.value.recurringGrocery,
+            id: crypto.randomUUID(),
+            name: other,
+          });
+        }
       })
       .catch((err) => {
         log.error(
@@ -288,12 +329,13 @@ const detachRecurring = authedProcedure
           });
         }
 
+        // A new name joining foods keeps the grocery as the first and puts the rest on the list.
+        const [name, ...others] = await groceryPartsOf({
+          name: parsedIngredient.description,
+          groceryId,
+        });
         const outcome = await writeResolved(
-          () =>
-            resolveGroceryName(
-              { name: parsedIngredient.description, groceryId },
-              { userId: ctx.user.id }
-            ),
+          () => resolveGroceryName({ name, groceryId }, { userId: ctx.user.id }),
           (ingredient) =>
             detachRecurringGrocery({
               recurringGroceryId,
@@ -301,7 +343,7 @@ const detachRecurring = authedProcedure
               grocery: {
                 id: groceryId,
                 version: groceryVersion,
-                name: parsedIngredient.description,
+                name,
                 ingredientAliasId: ingredient.ingredientAliasId,
                 ingredientId: ingredient.ingredientId,
                 unit: parsedIngredient.unitOfMeasure,
@@ -351,6 +393,18 @@ const detachRecurring = authedProcedure
           },
           { householdKey: ctx.householdKey }
         );
+
+        if (others.length > 0) {
+          await createGroceriesData(
+            ctx,
+            others.map((other) => ({
+              name: other,
+              amount: parsedIngredient.quantity ?? null,
+              unit: parsedIngredient.unitOfMeasure,
+              isDone: false,
+            }))
+          );
+        }
       })
       .catch((err) => {
         log.error(

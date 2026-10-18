@@ -1,50 +1,58 @@
 import type { PantryIngredientDto } from "@norish/shared/contracts";
 import { addPantryIngredient, findIngredientOwnSpelling } from "@norish/db/repositories/pantry";
 
-import { resolveIngredient, writeResolved } from "./resolver";
+import { resolveIngredient, typedParts, writeResolved } from "./resolver";
+
+/** A Pantry Ingredient put in, and whether it is new or the one the household already had. */
+export type PantryAdded = { item: PantryIngredientDto; created: boolean };
 
 /**
- * Put what a member typed in the Pantry: the text is resolved like any recipe
- * line, so "Onions" and "onions, chopped" are the one Ingredient, and a food
- * the household already has is answered with the item it holds rather than
- * a second one (`created: false`). Null where the text names no food.
+ * Put what a member typed in the Pantry, resolved like a recipe line: a food per part its words
+ * join (`typedParts`), the first under `id`. A food the household has answers `created: false`.
  */
 export async function addToPantry(
   id: string,
   input: { userId: string; userIds: string[]; name: string }
-): Promise<{ item: PantryIngredientDto; created: boolean } | null> {
-  return await writeResolved(
-    () => resolveIngredient(input.name, { userId: input.userId }),
-    async (resolved) => {
-      if (!resolved) return null;
+): Promise<PantryAdded[]> {
+  const [parts] = await typedParts([input.name]);
+  const added: PantryAdded[] = [];
 
-      return await addPantryIngredient(id, {
-        userId: input.userId,
-        userIds: input.userIds,
-        ingredientAliasId: resolved.aliasId,
-        ingredientId: resolved.ingredientId,
-      });
-    }
-  );
+  for (const [index, name] of (parts ?? [input.name]).entries()) {
+    const one = await writeResolved(
+      () => resolveIngredient(name, { userId: input.userId }),
+      async (resolved) =>
+        resolved &&
+        (await addPantryIngredient(index === 0 ? id : crypto.randomUUID(), {
+          userId: input.userId,
+          userIds: input.userIds,
+          ingredientAliasId: resolved.aliasId,
+          ingredientId: resolved.ingredientId,
+        }))
+    );
+
+    if (one) added.push(one);
+  }
+
+  return added;
 }
 
 /**
- * Put a food a member picked in the Pantry: the Ingredient as picked, with
- * no resolver call, the row pointing at the Ingredient's own spelling. A
- * food the household already keeps is answered with the item it holds; null
- * where the Ingredient is gone (merged away or deleted since it was picked).
+ * Put a food a member picked in the Pantry as picked, under its own spelling; none where the
+ * Ingredient is gone (merged away or deleted since it was picked).
  */
 export async function addPickedToPantry(
   id: string,
   input: { userId: string; userIds: string[]; ingredientId: string }
-): Promise<{ item: PantryIngredientDto; created: boolean } | null> {
+): Promise<PantryAdded[]> {
   const spelling = await findIngredientOwnSpelling(input.ingredientId);
 
-  if (!spelling) return null;
+  if (!spelling) return [];
 
-  return await addPantryIngredient(id, {
-    userId: input.userId,
-    userIds: input.userIds,
-    ...spelling,
-  });
+  return [
+    await addPantryIngredient(id, {
+      userId: input.userId,
+      userIds: input.userIds,
+      ...spelling,
+    }),
+  ];
 }

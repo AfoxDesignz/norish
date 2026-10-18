@@ -30,6 +30,17 @@ export async function callMutation<T = unknown>(
   return { ok: response.ok(), status: response.status(), data: body?.result?.data?.json ?? null };
 }
 
+/** Read one tRPC query that takes no input over HTTP as the context's user. */
+export async function callQuery<T>(page: Page, baseURL: string, procedure: string): Promise<T> {
+  const response = await page.request.get(`${baseURL}/api/trpc/${procedure}`, {
+    headers: { origin: baseURL },
+  });
+
+  if (!response.ok()) throw new Error(`${procedure} failed with HTTP ${response.status()}`);
+
+  return ((await response.json()) as { result: { data: { json: T } } }).result.data.json;
+}
+
 export interface HouseholdRow {
   id: string;
   joinCode: string;

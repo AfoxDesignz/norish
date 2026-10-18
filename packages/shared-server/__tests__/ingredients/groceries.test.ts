@@ -2,18 +2,18 @@
 /**
  * Grocery names through Ingredient Aliases, against a real database: a line
  * typed by hand and a line added from a recipe are recognised the same way,
- * and each keeps its own text.
+ * and each keeps its own text; a name whose words join foods is a grocery each.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
+import { createGrocery, createRecipeWithRefs, getRecipeFull } from "@norish/db";
 import { withTransaction } from "@norish/db/drizzle";
 import { deleteCatalogueIngredient } from "@norish/db/repositories/ingredient-catalogue";
 import { groceries, ingredients } from "@norish/db/schema";
-import { resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
+import { groceryParts, resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
 import { withResolvedIngredients } from "@norish/shared-server/ingredients/recipe-lines";
 
-import { getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
+import { getTestDb, mintTestFood } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
 describe("grocery names through aliases", () => {
@@ -143,5 +143,51 @@ describe("grocery names through aliases", () => {
     await expect(
       resolveGroceryNames([{ name: null }, { name: "  " }], { userId })
     ).resolves.toEqual([null, null]);
+  });
+
+  describe("a name whose words join foods", () => {
+    beforeEach(async () => {
+      for (const text of ["zout", "peper", "boter", "olie"]) await mintTestFood(text);
+    });
+
+    it("stands for a grocery per food it joins, the first of alternatives, and minting nothing", async () => {
+      await expect(
+        groceryParts([
+          { name: "Zout en peper" },
+          { name: "boter of olie" },
+          { name: "zout en suiker" },
+          { name: ")" },
+          { name: null },
+        ])
+      ).resolves.toEqual([["Zout", "peper"], ["boter"], ["zout en suiker"], [")"], [null]]);
+      await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(4);
+    });
+
+    it("keeps whole a grocery whose joined text an edit leaves alone", async () => {
+      const [zout] = await resolveGroceryNames([{ name: "zout" }], { userId });
+      const { created: grocery } = await createGrocery(
+        crypto.randomUUID(),
+        {
+          userId,
+          name: "zout en peper",
+          ingredientAliasId: zout!.aliasId,
+          ingredientId: zout!.ingredientId,
+          unit: null,
+          amount: null,
+          isDone: false,
+          recipeIngredientId: null,
+          recurringGroceryId: null,
+          storeId: null,
+        },
+        [userId]
+      );
+
+      await expect(
+        groceryParts([
+          { name: "Zout en peper", groceryId: grocery.id },
+          { name: "peper en zout", groceryId: grocery.id },
+        ])
+      ).resolves.toEqual([["Zout en peper"], ["peper", "zout"]]);
+    });
   });
 });

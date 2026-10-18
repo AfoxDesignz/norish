@@ -235,19 +235,40 @@ export async function resolveLineFoods(
   return await resolveTexts(texts, actor, options, { splitJoined: true });
 }
 
+/**
+ * The parts a typed text stands for as rows naming one food, by its words alone, minting nothing:
+ * each food a "together" text joins, the first of "alternatives"; null where it stays whole.
+ */
+export async function typedParts(
+  texts: readonly string[]
+): Promise<Array<[string, ...string[]] | null>> {
+  const rules = await currentRules();
+  const spellings = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
+  const { byWords } = await readByWords(spellings, rules, true);
+
+  return spellings.map((spelling) => {
+    const named = byWords.get(spelling);
+    const [first, ...rest] = named?.joined ? named.foods.map((food) => food.text) : [];
+
+    if (first === undefined) return null;
+
+    return named?.joined === "together" ? [first, ...rest] : [first];
+  });
+}
+
 /** A text split at its joining words (`joinedParts`), each part read as a spelling. */
 interface SpelledParts extends JoinedParts {
   spellings: Spelling[];
 }
 
 /**
- * The foods a text's joining words split it into, where the first two rungs know every part;
- * parts that are one food name it alone. Undefined where the words name no foods.
+ * The foods a text's joining words split it into, each with the part naming it, where the first two
+ * rungs know every part; parts that are one food name it alone. Undefined where they name no foods.
  */
 function foodsByWords(
   parts: SpelledParts,
   known: ReadonlyMap<string, IngredientAliasRow>
-): { aliases: IngredientAliasRow[]; joined: LineJoin | null } | undefined {
+): { foods: ResolvedIngredient[]; joined: LineJoin | null } | undefined {
   const aliases = parts.spellings.map((part) => matchKnown(part, known));
 
   if (!aliases.every((alias) => alias !== undefined)) return undefined;
@@ -258,23 +279,24 @@ function foodsByWords(
 
   if (parts.words.some((word) => aliases.every(spelledIn(word.connectorIn)))) return undefined;
 
-  const foods = aliases.filter(
-    (alias, index) =>
-      aliases.findIndex((other) => other.ingredientId === alias.ingredientId) === index
+  const foods = aliases.flatMap(({ aliasId, ingredientId }, index) =>
+    aliases.findIndex((other) => other.ingredientId === ingredientId) === index
+      ? [{ aliasId, ingredientId, text: parts.parts[index]! }]
+      : []
   );
 
-  return { aliases: foods, joined: foods.length > 1 ? parts.joined : null };
+  return { foods, joined: foods.length > 1 ? parts.joined : null };
 }
 
-/** Both resolutions: `splitJoined` reads a text not known whole by its joining words before AI. */
-async function resolveTexts(
-  texts: readonly string[],
-  actor: ResolveActor,
-  options: ResolveOptions,
-  { splitJoined }: { splitJoined: boolean }
-): Promise<Array<ResolvedFoods | null>> {
-  const rules = await currentRules();
-  const asWritten = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
+/**
+ * The aliases spellings and, with `splitJoined`, their joined parts match, and the foods the words
+ * name for each spelling not known whole. One query; mints nothing.
+ */
+async function readByWords(
+  asWritten: readonly Spelling[],
+  rules: SpellingRules,
+  splitJoined: boolean
+) {
   const spellings = asWritten.filter((spelling) => !spellingNamesNoFood(spelling));
   const splits = new Map(
     (splitJoined ? spellings : []).flatMap((spelling) => {
@@ -298,6 +320,20 @@ async function resolveTexts(
       return foods ? [[spelling, foods] as const] : [];
     })
   );
+
+  return { spellings, known, byWords };
+}
+
+/** Both resolutions: `splitJoined` reads a text not known whole by its joining words before AI. */
+async function resolveTexts(
+  texts: readonly string[],
+  actor: ResolveActor,
+  options: ResolveOptions,
+  { splitJoined }: { splitJoined: boolean }
+): Promise<Array<ResolvedFoods | null>> {
+  const rules = await currentRules();
+  const asWritten = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
+  const { spellings, known, byWords } = await readByWords(asWritten, rules, splitJoined);
   const answers = await askAboutUnknown(
     spellings.filter((spelling) => !matchKnown(spelling, known) && !byWords.has(spelling)),
     options
@@ -311,7 +347,7 @@ async function resolveTexts(
     if (named) {
       resolved.set(spelling, {
         text: spelling.text,
-        foods: named.aliases.map(({ aliasId, ingredientId }) => ({ aliasId, ingredientId })),
+        foods: named.foods.map(({ aliasId, ingredientId }) => ({ aliasId, ingredientId })),
         joined: named.joined,
       });
       continue;

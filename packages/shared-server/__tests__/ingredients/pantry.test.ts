@@ -89,8 +89,8 @@ describe("the Pantry through aliases", () => {
       name: "onions (red)",
     });
 
-    expect(first.created).toBe(true);
-    expect(second).toEqual({ item: first.item, created: false });
+    expect(first).toMatchObject([{ created: true }]);
+    expect(second).toEqual([{ item: first[0]!.item, created: false }]);
     expect(await listPantryIngredientsByUserIds(userIds)).toHaveLength(1);
   });
 
@@ -98,9 +98,24 @@ describe("the Pantry through aliases", () => {
     for (const name of ["($0.02)", "200g"]) {
       await expect(
         addToPantry(crypto.randomUUID(), { userId, userIds: [userId], name })
-      ).resolves.toBeNull();
+      ).resolves.toEqual([]);
     }
     expect(await listPantryIngredientsByUserIds([userId])).toEqual([]);
+  });
+
+  it("keeps each food a typed text joins together, and the first it offers instead", async () => {
+    const [zout, peper, boter] = await recipeLines("zout", "peper", "boter", "olie");
+    const id = crypto.randomUUID();
+    const added = await addToPantry(id, { userId, userIds: [userId], name: "zout en peper" });
+
+    expect(added).toMatchObject([
+      { item: { id, ingredientId: zout!.ingredientId, name: "zout" }, created: true },
+      { item: { ingredientId: peper!.ingredientId, name: "peper" }, created: true },
+    ]);
+    await expect(
+      addToPantry(crypto.randomUUID(), { userId, userIds: [userId], name: "boter of olie" })
+    ).resolves.toMatchObject([{ item: { ingredientId: boter!.ingredientId }, created: true }]);
+    expect(await pantry()).toHaveLength(3);
   });
 
   it("keeps a picked food as picked, once per household", async () => {
@@ -116,14 +131,14 @@ describe("the Pantry through aliases", () => {
       ingredientId: line!.ingredientId!,
     });
 
-    expect(first).toMatchObject({ item: { ingredientId: line!.ingredientId }, created: true });
-    expect(again).toEqual({ item: first!.item, created: false });
+    expect(first).toMatchObject([{ item: { ingredientId: line!.ingredientId }, created: true }]);
+    expect(again).toEqual([{ item: first[0]!.item, created: false }]);
     await expect(
       addPickedToPantry(crypto.randomUUID(), {
         userId,
         userIds: [userId],
         ingredientId: crypto.randomUUID(),
       })
-    ).resolves.toBeNull();
+    ).resolves.toEqual([]);
   });
 });

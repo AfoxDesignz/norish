@@ -29,6 +29,7 @@ import {
   reorderGroceriesInStore,
   updateGroceries,
 } from "../mocks/db";
+import { parseIngredientWithDefaults } from "../mocks/helpers";
 import { resolveGroceryName, resolveGroceryNames } from "../mocks/ingredient-groceries";
 import { assertHouseholdAccess } from "../mocks/permissions";
 import { groceries } from "../mocks/realtime/groceries";
@@ -850,6 +851,117 @@ describe("grocery names through Ingredient Aliases", () => {
     expect(updateGroceries).toHaveBeenCalledWith([
       expect.objectContaining({ id: "g1", amount: 3 }),
     ]);
+  });
+
+  it("adds a grocery per food a typed name joins, each announced like any created grocery", async () => {
+    const id = crypto.randomUUID();
+    const result = await createGroceriesData(ctx, [
+      { id, name: "zout en peper", unit: "el", amount: 2, isDone: false },
+    ]);
+
+    expect(createGroceries).toHaveBeenCalledWith(
+      [
+        {
+          id,
+          groceries: expect.objectContaining({
+            name: "zout",
+            amount: 2,
+            unit: "el",
+            ingredientAliasId: "alias:zout",
+          }),
+        },
+        {
+          id: expect.not.stringMatching(id),
+          groceries: expect.objectContaining({
+            name: "peper",
+            amount: 2,
+            unit: "el",
+            ingredientAliasId: "alias:peper",
+          }),
+        },
+      ],
+      expect.anything()
+    );
+    expect(result.ids).toEqual([id, expect.any(String)]);
+    expect(groceries.publish).toHaveBeenCalledWith(
+      "created",
+      {
+        groceries: [
+          expect.objectContaining({ id, name: "zout" }),
+          expect.objectContaining({ name: "peper" }),
+        ],
+      },
+      { householdKey: ctx.householdKey }
+    );
+  });
+
+  it("merges each food of a typed name into its own line already there", async () => {
+    listGroceriesByUsers.mockResolvedValue([
+      createMockGrocery({ id: "g1", name: "Zout", unit: null, amount: 1 }),
+    ]);
+    updateGroceries.mockResolvedValue([]);
+
+    await createGroceriesData(ctx, [
+      { id: crypto.randomUUID(), name: "zout en peper", unit: null, amount: 1, isDone: false },
+    ]);
+
+    expect(updateGroceries).toHaveBeenCalledWith([
+      expect.objectContaining({ id: "g1", amount: 2 }),
+    ]);
+    expect(createGroceries).toHaveBeenCalledWith(
+      [expect.objectContaining({ groceries: expect.objectContaining({ name: "peper" }) })],
+      expect.anything()
+    );
+  });
+
+  it("leaves a grocery renamed to a name joining foods as a grocery per food", async () => {
+    const groceryId = crypto.randomUUID();
+    const storeId = crypto.randomUUID();
+
+    getGroceryOwnerIds.mockResolvedValue(new Map([[groceryId, ctx.user.id]]));
+    assertHouseholdAccess.mockResolvedValue(undefined);
+    getGroceriesByIds.mockResolvedValue([createMockGrocery({ id: groceryId, name: "zout" })]);
+    parseIngredientWithDefaults.mockReturnValueOnce([
+      { description: "zout en peper", quantity: 2, unitOfMeasure: "el" },
+    ]);
+    updateGroceries.mockResolvedValue([createMockGrocery({ id: groceryId, name: "zout" })]);
+
+    await groceriesProcedures
+      .createCaller(createMockCallerContext(ctx))
+      .update({ groceryId, raw: "2 el zout en peper", version: 4, purchaseAmount: 3, storeId });
+
+    await vi.waitFor(() =>
+      expect(groceries.publish).toHaveBeenCalledWith(
+        "created",
+        { groceries: [expect.objectContaining({ name: "peper" })] },
+        { householdKey: ctx.householdKey }
+      )
+    );
+    expect(updateGroceries).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: groceryId,
+        name: "zout",
+        amount: 2,
+        unit: "el",
+        ingredientAliasId: "alias:zout",
+      }),
+    ]);
+    // The other food finds its own Store and pack count, as a typed add does.
+    expect(createGroceries).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          groceries: expect.objectContaining({
+            name: "peper",
+            amount: 2,
+            unit: "el",
+            ingredientAliasId: "alias:peper",
+            storeId: null,
+            purchaseAmount: undefined,
+          }),
+        }),
+      ],
+      expect.anything()
+    );
   });
 
   it("resolves a renamed grocery's new name", async () => {
