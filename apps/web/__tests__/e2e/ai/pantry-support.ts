@@ -1,3 +1,4 @@
+import { insertRecipeLine } from "../harness/database";
 import { withDatabase } from "./database";
 
 /**
@@ -91,14 +92,12 @@ export function seedRecipeWithIngredients(name: string, lines: string[]): Promis
         [line, ingredientId]
       );
 
-      await database.query(
-        `with line as (
-           insert into recipe_ingredients (recipe_id, name, amount, unit, "order", system_used)
-           values ($1, $2, null, null, $4, 'metric') returning id)
-         insert into recipe_ingredient_foods (recipe_ingredient_id, position, ingredient_alias_id)
-         select id, 0, $3::uuid from line`,
-        [recipeId, line, alias.rows[0]!.id, index]
-      );
+      await insertRecipeLine(database, {
+        recipeId,
+        name: line,
+        aliasId: alias.rows[0]!.id,
+        order: index,
+      });
     }
 
     return recipeId;

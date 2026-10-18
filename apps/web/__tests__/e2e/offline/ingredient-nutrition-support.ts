@@ -1,4 +1,6 @@
-import { Client } from "pg";
+import type { Client } from "pg";
+
+import { insertRecipeLine, withDatabase } from "../harness/database";
 
 /**
  * Seeding for the Ingredient Nutrition browser spec. The stack applies the
@@ -88,17 +90,6 @@ const LINES: Array<
   ["salt to taste", null, null, "legacy"],
 ];
 
-async function connected<T>(databaseUrl: string, run: (client: Client) => Promise<T>): Promise<T> {
-  const client = new Client({ connectionString: databaseUrl });
-
-  await client.connect();
-  try {
-    return await run(client);
-  } finally {
-    await client.end();
-  }
-}
-
 /** User A: the first user signed up, so the server's owner (the offline seed reads it alike). */
 async function ownerId(client: Client): Promise<string> {
   const { rows } = await client.query<{ id: string }>(
@@ -112,7 +103,7 @@ async function ownerId(client: Client): Promise<string> {
 
 /** Seed the Ingredients, the legacy mint and user A's recipe, and answer their ids. */
 export async function seedNutritionScenario(databaseUrl: string): Promise<NutritionScenario> {
-  return await connected(databaseUrl, async (client) => {
+  return await withDatabase(databaseUrl, async (client) => {
     const owner = await ownerId(client);
     const ingredientIds = {} as NutritionScenario["ingredientIds"];
     const aliasIds = {} as Record<string, string>;
@@ -160,14 +151,14 @@ export async function seedNutritionScenario(databaseUrl: string): Promise<Nutrit
     const recipeId = recipe.rows[0]!.id;
 
     for (const [index, [text, amount, unit, food]] of LINES.entries()) {
-      await client.query(
-        `with line as (
-           insert into recipe_ingredients (recipe_id, name, amount, unit, "order", system_used)
-           values ($1, $2, $4, $5, $6, 'metric') returning id)
-         insert into recipe_ingredient_foods (recipe_ingredient_id, position, ingredient_alias_id)
-         select id, 0, $3::uuid from line`,
-        [recipeId, text, aliasIds[food], amount, unit, index]
-      );
+      await insertRecipeLine(client, {
+        recipeId,
+        name: text,
+        aliasId: aliasIds[food]!,
+        order: index,
+        amount,
+        unit,
+      });
     }
 
     return { recipeId, ingredientIds, legacyId: legacy.rows[0]!.id };
@@ -176,7 +167,7 @@ export async function seedNutritionScenario(databaseUrl: string): Promise<Nutrit
 
 /** Have the next boot look at old flagged mints again, as an upgrade to new rules would. */
 export async function forgetRungVersion(databaseUrl: string): Promise<void> {
-  await connected(databaseUrl, async (client) => {
+  await withDatabase(databaseUrl, async (client) => {
     await client.query(
       `update server_config set value = jsonb_set(value, '{rungVersion}', '0'::jsonb)
        where key = 'ingredient_seed_state'`
@@ -190,7 +181,7 @@ export async function lineIngredient(
   recipeId: string,
   text: string
 ): Promise<string | null> {
-  return await connected(databaseUrl, async (client) => {
+  return await withDatabase(databaseUrl, async (client) => {
     const { rows } = await client.query<{ ingredient_id: string }>(
       `select a.ingredient_id from recipe_ingredients r
        join recipe_ingredient_foods f on f.recipe_ingredient_id = r.id
@@ -211,7 +202,7 @@ export async function removeNutritionScenario(
 ): Promise<void> {
   if (!scenario) return;
 
-  await connected(databaseUrl, async (client) => {
+  await withDatabase(databaseUrl, async (client) => {
     await client.query(`delete from recipes where id = $1`, [scenario.recipeId]);
     await client.query(`delete from ingredients where id = any($1::uuid[])`, [
       [...Object.values(scenario.ingredientIds), scenario.legacyId],
