@@ -28,7 +28,7 @@ import { viewerAndHouseholdIds } from "@norish/shared/lib/household";
 import { normalizeOriginCountry } from "@norish/shared/lib/recipe-enrichment";
 import { normalizeUnit } from "@norish/shared/lib/unit-localization";
 
-import type { IngredientResolutions } from "./ingredients";
+import type { IngredientResolutions, LineFoods, NewRecipeLine } from "./ingredients";
 import type { MutationOutcome } from "./mutation-outcomes";
 import type { StepInsertWithImages } from "./steps";
 import {
@@ -55,6 +55,7 @@ import { replaceRecipeCuisinesTx } from "./cuisines";
 import {
   attachIngredientsToRecipeByInputTx,
   getUnitsForNormalization,
+  insertRecipeLinesTx,
   resolvedRecipeLineValues,
   writeRecipeLineFoodsTx,
 } from "./ingredients";
@@ -1361,7 +1362,8 @@ async function syncRecipeIngredientsTx(
   const existingById = new Map(existing.map((row: { id: string }) => [row.id, row]));
   const units = await getUnitsForNormalization();
   const retainedIds = new Set<string>();
-  const foods: Array<{ id: string; aliasIds: string[] }> = [];
+  const kept: LineFoods[] = [];
+  const added: NewRecipeLine[] = [];
 
   for (const [index, ingredient] of inputs.entries()) {
     const line = resolvedRecipeLineValues(ingredient, resolutions);
@@ -1370,15 +1372,15 @@ async function syncRecipeIngredientsTx(
 
     const values = {
       name: line.name,
-      amount: ingredient.amount ?? null,
+      amount: ingredient.amount != null ? Number(ingredient.amount) : null,
       unit: ingredient.unit ? normalizeUnit(ingredient.unit, units) : null,
-      order: ingredient.order ?? index,
+      order: Number(ingredient.order ?? index),
       systemUsed,
     };
 
     if (ingredient.id && existingById.has(ingredient.id)) {
       retainedIds.add(ingredient.id);
-      foods.push({ id: ingredient.id, aliasIds: line.aliasIds });
+      kept.push({ id: ingredient.id, aliasIds: line.aliasIds });
       await tx
         .update(recipeIngredients)
         .set({ ...values, version: sql`${recipeIngredients.version} + 1` })
@@ -1386,14 +1388,10 @@ async function syncRecipeIngredientsTx(
       continue;
     }
 
-    const [inserted] = await tx
-      .insert(recipeIngredients)
-      .values({ recipeId, ...values })
-      .returning({ id: recipeIngredients.id });
-
-    foods.push({ id: inserted.id, aliasIds: line.aliasIds });
+    added.push({ row: { recipeId, ...values }, aliasIds: line.aliasIds });
   }
-  await writeRecipeLineFoodsTx(tx, foods);
+  await writeRecipeLineFoodsTx(tx, kept);
+  await insertRecipeLinesTx(tx, added);
 
   const idsToDelete = existing
     .map((row: { id: string }) => row.id)

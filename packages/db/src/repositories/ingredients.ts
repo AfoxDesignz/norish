@@ -91,10 +91,16 @@ export function isFirstLineFood(foods: PgTable = recipeIngredientFoods): SQL {
       and earlier.position < ${outer}.position)`;
 }
 
+/** A recipe line and the aliases of its foods, in order. */
+export interface LineFoods {
+  id: string;
+  aliasIds: readonly string[];
+}
+
 /** Write each line's foods in order, over the ones it had. */
 export async function writeRecipeLineFoodsTx(
   tx: DbTransaction,
-  lines: ReadonlyArray<{ id: string; aliasIds: readonly string[] }>
+  lines: readonly LineFoods[]
 ): Promise<void> {
   if (lines.length === 0) return;
 
@@ -116,6 +122,45 @@ export async function writeRecipeLineFoodsTx(
   if (rows.length > 0) await tx.insert(recipeIngredientFoods).values(rows);
 }
 
+/** A recipe line to insert, and the aliases of its foods, in order. */
+export interface NewRecipeLine {
+  row: z.output<typeof RecipeIngredientsInsertBaseSchema>;
+  aliasIds: readonly string[];
+}
+
+/**
+ * Insert recipe lines with their foods, answering the rows inserted. Ids are made here, so each
+ * line's foods are written against its own row.
+ */
+export async function insertRecipeLinesTx(
+  tx: DbTransaction,
+  lines: readonly NewRecipeLine[]
+): Promise<Array<typeof recipeIngredients.$inferSelect>> {
+  if (lines.length === 0) return [];
+
+  const made = lines.map((line) => ({ ...line, id: randomUUID() }));
+  const inserted = await tx
+    .insert(recipeIngredients)
+    .values(
+      made.map(({ row, id }) => ({
+        ...row,
+        id,
+        amount: row.amount?.toString() ?? null,
+        order: row.order.toString(),
+      }))
+    )
+    .onConflictDoNothing()
+    .returning();
+  const insertedIds = new Set(inserted.map((row) => row.id));
+
+  await writeRecipeLineFoodsTx(
+    tx,
+    made.filter((line) => insertedIds.has(line.id))
+  );
+
+  return inserted;
+}
+
 export async function attachIngredientsToRecipeByInputTx(
   tx: any,
   payloadIngredients: RecipeIngredientInsertDto[],
@@ -134,42 +179,42 @@ export async function attachIngredientsToRecipeByInputTx(
   // Get units config for normalization
   const units = await getUnitsForNormalization();
 
-  const foods: Array<{ id: string; aliasIds: string[] }> = [];
-  const rows = items.flatMap((ri) => {
+  const lines = items.flatMap((ri) => {
     const line = resolvedRecipeLineValues(ri, resolutions);
 
     if (!line) return [];
-    foods.push({ id: randomUUID(), aliasIds: line.aliasIds });
 
     return [
       {
-        recipeId: ri.recipeId,
-        name: line.name,
-        amount: ri.amount != null ? Number(ri.amount) : null,
-        unit: normalizeUnit(ri.unit ?? "", units), // ← Normalize unit to canonical ID
-        order: ri.order,
-        systemUsed: (ri.systemUsed as MeasurementSystem) || "metric",
+        row: {
+          recipeId: ri.recipeId,
+          name: line.name,
+          amount: ri.amount != null ? Number(ri.amount) : null,
+          unit: normalizeUnit(ri.unit ?? "", units), // ← Normalize unit to canonical ID
+          order: ri.order,
+          systemUsed: (ri.systemUsed as MeasurementSystem) || "metric",
+        },
+        aliasIds: line.aliasIds,
       },
     ];
   });
 
-  if (!rows.length) return [];
+  if (!lines.length) return [];
 
   const rowsSchema = z.array(RecipeIngredientsInsertBaseSchema);
-  const validatedRows = rowsSchema.safeParse(rows);
+  const validatedRows = rowsSchema.safeParse(lines.map((line) => line.row));
 
   if (!validatedRows.success) {
     dbLogger.error({ err: validatedRows.error }, "Invalid recipeIngredients insert payload");
     throw new Error("Invalid recipeIngredients insert payload");
   }
 
-  // Ids made here, so each line's foods are written against its own row.
-  const inserted = await tx
-    .insert(recipeIngredients)
-    .values(validatedRows.data.map((row, index) => ({ ...row, id: foods[index]!.id })))
-    .returning();
+  const inserted = await insertRecipeLinesTx(
+    tx,
+    validatedRows.data.map((row, index) => ({ row, aliasIds: lines[index]!.aliasIds }))
+  );
 
-  await writeRecipeLineFoodsTx(tx, foods);
+  if (!inserted.length) return [];
 
   const insertedWithNames = inserted.map((ri: any) => ({
     ...ri,
