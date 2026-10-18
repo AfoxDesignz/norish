@@ -87,7 +87,7 @@ describe("a recipe line's foods", () => {
     ).resolves.toEqual([{ aliasId: butter.aliasId }]);
   });
 
-  it("closes up when a food is deleted, and names none once every food is gone", async () => {
+  it("reads the next food once the first is deleted, and none once every food is gone", async () => {
     await names(butter, oil);
 
     await db.delete(schema.ingredients).where(eq(schema.ingredients.id, butter.id));

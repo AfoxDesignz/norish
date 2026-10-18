@@ -48,10 +48,8 @@ export const recipeIngredients = pgTable(
 );
 
 /**
- * One food a recipe line names, at its place in the line's list: the
- * Ingredient Alias its text resolved to, and through it the Ingredient. A
- * reader that wants "the line's food" reads the lowest position. Deleting the
- * alias deletes the row, and the line closes up.
+ * One food a recipe line names: the alias its text resolved to, at its position in the line.
+ * Deleting the alias deletes the row without renumbering; "the line's food" is the lowest left.
  */
 export const recipeIngredientFoods = pgTable(
   "recipe_ingredient_foods",
