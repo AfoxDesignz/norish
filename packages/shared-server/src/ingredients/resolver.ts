@@ -252,19 +252,11 @@ function foodsByWords(
 
   if (!aliases.every((alias) => alias !== undefined)) return undefined;
 
-  const languages = aliases.flatMap((alias) =>
-    alias.locale ? catalogueLanguagesFor(alias.locale) : []
-  );
+  // A word that joins a measure somewhere ("of") splits no name whose every part is spelled there.
+  const spelledIn = (languages: ReadonlySet<string>) => (alias: IngredientAliasRow) =>
+    alias.locale !== null && catalogueLanguagesFor(alias.locale).every((l) => languages.has(l));
 
-  // A word that joins a measure somewhere ("of") splits only where a part is known to be elsewhere.
-  if (
-    parts.words.some(
-      (word) =>
-        word.connectorIn.size > 0 && !languages.some((language) => !word.connectorIn.has(language))
-    )
-  ) {
-    return undefined;
-  }
+  if (parts.words.some((word) => aliases.every(spelledIn(word.connectorIn)))) return undefined;
 
   const foods = aliases.filter(
     (alias, index) =>

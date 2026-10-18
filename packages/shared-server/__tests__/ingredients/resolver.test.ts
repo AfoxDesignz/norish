@@ -749,8 +749,6 @@ describe("ingredient resolver", () => {
         await food("lemon", "en"),
         await food("arugula", "en"),
         await food("passionfruit", "en"),
-        // A household's own spelling: its language is not known.
-        await food("zest", null),
       ];
 
       const lines = await saved([
@@ -759,15 +757,26 @@ describe("ingredient resolver", () => {
         "juice of lemon",
         "handful of arugula",
         "Arla Skyr Peach & Passionfruit",
-        "zest of lemon",
       ]);
 
-      expect(lines.map((line) => line.joined)).toEqual([null, null, null, null, null, null]);
+      expect(lines.map((line) => line.joined)).toEqual([null, null, null, null, null]);
       expect(lines[0]?.ingredientId).toBe(macAndCheese);
       expect(lines[3]?.ingredientId).toBe(parts[4]);
-      for (const line of [lines[1], lines[2], lines[4], lines[5]]) {
+      for (const line of [lines[1], lines[2], lines[4]]) {
         expect(parts).not.toContain(line?.ingredientId);
       }
+    });
+
+    it("splits at of where a part's language is not known, as a household's own spelling's is not", async () => {
+      const basil = await food("verse basilicum", null);
+      const rocket = await food("rucola", "en");
+
+      expect(await saved(["verse basilicum of rucola"])).toMatchObject([
+        {
+          joined: "alternatives",
+          foods: [{ ingredientId: basil }, { ingredientId: rocket }],
+        },
+      ]);
     });
 
     it("names one food where every part is a spelling of it", async () => {
