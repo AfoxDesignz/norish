@@ -241,3 +241,41 @@ describe("recurrence/parser yearly", () => {
     expect(parseRecurrence("every year", before).recurrence).toBeNull();
   });
 });
+
+describe("recurrence/parser German, Polish, Russian, Finnish, Norwegian, Bulgarian and Portuguese", () => {
+  const config = defaultRecurrenceConfig as RecurrenceConfig;
+
+  it.each([
+    ["melk jeden Tag", "de", { rule: "day", interval: 1 }],
+    ["melk jede Woche am Montag", "de", { rule: "week", interval: 1, weekday: 1 }],
+    ["melk alle 2 Wochen", "de", { rule: "week", interval: 2 }],
+    ["melk täglich", "de", { rule: "day", interval: 1 }],
+    ["melk jedes Jahr", "de", { rule: "year", interval: 1 }],
+    ["melk codziennie", "pl", { rule: "day", interval: 1 }],
+    ["melk co tydzień w poniedziałek", "pl", { rule: "week", interval: 1, weekday: 1 }],
+    ["melk co roku", "pl", { rule: "year", interval: 1 }],
+    ["melk каждый день", "ru", { rule: "day", interval: 1 }],
+    ["melk каждую неделю в понедельник", "ru", { rule: "week", interval: 1, weekday: 1 }],
+    ["melk ежегодно", "ru", { rule: "year", interval: 1 }],
+    ["melk joka päivä", "fi", { rule: "day", interval: 1 }],
+    ["melk joka viikko maanantaina", "fi", { rule: "week", interval: 1, weekday: 1 }],
+    ["melk vuosittain", "fi", { rule: "year", interval: 1 }],
+    ["melk hver uke på mandag", "no", { rule: "week", interval: 1, weekday: 1 }],
+    ["melk daglig", "no", { rule: "day", interval: 1 }],
+    ["melk årlig", "no", { rule: "year", interval: 1 }],
+    ["melk всеки ден", "bg", { rule: "day", interval: 1 }],
+    ["melk всяка седмица в понеделник", "bg", { rule: "week", interval: 1, weekday: 1 }],
+    ["melk всяка година", "bg", { rule: "year", interval: 1 }],
+    ["melk todo dia", "pt", { rule: "day", interval: 1 }],
+    ["melk toda semana na segunda", "pt", { rule: "week", interval: 1, weekday: 1 }],
+    ["melk todos os anos", "pt", { rule: "year", interval: 1 }],
+    // Spanish is read first and knows "a cada" too, so nothing is left behind.
+    ["melk a cada 2 semanas", "es", { rule: "week", interval: 2 }],
+  ])("parses %s", (text, locale, pattern) => {
+    const result = parseRecurrence(text, config);
+
+    expect(result.recurrence).toMatchObject(pattern);
+    expect(result.matchedLocale).toBe(locale);
+    expect(result.cleanText).toBe("melk");
+  });
+});
