@@ -6,12 +6,23 @@ See `CONTEXT.md` (Ingredient Alias, Grocery, Pantry Ingredient).
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Typing "zout en peper" adds two groceries with texts "zout" and "peper", each pointing at its food. An offline add splits once it syncs.
-- [ ] Renaming a grocery to "zout en peper" leaves two groceries.
-- [ ] A recurring grocery "zout en peper" becomes two recurring groceries with the same rule.
-- [ ] Adding "zout en peper" to the Pantry adds two Pantry Ingredients.
-- [ ] "boter of olie" typed on the list adds "boter".
-- [ ] Both new rows announce over realtime like any created grocery, and a second tab converges.
-- [ ] Grocery and pantry tests cover the above against a real database. All `CONTRIBUTING.md` gates pass.
+- [x] Typing "zout en peper" adds two groceries with texts "zout" and "peper", each pointing at its food. An offline add splits once it syncs.
+- [x] Renaming a grocery to "zout en peper" leaves two groceries.
+- [x] A recurring grocery "zout en peper" becomes two recurring groceries with the same rule.
+- [x] Adding "zout en peper" to the Pantry adds two Pantry Ingredients.
+- [x] "boter of olie" typed on the list adds "boter".
+- [x] Both new rows announce over realtime like any created grocery, and a second tab converges.
+- [x] Grocery and pantry tests cover the above against a real database. All `CONTRIBUTING.md` gates pass.
+
+## Comments
+
+2026-10-18, implemented:
+
+- `typedParts` (resolver) reads, without AI and minting nothing, the parts a typed text stands for: each food a "together" text joins, the first of "alternatives". Each part is then resolved once, as any typed name is, so a typed add that merges into a line already there asks nothing.
+- `groceryParts` applies it to grocery names. An edit that leaves a grocery's text alone keeps it whole, as does a recipe-line grocery under a one-food line's own text. A typed create splits before the same-unit merge, so each part merges with a grocery of that name. A rename, a recurring rename and a detach keep the row as the first part. The rest go on the list as typed adds, each finding its own Store and pack count. A recurring create or rename repeats each food on the same rule. A Pantry add puts each food in, and the router announces every item it made, answering with the first's id. A Pantry "boter of olie" adds boter, as the list does; the ticket names the first-food rule only for the list, so this is the reading taken.
+- The client's create answer may carry more groceries than it sent: the reconcile inserts each, pairing ids with what was sent only one to one. A `created` echo now replaces a held row that is no newer than the server's, so an offline add whose name split shows its parts on Replay without waiting for Recovery's refetch.
+- `POST /groceries` answers with the first grocery.
+- Not done: a recurring create of several foods is not one transaction. If the second fails, the first stays saved and announced.
+- Browser: the realtime project types "realtime-zout en realtime-peper" in one browser and sees both groceries in both. It also renames a grocery, creates a recurring grocery and adds to the Pantry with joined names over tRPC, and reads back a row per food.
