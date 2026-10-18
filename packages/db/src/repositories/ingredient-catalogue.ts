@@ -510,7 +510,8 @@ export async function listIngredientUses(
         visible: household(groceries.userId),
       })
       .from(groceries)
-      .where(ours(groceries))
+      // A repeating grocery's copy on the list is listed and counted once, as the repeat.
+      .where(and(ours(groceries), isNull(groceries.recurringGroceryId)))
       .orderBy(asc(groceries.isDone), asc(sql`lower(${groceries.name})`)),
     db
       .select({

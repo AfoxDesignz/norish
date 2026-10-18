@@ -150,6 +150,39 @@ describe("ingredient uses", () => {
       counts: { recipeLines: 2, groceries: 2, pantry: 1 },
     });
   });
+
+  it("lists and counts a repeating grocery once, not again for the copy it keeps on the list", async () => {
+    const db = getTestDb();
+    const [recurring] = await db
+      .insert(schema.recurringGroceries)
+      .values({
+        userId: me.id,
+        name: "kipfilet",
+        ingredientId: chickenId,
+        recurrenceRule: "week",
+        nextPlannedFor: "2027-01-01",
+      })
+      .returning({ id: schema.recurringGroceries.id });
+
+    await db.insert(schema.groceries).values({
+      userId: me.id,
+      name: "kipfilet",
+      ingredientId: chickenId,
+      recurringGroceryId: recurring!.id,
+    });
+
+    const uses = await listIngredientUses(
+      { userId: me.id, householdUserIds: null, isServerAdmin: false },
+      chickenId
+    );
+
+    expect(uses.groceries).toEqual([
+      { id: expect.any(String), name: "kipfilet met de hand", done: true, recurring: false },
+      { id: recurring!.id, name: "kipfilet", done: false, recurring: true },
+    ]);
+    expect(uses.elsewhere).toBe(1);
+    expect(uses.counts.groceries).toBe(3);
+  });
 });
 
 describe("removing a spelling", () => {
