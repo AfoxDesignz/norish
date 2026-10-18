@@ -14,7 +14,7 @@ export interface GroceryName {
 /**
  * The alias each grocery's name resolves to, in order; null for a grocery
  * with no name. A grocery added from a recipe line under that line's own text
- * takes the line's alias, so the list and the recipe agree on the food; one
+ * takes the line's alias, or its having none, so the list and the recipe agree on the food; one
  * whose text was changed on its way to the list is resolved from what it now
  * says. Everything else — typed by hand, repeating, replayed after being
  * added offline — is resolved like any recipe line.
@@ -43,8 +43,10 @@ export async function resolveGroceryNames(
   return texts.map((text, index) => {
     if (!text) return null;
 
-    // A typed text that names no food (")") is kept on the list with none.
-    const answer = lineAlias[index] ?? resolved.get(text);
+    // A typed text that names no food (")") is kept on the list with none,
+    // as is a recipe line's whose food was deleted.
+    const line = lineAlias[index];
+    const answer = line ? line.food : resolved.get(text);
 
     return answer ? { aliasId: answer.aliasId, ingredientId: answer.ingredientId } : null;
   });

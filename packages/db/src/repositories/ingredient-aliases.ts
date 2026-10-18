@@ -537,15 +537,16 @@ export async function findIngredientsNamed(
   return await withParents(await candidatesFor(rows), excludeId);
 }
 
-/** A stored recipe line as it was resolved: its text, amount and unit, and its alias. */
-export interface RecipeLineAlias extends IngredientRef {
+/** A stored recipe line as it was resolved: its text, amount and unit, and its alias, if it names a food. */
+export interface RecipeLineAlias {
   recipeId: string;
   name: string;
   amount: string | null;
   unit: string | null;
+  food: IngredientRef | null;
 }
 
-/** Recipe lines' texts and the aliases they resolved to, by line id. */
+/** Recipe lines' texts and the aliases they resolved to, by line id; a line naming no food has none. */
 export async function findRecipeLineAliases(
   recipeIngredientIds: readonly string[]
 ): Promise<Map<string, RecipeLineAlias>> {
@@ -564,8 +565,13 @@ export async function findRecipeLineAliases(
       ingredientId: ingredientAliases.ingredientId,
     })
     .from(recipeIngredients)
-    .innerJoin(ingredientAliases, eq(recipeIngredients.ingredientAliasId, ingredientAliases.id))
+    .leftJoin(ingredientAliases, eq(recipeIngredients.ingredientAliasId, ingredientAliases.id))
     .where(inArray(recipeIngredients.id, unique));
 
-  return new Map(rows.map(({ id, ...line }) => [id, line]));
+  return new Map(
+    rows.map(({ id, aliasId, ingredientId, ...line }) => [
+      id,
+      { ...line, food: aliasId && ingredientId ? { aliasId, ingredientId } : null },
+    ])
+  );
 }

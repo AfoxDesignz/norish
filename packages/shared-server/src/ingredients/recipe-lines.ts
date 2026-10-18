@@ -40,8 +40,9 @@ interface RecipeLineInput {
  * food (a heading, a text with no letter or digit, a colon line with no
  * amount) is written as it is. A line's food is resolved from the `foodText`
  * it names, else from `lineFoodText`; a text written twice is read the first
- * way. A line saved over one of `recipeId` keeps that line's food while its
- * `lineFoodText` is unchanged, so only edited and new lines are resolved.
+ * way. A line saved over one of `recipeId` keeps that line's food, or its
+ * having none (its food deleted), while its `lineFoodText` is unchanged, so
+ * only edited and new lines are resolved.
  */
 export async function withResolvedIngredients<
   L extends RecipeLineInput,
@@ -83,7 +84,7 @@ export async function withResolvedIngredients<
         lineFoodText({ text: line.ingredientName, amount: line.amount, unit: line.unit }, units) &&
       !resolved.has(line.ingredientName)
     ) {
-      resolved.set(line.ingredientName, { aliasId: kept.aliasId, ingredientId: kept.ingredientId });
+      resolved.set(line.ingredientName, kept.food);
     }
   }
   for (const line of written) {

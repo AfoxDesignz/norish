@@ -12,6 +12,7 @@ import type { SeedEntry } from "@norish/db/repositories/ingredient-seed";
 import type { DecisionQuestions } from "@norish/shared-server/ai/runtime/runtime";
 import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
 import { withTransaction } from "@norish/db/drizzle";
+import { deleteCatalogueIngredient } from "@norish/db/repositories/ingredient-catalogue";
 import {
   findIngredientAncestors,
   mergeCatalogueIngredients,
@@ -267,6 +268,56 @@ describe("ingredient resolver, rung 3", () => {
       { id: kept!.id, ingredientId: shallot.ingredientId },
       { id: edited!.id, ingredientId: carrot.ingredientId },
       { id: reparsed!.id, ingredientId: tomato.ingredientId },
+    ]);
+    expect(vi.mocked(decide)).not.toHaveBeenCalled();
+    expect(vi.mocked(generateStructured)).not.toHaveBeenCalled();
+  });
+
+  it("keeps a saved line whose food was deleted without one, rather than asking about it again", async () => {
+    const roller = await known("deegroller");
+    await known("flour");
+    const recipeId = crypto.randomUUID();
+
+    await createRecipeWithRefs(
+      recipeId,
+      userId,
+      await withResolvedIngredients(
+        {
+          name: "Pie",
+          systemUsed: "metric",
+          recipeIngredients: [
+            {
+              ingredientId: null,
+              ingredientName: "deegroller",
+              amount: null,
+              unit: null,
+              order: 0,
+            },
+            { ingredientId: null, ingredientName: "flour", amount: 200, unit: "g", order: 1 },
+          ],
+        },
+        { userId }
+      )
+    );
+    await withTransaction((tx) => deleteCatalogueIngredient(tx, roller.ingredientId));
+    const [tool, flour] = (await getRecipeFull(recipeId))!.recipeIngredients;
+
+    await updateResolvedRecipe(
+      recipeId,
+      userId,
+      {
+        systemUsed: "metric",
+        recipeIngredients: [
+          { id: tool!.id, ingredientName: "deegroller", amount: null, unit: null, order: 0 },
+          { id: flour!.id, ingredientName: "flour", amount: 250, unit: "g", order: 1 },
+        ],
+      },
+      { userId }
+    );
+
+    expect((await getRecipeFull(recipeId))?.recipeIngredients).toMatchObject([
+      { id: tool!.id, ingredientName: "deegroller", ingredientId: null },
+      { id: flour!.id, ingredientId: flour!.ingredientId },
     ]);
     expect(vi.mocked(decide)).not.toHaveBeenCalled();
     expect(vi.mocked(generateStructured)).not.toHaveBeenCalled();

@@ -7,6 +7,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
+import { withTransaction } from "@norish/db/drizzle";
+import { deleteCatalogueIngredient } from "@norish/db/repositories/ingredient-catalogue";
 import { ingredients } from "@norish/db/schema";
 import { resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
 import { withResolvedIngredients } from "@norish/shared-server/ingredients/recipe-lines";
@@ -70,6 +72,17 @@ describe("grocery names through aliases", () => {
 
     expect(fromRecipe).toEqual(typed);
     expect(fromRecipe?.ingredientId).toBe(line.ingredientId);
+  });
+
+  it("adds a recipe line whose food was deleted with no food, rather than minting it again", async () => {
+    const line = await recipeLine("deegroller");
+
+    await withTransaction((tx) => deleteCatalogueIngredient(tx, line.ingredientId!));
+
+    await expect(
+      resolveGroceryNames([{ name: "deegroller", recipeIngredientId: line.id }], { userId })
+    ).resolves.toEqual([null]);
+    await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(0);
   });
 
   it("resolves the text of a recipe line renamed on its way to the list", async () => {
