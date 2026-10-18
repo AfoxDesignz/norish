@@ -1,6 +1,7 @@
 "use client";
 
 import { useTRPC } from "@/app/providers/trpc-provider";
+import { ActionButton, ActionButtonGroup } from "@/components/shared/action-button";
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid";
 import { Button, Modal } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
@@ -60,18 +61,21 @@ export function DeleteIngredientModal({
             ) : null}
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="tertiary" onPress={onClose}>
-              {tActions("cancel")}
-            </Button>
-            <Button
-              data-testid="ingredient-delete-confirm"
-              // Not before the counts are read; a failed read leaves it open.
-              isDisabled={isPending}
-              variant="danger"
-              onPress={onConfirm}
-            >
-              {tActions("delete")}
-            </Button>
+            <ActionButtonGroup>
+              <ActionButton action="cancel" onPress={onClose}>
+                {tActions("cancel")}
+              </ActionButton>
+              <ActionButton
+                action="delete"
+                data-testid="ingredient-delete-confirm"
+                // Not before the counts are read; a failed read leaves it open.
+                isDisabled={isPending}
+                variant="danger"
+                onPress={onConfirm}
+              >
+                {tActions("delete")}
+              </ActionButton>
+            </ActionButtonGroup>
           </Modal.Footer>
         </Modal.Dialog>
       </Modal.Container>
