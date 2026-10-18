@@ -181,10 +181,8 @@ export async function searchNutritionFoods(
 }
 
 /**
- * How many lines name this Ingredient in the recipes the viewer can open,
- * by unit: under the recipe list's view policy, and as each recipe's
- * worked-out total reads its lines (those in its own measurement system,
- * or every line of a recipe that has none in it).
+ * How many lines name this Ingredient by unit, in the recipes the viewer can open, read as each
+ * worked-out total reads them (`nutritionLinesOf`): own measurement system, an "or" line's first.
  */
 export async function countIngredientLinesByUnit(
   viewer: RecipeListContext,
@@ -203,7 +201,7 @@ export async function countIngredientLinesByUnit(
     .where(
       and(
         eq(ingredientAliases.ingredientId, ingredientId),
-        isFirstLineFood(),
+        or(isFirstLineFood(), eq(recipeIngredients.joined, "together")),
         or(
           eq(recipeIngredients.systemUsed, recipes.systemUsed),
           sql`not exists (select 1 from ${recipeIngredients} own

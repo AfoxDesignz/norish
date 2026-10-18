@@ -6,8 +6,10 @@ import defaultUnits from "@norish/config/units.default.json";
 import { pantryIngredientFor } from "@norish/shared/lib/pantry";
 import {
   cleanSpelling,
+  DEFAULT_INGREDIENT_WORDS,
   foodKey,
   ingredientAliasFold,
+  joinedParts,
   spellingKeys,
   spellingRules,
   stripPreparation,
@@ -267,6 +269,54 @@ describe("spelling keys", () => {
     expect(foodKey("a smidgen of nutmeg", own)).toBe("nutmeg");
     expect(foodKey("salt to taste", own)).toBe("salt to taste");
     expect(foodKey("salt to taste")).toBe("salt to taste");
+  });
+
+  it("splits a name at the words that join foods, and says how they go together", () => {
+    expect(joinedParts("zout en peper", phrases)).toMatchObject({
+      parts: ["zout", "peper"],
+      joined: "together",
+    });
+    expect(joinedParts("Arla Skyr Peach & Passionfruit", phrases)).toMatchObject({
+      parts: ["Arla Skyr Peach", "Passionfruit"],
+      joined: "together",
+    });
+    expect(joinedParts("boter of olie", phrases)).toMatchObject({
+      parts: ["boter", "olie"],
+      joined: "alternatives",
+    });
+    expect(joinedParts("parmezaanse kaas en/of pijnboompitten", phrases)).toMatchObject({
+      parts: ["parmezaanse kaas", "pijnboompitten"],
+      joined: "alternatives",
+    });
+    expect(joinedParts("salt, pepper and sugar", phrases)?.parts).toEqual([
+      "salt, pepper",
+      "sugar",
+    ]);
+  });
+
+  it("never splits inside brackets, at an edge, or where and and or are mixed", () => {
+    expect(joinedParts("kip (dij en borst)", phrases)).toBeNull();
+    expect(joinedParts("and pepper", phrases)).toBeNull();
+    expect(joinedParts("salt and", phrases)).toBeNull();
+    expect(joinedParts("salt and pepper or chili", phrases)).toBeNull();
+    expect(joinedParts("onions", phrases)).toBeNull();
+  });
+
+  it("knows the languages where a joining word joins a measure to its food instead", () => {
+    expect(joinedParts("juice of a lemon", phrases)?.words[0]?.connectorIn).toEqual(
+      new Set(["en"])
+    );
+    expect(joinedParts("zout en peper", phrases)?.words[0]?.connectorIn).toEqual(new Set());
+    expect(joinedParts("zout & peper", phrases)?.words[0]?.connectorIn).toEqual(new Set());
+  });
+
+  it("splits at the joining words the administrator's set has, and only those", () => {
+    const own = spellingRules(defaultUnits as UnitsMap, {
+      nl: { ...DEFAULT_INGREDIENT_WORDS.nl!, alternatives: ["en/of"] },
+    });
+
+    expect(joinedParts("boter of olie", own)).toBeNull();
+    expect(joinedParts("boter en/of olie", own)?.joined).toBe("alternatives");
   });
 
   it.each(SPELLING_CASES)("offline, a Pantry %j covers a line %j: %s", (pantry, line, covered) => {

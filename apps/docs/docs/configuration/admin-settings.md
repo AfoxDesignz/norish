@@ -33,6 +33,10 @@ it matches an ingredient name to a food. The list is per locale:
   nutmeg"
 - `joiners`: words between two preparations, like "and" in "peeled and
   chopped"
+- `together` and `alternatives`: words between two foods, like "en" in "zout
+  en peper" and "of" in "boter of olie". A recipe line is split there only when
+  each part is a known food, and never where Norish knows the whole name ("mac
+  and cheese")
 - `servedWith`: what the food comes in, like "in" in "tuna in olive oil", which
   is tuna
 - `notFoods`: words that are never a food on their own, like "and" or "with"

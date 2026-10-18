@@ -21,7 +21,14 @@ let pantryLoading = false;
 let pantryUnavailable = false;
 
 let linkedAskedFor: string[][] = [];
-let linkedLines: Array<(typeof INGREDIENTS)[number]> = [];
+/** More lines of the recipe, after `INGREDIENTS`. */
+let linkedLines: Array<
+  (typeof INGREDIENTS)[number] & {
+    ingredientId: string | null;
+    joined?: "together" | "alternatives";
+    foods?: Array<{ ingredientId: string; name: string }>;
+  }
+> = [];
 
 const INGREDIENTS = [
   {
@@ -423,6 +430,70 @@ describe("MiniGroceries with a Pantry", () => {
 
       expect(createGroceriesFromData).not.toHaveBeenCalled();
       expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe("a line naming several foods", () => {
+    const line = (
+      id: string,
+      text: string,
+      joined: "together" | "alternatives",
+      foods: string[]
+    ) => ({
+      ...INGREDIENTS[0]!,
+      id,
+      ingredientId: `i-${foods[0]}`,
+      ingredientName: text,
+      amount: 2,
+      unit: "el",
+      joined,
+      foods: foods.map((name) => ({ ingredientId: `i-${name}`, name })),
+    });
+
+    it("adds each food of an and line at the line's amount, and an or line's first", async () => {
+      pantry = [];
+      linkedLines = [
+        line("l-bake", "boter en suiker", "together", ["boter", "suiker"]),
+        line("l-fry", "boter of olie", "alternatives", ["boter", "olie"]),
+      ];
+      render(<MiniGroceries open recipeId="r1" onOpenChange={() => undefined} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("action-add"));
+      });
+
+      expect(createGroceriesFromData.mock.calls[0]?.[0].slice(INGREDIENTS.length)).toEqual([
+        expect.objectContaining({
+          name: "boter",
+          amount: 2,
+          unit: "el",
+          recipeIngredientId: "l-bake",
+        }),
+        expect.objectContaining({
+          name: "suiker",
+          amount: 2,
+          unit: "el",
+          recipeIngredientId: "l-bake",
+        }),
+        expect.objectContaining({ name: "boter", recipeIngredientId: "l-fry" }),
+      ]);
+    });
+
+    it("keeps an or line in the Pantry when any food is kept, and an and line food by food", () => {
+      pantry = [pantryIngredient("olie", "olie"), pantryIngredient("zout", "zout")];
+      linkedLines = [
+        line("l-fry", "boter of olie", "alternatives", ["boter", "olie"]),
+        line("l-season", "zout en peper", "together", ["zout", "peper"]),
+      ];
+      render(<MiniGroceries open recipeId="r1" onOpenChange={() => undefined} />);
+
+      const kept = screen.getByTestId("pantry-section");
+
+      expect(within(kept).getByRole("checkbox", { name: "boter" })).not.toBeChecked();
+      expect(within(kept).getByRole("checkbox", { name: "zout" })).not.toBeChecked();
+      expect(
+        within(screen.getByTestId("to-buy-section")).getByRole("checkbox", { name: "peper" })
+      ).toBeChecked();
     });
   });
 

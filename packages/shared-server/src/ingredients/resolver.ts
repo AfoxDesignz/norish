@@ -3,8 +3,10 @@ import type {
   IngredientRef,
   IngredientRow,
 } from "@norish/db/repositories/ingredient-aliases";
+import type { LineResolution } from "@norish/db/repositories/ingredients";
 import type { FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
-import type { SpellingKeys, SpellingRules } from "@norish/shared/lib/spelling-keys";
+import type { LineJoin } from "@norish/shared/lib/line-foods";
+import type { JoinedParts, SpellingKeys, SpellingRules } from "@norish/shared/lib/spelling-keys";
 import { isStaleIngredientReference } from "@norish/db/repositories/constraint-violation";
 import {
   addIngredientAliases,
@@ -16,8 +18,14 @@ import {
 import { getIngredientWords, getUnits } from "@norish/shared-server/config/server-config-loader";
 import { dbLogger } from "@norish/shared-server/logger";
 import { stripHtmlTags } from "@norish/shared/lib/helpers";
+import { catalogueLanguagesFor } from "@norish/shared/lib/ingredient-names";
 import { namesNoFood } from "@norish/shared/lib/ingredient-text";
-import { inflectedReadings, spellingKeys, spellingRules } from "@norish/shared/lib/spelling-keys";
+import {
+  inflectedReadings,
+  joinedParts,
+  spellingKeys,
+  spellingRules,
+} from "@norish/shared/lib/spelling-keys";
 
 import type { AIResolution } from "../ai/resolution/ingredient-resolution";
 import { askWhatFoodThisIs, flaggedNew } from "../ai/resolution/ingredient-resolution";
@@ -43,6 +51,8 @@ import { announceMinted } from "./minted";
  *      nutmeg, zout, chickpeas, CHERRYTOMATEN and garlic cloves);
  *   (both keys are `@norish/shared/lib/spelling-keys`, which the clients
  *   match unresolved text on too);
+ *   a recipe line neither rung knows whole is then the foods its joining
+ *   words split it into, all known ("zout en peper": `resolveLineFoods`);
  *   3. what AI makes of it (`ai/resolution/ingredient-resolution`): a Decision, or the language
  *      model — a known food it is sure the text names takes the text's
  *      clean spelling, so the next occurrence is a rung-1 or rung-2 match;
@@ -203,18 +213,118 @@ export async function resolveIngredients(
   actor: ResolveActor,
   options: ResolveOptions = {}
 ): Promise<Array<ResolvedIngredient | null>> {
+  const resolved = await resolveTexts(texts, actor, options, { splitJoined: false });
+
+  return resolved.map((one) => (one ? { text: one.text, ...one.foods[0]! } : null));
+}
+
+/** One text as written, and the foods it names in order, with how several go together. */
+export interface ResolvedFoods extends LineResolution {
+  text: string;
+}
+
+/**
+ * Resolve recipe lines' texts as `resolveIngredients` does, except that a text not known whole
+ * whose words join known foods ("zout en peper", "boter of olie") names each of them.
+ */
+export async function resolveLineFoods(
+  texts: readonly string[],
+  actor: ResolveActor,
+  options: ResolveOptions = {}
+): Promise<Array<ResolvedFoods | null>> {
+  return await resolveTexts(texts, actor, options, { splitJoined: true });
+}
+
+/** A text split at its joining words (`joinedParts`), each part read as a spelling. */
+interface SpelledParts extends JoinedParts {
+  spellings: Spelling[];
+}
+
+/**
+ * The foods a text's joining words split it into, where the first two rungs know every part;
+ * parts that are one food name it alone. Undefined where the words name no foods.
+ */
+function foodsByWords(
+  parts: SpelledParts,
+  known: ReadonlyMap<string, IngredientAliasRow>
+): { aliases: IngredientAliasRow[]; joined: LineJoin | null } | undefined {
+  const aliases = parts.spellings.map((part) => matchKnown(part, known));
+
+  if (!aliases.every((alias) => alias !== undefined)) return undefined;
+
+  const languages = aliases.flatMap((alias) =>
+    alias.locale ? catalogueLanguagesFor(alias.locale) : []
+  );
+
+  // A word that joins a measure somewhere ("of") splits only where a part is known to be elsewhere.
+  if (
+    parts.words.some(
+      (word) =>
+        word.connectorIn.size > 0 && !languages.some((language) => !word.connectorIn.has(language))
+    )
+  ) {
+    return undefined;
+  }
+
+  const foods = aliases.filter(
+    (alias, index) =>
+      aliases.findIndex((other) => other.ingredientId === alias.ingredientId) === index
+  );
+
+  return { aliases: foods, joined: foods.length > 1 ? parts.joined : null };
+}
+
+/** Both resolutions: `splitJoined` reads a text not known whole by its joining words before AI. */
+async function resolveTexts(
+  texts: readonly string[],
+  actor: ResolveActor,
+  options: ResolveOptions,
+  { splitJoined }: { splitJoined: boolean }
+): Promise<Array<ResolvedFoods | null>> {
   const rules = await currentRules();
   const asWritten = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
   const spellings = asWritten.filter((spelling) => !spellingNamesNoFood(spelling));
-  const known = await knownAliases(spellings);
+  const splits = new Map(
+    (splitJoined ? spellings : []).flatMap((spelling) => {
+      const found = joinedParts(spelling.clean, rules);
+      const spelled = found && {
+        ...found,
+        spellings: found.parts.map((p) => spellingOf(p, rules)),
+      };
+
+      return spelled ? [[spelling, spelled] as const] : [];
+    })
+  );
+  const known = await knownAliases([
+    ...spellings,
+    ...[...splits.values()].flatMap((found) => found.spellings),
+  ]);
+  const byWords = new Map(
+    [...splits].flatMap(([spelling, found]) => {
+      const foods = matchKnown(spelling, known) ? undefined : foodsByWords(found, known);
+
+      return foods ? [[spelling, foods] as const] : [];
+    })
+  );
   const answers = await askAboutUnknown(
-    spellings.filter((spelling) => !matchKnown(spelling, known)),
+    spellings.filter((spelling) => !matchKnown(spelling, known) && !byWords.has(spelling)),
     options
   );
-  const resolved = new Map<Spelling, ResolvedIngredient>();
+  const resolved = new Map<Spelling, ResolvedFoods>();
   const minted = new Set<string>();
 
   for (const spelling of spellings) {
+    const named = byWords.get(spelling);
+
+    if (named) {
+      resolved.set(spelling, {
+        text: spelling.text,
+        foods: named.aliases.map(({ aliasId, ingredientId }) => ({ aliasId, ingredientId })),
+        joined: named.joined,
+      });
+      continue;
+    }
+
     const match = matchKnown(spelling, known);
 
     if (!match) {
@@ -257,8 +367,8 @@ export async function resolveIngredients(
 
     resolved.set(spelling, {
       text: spelling.text,
-      aliasId: alias.aliasId,
-      ingredientId: alias.ingredientId,
+      foods: [{ aliasId: alias.aliasId, ingredientId: alias.ingredientId }],
+      joined: null,
     });
   }
 

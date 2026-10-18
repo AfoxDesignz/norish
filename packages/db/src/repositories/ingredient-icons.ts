@@ -4,8 +4,6 @@ import type { DbTransaction } from "@norish/db/drizzle";
 import { db } from "@norish/db/drizzle";
 import { ingredientAliases, ingredients, recipeIngredientFoods } from "@norish/db/schema";
 
-import { isFirstLineFood } from "./ingredients";
-
 /**
  * What Ingredient Icons read and write in the catalogue: the tree of
  * Parent Ingredients with each food's own icon and Open Food Facts id, and
@@ -120,13 +118,12 @@ export async function listIngredientIconFiles(): Promise<Set<string>> {
   return new Set(rows.flatMap((row) => (row.icon ? [row.icon] : [])));
 }
 
-/** How many recipe lines name each Ingredient: which foods a reader meets most. */
+/** How many recipe lines name each Ingredient, among their foods: which foods a reader meets most. */
 export async function countRecipeUses(): Promise<Map<string, number>> {
   const rows = await db
     .select({ id: ingredientAliases.ingredientId, uses: sql<number>`count(*)::int` })
     .from(recipeIngredientFoods)
     .innerJoin(ingredientAliases, eq(ingredientAliases.id, recipeIngredientFoods.ingredientAliasId))
-    .where(isFirstLineFood())
     .groupBy(ingredientAliases.ingredientId);
 
   return new Map(rows.map((row) => [row.id, row.uses]));

@@ -172,6 +172,41 @@ describe("processNutritionEstimationJob", () => {
     expect(mocks.publishRecipeUpdated).toHaveBeenCalled();
   });
 
+  it("gives each food of an and line the line's amount, the second as much as the first", async () => {
+    mocks.getRecipeFull.mockResolvedValue({
+      ...RECIPE,
+      recipeIngredients: [
+        {
+          id: "sandwich",
+          ingredientName: "ham en kaas",
+          ingredientId: "i-ham",
+          joined: "together",
+          foods: [
+            { ingredientId: "i-ham", name: "ham" },
+            { ingredientId: "i-kaas", name: "kaas" },
+          ],
+          amount: 100,
+          unit: "gram",
+          systemUsed: "metric",
+        },
+      ],
+    });
+    mocks.workOut.mockResolvedValue({
+      ...WORKED,
+      leftOut: [{ ...WORKED.leftOut[0]!, lineId: "sandwich:1", name: "kaas", key: "key-kaas" }],
+      counted: [{ ...WORKED.counted[0]!, lineId: "sandwich", name: "ham" }],
+    });
+
+    await processNutritionEstimationJob(job());
+
+    expect(mocks.estimateGap).toHaveBeenCalledWith(
+      "Fried rice",
+      2,
+      [{ key: "key-kaas", ingredientName: "kaas", amount: 100, unit: "gram" }],
+      [expect.objectContaining({ text: "100 gram ham" })]
+    );
+  });
+
   it.each([
     ["every line counts", []],
     ["only seasoning is left out", WORKED.leftOut.filter((line) => line.reason === "seasoning")],

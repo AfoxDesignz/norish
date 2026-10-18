@@ -212,6 +212,10 @@ export const IngredientWordsLanguageSchema = z.object({
   preparation: z.array(z.string()).default([]),
   /** The word between two preparations: "peeled and chopped". */
   joiners: z.array(z.string()).default([]),
+  /** The words between foods needed together in one name: "zout en peper". */
+  together: z.array(z.string()).default([]),
+  /** The words between foods any one of which will do: "boter of olie". */
+  alternatives: z.array(z.string()).default([]),
   /** The word between a leading measure and its food: "a pinch of nutmeg". */
   connectors: z.array(z.string()).default([]),
   /** After these comes what a food is packed or served in or with: "tuna in olive oil". */

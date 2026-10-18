@@ -4,13 +4,15 @@
  * What a household actually sees: a Dutch "ui" put in the Pantry leaves an
  * English recipe's "onion" off the list, because both are spellings of one
  * Ingredient; a food Norish was not sure about is marked on the Ingredients
- * page; and merging it into the food that holds an Aisle Link files its
- * grocery in that aisle. The scenario seeds a small catalogue of its own
+ * page; merging it into the food that holds an Aisle Link files its grocery
+ * in that aisle; and a recipe line naming two foods puts each on the list on
+ * its own. The scenario seeds a small catalogue of its own
  * rather than fetching Open Food Facts. The real Norish server, database,
  * Redis, tRPC and realtime are all in the path; nothing outbound is.
  */
 import type { Locator, Page } from "@playwright/test";
 
+import { callTrpc, queryTrpc } from "../harness/trpc";
 import { expect, test } from "./fixture";
 import {
   readIngredientOf,
@@ -499,4 +501,55 @@ test("cleaning names with AI proposes each food's plain name, which confirmed re
   await expect(ingredientRow("tonijn uit blik")).toBeVisible();
   // The page shows the rename before its write commits.
   await expect.poll(() => readIngredientOf("GR TONIJN UIT BLIK")).toBe("tonijn uit blik");
+});
+
+test("a recipe line naming two foods puts each on the list as a grocery of its own", async ({
+  aiStack,
+}) => {
+  await seedCatalogue([
+    { name: "zout", aliases: [{ text: "zout", locale: "nl" }] },
+    { name: "peper", aliases: [{ text: "peper", locale: "nl" }] },
+  ]);
+  const id = await callTrpc<string>(aiStack.baseURL, aiStack.ownerCookies, "recipes.create", {
+    name: "Gebakken eieren",
+    systemUsed: "metric",
+    servings: 2,
+    recipeIngredients: [
+      { ingredientName: "zout en peper", ingredientId: null, amount: null, unit: null, order: 0 },
+    ],
+    steps: [],
+    tags: [],
+    cuisines: [],
+    categories: [],
+    images: [],
+    videos: [],
+  });
+  // The create answers before the recipe is written, and a recipe not written yet is not found.
+  const lineFoods = () =>
+    queryTrpc<{ recipeIngredients: Array<{ foods?: Array<{ name: string }> }> }>(
+      aiStack.baseURL,
+      aiStack.ownerCookies,
+      "recipes.get",
+      { id }
+    ).then(
+      (recipe) => recipe.recipeIngredients[0]?.foods?.map((food) => food.name),
+      () => undefined
+    );
+
+  await expect.poll(lineFoods).toEqual(["zout", "peper"]);
+
+  await page.goto(`/recipes/${id}`);
+  await page.getByRole("button", { name: "Add", exact: true }).first().click();
+
+  const panel = page.getByRole("dialog", { name: "Add to Groceries" });
+
+  await expect(panel.getByRole("checkbox", { name: "zout" })).toBeChecked();
+  await expect(panel.getByRole("checkbox", { name: "peper" })).toBeChecked();
+  await panel.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(panel).toBeHidden();
+
+  await page.goto("/groceries");
+  await expect(page.locator('[data-grocery-name="zout"]')).toHaveCount(1);
+  await expect(page.locator('[data-grocery-name="peper"]')).toHaveCount(1);
+  await expect(page.locator('[data-grocery-name="zout en peper"]')).toHaveCount(0);
 });

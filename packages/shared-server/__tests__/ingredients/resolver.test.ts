@@ -26,7 +26,7 @@ import {
   resolveIngredients,
   writeResolved,
 } from "@norish/shared-server/ingredients/resolver";
-import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
+import { DEFAULT_INGREDIENT_WORDS, ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import { getSpellingTexts, getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
@@ -654,6 +654,193 @@ describe("ingredient resolver", () => {
       expect((await getRecipeFull(recipeId))?.recipeIngredients[0]?.ingredientId).toBe(
         carrot.ingredientId
       );
+    });
+  });
+
+  describe("a line joining foods", () => {
+    /** A food Norish knows, spelled in a language. */
+    async function food(text: string, locale: string | null) {
+      const [row] = await mintIngredientWithAliases({
+        name: text,
+        aliases: [{ text, fold: ingredientAliasFold(text) }],
+        ownerId: null,
+        locale,
+        flagged: false,
+      });
+
+      return row!.ingredientId;
+    }
+
+    /** Save a recipe with these line texts and answer its lines as read back. */
+    async function saved(texts: string[], recipeId = crypto.randomUUID()) {
+      const payload = {
+        name: "Stew",
+        systemUsed: "metric" as const,
+        recipeIngredients: texts.map((ingredientName, order) => ({
+          ingredientId: null,
+          ingredientName,
+          amount: 2,
+          unit: null,
+          order,
+        })),
+      };
+
+      await createRecipeWithRefs(
+        recipeId,
+        userId,
+        await withResolvedIngredients(payload, { userId })
+      );
+
+      return (await getRecipeFull(recipeId))!.recipeIngredients;
+    }
+
+    it("points a line at each food its words join, together or as alternatives, keeping its text", async () => {
+      const zout = await food("zout", "nl");
+      const peper = await food("peper", "nl");
+      const boter = await food("boter", "nl");
+      const olie = await food("Olie", "da");
+      const water = await food("water", "en");
+      const kokosmelk = await food("kokosmelk", "nb");
+      const kaas = await food("Parmezaanse kaas", "nl");
+      const pijnboompitten = await food("pijnboompitten", "nl");
+
+      expect(
+        await saved([
+          "zout en peper",
+          "boter of olie",
+          "water of kokosmelk",
+          "parmezaanse kaas en/of pijnboompitten",
+        ])
+      ).toMatchObject([
+        {
+          ingredientName: "zout en peper",
+          ingredientId: zout,
+          joined: "together",
+          foods: [
+            { ingredientId: zout, name: "zout" },
+            { ingredientId: peper, name: "peper" },
+          ],
+        },
+        {
+          ingredientName: "boter of olie",
+          joined: "alternatives",
+          foods: [
+            { ingredientId: boter, name: "boter" },
+            { ingredientId: olie, name: "Olie" },
+          ],
+        },
+        {
+          joined: "alternatives",
+          foods: [{ ingredientId: water }, { ingredientId: kokosmelk }],
+        },
+        {
+          joined: "alternatives",
+          foods: [{ ingredientId: kaas }, { ingredientId: pijnboompitten }],
+        },
+      ]);
+    });
+
+    it("keeps one food for a name known whole, an English of, a part no food and a part not known", async () => {
+      const macAndCheese = await food("mac and cheese", "en");
+      const parts = [
+        await food("mac", "en"),
+        await food("cheese", "en"),
+        await food("juice", "en"),
+        await food("lemon", "en"),
+        await food("arugula", "en"),
+        await food("passionfruit", "en"),
+        // A household's own spelling: its language is not known.
+        await food("zest", null),
+      ];
+
+      const lines = await saved([
+        "mac and cheese",
+        "juice of a lemon",
+        "juice of lemon",
+        "handful of arugula",
+        "Arla Skyr Peach & Passionfruit",
+        "zest of lemon",
+      ]);
+
+      expect(lines.map((line) => line.joined)).toEqual([null, null, null, null, null, null]);
+      expect(lines[0]?.ingredientId).toBe(macAndCheese);
+      expect(lines[3]?.ingredientId).toBe(parts[4]);
+      for (const line of [lines[1], lines[2], lines[4], lines[5]]) {
+        expect(parts).not.toContain(line?.ingredientId);
+      }
+    });
+
+    it("names one food where every part is a spelling of it", async () => {
+      const [row] = await mintIngredientWithAliases({
+        name: "spring onion",
+        aliases: [
+          { text: "spring onions", fold: ingredientAliasFold("spring onions") },
+          { text: "scallions", fold: ingredientAliasFold("scallions") },
+        ],
+        ownerId: null,
+        locale: "en",
+        flagged: false,
+      });
+
+      expect(await saved(["spring onions or scallions"])).toMatchObject([
+        { ingredientId: row!.ingredientId, joined: null },
+      ]);
+    });
+
+    it("splits at the administrator's joining words, and keeps a saved line's foods while its text is", async () => {
+      const zout = await food("zout", "nl");
+      const peper = await food("peper", "nl");
+      await food("boter", "nl");
+      await food("olie", "nl");
+      const recipeId = crypto.randomUUID();
+      const [line] = await saved(["zout en peper"], recipeId);
+
+      await setConfig(
+        ServerConfigKeys.INGREDIENT_WORDS,
+        { words: { nl: { together: [], alternatives: ["en/of"] } }, isOverridden: true },
+        null,
+        false
+      );
+      forgetSpellingRules();
+      try {
+        expect(await saved(["boter of olie", "boter en/of olie"])).toMatchObject([
+          { joined: null },
+          { joined: "alternatives" },
+        ]);
+
+        await updateRecipeWithRefs(
+          recipeId,
+          userId,
+          await withResolvedIngredients(
+            {
+              systemUsed: "metric",
+              recipeIngredients: [
+                {
+                  id: line!.id,
+                  ingredientId: zout,
+                  ingredientName: "zout en peper",
+                  amount: 2,
+                  unit: null,
+                  order: 0,
+                },
+              ],
+            },
+            { userId },
+            recipeId
+          )
+        );
+        expect((await getRecipeFull(recipeId))?.recipeIngredients).toMatchObject([
+          { joined: "together", foods: [{ ingredientId: zout }, { ingredientId: peper }] },
+        ]);
+      } finally {
+        await setConfig(
+          ServerConfigKeys.INGREDIENT_WORDS,
+          { words: DEFAULT_INGREDIENT_WORDS, isOverridden: false },
+          null,
+          false
+        );
+        forgetSpellingRules();
+      }
     });
   });
 });

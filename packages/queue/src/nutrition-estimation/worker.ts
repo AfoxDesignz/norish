@@ -31,7 +31,7 @@ import { NO_HOUSEHOLD } from "@norish/shared-server/ingredients/nutrition/ingred
 import { workOutRecipeNutrition } from "@norish/shared-server/ingredients/nutrition/recipe-nutrition";
 import { createLogger } from "@norish/shared-server/logger";
 import { enrichmentWriteMode } from "@norish/shared/lib/recipe-enrichment";
-import { suppliesNutrition } from "@norish/shared/lib/recipe-nutrition";
+import { nutritionLinesOf, suppliesNutrition } from "@norish/shared/lib/recipe-nutrition";
 
 import { createWorker } from "../create-worker";
 import { handleEnrichmentJobFailure, runEnrichmentJob } from "../enrichment/worker-runner";
@@ -81,7 +81,8 @@ export async function processNutritionEstimationJob(
       return await clearRecipeNutritionEstimate(recipe.id);
     }
 
-    const lineById = new Map(recipe.recipeIngredients.map((line) => [line.id, line]));
+    // The lines as the total read them: each food of an "and" line is one, with the line's amount.
+    const lineById = new Map(nutritionLinesOf(recipe).map((line) => [line.id, line]));
     const shares = await estimateNutritionGap(
       recipe.name,
       recipe.servings ?? 1,

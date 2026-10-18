@@ -44,7 +44,9 @@ export async function resolveGroceryNames(
       return grocery;
     }
 
-    return line && ingredientAliasFold(line.name) === fold ? line : undefined;
+    return line && ingredientAliasFold(line.name) === fold
+      ? { food: line.foods[0] ?? null }
+      : undefined;
   });
   const toResolve = texts.filter((text, index) => text && !kept[index]);
   const answers = await resolveIngredients(toResolve, actor);

@@ -13,6 +13,7 @@ import type {
   RecipeIngredientInsertDto,
   RecipeIngredientsDto,
 } from "@norish/shared/contracts/dto/recipe-ingredient";
+import type { LineJoin } from "@norish/shared/lib/line-foods";
 import defaultUnits from "@norish/config/units.default.json";
 import { ServerConfigKeys, UnitsConfigSchema } from "@norish/config/zod/server-config";
 import { db } from "@norish/db/drizzle";
@@ -47,28 +48,29 @@ export async function findIngredientById(id: string): Promise<IngredientDto | nu
   return parsed.success ? parsed.data : null;
 }
 
-/**
- * What the ingredient resolver answered for a recipe's line texts: each text
- * as written, and the alias and Ingredient it resolved to, or null where it
- * names no food. The resolver lives above this package, so a recipe write is
- * handed its answers rather than minting anything itself; every line's text
- * must be here.
- */
-export type IngredientResolutions = ReadonlyMap<string, IngredientRef | null>;
+/** The foods a line's text resolved to, in order, and how several go together. */
+export interface LineResolution {
+  foods: readonly IngredientRef[];
+  joined: LineJoin | null;
+}
 
 /**
- * What a recipe line is written with: its text as written, and the aliases
- * of the foods that text resolved to, in order. A line with no text is not a
- * line and is skipped; one that names no food (a heading, a text with no
- * letter or digit, a colon line with no amount) names none.
+ * The resolver's answer for every line text of a recipe write, which mints nothing itself: the
+ * foods each text names, or null for none.
+ */
+export type IngredientResolutions = ReadonlyMap<string, LineResolution | null>;
+
+/**
+ * A recipe line's text, its foods' aliases in order and their join; null for a line with no
+ * text, and no foods for one that names none (a heading, a colon line with no amount).
  */
 export function resolvedRecipeLineValues(
   { ingredientName, amount }: { ingredientName?: string; amount?: unknown },
   resolutions: IngredientResolutions
-): { name: string; aliasIds: string[] } | null {
+): { name: string; joined: LineJoin | null; aliasIds: string[] } | null {
   if (!ingredientName) return null;
   if (lineNamesNoFood({ text: ingredientName, amount })) {
-    return { name: ingredientName, aliasIds: [] };
+    return { name: ingredientName, joined: null, aliasIds: [] };
   }
 
   const resolved = resolutions.get(ingredientName);
@@ -76,7 +78,11 @@ export function resolvedRecipeLineValues(
   if (resolved === undefined)
     throw new Error(`Ingredient text was not resolved: ${ingredientName}`);
 
-  return { name: ingredientName, aliasIds: resolved ? [resolved.aliasId] : [] };
+  return {
+    name: ingredientName,
+    joined: resolved?.joined ?? null,
+    aliasIds: resolved?.foods.map((food) => food.aliasId) ?? [],
+  };
 }
 
 /**
@@ -189,6 +195,7 @@ export async function attachIngredientsToRecipeByInputTx(
         row: {
           recipeId: ri.recipeId,
           name: line.name,
+          joined: line.joined,
           amount: ri.amount != null ? Number(ri.amount) : null,
           unit: normalizeUnit(ri.unit ?? "", units), // ← Normalize unit to canonical ID
           order: ri.order,
@@ -218,7 +225,7 @@ export async function attachIngredientsToRecipeByInputTx(
 
   const insertedWithNames = inserted.map((ri: any) => ({
     ...ri,
-    ingredientId: resolutions.get(ri.name)?.ingredientId ?? null,
+    ingredientId: resolutions.get(ri.name)?.foods[0]?.ingredientId ?? null,
     amount: ri.amount != null ? Number(ri.amount) : null,
     ingredientName: ri.name,
     order: ri.order,

@@ -22,7 +22,9 @@ import { ArchiveBoxArrowDownIcon } from "@heroicons/react/16/solid";
 import { Button, Input, toast } from "@heroui/react";
 import { useTranslations } from "next-intl";
 
+import type { FoodToBuy, LineWithFoods } from "@norish/shared/lib/line-foods";
 import { formatServings, useServingsScaler } from "@norish/shared-react/hooks";
+import { foodsToBuy } from "@norish/shared/lib/line-foods";
 import { groceryOnTheList, pantryIngredientFor } from "@norish/shared/lib/pantry";
 
 type MiniGroceriesProps = {
@@ -39,9 +41,8 @@ type MiniGroceriesProps = {
   addAtOnce?: boolean;
 };
 
-type GroceryIngredient = {
+type GroceryIngredient = LineWithFoods & {
   id: string;
-  ingredientId?: string | null;
   ingredientName: string;
   amount: number | null;
   unit: string | null;
@@ -149,12 +150,15 @@ export default function MiniGroceries({
     systemUsed
   );
 
+  // One row per food a line puts on the list: each of an "and" line's, an "or" line's first.
   const ingredients = useMemo(
     () =>
-      [
-        ...(rawIngredients as GroceryIngredient[]),
-        ...(linkedIngredients as GroceryIngredient[]),
-      ].filter(isGroceryIngredient),
+      foodsToBuy(
+        [
+          ...(rawIngredients as GroceryIngredient[]),
+          ...(linkedIngredients as GroceryIngredient[]),
+        ].filter(isGroceryIngredient)
+      ),
     [rawIngredients, linkedIngredients]
   );
   const { servings, scaledIngredients, incrementServings, decrementServings } = useServingsScaler(
@@ -340,14 +344,14 @@ export default function MiniGroceries({
   const close = useCallback(() => onOpenChange(false), [onOpenChange]);
   /** Puts these lines on the list, as edited here; true once they are on it. */
   const addLines = useCallback(
-    (lines: GroceryIngredient[]) =>
+    (lines: Array<FoodToBuy<GroceryIngredient>>) =>
       createGroceriesFromData(
         lines.map((ri) => ({
           name: editedIngredients[ri.id]?.name ?? ri.ingredientName,
           amount: editedIngredients[ri.id]?.amount ?? ri.amount,
           unit: editedIngredients[ri.id]?.unit ?? ri.unit ?? null,
           isDone: false,
-          recipeIngredientId: ri.id,
+          recipeIngredientId: ri.lineId,
         }))
       )
         .then(() => {

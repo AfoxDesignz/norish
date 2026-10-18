@@ -1,4 +1,5 @@
-import type { IngredientRef, RecipeLineAlias } from "@norish/db/repositories/ingredient-aliases";
+import type { RecipeLineAlias } from "@norish/db/repositories/ingredient-aliases";
+import type { LineResolution } from "@norish/db/repositories/ingredients";
 import type { MutationOutcome } from "@norish/db/repositories/mutation-outcomes";
 import type {
   CreateRecipeResult,
@@ -14,7 +15,7 @@ import { getUnits } from "@norish/shared-server/config/server-config-loader";
 import { lineFoodText, lineNamesNoFood } from "@norish/shared/lib/ingredient-text";
 
 import type { ResolveActor } from "./resolver";
-import { cleanIngredientText, resolveIngredients, writeResolved } from "./resolver";
+import { cleanIngredientText, resolveLineFoods, writeResolved } from "./resolver";
 
 interface RecipeLineInput {
   /** The stored line this one saves over, if any. */
@@ -71,7 +72,7 @@ export async function withResolvedIngredients<
   const stored = recipeId
     ? await findRecipeLineAliases(written.flatMap((line) => (line.id ? [line.id] : [])))
     : new Map<string, RecipeLineAlias>();
-  const resolved = new Map<string, IngredientRef | null>();
+  const resolved = new Map<string, LineResolution | null>();
   const foodTexts = new Map<string, string>();
 
   for (const line of written) {
@@ -84,7 +85,7 @@ export async function withResolvedIngredients<
         lineFoodText({ text: line.ingredientName, amount: line.amount, unit: line.unit }, units) &&
       !resolved.has(line.ingredientName)
     ) {
-      resolved.set(line.ingredientName, kept.food);
+      resolved.set(line.ingredientName, kept);
     }
   }
   for (const line of written) {
@@ -103,13 +104,9 @@ export async function withResolvedIngredients<
     }
   }
 
-  const foods = await resolveIngredients([...foodTexts.values()], actor);
+  const foods = await resolveLineFoods([...foodTexts.values()], actor);
 
-  [...foodTexts.keys()].forEach((text, index) => {
-    const food = foods[index];
-
-    resolved.set(text, food ? { aliasId: food.aliasId, ingredientId: food.ingredientId } : null);
-  });
+  [...foodTexts.keys()].forEach((text, index) => resolved.set(text, foods[index] ?? null));
 
   return { ...payload, recipeIngredients: written, ingredientResolutions: resolved };
 }

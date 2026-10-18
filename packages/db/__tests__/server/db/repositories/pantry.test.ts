@@ -17,7 +17,10 @@ import {
 } from "@norish/db/repositories/pantry";
 import { ingredients, pantryIngredients, recipes, users } from "@norish/db/schema";
 
-import { resolveIngredients } from "../../../../../shared-server/src/ingredients/resolver";
+import {
+  resolveIngredients,
+  resolveLineFoods,
+} from "../../../../../shared-server/src/ingredients/resolver";
 import { createTestUser, getTestDb, insertTestRecipeLine } from "../../../helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../helpers/repository-test-base";
 
@@ -225,17 +228,17 @@ describe("pantry ingredients", () => {
         .values({ userId: ownerId, name: "Soup" })
         .returning({ id: recipes.id });
       const foods = lines.filter((line) => !line.startsWith("#"));
-      const resolved = await resolveIngredients(
+      const resolved = await resolveLineFoods(
         foods.map((line) => line.replace(/\(id:.*\)$/, "").replace(/[[\]]/g, "")),
         { userId: ownerId }
       );
 
       for (const [order, name] of lines.entries()) {
-        const at = foods.indexOf(name);
+        const line = resolved[foods.indexOf(name)];
 
         await insertTestRecipeLine(
-          { recipeId: row!.id, name, order: String(order) },
-          at >= 0 ? resolved[at]!.aliasId : null
+          { recipeId: row!.id, name, order: String(order), joined: line?.joined },
+          line?.foods.map((food) => food.aliasId)
         );
       }
     }
@@ -265,6 +268,16 @@ describe("pantry ingredients", () => {
       expect(await offered([userId, housemate.id])).toEqual([
         ["garlic", 2],
         ["rice", 1],
+      ]);
+    });
+
+    it("counts every food a line names", async () => {
+      await resolveIngredients(["zout", "peper"], { userId });
+      await recipe(userId, ["zout en peper"]);
+
+      expect(await offered([userId])).toEqual([
+        ["peper", 1],
+        ["zout", 1],
       ]);
     });
 

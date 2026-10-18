@@ -17,7 +17,9 @@ import {
   createTestRecipe,
   createTestRecipeIngredients,
   createTestUser,
+  firstSpellingId,
   getTestDb,
+  insertTestRecipeLine,
 } from "../../../helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../helpers/repository-test-base";
 
@@ -149,6 +151,23 @@ describe("ingredient uses", () => {
       elsewhere: 1,
       counts: { recipeLines: 2, groceries: 2, pantry: 1 },
     });
+  });
+
+  it("lists a line naming several foods under each of them", async () => {
+    const satay = await createTestIngredient({ name: "satésaus" });
+    const ricePan = (await createTestRecipe(me.id, { name: "Rijstpan" })).id;
+
+    await insertTestRecipeLine(
+      { recipeId: ricePan, name: "kipfilet en satésaus", joined: "together", order: "0" },
+      [(await firstSpellingId(chickenId))!, (await firstSpellingId(satay!.id))!]
+    );
+
+    const viewer = { userId: me.id, householdUserIds: null, isServerAdmin: false };
+
+    expect((await listIngredientUses(viewer, satay!.id)).recipes).toEqual([
+      { id: ricePan, name: "Rijstpan" },
+    ]);
+    expect((await listIngredientUses(viewer, chickenId)).counts.recipeLines).toBe(3);
   });
 
   it("lists and counts a repeating grocery once, not again for the copy it keeps on the list", async () => {

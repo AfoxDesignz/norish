@@ -491,6 +491,37 @@ describe("a recipe's lines and supplied numbers", () => {
     ]);
   });
 
+  it("counts an or line as its first food, and an and line as each food at the full amount", () => {
+    const joined = (joined: "together" | "alternatives", id: string) => ({
+      id,
+      ingredientName: `100 g rice ${joined === "together" ? "en" : "of"} onion`,
+      ingredientId: "rice",
+      joined,
+      foods: [
+        { ingredientId: "rice", name: "rice" },
+        { ingredientId: "onion", name: "onion" },
+      ],
+      amount: 100,
+      unit: "gram",
+      systemUsed: "metric",
+    });
+    const lines = nutritionLinesOf({
+      ...recipe,
+      servings: 1,
+      recipeIngredients: [joined("alternatives", "d"), joined("together", "e")],
+    });
+
+    expect(lines).toEqual([
+      { id: "d", name: "rice", amount: 100, unit: "gram", ingredientId: "rice" },
+      { id: "e", name: "rice", amount: 100, unit: "gram", ingredientId: "rice" },
+      { id: "e:1", name: "onion", amount: 100, unit: "gram", ingredientId: "onion" },
+    ]);
+    expect(
+      workOutNutrition({ lines, servings: 1, nutrition: NUTRITION, seasoning: [] }).perServing
+        ?.calories
+    ).toBe(350 + 350 + 40);
+  });
+
   it("takes any value the recipe supplies as the whole group, and works nothing out beside it", () => {
     expect(suppliesNutrition(recipe)).toBe(false);
     expect(suppliesNutrition({ ...recipe, calories: 320 })).toBe(true);

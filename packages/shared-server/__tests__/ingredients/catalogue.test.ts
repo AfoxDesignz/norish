@@ -90,7 +90,7 @@ describe("the ingredient catalogue", () => {
     const db = getTestDb();
     const recipe = await createTestRecipe(actor.userId);
     const pointers = { ingredientAliasId: food.aliasId, ingredientId: food.ingredientId };
-    const line = await insertTestRecipeLine({ recipeId: recipe.id, name: text }, food.aliasId);
+    const line = await insertTestRecipeLine({ recipeId: recipe.id, name: text }, [food.aliasId]);
     const [grocery] = await db
       .insert(groceries)
       .values({ userId: actor.userId, name: text, ...pointers })
@@ -608,7 +608,7 @@ describe("the ingredient catalogue", () => {
       if (by === "line") {
         const recipe = await createTestRecipe(actor.userId);
 
-        await insertTestRecipeLine({ recipeId: recipe.id, name: "ijsblokjesvorm" }, food.aliasId);
+        await insertTestRecipeLine({ recipeId: recipe.id, name: "ijsblokjesvorm" }, [food.aliasId]);
       }
       if (by === "grocery-spelling" || by === "grocery-food") {
         await db.insert(groceries).values({

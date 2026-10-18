@@ -17,6 +17,7 @@ import type {
 } from "@norish/shared/contracts/dto/recipe-ingredient";
 import type { StepDto, StepInsertDto } from "@norish/shared/contracts/dto/steps";
 import type { FilterMode, SearchField, SortOrder } from "@norish/shared/contracts/store-types";
+import type { LineJoin } from "@norish/shared/lib/line-foods";
 import {
   DEFAULT_RECIPE_PERMISSION_POLICY,
   ServerConfigKeys,
@@ -1054,6 +1055,19 @@ export async function getImageGenerationSweepCounts(): Promise<{
   };
 }
 
+/** How a stored line's foods go together, and each with its spelling, where it names several. */
+function lineFoodsOf(line: {
+  joined: LineJoin | null;
+  foods?: Array<{ alias: { ingredientId: string; text: string } }>;
+}): Pick<RecipeIngredientsDto, "joined" | "foods"> {
+  const foods = (line.foods ?? []).map(({ alias }) => ({
+    ingredientId: alias.ingredientId,
+    name: alias.text,
+  }));
+
+  return line.joined && foods.length > 1 ? { joined: line.joined, foods } : { joined: null };
+}
+
 export async function getRecipeFull(id: string): Promise<FullRecipeDTO | null> {
   const full = await db.query.recipes.findFirst({
     where: eq(recipes.id, id),
@@ -1099,6 +1113,7 @@ export async function getRecipeFull(id: string): Promise<FullRecipeDTO | null> {
         columns: {
           id: true,
           name: true,
+          joined: true,
           amount: true,
           unit: true,
           systemUsed: true,
@@ -1106,12 +1121,10 @@ export async function getRecipeFull(id: string): Promise<FullRecipeDTO | null> {
           version: true,
         },
         with: {
-          // The line's first food is the one the recipe shows.
           foods: {
             columns: {},
-            with: { alias: { columns: { ingredientId: true } } },
+            with: { alias: { columns: { ingredientId: true, text: true } } },
             orderBy: (foods, { asc }) => [asc(foods.position)],
-            limit: 1,
           },
         },
         orderBy: (ingredients, { asc }) => [asc(ingredients.order)],
@@ -1235,7 +1248,9 @@ export async function getRecipeFull(id: string): Promise<FullRecipeDTO | null> {
       })),
     recipeIngredients: (full.ingredients ?? []).map((ri: any) => ({
       id: ri.id,
+      // The line's first food is the one the recipe shows.
       ingredientId: ri.foods?.[0]?.alias?.ingredientId ?? null,
+      ...lineFoodsOf(ri),
       amount: ri.amount ? Number(ri.amount) : null,
       unit: ri.unit ?? null,
       systemUsed: ri.systemUsed,
@@ -1372,6 +1387,7 @@ async function syncRecipeIngredientsTx(
 
     const values = {
       name: line.name,
+      joined: line.joined,
       amount: ingredient.amount != null ? Number(ingredient.amount) : null,
       unit: ingredient.unit ? normalizeUnit(ingredient.unit, units) : null,
       order: Number(ingredient.order ?? index),

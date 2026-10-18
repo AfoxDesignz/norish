@@ -13,8 +13,8 @@ import {
 } from "@norish/db/schema";
 import { CATALOGUE_LANGUAGES, chooseLocaleNames } from "@norish/shared/lib/ingredient-names";
 
+import type { LineResolution } from "./ingredients";
 import { isConstraintViolation } from "./constraint-violation";
-import { isFirstLineFood } from "./ingredients";
 
 /**
  * The Ingredient Alias rows the ingredient resolver reads and writes. Nothing
@@ -35,6 +35,8 @@ export interface IngredientRef {
 export interface IngredientAliasRow extends IngredientRef {
   text: string;
   fold: string;
+  /** The language the spelling is in, where known: a hint, never a rule. */
+  locale: string | null;
 }
 
 /** An Ingredient as a reader of the catalogue sees it. */
@@ -50,6 +52,7 @@ const aliasColumns = {
   aliasId: ingredientAliases.id,
   text: ingredientAliases.text,
   fold: ingredientAliases.fold,
+  locale: ingredientAliases.locale,
   ingredientId: ingredientAliases.ingredientId,
 };
 
@@ -539,16 +542,16 @@ export async function findIngredientsNamed(
   return await withParents(await candidatesFor(rows), excludeId);
 }
 
-/** A stored recipe line as it was resolved: its text, amount and unit, and its first food, if it names one. */
-export interface RecipeLineAlias {
+/** A stored recipe line as it was resolved: its text, amount and unit, and its foods in order. */
+export interface RecipeLineAlias extends LineResolution {
   recipeId: string;
   name: string;
   amount: string | null;
   unit: string | null;
-  food: IngredientRef | null;
+  foods: IngredientRef[];
 }
 
-/** Recipe lines' texts and the first foods they resolved to, by line id; a line naming no food has none. */
+/** Recipe lines' texts and the foods they resolved to, by line id; a line naming no food has none. */
 export async function findRecipeLineAliases(
   recipeIngredientIds: readonly string[]
 ): Promise<Map<string, RecipeLineAlias>> {
@@ -563,21 +566,26 @@ export async function findRecipeLineAliases(
       name: recipeIngredients.name,
       amount: recipeIngredients.amount,
       unit: recipeIngredients.unit,
+      joined: recipeIngredients.joined,
       aliasId: ingredientAliases.id,
       ingredientId: ingredientAliases.ingredientId,
     })
     .from(recipeIngredients)
     .leftJoin(
       recipeIngredientFoods,
-      and(eq(recipeIngredientFoods.recipeIngredientId, recipeIngredients.id), isFirstLineFood())
+      eq(recipeIngredientFoods.recipeIngredientId, recipeIngredients.id)
     )
     .leftJoin(ingredientAliases, eq(recipeIngredientFoods.ingredientAliasId, ingredientAliases.id))
-    .where(inArray(recipeIngredients.id, unique));
+    .where(inArray(recipeIngredients.id, unique))
+    .orderBy(asc(recipeIngredientFoods.position));
+  const lines = new Map<string, RecipeLineAlias>();
 
-  return new Map(
-    rows.map(({ id, aliasId, ingredientId, ...line }) => [
-      id,
-      { ...line, food: aliasId && ingredientId ? { aliasId, ingredientId } : null },
-    ])
-  );
+  for (const { id, aliasId, ingredientId, ...line } of rows) {
+    const found = lines.get(id) ?? { ...line, foods: [] };
+
+    if (aliasId && ingredientId) found.foods.push({ aliasId, ingredientId });
+    lines.set(id, found);
+  }
+
+  return lines;
 }

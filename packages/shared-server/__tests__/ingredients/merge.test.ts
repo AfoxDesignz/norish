@@ -141,7 +141,7 @@ describe("merging Ingredients and moving aliases", () => {
       const uien = await mint("uien");
       const recipe = await createTestRecipe(actor.userId);
 
-      await insertTestRecipeLine({ recipeId: recipe.id, name: "uien" }, uien.aliasId);
+      await insertTestRecipeLine({ recipeId: recipe.id, name: "uien" }, [uien.aliasId]);
       const grocery = await groceryTyped("uien");
       const [recurring] = await getTestDb()
         .insert(recurringGroceries)

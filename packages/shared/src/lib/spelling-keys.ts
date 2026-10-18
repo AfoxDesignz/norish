@@ -1,7 +1,9 @@
 import type { IngredientWordsMap, UnitsMap } from "@norish/config/zod/server-config";
+import type { LineJoin } from "@norish/shared/lib/line-foods";
 import defaultIngredientWords from "@norish/config/ingredient-words.default.json";
 import { foldName } from "@norish/shared/lib/fold-name";
 import { stripBracketed } from "@norish/shared/lib/helpers";
+import { catalogueLanguagesFor } from "@norish/shared/lib/ingredient-names";
 import { MEASURE_MAP_IDS } from "@norish/shared/lib/units";
 
 /**
@@ -177,6 +179,13 @@ const CONTAINER_UNITS = new Set([
  */
 export type Phrase = readonly string[];
 
+/** A word that joins foods in one name, and how ("zout en peper", "boter of olie"). */
+export interface JoiningWord {
+  joined: LineJoin;
+  /** The catalogue languages whose connectors it is: English "of" joins a measure ("juice of a lemon"). */
+  connectorIn: ReadonlySet<string>;
+}
+
 export interface SpellingRules {
   either: ReadonlyArray<Phrase>;
   leading: ReadonlyArray<Phrase>;
@@ -185,6 +194,8 @@ export interface SpellingRules {
   measureWords: ReadonlySet<string>;
   preparation: ReadonlySet<string>;
   joiners: ReadonlySet<string>;
+  /** The words that join foods, by `ingredientAliasFold`, since "&" folds to nothing. */
+  joiningWords: ReadonlyMap<string, JoiningWord>;
   connectors: ReadonlySet<string>;
   approximately: ReadonlyArray<Phrase>;
   sizes: ReadonlySet<string>;
@@ -254,6 +265,27 @@ export function spellingRules(
     if (pair[0] && pair[0] !== pair[1]) inflections.set(pair.join("→"), pair);
   }
 
+  const connectorIn = (fold: string) =>
+    new Set(
+      Object.entries(words ?? {})
+        .filter(([, language]) =>
+          (language.connectors ?? []).some((word) => foldName(word) === fold)
+        )
+        .flatMap(([locale]) => catalogueLanguagesFor(locale))
+    );
+  const joiningWords = new Map<string, JoiningWord>();
+
+  for (const joined of ["together", "alternatives"] as const satisfies readonly LineJoin[]) {
+    // One token each ("en/of" is one), as a name is split at its tokens.
+    for (const word of languages.flatMap((language) => language[joined] ?? [])) {
+      const fold = ingredientAliasFold(word);
+
+      if (word.trim() && !/\s/.test(word.trim()) && !joiningWords.has(fold)) {
+        joiningWords.set(fold, { joined, connectorIn: connectorIn(fold) });
+      }
+    }
+  }
+
   return {
     either: longestFirst(either),
     leading: longestFirst(leading),
@@ -261,6 +293,7 @@ export function spellingRules(
     measureWords: new Set([...measures.keys()].filter((fold) => !fold.includes(" "))),
     preparation: wordsOf((language) => language.preparation),
     joiners: wordsOf((language) => language.joiners),
+    joiningWords,
     connectors: wordsOf((language) => language.connectors),
     approximately: longestFirst(approximately),
     sizes: wordsOf((language) => language.sizes),
@@ -482,6 +515,50 @@ export function foodKey(
   const keys = spellingKeys(text, rules);
 
   return keys.plainFold || keys.fold;
+}
+
+/** A name split at the words that join foods in it. */
+export interface JoinedParts {
+  /** Each part as written. */
+  parts: string[];
+  joined: LineJoin;
+  /** The joining words it was split at. */
+  words: JoiningWord[];
+}
+
+/**
+ * A name's parts at its joining words, outside brackets; null where none stands between two
+ * parts or "and" and "or" are mixed. Whether the parts are foods is the resolver's to say.
+ */
+export function joinedParts(
+  text: string,
+  rules: SpellingRules = BASE_SPELLING_RULES
+): JoinedParts | null {
+  const parts: string[][] = [[]];
+  const words: JoiningWord[] = [];
+  let depth = 0;
+
+  for (const token of cleanSpelling(text).split(" ")) {
+    const brackets = token.replace(/[^()[\]{}]/g, "");
+    const word =
+      depth === 0 && !brackets ? rules.joiningWords.get(ingredientAliasFold(token)) : undefined;
+
+    for (const bracket of brackets) depth += "([{".includes(bracket) ? 1 : -1;
+    if (word) {
+      words.push(word);
+      parts.push([]);
+    } else {
+      parts.at(-1)!.push(token);
+    }
+  }
+
+  const joined = words[0]?.joined;
+
+  if (!joined || words.some((word) => word.joined !== joined) || parts.some((p) => !p.length)) {
+    return null;
+  }
+
+  return { parts: parts.map((part) => part.join(" ")), joined, words };
 }
 
 /**

@@ -227,18 +227,16 @@ export async function createTestRecipeShare(
 /**
  * Create test recipe ingredients
  */
-/** Insert a recipe line and, where it names one, its food at position 0, as the app writes them. */
+/** Insert a recipe line and the foods it names, in order, as the app writes them. */
 export async function insertTestRecipeLine(
   values: typeof schema.recipeIngredients.$inferInsert,
-  aliasId?: string | null
+  aliasIds: readonly string[] = []
 ) {
   const db = getTestDb();
   const [line] = await db.insert(schema.recipeIngredients).values(values).returning();
 
-  if (aliasId) {
-    await db.transaction((tx) =>
-      writeRecipeLineFoodsTx(tx, [{ id: line!.id, aliasIds: [aliasId] }])
-    );
+  if (aliasIds.length > 0) {
+    await db.transaction((tx) => writeRecipeLineFoodsTx(tx, [{ id: line!.id, aliasIds }]));
   }
 
   return line!;
@@ -250,12 +248,7 @@ export async function createTestRecipeIngredients(
   systemUsed: MeasurementSystem,
   overrides: Partial<typeof schema.recipeIngredients.$inferInsert> = {}
 ) {
-  const db = getTestDb();
-  const [alias] = await db
-    .select({ id: schema.ingredientAliases.id })
-    .from(schema.ingredientAliases)
-    .where(eq(schema.ingredientAliases.ingredientId, ingredientId))
-    .limit(1);
+  const alias = await firstSpellingId(ingredientId);
 
   return await insertTestRecipeLine(
     {
@@ -268,8 +261,20 @@ export async function createTestRecipeIngredients(
       createdAt: overrides.createdAt ?? new Date(),
       updatedAt: overrides.updatedAt ?? new Date(),
     },
-    alias?.id
+    alias ? [alias] : []
   );
+}
+
+/** The id of an Ingredient's first spelling, if it has one. */
+export async function firstSpellingId(ingredientId: string): Promise<string | undefined> {
+  const [alias] = await getTestDb()
+    .select({ id: schema.ingredientAliases.id })
+    .from(schema.ingredientAliases)
+    .where(eq(schema.ingredientAliases.ingredientId, ingredientId))
+    .orderBy(schema.ingredientAliases.createdAt)
+    .limit(1);
+
+  return alias?.id;
 }
 
 /**
