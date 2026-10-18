@@ -37,8 +37,11 @@ import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredi
 
 import {
   createTestHousehold,
+  createTestRecipe,
   createTestUser,
+  getRecipeIngredients,
   getTestDb,
+  insertTestRecipeLine,
 } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
@@ -136,6 +139,9 @@ describe("merging Ingredients and moving aliases", () => {
     it("makes every line behind the source's spellings mean the target", async () => {
       const onion = await mint("onion");
       const uien = await mint("uien");
+      const recipe = await createTestRecipe(actor.userId);
+
+      await insertTestRecipeLine({ recipeId: recipe.id, name: "uien" }, uien.aliasId);
       const grocery = await groceryTyped("uien");
       const [recurring] = await getTestDb()
         .insert(recurringGroceries)
@@ -152,6 +158,9 @@ describe("merging Ingredients and moving aliases", () => {
 
       await mergeIngredients(actor, uien.ingredientId, onion.ingredientId);
 
+      await expect(getRecipeIngredients(recipe.id)).resolves.toMatchObject([
+        { name: "uien", ingredientId: onion.ingredientId },
+      ]);
       await expect(groceryFood(grocery)).resolves.toBe(onion.ingredientId);
       await expect(ingredientFor(uien.aliasId)).resolves.toMatchObject({
         id: onion.ingredientId,

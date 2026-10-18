@@ -42,6 +42,7 @@ import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredi
 import {
   createTestRecipe,
   createTestUser,
+  getRecipeIngredients,
   getSpellingTexts,
   getTestDb,
   insertTestRecipeLine,
@@ -107,7 +108,7 @@ describe("the ingredient catalogue", () => {
 
     await db.insert(pantryIngredients).values({ userId: actor.userId, ...pointers });
 
-    return { line: line.id, grocery: grocery!.id, recurring: recurring!.id };
+    return { recipe: recipe.id, line: line.id, grocery: grocery!.id, recurring: recurring!.id };
   }
 
   /** What the rows `nameEverywhere` wrote point at now. */
@@ -392,6 +393,24 @@ describe("the ingredient catalogue", () => {
       pantry: [dough.aliasId],
     });
     await expect(getSpellingTexts(dough.ingredientId)).resolves.toEqual(["deeg", "dough"]);
+  });
+
+  it("moves what wrote a spelling with it: a line, a Grocery, a recurring grocery and a Pantry Ingredient name the food it moves to", async () => {
+    const onion = await mint("onion");
+    const [ajuin] = await spell(onion.ingredientId, ["ajuin"]);
+    const rows = await nameEverywhere(ajuin!, "ajuin");
+    const moved = await moveAlias(actor, ajuin!.aliasId, null);
+    const named = { aliasId: ajuin!.aliasId, ingredientId: moved.ingredientId };
+
+    await expect(namedBy(rows)).resolves.toEqual({
+      line: { name: "ajuin", aliasId: ajuin!.aliasId },
+      grocery: { name: "ajuin", ...named },
+      recurring: { name: "ajuin", ...named },
+      pantry: [ajuin!.aliasId],
+    });
+    await expect(getRecipeIngredients(rows.recipe)).resolves.toMatchObject([
+      { name: "ajuin", ingredientId: moved.ingredientId },
+    ]);
   });
 
   it("moves what wrote a removed spelling to the food's oldest one, where the name's own is the one removed", async () => {
