@@ -443,10 +443,12 @@ export async function deleteCatalogueAlias(tx: DbTransaction, aliasId: string): 
     )
     .limit(1);
 
+  if (!heir) throw new Error(`Spelling ${aliasId} is its food's last and cannot be removed`);
+
   for (const table of [recipeIngredientFoods, groceries, recurringGroceries, pantryIngredients]) {
     await tx
       .update(table)
-      .set({ ingredientAliasId: heir!.id })
+      .set({ ingredientAliasId: heir.id })
       .where(eq(table.ingredientAliasId, aliasId));
   }
   await tx.delete(ingredientAliases).where(eq(ingredientAliases.id, aliasId));

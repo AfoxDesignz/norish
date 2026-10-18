@@ -1,8 +1,11 @@
 // @vitest-environment node
 
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { withTransaction } from "@norish/db/drizzle";
 import {
+  deleteCatalogueAlias,
   listCatalogueIngredients,
   listIngredientUses,
 } from "@norish/db/repositories/ingredient-catalogue";
@@ -146,5 +149,33 @@ describe("ingredient uses", () => {
       elsewhere: 1,
       counts: { recipeLines: 2, groceries: 2, pantry: 1 },
     });
+  });
+});
+
+describe("removing a spelling", () => {
+  const testBase = new RepositoryTestBase("test_catalogue_alias_removal");
+
+  beforeAll(async () => {
+    await testBase.setup();
+  });
+
+  beforeEach(async () => {
+    await testBase.beforeEachTest();
+  });
+
+  afterAll(async () => {
+    await testBase.teardown();
+  });
+
+  it("refuses a food's last spelling, which would leave what used it nowhere to go", async () => {
+    const salt = (await createTestIngredient({ name: "zout" }))!;
+    const [only] = await getTestDb()
+      .select({ id: schema.ingredientAliases.id })
+      .from(schema.ingredientAliases)
+      .where(eq(schema.ingredientAliases.ingredientId, salt.id));
+
+    await expect(withTransaction((tx) => deleteCatalogueAlias(tx, only!.id))).rejects.toThrow(
+      "last"
+    );
   });
 });
