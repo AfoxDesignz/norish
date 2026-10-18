@@ -122,22 +122,19 @@ describe("the ingredient catalogue", () => {
         eq(recipeIngredientFoods.recipeIngredientId, recipeIngredients.id)
       )
       .where(eq(recipeIngredients.id, rows.line));
-    const [grocery] = await db
-      .select({
-        name: groceries.name,
-        aliasId: groceries.ingredientAliasId,
-        ingredientId: groceries.ingredientId,
-      })
-      .from(groceries)
-      .where(eq(groceries.id, rows.grocery));
-    const [recurring] = await db
-      .select({
-        name: recurringGroceries.name,
-        aliasId: recurringGroceries.ingredientAliasId,
-        ingredientId: recurringGroceries.ingredientId,
-      })
-      .from(recurringGroceries)
-      .where(eq(recurringGroceries.id, rows.recurring));
+    const pointersOf = async (table: typeof groceries | typeof recurringGroceries, id: string) =>
+      (
+        await db
+          .select({
+            name: table.name,
+            aliasId: table.ingredientAliasId,
+            ingredientId: table.ingredientId,
+          })
+          .from(table)
+          .where(eq(table.id, id))
+      )[0];
+    const grocery = await pointersOf(groceries, rows.grocery);
+    const recurring = await pointersOf(recurringGroceries, rows.recurring);
     const pantry = await db
       .select({ aliasId: pantryIngredients.ingredientAliasId })
       .from(pantryIngredients)
