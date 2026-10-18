@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import z from "zod";
 
 import type { GroceryDto } from "@norish/shared/contracts/dto/groceries";
+import type { RecurrenceRule } from "@norish/shared/contracts/recurrence";
 import { db } from "@norish/db/drizzle";
 import { dbLogger } from "@norish/db/logger";
 import { groceries, recurringGroceries } from "@norish/db/schema";
@@ -421,7 +422,7 @@ export type DueRecurringGrocery = {
     amount: number | null;
     nextPlannedFor: string;
     lastCheckedDate: string | null;
-    recurrenceRule: string;
+    recurrenceRule: RecurrenceRule;
     recurrenceInterval: number;
     recurrenceWeekday: number | null;
   };

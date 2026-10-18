@@ -37,12 +37,12 @@ export type RecurrencePattern = {
 
 /** A recurring grocery's stored rule, interval and weekday, as the pattern the calculator reads. */
 export function recurrencePatternOf(row: {
-  recurrenceRule: string;
+  recurrenceRule: RecurrenceRule;
   recurrenceInterval: number;
   recurrenceWeekday?: number | null;
 }): RecurrencePattern {
   return {
-    rule: row.recurrenceRule as RecurrenceRule,
+    rule: row.recurrenceRule,
     interval: row.recurrenceInterval,
     weekday: row.recurrenceWeekday ?? undefined,
   };

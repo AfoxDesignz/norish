@@ -14,6 +14,7 @@ export const RecurringGrocerySelectBaseSchema = createSelectSchema(recurringGroc
   })
   .extend({
     amount: z.coerce.number().nullable(),
+    recurrenceRule: z.enum(RECURRENCE_RULES),
     /**
      * The Ingredient its name resolved to, whose icon it shows. Absent on one
      * added offline until the server has resolved it.
