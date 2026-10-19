@@ -10,6 +10,7 @@ import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
+import { DEFAULT_RECIPE_PERMISSION_POLICY } from "@norish/config/zod/server-config";
 import { withTransaction } from "@norish/db/drizzle";
 import {
   listAIChanges,
@@ -19,7 +20,10 @@ import {
 import { listUnansweredIngredientIds } from "@norish/db/repositories/ingredient-catalogue";
 import { findIngredientAncestors, lockTree } from "@norish/db/repositories/ingredient-relocation";
 import { ingredientAIChanges, ingredients } from "@norish/db/schema";
-import { isAIEnabled } from "@norish/shared-server/config/server-config-loader";
+import {
+  getRecipePermissionPolicy,
+  isAIEnabled,
+} from "@norish/shared-server/config/server-config-loader";
 import {
   flagByAnswer,
   keepAIChange,
@@ -48,6 +52,7 @@ import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-tes
 vi.mock("@norish/shared-server/config/server-config-loader", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   isAIEnabled: vi.fn(),
+  getRecipePermissionPolicy: vi.fn(),
 }));
 
 describe("keeping and undoing AI Changes", () => {
@@ -65,6 +70,7 @@ describe("keeping and undoing AI Changes", () => {
     actor = { userId: user.id, householdUserIds: null, isServerAdmin: false };
     // Every mint here is the words' alone: AI is off, so each is flagged.
     vi.mocked(isAIEnabled).mockResolvedValue(false);
+    vi.mocked(getRecipePermissionPolicy).mockResolvedValue(DEFAULT_RECIPE_PERMISSION_POLICY);
   });
 
   afterAll(async () => {
@@ -237,6 +243,40 @@ describe("keeping and undoing AI Changes", () => {
     ]);
     await undoAIChange(actor, change.id);
     await expect(ingredientFor(prei.aliasId)).resolves.toMatchObject({ name: "prei" });
+  });
+
+  it("shows a Junk Line to who may see its recipe, and lets only who may edit it put it back", async () => {
+    const melted = await mint("melted");
+    const recipe = await createTestRecipe(actor.userId, { name: "snickers ice cream bars" });
+
+    await insertTestRecipeLine({ recipeId: recipe.id, name: "melted" }, [melted.aliasId]);
+    await deleteIngredient(actor, melted.ingredientId, { asJunk: true });
+    const change = await onlyChange();
+    const stranger = await createTestUser();
+    const strangers = { userId: stranger.id, householdUserIds: null, isServerAdmin: false };
+
+    // Anyone may see the recipe, only its household edit it: the default policy.
+    expect(await listAIChangesFor(strangers)).toMatchObject([
+      {
+        kind: "junk-line",
+        ingredient: null,
+        recipe: { id: recipe.id, name: "snickers ice cream bars" },
+        from: "melted",
+        canAct: false,
+      },
+    ]);
+    await expect(undoAIChange(strangers, change.id)).rejects.toMatchObject({
+      refusal: "forbidden",
+    });
+
+    vi.mocked(getRecipePermissionPolicy).mockResolvedValue({
+      ...DEFAULT_RECIPE_PERMISSION_POLICY,
+      view: "owner",
+    });
+    expect(await listAIChangesFor(strangers)).toEqual([]);
+    expect(await listAIChangesFor(actor)).toMatchObject([{ kind: "junk-line", canAct: true }]);
+    await undoAIChange(actor, change.id);
+    expect((await getRecipeIngredients(recipe.id)).map((line) => line.name)).toEqual(["melted"]);
   });
 
   it("refuses a change already undone", async () => {

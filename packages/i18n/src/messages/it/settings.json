@@ -383,7 +383,9 @@
       "ai-key-rejected": "Il fornitore di IA ha rifiutato la chiave API, quindi l'IA non ha potuto verificare questo nome.",
       "food-gone": "L'IA lo ha associato a un ingrediente unito prima che il nome potesse raggiungerlo.",
       "upgrade": "Non è stato trovato nessun ingrediente noto corrispondente.",
-      "seed-ambiguous": "Il catalogo conosce più ingredienti che potrebbero essere questo."
+      "seed-ambiguous": "Il catalogo conosce più ingredienti che potrebbero essere questo.",
+      "ai-tool": "L'IA ha pensato che sia un utensile da cucina, non un alimento, e non era sicura.",
+      "ai-junk": "L'IA ha pensato che non indichi nulla, come un frammento di una riga di ricetta, e non era sicura."
     },
     "empty": "Nessun ingrediente trovato",
     "emptyFlagged": "Nulla è segnalato",
@@ -391,10 +393,14 @@
     "delete": "Elimina",
     "deleteTitle": "Eliminare {name}?",
     "deleteConfirm": "Le sue traduzioni vanno con esso, e ciò che la tua famiglia ha insegnato a Norish al riguardo.",
+    "deleteAsJunk": "Elimina come scarto",
+    "deleteAsJunkTitle": "Eliminare {name} come scarto?",
+    "deleteAsJunkConfirm": "Anche le righe di ricetta che indicano solo questo vengono rimosse. Ognuna si può ripristinare da Modificato dall'IA.",
     "deleteTouches": {
       "recipeLines": "{count, plural, one {# riga di ricetta mantiene il suo testo, senza questo ingrediente} other {# righe di ricetta mantengono il loro testo, senza questo ingrediente}}",
       "groceries": "{count, plural, one {# voce della spesa mantiene il suo testo, senza questo ingrediente} other {# voci della spesa mantengono il loro testo, senza questo ingrediente}}",
-      "pantry": "{count, plural, one {# voce della dispensa viene rimossa} other {# voci della dispensa vengono rimosse}}"
+      "pantry": "{count, plural, one {# voce della dispensa viene rimossa} other {# voci della dispensa vengono rimosse}}",
+      "junkLines": "{count, plural, one {# riga di ricetta viene rimossa} other {# righe di ricetta vengono rimosse}}"
     },
     "markDistinct": "Segna come distinto",
     "summary": "{spellings, plural, one {# traduzione} other {# traduzioni}}{kinds, plural, =0 {} one {, # tipo} other {, # tipi}}{parent, select, none {} other {, genitore: {parent}}}",
@@ -545,7 +551,10 @@
       "merge": "{from} unito qui",
       "parent": "Classificato sotto {of}",
       "parentFromName": "Classificato sotto {of}, dal nome",
-      "plainName": "Rinominato da {from}"
+      "plainName": "Rinominato da {from}",
+      "tool": "Eliminato come utensile. Le righe della ricetta restano, senza alimento.",
+      "notAFood": "Eliminato, perché non indica alcun alimento. La spesa mantiene il suo testo.",
+      "junkLine": "Riga {from} rimossa"
     },
     "icon": {
       "change": "Cambia icona",

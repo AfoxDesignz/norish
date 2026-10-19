@@ -8,6 +8,7 @@ import type { FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
 import type { JoinedParts, SpellingKeys, SpellingRules } from "@norish/shared/lib/spelling-keys";
 import { isStaleIngredientReference } from "@norish/db/repositories/constraint-violation";
+import { findFoldsKeptAsNotJunk } from "@norish/db/repositories/ingredient-ai-changes";
 import {
   addIngredientAliases,
   findIngredientAliasesByFolds,
@@ -20,6 +21,7 @@ import { dbLogger } from "@norish/shared-server/logger";
 import { stripHtmlTags } from "@norish/shared/lib/helpers";
 import { catalogueLanguagesFor } from "@norish/shared/lib/ingredient-names";
 import { namesNoFood } from "@norish/shared/lib/ingredient-text";
+import { distinctFoods } from "@norish/shared/lib/line-foods";
 import {
   inflectedReadings,
   joinedParts,
@@ -56,7 +58,9 @@ import { announceMinted } from "./minted";
  *   3. what AI makes of it (`ai/resolution/ingredient-resolution`): a Decision, or the language
  *      model — a known food it says the text names takes the text's clean
  *      spelling, so the next occurrence is a rung-1 or rung-2 match; an
- *      unsure answer joins it as an unsure AI Change, which flags the food;
+ *      unsure answer joins it as an unsure AI Change, which flags the food.
+ *      Sure, several foods each resolve as a text, a tool names no food and nothing is a Junk
+ *      Line (`AIResolution`); unsure, each is minted flagged;
  *   4. a new Ingredient under the food AI said it is a kind of, if any.
  *
  * A mint or a join gives the food only the text's clean spelling, its plain
@@ -214,9 +218,24 @@ export async function resolveIngredients(
   actor: ResolveActor,
   options: ResolveOptions = {}
 ): Promise<Array<ResolvedIngredient | null>> {
-  const resolved = await resolveTexts(texts, actor, options, { splitJoined: false });
+  const resolved = await resolveTexts(texts, actor, options, {
+    splitJoined: false,
+    split: "first",
+  });
 
-  return resolved.map((one) => (one ? { text: one.text, ...one.foods[0]! } : null));
+  return resolved.map((one) => (one?.foods[0] ? { text: one.text, ...one.foods[0] } : null));
+}
+
+/** The foods of the parts AI split a name into, each resolved as a text with no split of its own. */
+export async function resolveParts(
+  parts: readonly string[],
+  actor: ResolveActor
+): Promise<ResolvedIngredient[]> {
+  const resolved = await resolveTexts(parts, actor, {}, { splitJoined: false, split: "none" });
+
+  return distinctFoods(
+    resolved.flatMap((one) => (one?.foods[0] ? [{ text: one.text, ...one.foods[0] }] : []))
+  );
 }
 
 /** One text as written, and the foods it names in order, with how several go together. */
@@ -225,15 +244,15 @@ export interface ResolvedFoods extends LineResolution {
 }
 
 /**
- * Resolve recipe lines' texts as `resolveIngredients` does, except that a text not known whole
- * whose words join known foods ("zout en peper", "boter of olie") names each of them.
+ * Resolve recipe lines' texts as `resolveIngredients` does, except that a text its words or AI split
+ * names each food, and one AI is sure names nothing is `junk`: the line is not stored.
  */
 export async function resolveLineFoods(
   texts: readonly string[],
   actor: ResolveActor,
   options: ResolveOptions = {}
 ): Promise<Array<ResolvedFoods | null>> {
-  return await resolveTexts(texts, actor, options, { splitJoined: true });
+  return await resolveTexts(texts, actor, options, { splitJoined: true, split: "all" });
 }
 
 /**
@@ -290,10 +309,12 @@ function foodsByWords(
 
   if (parts.words.some((word) => aliases.every(spelledIn(word.connectorIn)))) return undefined;
 
-  const foods = aliases.flatMap(({ aliasId, ingredientId }, index) =>
-    aliases.findIndex((other) => other.ingredientId === ingredientId) === index
-      ? [{ aliasId, ingredientId, text: parts.parts[index]! }]
-      : []
+  const foods = distinctFoods(
+    aliases.map(({ aliasId, ingredientId }, index) => ({
+      aliasId,
+      ingredientId,
+      text: parts.parts[index]!,
+    }))
   );
 
   return { foods, joined: foods.length > 1 ? parts.joined : null };
@@ -335,12 +356,15 @@ async function readByWords(
   return { spellings, known, byWords };
 }
 
-/** Both resolutions: `splitJoined` reads a text not known whole by its joining words before AI. */
+/**
+ * `splitJoined` reads a text not known whole by its joining words before AI. AI's sure several foods
+ * name every part (`all`), the first, which is all a Grocery names (`first`), or none (`none`, a part).
+ */
 async function resolveTexts(
   texts: readonly string[],
   actor: ResolveActor,
   options: ResolveOptions,
-  { splitJoined }: { splitJoined: boolean }
+  { splitJoined, split }: { splitJoined: boolean; split: "all" | "first" | "none" }
 ): Promise<Array<ResolvedFoods | null>> {
   const rules = await currentRules();
   const asWritten = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
@@ -351,6 +375,14 @@ async function resolveTexts(
   );
   const resolved = new Map<Spelling, ResolvedFoods>();
   const minted = new Set<string>();
+  // The texts AI says name nothing that a person once put back as no Junk Line, by clean spelling.
+  const notJunk = await findFoldsKeptAsNotJunk(
+    spellings.flatMap((spelling) =>
+      answers.get(sameFoodKey(spelling))?.answer.kind === "nothing"
+        ? [cleanAlias(spelling).fold]
+        : []
+    )
+  );
 
   for (const spelling of spellings) {
     const named = byWords.get(spelling);
@@ -366,10 +398,42 @@ async function resolveTexts(
 
     const match = matchKnown(spelling, known);
 
+    const asked = match ? undefined : answers.get(sameFoodKey(spelling));
+
+    // A text a person put back as no Junk Line names no food, whatever AI says of it now.
+    if (asked?.answer.kind === "nothing" && notJunk.has(cleanAlias(spelling).fold)) continue;
+
+    // No answer means AI was not asked: the name is minted flagged.
+    const answer = asked ? settledAnswer(asked.answer, split !== "none") : flaggedNew("upgrade");
+
+    if (answer.kind === "several") {
+      const parts = await resolveTexts(
+        split === "first" ? answer.parts.slice(0, 1) : answer.parts,
+        actor,
+        options,
+        { splitJoined: false, split: "none" }
+      );
+      const foods = distinctFoods(parts.flatMap((part) => part?.foods ?? []));
+
+      resolved.set(spelling, {
+        text: spelling.text,
+        foods,
+        joined: foods.length > 1 ? answer.joined : null,
+      });
+      continue;
+    }
+    // Sure, as `settledAnswer` leaves them: a tool names no food, nothing is a Junk Line.
+    if (answer.kind === "nothing") {
+      resolved.set(spelling, {
+        text: spelling.text,
+        foods: [],
+        joined: null,
+        junk: { fold: cleanAlias(spelling).fold },
+      });
+      continue;
+    }
+    if (answer.kind === "tool") continue;
     if (!match) {
-      // No answer means AI was not asked: the name is minted flagged.
-      const asked = answers.get(sameFoodKey(spelling));
-      const answer = asked?.answer ?? flaggedNew("upgrade");
       const wordsParent = async () => (asked ? asked.words : await parentFromWords(spelling));
       // The food AI named may have been merged away since the question was
       // asked; the text is then minted flagged rather than failing its save.
@@ -427,6 +491,23 @@ function sameFoodKey(spelling: Spelling): string {
 interface Asked {
   answer: AIResolution;
   words: ParentFromWords | null;
+}
+
+/**
+ * The answer acted on: an unsure split, tool or nothing is a food minted flagged with that doubt,
+ * as is a split where `splits` is off.
+ */
+function settledAnswer(answer: AIResolution, splits: boolean): AIResolution {
+  switch (answer.kind) {
+    case "several":
+      return answer.sure && splits ? answer : flaggedNew("ai-unsure");
+    case "tool":
+      return answer.sure ? answer : flaggedNew("ai-tool");
+    case "nothing":
+      return answer.sure ? answer : flaggedNew("ai-junk");
+    default:
+      return answer;
+  }
 }
 
 /**

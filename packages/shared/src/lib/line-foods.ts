@@ -39,3 +39,10 @@ export function foodsToBuy<L extends LineWithFoods>(lines: readonly L[]): Array<
     }));
   });
 }
+
+/** Each food once, at its first place: a line or a split names a food no more than once. */
+export function distinctFoods<F extends { ingredientId: string }>(foods: readonly F[]): F[] {
+  return foods.filter(
+    (food, index) => foods.findIndex((other) => other.ingredientId === food.ingredientId) === index
+  );
+}

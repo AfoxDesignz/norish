@@ -2,8 +2,8 @@
  * Rung 3 of the ingredient resolver: what a name no alias matches is, asked
  * of AI before anything is minted (ADR-0037). The candidates are the
  * Ingredients with a word starting the way one of the name's words does, and
- * the question is whether the name is one of them, a kind of one, or a food
- * of its own. Two paths, in a fixed order (ADR-0035): a Decision when a
+ * the question is whether the name is one of them, a kind of one, a food of
+ * its own, several foods, a tool, or nothing at all. Two paths, in a fixed order (ADR-0035): a Decision when a
  * Decision Model is configured and this use is on, and otherwise — or when
  * the Decision is unsure, or fails — a language-model request under the
  * administrator-editable `ingredient-resolution` Prompt.
@@ -15,6 +15,7 @@ import { z } from "zod";
 
 import type { IngredientCandidate } from "@norish/db/repositories/ingredient-aliases";
 import type { FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
+import type { LineJoin } from "@norish/shared/lib/line-foods";
 import {
   findIngredientCandidates,
   findIngredientCandidatesById,
@@ -51,15 +52,19 @@ const WORD_START = 4;
 const SHOWN_ALIASES = 5;
 
 /**
- * What rung 3 made of a name: a known food it is, sure or not, or a food of
- * its own to mint — flagged where nothing sure said so, and under a known
- * food as its Parent Ingredient where the answer was that it is a kind of
- * that food.
+ * What rung 3 made of a name: a known food, a food of its own (flagged unless sure, under the food it
+ * is a kind of), several foods with their parts, a tool, or nothing (a Junk Line).
  */
 export type AIResolution =
   | { kind: "same"; ingredientId: string; sure: boolean }
   | { kind: "new"; kindOf: string | null; flagged: false; reason: null }
-  | { kind: "new"; kindOf: string | null; flagged: true; reason: FlagReason };
+  | { kind: "new"; kindOf: string | null; flagged: true; reason: FlagReason }
+  | { kind: "several"; parts: string[]; joined: LineJoin; sure: boolean }
+  | { kind: "tool"; sure: boolean }
+  | { kind: "nothing"; sure: boolean };
+
+/** The answers that name no food: equipment the cook already has, or nothing at all. */
+export type NoFoodAnswer = "tool" | "nothing";
 
 /** A food of its own that nothing sure vouched for: rung 4's flagged mint, and why. */
 export function flaggedNew(reason: FlagReason, kindOf: string | null = null): AIResolution {
@@ -208,8 +213,14 @@ async function readThenCompare(
   );
 
   trace.considered.push(...candidates.map((candidate) => candidate.name));
-  if (candidates.length > 0) return await askAbout(text, candidates);
-  if (!reading) return { answer: failedNew(readingError), from: "language-model" };
+  if (!reading) {
+    return candidates.length > 0
+      ? await askAbout(text, candidates)
+      : { answer: failedNew(readingError), from: "language-model" };
+  }
+  // Read as no food, it may be several, a tool or nothing: only the full question says which.
+  if (candidates.length > 0 || reading.englishName === null)
+    return await askAbout(text, candidates);
 
   return {
     answer: reading.sure
@@ -240,7 +251,7 @@ async function settleWithWords(
   words: { id: string } | null,
   candidates: readonly IngredientCandidate[]
 ): Promise<AIResolution> {
-  if (!words) return answer;
+  if (!words || (answer.kind !== "same" && answer.kind !== "new")) return answer;
   if (answer.kind === "same") {
     if (answer.sure) return answer;
 
@@ -397,12 +408,14 @@ async function askAbout(
 }
 
 const NEW = "new";
+/** Several foods need their parts named, which only the language model does: the pick defers to it. */
+const SEVERAL = "several";
+const TOOL = "tool";
+const NOTHING = "nothing";
 
 /**
- * One Choice over every candidate twice — the food itself, or a kind of it —
- * plus a food of its own, with the answer each option stands for. The
- * descriptions are the domain's own option set, which is why a Decision has
- * no Prompt.
+ * One Choice over every candidate, as itself or a kind of it, plus a food of its own, several, a tool
+ * or nothing. The descriptions are the domain's own option set, so a Decision has no Prompt.
  */
 function foodChoice(text: string, candidates: readonly IngredientCandidate[]) {
   const options = new Map<string, AIResolution>();
@@ -421,6 +434,11 @@ function foodChoice(text: string, candidates: readonly IngredientCandidate[]) {
   });
   criteria[NEW] = "Is none of these, but a food of its own";
   options.set(NEW, { kind: "new", kindOf: null, flagged: false, reason: null });
+  criteria[SEVERAL] = "Names several foods at once, joined by and or or";
+  criteria[TOOL] = "Is kitchen equipment the cook already has, such as a tin or a rolling pin";
+  options.set(TOOL, { kind: "tool", sure: true });
+  criteria[NOTHING] = "Names nothing to buy or use: a preparation, a fragment or a note";
+  options.set(NOTHING, { kind: "nothing", sure: true });
 
   return {
     state: {
@@ -444,7 +462,7 @@ function foodChoice(text: string, candidates: readonly IngredientCandidate[]) {
 
 /**
  * The Decision over a name's candidates. Null where the pick is below the
- * threshold: the unclear case, for the language model.
+ * threshold, the unclear case, or several foods: both for the language model.
  */
 async function decideFood(
   text: string,
@@ -465,12 +483,20 @@ async function decideFood(
 
 const languageModelAnswerSchema = z
   .object({
-    verdict: z.enum(["same", "kind-of", "new"]),
+    verdict: z.enum(["same", "kind-of", "new", "several", "tool", "nothing"]),
     food: z
       .number()
       .int()
       .nullable()
-      .describe("The number of the listed food, for same and kind-of; null for new."),
+      .describe("The number of the listed food, for same and kind-of; null otherwise."),
+    parts: z
+      .array(z.string())
+      .nullable()
+      .describe("For several: each food's name, in the order written; null otherwise."),
+    joined: z
+      .enum(["together", "alternatives"])
+      .nullable()
+      .describe("For several: together when all are needed, alternatives when any one will do."),
     sure: z.boolean(),
     englishName: z
       .string()
@@ -515,6 +541,16 @@ async function askLanguageModel(
 
   aiLogger.info({ text, ...answer }, "Language model answered what food a name is");
 
+  if (answer.verdict === "tool" || answer.verdict === "nothing") {
+    return { kind: answer.verdict, sure: answer.sure };
+  }
+  if (answer.verdict === "several") {
+    const parts = (answer.parts ?? []).map((part) => part.trim()).filter(Boolean);
+
+    return parts.length > 1
+      ? { kind: "several", parts, joined: answer.joined ?? "together", sure: answer.sure }
+      : flaggedNew("ai-unsure");
+  }
   if (answer.verdict === "same") {
     return food
       ? { kind: "same", ingredientId: food.id, sure: answer.sure }

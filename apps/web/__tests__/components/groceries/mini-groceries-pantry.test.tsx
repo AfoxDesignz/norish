@@ -23,7 +23,7 @@ let pantryUnavailable = false;
 let linkedAskedFor: string[][] = [];
 /** More lines of the recipe, after `INGREDIENTS`. */
 let linkedLines: Array<
-  (typeof INGREDIENTS)[number] & {
+  Omit<(typeof INGREDIENTS)[number], "ingredientId"> & {
     ingredientId: string | null;
     joined?: "together" | "alternatives";
     foods?: Array<{ ingredientId: string; name: string }>;
@@ -414,6 +414,23 @@ describe("MiniGroceries with a Pantry", () => {
 
       expect(createGroceriesFromData).not.toHaveBeenCalled();
       expect(onOpenChange).toHaveBeenCalledWith(true);
+    });
+
+    it("leaves a line that names no food off the list, such as a tool", async () => {
+      linkedLines = [
+        {
+          ...INGREDIENTS[2]!,
+          id: "l-tin",
+          ingredientId: null,
+          ingredientName: "springvorm (26 cm)",
+        },
+      ];
+
+      await act(async () => {
+        addAtOnce(vi.fn());
+      });
+
+      expect(addedNames()).toEqual(["chicken breast"]);
     });
 
     it("adds nothing when the Pantry holds every line", async () => {

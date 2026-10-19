@@ -11,6 +11,7 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
+import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import {
   groceries,
   ingredientAliases,
@@ -20,6 +21,7 @@ import {
   recipeIngredients,
   recurringGroceries,
 } from "@norish/db/schema";
+import { undoAIChange } from "@norish/shared-server/ingredients/ai-changes";
 import {
   addAlias,
   CatalogueEditError,
@@ -296,6 +298,56 @@ describe("the ingredient catalogue", () => {
       recurring: { name: "1 deegroller", aliasId: null, ingredientId: null },
       pantry: [],
     });
+  });
+
+  it("deletes a food as junk: the lines naming only it go too, each restorable from Changed by AI", async () => {
+    const melted = await mint("melted");
+    const butter = await mint("butter");
+    const rows = await nameEverywhere(melted, "melted");
+    const joint = await insertTestRecipeLine({ recipeId: rows.recipe, name: "butter or melted" }, [
+      butter.aliasId,
+      melted.aliasId,
+    ]);
+
+    await deleteIngredient(actor, melted.ingredientId, { asJunk: true });
+
+    const lines = await getRecipeIngredients(rows.recipe);
+
+    // A line naming another food too only loses this one.
+    expect(lines.map((line) => line.id)).toEqual([joint.id]);
+    await expect(namedBy(rows)).resolves.toMatchObject({
+      grocery: { name: "melted", aliasId: null },
+      pantry: [],
+    });
+    const [change, ...others] = await listAIChanges();
+
+    expect(others).toEqual([]);
+    expect(change).toMatchObject({
+      recipe: { id: rows.recipe },
+      undo: { kind: "junk-line", line: { id: rows.line, name: "melted" } },
+    });
+
+    await undoAIChange(actor, change!.id);
+    expect((await getRecipeIngredients(rows.recipe)).map((line) => line.id).sort()).toEqual(
+      [joint.id, rows.line].sort()
+    );
+  });
+
+  it("deletes as junk only the lines of recipes the person may edit; others lose the food alone", async () => {
+    const melted = await mint("melted");
+    const stranger = await createTestUser();
+    const theirs = await createTestRecipe(stranger.id);
+    const line = await insertTestRecipeLine({ recipeId: theirs.id, name: "melted" }, [
+      melted.aliasId,
+    ]);
+
+    await deleteIngredient(actor, melted.ingredientId, { asJunk: true });
+
+    // Not theirs to change: the line stays, with no food, as a plain Delete leaves it.
+    expect(await getRecipeIngredients(theirs.id)).toMatchObject([
+      { id: line.id, ingredientId: null },
+    ]);
+    await expect(listAIChanges()).resolves.toEqual([]);
   });
 
   it("refuses a name another Ingredient goes by, in any case", async () => {

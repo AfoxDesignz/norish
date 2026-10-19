@@ -36,11 +36,13 @@ export type AIChange = {
   sure: boolean;
   kept: boolean;
   createdAt: Date;
-  /** The food it is listed under: a merge's is the food the other joined. */
-  ingredient: { id: string; name: string; localeNames: LocaleNames };
+  /** The food it is listed under: a merge's is the food the other joined; none for a deleted one. */
+  ingredient: { id: string; name: string; localeNames: LocaleNames } | null;
   /** A parent's parent. */
   target: { id: string; name: string; localeNames: LocaleNames } | null;
-  /** The merged food's name, or the name AI replaced. */
+  /** The recipe a Junk Line was deleted from. */
+  recipe: { id: string; name: string } | null;
+  /** The merged or deleted food's name, the name AI replaced, or the deleted line. */
   from: string | null;
   fromWords: boolean;
   canAct: boolean;

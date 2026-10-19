@@ -383,7 +383,9 @@
       "ai-key-rejected": "AI 제공업체가 API 키를 거부해서 AI가 이 이름을 확인하지 못했습니다.",
       "food-gone": "AI가 연결한 재료가 이름이 합류하기 전에 병합되어 사라졌습니다.",
       "upgrade": "일치하는 알려진 재료를 찾지 못했습니다.",
-      "seed-ambiguous": "카탈로그에 이것일 수 있는 재료가 여럿 있습니다."
+      "seed-ambiguous": "카탈로그에 이것일 수 있는 재료가 여럿 있습니다.",
+      "ai-tool": "AI가 이것을 식재료가 아닌 조리 도구로 판단했지만 확실하지 않았습니다.",
+      "ai-junk": "AI가 이것이 레시피 줄의 조각처럼 아무것도 가리키지 않는다고 판단했지만 확실하지 않았습니다."
     },
     "empty": "재료를 찾을 수 없습니다",
     "emptyFlagged": "표시된 항목이 없습니다",
@@ -391,10 +393,14 @@
     "delete": "삭제",
     "deleteTitle": "{name}을(를) 삭제할까요?",
     "deleteConfirm": "이 재료의 번역과 가족이 Norish에 알려준 내용이 함께 사라집니다.",
+    "deleteAsJunk": "불필요한 항목으로 삭제",
+    "deleteAsJunkTitle": "{name}을(를) 불필요한 항목으로 삭제할까요?",
+    "deleteAsJunkConfirm": "이것만 가리키는 레시피 줄도 삭제됩니다. 각 줄은 AI가 변경함에서 되돌릴 수 있습니다.",
     "deleteTouches": {
       "recipeLines": "{count, plural, other {레시피 줄 #개는 텍스트를 유지하지만 이 재료와의 연결이 사라집니다}}",
       "groceries": "{count, plural, other {장보기 항목 #개는 텍스트를 유지하지만 이 재료와의 연결이 사라집니다}}",
-      "pantry": "{count, plural, other {식료품 저장실 항목 #개가 삭제됩니다}}"
+      "pantry": "{count, plural, other {식료품 저장실 항목 #개가 삭제됩니다}}",
+      "junkLines": "{count, plural, other {레시피 줄 #개가 삭제됩니다}}"
     },
     "markDistinct": "별개로 표시",
     "summary": "번역 {spellings}개{kinds, plural, =0 {} other {, 종류 #}}{parent, select, none {} other {, 상위: {parent}}}",
@@ -545,7 +551,10 @@
       "merge": "{from}을(를) 여기에 병합함",
       "parent": "{of} 아래에 분류됨",
       "parentFromName": "이름에 따라 {of} 아래에 분류됨",
-      "plainName": "{from}에서 이름 변경됨"
+      "plainName": "{from}에서 이름 변경됨",
+      "tool": "조리 도구로 삭제했습니다. 레시피 줄은 식재료 없이 남습니다.",
+      "notAFood": "식재료를 가리키지 않아 삭제했습니다. 장보기 항목은 텍스트를 유지합니다.",
+      "junkLine": "{from} 줄을 삭제했습니다"
     },
     "icon": {
       "change": "아이콘 변경",

@@ -1,29 +1,39 @@
 /**
- * AI Changes (CONTEXT.md; ADR-0037, amended 2026-10-17): AI's merge, parent or Plain Name, made
- * and recorded in one transaction, kept or undone by a person under `edit` on the food it was about.
+ * AI Changes (CONTEXT.md; ADR-0037): AI's answers made and recorded in one transaction, kept or
+ * undone under `edit` on their food, or on the recipe a Junk Line left.
  */
 import type { DbTransaction } from "@norish/db/drizzle";
 import type { StoredAIChange } from "@norish/db/repositories/ingredient-ai-changes";
-import type { AIChangeKind } from "@norish/shared/contracts/ingredient-catalogue";
+import type { SplitPart } from "@norish/db/repositories/ingredient-relocation";
+import type { AIChangeKind, FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LocaleNames } from "@norish/shared/lib/ingredient-names";
+import type { LineJoin } from "@norish/shared/lib/line-foods";
 import { withTransaction } from "@norish/db/drizzle";
 import {
   aliasesStillOn,
   clearAIFlagUnlessOpen,
+  deleteJunkLines,
+  findFoldsKeptAsNotJunk,
   flagUnderOpenChange,
+  isInAnyPantry,
   listAIChanges,
   lockAIChange,
+  readDeletedFood,
   readMergeUndo,
   recordAIChange,
   refreshAIFlag,
+  restoreDeletedFood,
+  restoreDeletedLine,
   restoreName,
   settleAIChange,
   takeOpenParentChanges,
+  wasDeletionUndone,
   wasMergeUndone,
   wasParentUndone,
 } from "@norish/db/repositories/ingredient-ai-changes";
 import { findLocaleNames } from "@norish/db/repositories/ingredient-aliases";
 import {
+  deleteCatalogueIngredient,
   isAskableByAI,
   keepIngredientDistinct,
   settleIngredientName,
@@ -36,12 +46,17 @@ import {
   mergeCatalogueIngredients,
   moveCatalogueAlias,
   setCatalogueIngredientParent,
+  splitCatalogueIngredient,
 } from "@norish/db/repositories/ingredient-relocation";
-import { getIngredientPermissionPolicy } from "@norish/shared-server/config/server-config-loader";
+import {
+  getIngredientPermissionPolicy,
+  getRecipePermissionPolicy,
+} from "@norish/shared-server/config/server-config-loader";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
+import type { NoFoodAnswer } from "../ai/resolution/ingredient-resolution";
 import type { CatalogueActor, CatalogueEdit } from "./catalogue";
-import { assertMayEdit, inEdit, mayEditIngredientRow, refusedOn } from "./catalogue";
+import { CatalogueEditError, inEdit, mayEditOwnedRow, refusedOn } from "./catalogue";
 import { ingredientChanges } from "./changes";
 
 /**
@@ -140,12 +155,97 @@ export async function renameByAI(ingredientId: string, formerName: string, name:
   return renamed;
 }
 
+/**
+ * Split a food into the foods its parts resolved to, and delete it. Not an AI Change: a grocery
+ * split in two has no Undo.
+ */
+export async function splitByAI(
+  ingredientId: string,
+  parts: readonly [SplitPart, ...SplitPart[]],
+  joined: LineJoin
+) {
+  const ids = [ingredientId, ...parts.map((part) => part.ingredientId)];
+  const outcome = await withTransaction(async (tx): Promise<ApplyOutcome> => {
+    await lockTree(tx);
+    if ((await lockIngredients(tx, ids)) < new Set(ids).size) return "gone";
+    if (!(await isAskableByAI(tx, ingredientId))) return "decided";
+    await splitCatalogueIngredient(tx, ingredientId, parts, joined);
+
+    return "applied";
+  });
+
+  return await announceIfApplied(outcome, ids);
+}
+
+/**
+ * Delete a food AI is sure names no food, with its Junk Lines for nothing; a Pantry Ingredient
+ * naming it keeps it, flagged, as does a person's Undo of the same deletion.
+ */
+export async function deleteByAI(
+  ingredientId: string,
+  verdict: NoFoodAnswer
+): Promise<{ outcome: ApplyOutcome | "kept"; lines: number }> {
+  let lines: string[] = [];
+  const outcome = await withTransaction(async (tx): Promise<ApplyOutcome | "kept"> => {
+    await lockTree(tx);
+    if ((await lockIngredients(tx, [ingredientId])) < 1) return "gone";
+    const food = await readDeletedFood(tx, ingredientId);
+
+    if (!food) return "gone";
+    if (!(await isAskableByAI(tx, ingredientId))) return "decided";
+    if (await wasDeletionUndone(tx, ingredientId)) return "undone";
+    if (verdict === "nothing") {
+      const folds = food.aliases.map((spelling) => spelling.fold);
+
+      if ((await findFoldsKeptAsNotJunk(folds, tx)).size > 0) return "undone";
+    }
+    if (await isInAnyPantry(tx, ingredientId)) {
+      await refreshAIFlag(tx, ingredientId, { unsure: true, reason: doubtOf(verdict) });
+
+      return "kept";
+    }
+    if (verdict === "nothing") lines = await deleteJunkLines(tx, ingredientId);
+
+    const left = {
+      ...food,
+      lineFoods: food.lineFoods.filter((row) => !lines.includes(row.lineId)),
+    };
+    const named = left.lineFoods.length + left.groceries.length + left.recurring.length > 0;
+
+    // Recorded for its Undo, where anything but a Junk Line still named it.
+    if (verdict === "tool" || named) {
+      await recordAIChange(tx, {
+        sure: true,
+        undo: { kind: verdict === "tool" ? "tool" : "not-a-food", food: left },
+      });
+    }
+    await deleteCatalogueIngredient(tx, ingredientId);
+
+    return "applied";
+  });
+
+  if (outcome === "applied" || outcome === "kept") {
+    await ingredientChanges().changed([ingredientId]);
+  }
+
+  return { outcome, lines: lines.length };
+}
+
+/** The flag an unsure tool or nothing raises. */
+export function doubtOf(verdict: NoFoodAnswer): FlagReason {
+  return verdict === "tool" ? "ai-tool" : "ai-junk";
+}
+
 /** Flag a food AI answered about without changing it, unless the answer was sure or a person decided meanwhile. */
-export async function flagByAnswer(ingredientId: string, sure: boolean): Promise<void> {
+export async function flagByAnswer(
+  ingredientId: string,
+  sure: boolean,
+  reason: FlagReason = "ai-unsure"
+): Promise<void> {
   const flagged = await withTransaction(async (tx) => {
     if ((await lockIngredients(tx, [ingredientId])) < 1) return false;
     if (!(await isAskableByAI(tx, ingredientId))) return false;
-    await refreshAIFlag(tx, ingredientId, { unsure: !sure });
+    await refreshAIFlag(tx, ingredientId, { unsure: !sure, reason });
 
     return true;
   });
@@ -160,36 +260,87 @@ export interface AIChangeItem {
   sure: boolean;
   kept: boolean;
   createdAt: Date;
-  /** The food it is listed under: a merge's is the food the other joined. */
-  ingredient: { id: string; name: string; localeNames: LocaleNames };
+  /** The food it is listed under: a merge's is the food the other joined; none for a deleted one. */
+  ingredient: { id: string; name: string; localeNames: LocaleNames } | null;
   /** A parent's parent. */
   target: { id: string; name: string; localeNames: LocaleNames } | null;
-  /** The merged food's name, or the name AI replaced. */
+  /** The recipe a Junk Line was deleted from. */
+  recipe: { id: string; name: string } | null;
+  /** The merged or deleted food's name, the name AI replaced, or the deleted line. */
   from: string | null;
   fromWords: boolean;
   canAct: boolean;
 }
 
-/** Whose food a change was about (a merge's: the food merged away), and what it was before. */
+/**
+ * Who answers for a change: a food's owner under the ingredient policy (a merge's: the food merged
+ * away), or a Junk Line's recipe owner under the recipe policy; and what it was before.
+ */
 function subjectOf(change: StoredAIChange) {
   const { undo } = change;
+  const food = { of: "food" as const, ownerId: change.ingredient?.ownerId ?? null };
 
   switch (undo.kind) {
     case "merge":
-      return { ownerId: undo.ownerId, from: undo.name, fromWords: false };
+      return { of: "food" as const, ownerId: undo.ownerId, from: undo.name, fromWords: false };
     case "parent":
-      return { ownerId: change.ingredient.ownerId, from: null, fromWords: undo.fromWords === true };
+      return { ...food, from: null, fromWords: undo.fromWords === true };
     case "plain-name":
-      return { ownerId: change.ingredient.ownerId, from: undo.formerName, fromWords: false };
+      return { ...food, from: undo.formerName, fromWords: false };
+    case "tool":
+    case "not-a-food":
+      return {
+        of: "food" as const,
+        ownerId: undo.food.ownerId,
+        from: undo.food.name,
+        fromWords: false,
+      };
+    case "junk-line":
+      return {
+        of: "recipe" as const,
+        ownerId: change.recipe?.ownerId ?? null,
+        from: undo.line.name,
+        fromWords: false,
+      };
   }
 }
 
-/** Everything Changed by AI lists, each saying whether the viewer may keep or undo it. */
+/** The levels a change follows: the ingredient policy's for a food, the recipe policy's for a line. */
+async function editLevels() {
+  const [food, recipe] = await Promise.all([
+    getIngredientPermissionPolicy(),
+    getRecipePermissionPolicy(),
+  ]);
+
+  return { food: food.edit, recipe: recipe.edit, recipeView: recipe.view };
+}
+
+/** Whether `actor` may act on a change, by its subject's policy; an orphaned recipe is anyone's. */
+function mayActOn(
+  levels: Awaited<ReturnType<typeof editLevels>>,
+  actor: CatalogueActor,
+  change: StoredAIChange
+): boolean {
+  const { of, ownerId } = subjectOf(change);
+
+  if (of === "food") return mayEditOwnedRow(levels.food, actor, ownerId);
+
+  return ownerId === null || mayEditOwnedRow(levels.recipe, actor, ownerId);
+}
+
+/** Everything Changed by AI lists that the viewer may see, each saying whether they may act on it. */
 export async function listAIChangesFor(actor: CatalogueActor): Promise<AIChangeItem[]> {
-  const [policy, changes] = await Promise.all([getIngredientPermissionPolicy(), listAIChanges()]);
+  const [levels, all] = await Promise.all([editLevels(), listAIChanges()]);
+  // A Junk Line names its recipe, which only those who may see the recipe are shown.
+  const changes = all.filter(
+    (change) =>
+      !change.recipe ||
+      change.recipe.ownerId === null ||
+      mayEditOwnedRow(levels.recipeView, actor, change.recipe.ownerId)
+  );
   const names = await findLocaleNames(
     changes.flatMap((change) =>
-      change.target ? [change.ingredient.id, change.target.id] : [change.ingredient.id]
+      [change.ingredient?.id, change.target?.id].filter((id) => id !== undefined)
     )
   );
   const named = (food: { id: string; name: string }) => ({
@@ -199,7 +350,7 @@ export async function listAIChangesFor(actor: CatalogueActor): Promise<AIChangeI
   });
 
   return changes.map((change) => {
-    const { ownerId, from, fromWords } = subjectOf(change);
+    const { from, fromWords } = subjectOf(change);
 
     return {
       id: change.id,
@@ -207,11 +358,12 @@ export async function listAIChangesFor(actor: CatalogueActor): Promise<AIChangeI
       sure: change.sure,
       kept: change.kept,
       createdAt: change.createdAt,
-      ingredient: named(change.ingredient),
+      ingredient: change.ingredient ? named(change.ingredient) : null,
       target: change.target ? named(change.target) : null,
+      recipe: change.recipe ? { id: change.recipe.id, name: change.recipe.name } : null,
       from,
       fromWords,
-      canAct: mayEditIngredientRow(policy.edit, actor, ownerId),
+      canAct: mayActOn(levels, actor, change),
     };
   });
 }
@@ -221,7 +373,10 @@ async function lockChangeFor(tx: DbTransaction, actor: CatalogueActor, changeId:
   await lockTree(tx);
   const change = await lockAIChange(tx, changeId);
 
-  return await assertMayEdit(actor, change && { ...change, ownerId: subjectOf(change).ownerId });
+  if (!change) throw new CatalogueEditError("not-found");
+  if (!mayActOn(await editLevels(), actor, change)) throw new CatalogueEditError("forbidden");
+
+  return change;
 }
 
 /**
@@ -234,9 +389,9 @@ export async function keepAIChange(
 ): Promise<CatalogueEdit> {
   return await inEdit(async (tx) => {
     const change = await lockChangeFor(tx, actor, changeId);
-    const foodId = change.ingredient.id;
+    const foodId = change.ingredient?.id;
 
-    if (change.sure || change.kept) return { changed: [] };
+    if (change.sure || change.kept || !foodId) return { changed: [] };
     await settleAIChange(tx, changeId, "kept");
     if (change.undo.kind === "merge") {
       await clearAIFlagUnlessOpen(tx, foodId);
@@ -256,22 +411,37 @@ export async function undoAIChange(
 ): Promise<CatalogueEdit> {
   return await inEdit(async (tx) => {
     const change = await lockChangeFor(tx, actor, changeId);
-    const foodId = change.ingredient.id;
-    const changed = [foodId, ...(await reverseChange(tx, change))];
+    const foodId = change.ingredient?.id;
+    const changed = await reverseChange(tx, change);
 
     await settleAIChange(tx, changeId, "undone");
     // A sure change raised no flag, so undoing it lifts none.
-    if (!change.sure) await clearAIFlagUnlessOpen(tx, foodId);
+    if (!change.sure && foodId) await clearAIFlagUnlessOpen(tx, foodId);
 
-    return { changed };
+    return { changed: foodId ? [foodId, ...changed] : changed };
   });
 }
 
 /** Put back what one change took, through `tx`; returns the other foods it touched. */
 async function reverseChange(tx: DbTransaction, change: StoredAIChange): Promise<string[]> {
-  const foodId = change.ingredient.id;
   const { undo } = change;
 
+  if (undo.kind === "junk-line") {
+    if (change.recipe) await restoreDeletedLine(tx, change.recipe.id, undo.line);
+
+    return [];
+  }
+  if (undo.kind === "tool" || undo.kind === "not-a-food") {
+    const restored = await refusedOn("name-taken", () => restoreDeletedFood(tx, undo.food));
+
+    if (!restored) throw new CatalogueEditError("spelling-taken");
+
+    return [undo.food.ingredientId];
+  }
+
+  const foodId = change.ingredient?.id;
+
+  if (!foodId) return [];
   await lockIngredients(tx, [foodId]);
 
   switch (undo.kind) {

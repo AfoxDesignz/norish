@@ -363,7 +363,7 @@ function panel(name: string) {
 /** What AI changed about the food `name`, sure or not, as Changed by AI lists it. */
 function change(
   id: string,
-  kind: "merge" | "parent" | "plain-name",
+  kind: "merge" | "parent" | "plain-name" | "tool" | "not-a-food" | "junk-line",
   name: string,
   {
     sure = true,
@@ -387,6 +387,7 @@ function change(
     createdAt: new Date(0),
     ingredient: { id: ingredientId, name, localeNames: {} },
     target: target ? { id: target, name: target, localeNames: {} } : null,
+    recipe: null as { id: string; name: string } | null,
     from,
     fromWords,
     canAct: true,
@@ -627,7 +628,7 @@ describe("IngredientsSettingsContent", () => {
       fireEvent.click(screen.getByTestId("ingredient-delete-confirm"));
     });
 
-    expect(mutations.remove).toHaveBeenCalledWith({ ingredientId: "onion" });
+    expect(mutations.remove).toHaveBeenCalledWith({ ingredientId: "onion", asJunk: false });
     expect(invalidateQueries).toHaveBeenCalled();
     // The row is gone the moment the viewer confirms, not when the server answers.
     expect(items.map((item) => item.id)).toEqual(["salt"]);
@@ -692,6 +693,78 @@ describe("IngredientsSettingsContent", () => {
     expect(where).toHaveTextContent("onions · done");
     expect(where).toHaveTextContent("pantry");
     expect(where).toHaveTextContent("elsewhere");
+  });
+
+  it("offers Delete as junk instead of Delete on a food AI thought names nothing", async () => {
+    uses = {
+      recipes: [],
+      groceries: [],
+      pantry: false,
+      elsewhere: 0,
+      counts: { recipeLines: 2, groceries: 0, pantry: 0 },
+    };
+    items = [{ ...onion, name: "melted", flagReason: "ai-junk" }, salt];
+    render(<IngredientsSettingsContent />);
+    const opened = await open("melted");
+
+    expect(within(opened).queryByTestId("ingredient-delete")).toBeNull();
+    await act(async () => {
+      fireEvent.click(within(opened).getByTestId("ingredient-delete-as-junk"));
+    });
+
+    expect(screen.getByTestId("ingredient-delete-dialog")).toHaveTextContent("deleteAsJunkTitle");
+    expect(screen.getByTestId("ingredient-delete-touches")).toHaveTextContent(
+      "deleteTouches.junkLines"
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("ingredient-delete-confirm"));
+    });
+
+    expect(mutations.remove).toHaveBeenCalledWith({ ingredientId: "onion", asJunk: true });
+  });
+
+  it("offers Delete as junk on no other flag", async () => {
+    items = [{ ...onion, flagReason: "ai-tool" }, salt];
+    render(<IngredientsSettingsContent />);
+    const opened = await open("onion");
+
+    expect(within(opened).getByTestId("ingredient-flag-notice")).toHaveTextContent(
+      "flagReasons.ai-tool"
+    );
+    expect(within(opened).queryByTestId("ingredient-delete-as-junk")).toBeNull();
+    expect(within(opened).getByTestId("ingredient-delete")).toBeInTheDocument();
+  });
+
+  it("lists a deleted food by its name and a Junk Line under its recipe on Changed by AI, each with Undo", async () => {
+    changes = [
+      { ...change("c1", "tool", "deegroller"), ingredient: null, from: "deegroller" },
+      {
+        ...change("c2", "junk-line", "melted"),
+        ingredient: null,
+        recipe: { id: "r1", name: "snickers ice cream bars" },
+        from: "melted",
+      },
+    ];
+    render(<IngredientsSettingsContent />);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("ingredients-ai-changes-open"));
+    });
+    const [tool, line] = within(
+      screen.getByRole("dialog", { name: "changedByAI.title" })
+    ).getAllByTestId("ingredient-ai-change");
+
+    expect(tool).toHaveTextContent("deegroller");
+    expect(tool).toHaveTextContent("changedByAI.tool");
+    expect(within(tool!).queryByTestId("ingredient-ai-change-open")).toBeNull();
+    expect(within(line!).getByTestId("ingredient-ai-change-recipe")).toHaveAttribute(
+      "href",
+      "/recipes/r1"
+    );
+    expect(line).toHaveTextContent("changedByAI.junkLine");
+    await act(async () => {
+      fireEvent.click(within(line!).getByTestId("ingredient-ai-change-undo"));
+    });
+    expect(mutations.undoAIChange).toHaveBeenCalledWith({ changeId: "c2" });
   });
 
   it("holds Delete until it has read what the delete touches", async () => {

@@ -42,6 +42,10 @@ export const FLAG_REASONS = [
   "upgrade",
   /** The catalogue seed found several foods its spellings could be. */
   "seed-ambiguous",
+  /** AI thought this names a tool, not a food, and was not sure. */
+  "ai-tool",
+  /** AI thought this names nothing, a Junk Line, and was not sure. */
+  "ai-junk",
 ] as const;
 
 export type FlagReason = (typeof FLAG_REASONS)[number];
@@ -53,8 +57,18 @@ export function isFlagReason(value: unknown): value is FlagReason {
   return (FLAG_REASONS as readonly unknown[]).includes(value);
 }
 
-/** What an AI Change did: merged a food into another, filed it under a parent, or gave it its Plain Name. */
-export const AI_CHANGE_KINDS = ["merge", "parent", "plain-name"] as const;
+/**
+ * What an AI Change did: merged a food into another, filed it under a parent, gave it its Plain
+ * Name, deleted it as a tool or as naming no food, or deleted a Junk Line from a recipe.
+ */
+export const AI_CHANGE_KINDS = [
+  "merge",
+  "parent",
+  "plain-name",
+  "tool",
+  "not-a-food",
+  "junk-line",
+] as const;
 
 export type AIChangeKind = (typeof AI_CHANGE_KINDS)[number];
 
@@ -68,6 +82,9 @@ export type ReviewVerdict =
   | { outcome: "merge"; into: string; sure: boolean }
   | { outcome: "parent"; of: string; sure: boolean }
   | { outcome: "rename"; to: string }
+  | { outcome: "split"; into: string[] }
+  | { outcome: "tool" }
+  | { outcome: "junk"; lines: number }
   | { outcome: "distinct" }
   | { outcome: "unsure"; reason: FlagReason }
   | { outcome: "skipped"; reason: "decided" | "undone" | "not-found" };

@@ -6,6 +6,7 @@
  * `generateStructured`; the configuration says whether either may be asked.
  */
 import { APICallError } from "ai";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SeedEntry } from "@norish/db/repositories/ingredient-seed";
@@ -34,11 +35,16 @@ import {
   isDecisionUseEnabled,
 } from "@norish/shared-server/config/server-config-loader";
 import { undoAIChange } from "@norish/shared-server/ingredients/ai-changes";
+import { resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
 import {
   updateResolvedRecipe,
   withResolvedIngredients,
 } from "@norish/shared-server/ingredients/recipe-lines";
-import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
+import {
+  ingredientFor,
+  resolveIngredient,
+  resolveIngredients,
+} from "@norish/shared-server/ingredients/resolver";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import { getSpellingTexts, getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
@@ -657,5 +663,272 @@ describe("ingredient resolver, rung 3", () => {
     expect(diced!.ingredientId).toBe(onion.ingredientId);
     expect(bare!.ingredientId).toBe(onion.ingredientId);
     expect(vi.mocked(decide)).toHaveBeenCalledTimes(1);
+  });
+
+  describe("several foods, a tool and nothing", () => {
+    const actor = () => ({ userId, householdUserIds: null, isServerAdmin: false });
+
+    beforeEach(() => {
+      vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
+    });
+
+    /**
+     * The language model's answer per name it is asked about, whatever order the questions come
+     * in. `about` names the listed food a same or kind-of answer gives the number of.
+     */
+    function answering(
+      byName: Record<
+        string,
+        {
+          verdict: "same" | "kind-of" | "new" | "several" | "tool" | "nothing";
+          about?: string;
+          sure: boolean;
+          parts?: string[];
+          joined?: "together" | "alternatives";
+        }
+      >
+    ) {
+      vi.mocked(generateStructured).mockImplementation((async ({
+        sections,
+      }: {
+        sections: string[];
+      }) => {
+        const text = sections.join("\n");
+        const name = /^New name: (.*)$/m.exec(text)?.[1] ?? "";
+        const answer = byName[name];
+
+        if (!answer) throw new Error(`no answer for "${name}"`);
+        const listed = answer.about
+          ? text
+              .split("\n")
+              .find(
+                (row) =>
+                  /^\d+\. /.test(row) && row.slice(row.indexOf(" ") + 1).startsWith(answer.about!)
+              )
+          : undefined;
+
+        return {
+          verdict: answer.verdict,
+          food: listed ? Number(listed.split(".")[0]) : null,
+          sure: answer.sure,
+          parts: answer.parts ?? null,
+          joined: answer.joined ?? null,
+          englishName: null,
+        };
+      }) as never);
+    }
+
+    async function saved(name: string, texts: string[], recipeId = crypto.randomUUID()) {
+      await createRecipeWithRefs(
+        recipeId,
+        userId,
+        await withResolvedIngredients(
+          {
+            name,
+            systemUsed: "metric",
+            recipeIngredients: texts.map((ingredientName, order) => ({
+              ingredientId: null,
+              ingredientName,
+              amount: null,
+              unit: null,
+              order,
+            })),
+          },
+          { userId }
+        )
+      );
+
+      return { recipeId, lines: (await getRecipeFull(recipeId))!.recipeIngredients };
+    }
+
+    it("splits a name AI is sure names several foods into each, as alternatives", async () => {
+      const mustard = await known("mustard");
+
+      answering({
+        "Dijon or yellow mustard": {
+          verdict: "several",
+          sure: true,
+          parts: ["Dijon mustard", "yellow mustard"],
+          joined: "alternatives",
+        },
+        "Dijon mustard": { verdict: "kind-of", about: "mustard", sure: true },
+        "yellow mustard": { verdict: "same", about: "mustard", sure: true },
+      });
+      const { lines } = await saved("Hot dogs", ["Dijon or yellow mustard"]);
+      const dijon = await resolveIngredient("Dijon mustard", { userId }, { ai: false });
+
+      expect(lines).toMatchObject([
+        {
+          ingredientName: "Dijon or yellow mustard",
+          joined: "alternatives",
+          foods: [{ ingredientId: dijon!.ingredientId }, { ingredientId: mustard.ingredientId }],
+        },
+      ]);
+      expect(await findIngredientAncestors([dijon!.ingredientId])).toEqual(
+        new Map([[dijon!.ingredientId, [mustard.ingredientId]]])
+      );
+      // The joined name is no food of its own.
+      await expect(
+        getTestDb()
+          .select()
+          .from(ingredients)
+          .where(eq(ingredients.name, "Dijon or yellow mustard"))
+      ).resolves.toEqual([]);
+    });
+
+    it("keeps a name AI is not sure names several as one food, flagged", async () => {
+      await known("mustard");
+      answering({
+        "Dijon or yellow mustard": {
+          verdict: "several",
+          sure: false,
+          parts: ["Dijon mustard", "yellow mustard"],
+          joined: "alternatives",
+        },
+      });
+      const { lines } = await saved("Hot dogs", ["Dijon or yellow mustard"]);
+      const [line] = lines;
+
+      expect(line).toMatchObject({ joined: null });
+      await expect(
+        getTestDb().select().from(ingredients).where(eq(ingredients.id, line!.ingredientId!))
+      ).resolves.toMatchObject([
+        { name: "Dijon or yellow mustard", flagged: true, flagReason: "ai-unsure" },
+      ]);
+    });
+
+    it("keeps a line AI is sure names a tool in its recipe with no food, minting nothing", async () => {
+      await known("deeg");
+      answering({ deegroller: { verdict: "tool", sure: true } });
+      const { lines } = await saved("Taart", ["deegroller"]);
+
+      // No food: the add-to-groceries panel passes it over, as any line naming none.
+      expect(lines).toMatchObject([{ ingredientName: "deegroller", ingredientId: null }]);
+      await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(1);
+    });
+
+    it("leaves a line AI is sure names nothing out of its recipe, and Undo puts it back where it was", async () => {
+      await known("snickers bars");
+      await known("heavy cream");
+      // A food sharing the start of its word, so the import asks AI about it.
+      await known("meltblokjes");
+      answering({ melted: { verdict: "nothing", sure: true } });
+      const { recipeId, lines } = await saved("snickers ice cream bars", [
+        "snickers bars",
+        "melted",
+        "heavy cream",
+      ]);
+
+      expect(lines.map((line) => line.ingredientName)).toEqual(["snickers bars", "heavy cream"]);
+      const [change, ...others] = await listAIChanges();
+
+      expect(others).toEqual([]);
+      expect(change).toMatchObject({
+        sure: true,
+        ingredient: null,
+        recipe: { id: recipeId, name: "snickers ice cream bars" },
+        undo: { kind: "junk-line", line: { name: "melted", fold: "melted" } },
+      });
+
+      await undoAIChange(actor(), change!.id);
+      expect(
+        (await getRecipeFull(recipeId))!.recipeIngredients.map((line) => line.ingredientName)
+      ).toEqual(["snickers bars", "melted", "heavy cream"]);
+
+      // Asked again, AI's same answer deletes it no more: the line stays, naming no food.
+      const again = await saved("snickers ice cream bars, again", ["melted"]);
+
+      expect(again.lines).toMatchObject([{ ingredientName: "melted", ingredientId: null }]);
+    });
+
+    it("mints a food AI is not sure is a tool or names nothing, flagged with that doubt", async () => {
+      await known("deeg");
+      // A food sharing the start of its word, so the import asks AI about it.
+      await known("meltblokjes");
+      answering({
+        deegroller: { verdict: "tool", sure: false },
+        melted: { verdict: "nothing", sure: false },
+      });
+      const { lines } = await saved("Taart", ["deegroller", "melted"]);
+
+      expect(
+        await Promise.all(
+          lines.map(
+            async (line) =>
+              (
+                await getTestDb()
+                  .select()
+                  .from(ingredients)
+                  .where(eq(ingredients.id, line.ingredientId!))
+              )[0]
+          )
+        )
+      ).toMatchObject([
+        { name: "deegroller", flagged: true, flagReason: "ai-tool" },
+        { name: "melted", flagged: true, flagReason: "ai-junk" },
+      ]);
+    });
+
+    it("gives a typed text AI splits only its first food, minting none of the others", async () => {
+      await known("mustard");
+      answering({
+        "Dijon or yellow mustard": {
+          verdict: "several",
+          sure: true,
+          parts: ["Dijon mustard", "yellow mustard"],
+          joined: "alternatives",
+        },
+        "Dijon mustard": { verdict: "new", sure: true },
+      });
+
+      const [typed] = await resolveGroceryNames([{ name: "Dijon or yellow mustard" }], { userId });
+
+      await expect(ingredientFor(typed!.aliasId)).resolves.toMatchObject({ name: "Dijon mustard" });
+      expect(
+        (await getTestDb().select({ name: ingredients.name }).from(ingredients)).map(
+          (row) => row.name
+        )
+      ).toEqual(expect.not.arrayContaining(["yellow mustard"]));
+    });
+
+    it("keeps a typed grocery AI says names nothing on the list with no food, minting nothing", async () => {
+      // A food sharing the start of its word, so the import asks AI about it.
+      await known("meltblokjes");
+      answering({ melted: { verdict: "nothing", sure: true } });
+
+      await expect(resolveGroceryNames([{ name: "melted" }], { userId })).resolves.toEqual([null]);
+      await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(1);
+      await expect(listAIChanges()).resolves.toEqual([]);
+    });
+
+    it("takes a Decision's sure tool, and asks the language model for the parts of several", async () => {
+      await known("deeg");
+      const dijon = await known("Dijon mustard");
+      const yellow = await known("yellow mustard");
+
+      vi.mocked(isDecisionUseEnabled).mockResolvedValue(true);
+      decides("Is kitchen equipment the cook already has, such as a tin or a rolling pin", 0.95);
+      await expect(resolveIngredient("deegroller", { userId })).resolves.toBeNull();
+
+      decides("Names several foods at once, joined by and or or", 0.95);
+      answering({
+        "Dijon or yellow mustard": {
+          verdict: "several",
+          sure: true,
+          parts: ["Dijon mustard", "yellow mustard"],
+          joined: "alternatives",
+        },
+      });
+      const { lines } = await saved("Hot dogs", ["Dijon or yellow mustard"]);
+
+      expect(lines).toMatchObject([
+        {
+          joined: "alternatives",
+          foods: [{ ingredientId: dijon.ingredientId }, { ingredientId: yellow.ingredientId }],
+        },
+      ]);
+      expect(vi.mocked(decide)).toHaveBeenCalledTimes(2);
+      expect(vi.mocked(generateStructured)).toHaveBeenCalledTimes(1);
+    });
   });
 });

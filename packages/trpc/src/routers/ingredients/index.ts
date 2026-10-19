@@ -374,13 +374,18 @@ const saveDraft = authedProcedure
     return asEditResult(() => saveIngredientDraft(viewerOf(ctx), ingredientId, draft));
   });
 
-/** Delete an Ingredient nothing uses. Follows `edit` on the Ingredient. */
+/**
+ * Delete an Ingredient; its lines keep their text, or with `asJunk` go as Junk Lines. Follows `edit`
+ * on the Ingredient.
+ */
 const remove = authedProcedure
-  .input(z.object({ ingredientId: z.uuid() }))
+  .input(z.object({ ingredientId: z.uuid(), asJunk: z.boolean().optional() }))
   .mutation(({ ctx, input }) => {
-    log.info({ userId: ctx.user.id, ingredientId: input.ingredientId }, "Deleting an Ingredient");
+    log.info({ userId: ctx.user.id, ...input }, "Deleting an Ingredient");
 
-    return asEditResult(() => deleteIngredient(viewerOf(ctx), input.ingredientId));
+    return asEditResult(() =>
+      deleteIngredient(viewerOf(ctx), input.ingredientId, { asJunk: input.asJunk })
+    );
   });
 
 /** Merge one Ingredient into another. Needs `edit` on both. */

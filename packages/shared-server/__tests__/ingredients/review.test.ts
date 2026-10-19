@@ -7,14 +7,21 @@
  * is mocked at `decide` and the language model at `generateStructured`, as in
  * rung 3's tests.
  */
-import { eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DecisionQuestions } from "@norish/shared-server/ai/runtime/runtime";
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import { findIngredientAncestors } from "@norish/db/repositories/ingredient-relocation";
-import { ingredients } from "@norish/db/schema";
+import {
+  groceries,
+  ingredients,
+  pantryIngredients,
+  recipeIngredientFoods,
+  recipeIngredients,
+  recurringGroceries,
+} from "@norish/db/schema";
 import { decide, generateStructured } from "@norish/shared-server/ai/runtime/runtime";
 import {
   isAIEnabled,
@@ -29,7 +36,11 @@ import {
 import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 import { askAIAbout } from "@norish/shared-server/ingredients/review";
 
-import { getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
+import {
+  createTestRecipe,
+  getTestDb,
+  insertTestRecipeLine,
+} from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
 vi.mock("@norish/shared-server/ai/runtime/runtime", () => ({
@@ -95,8 +106,31 @@ function reads(reading: { englishName: string | null; generalFood: string | null
 }
 
 /** The language model's comparison: a verdict on the `food`th candidate. */
-function compares(verdict: "same" | "kind-of" | "new", food: number | null, sure: boolean) {
-  answers("ingredient-resolution", { verdict, food, sure, englishName: null });
+function compares(
+  verdict: "same" | "kind-of" | "new" | "tool" | "nothing",
+  food: number | null,
+  sure: boolean
+) {
+  answers("ingredient-resolution", {
+    verdict,
+    food,
+    sure,
+    parts: null,
+    joined: null,
+    englishName: null,
+  });
+}
+
+/** The language model's answer that a name is several foods. */
+function splits(parts: string[], joined: "together" | "alternatives", sure: boolean) {
+  answers("ingredient-resolution", {
+    verdict: "several",
+    food: null,
+    sure,
+    parts,
+    joined,
+    englishName: null,
+  });
 }
 
 describe("asking AI about an Ingredient", () => {
@@ -153,7 +187,7 @@ describe("asking AI about an Ingredient", () => {
   async function changes() {
     return (await listAIChanges()).map((change) => ({
       kind: change.undo.kind,
-      food: change.ingredient.name,
+      food: change.ingredient?.name ?? null,
       target: change.target?.name ?? null,
       sure: change.sure,
       kept: change.kept,
@@ -457,5 +491,327 @@ describe("asking AI about an Ingredient", () => {
       reason: "not-found",
     });
     expect(vi.mocked(generateStructured)).not.toHaveBeenCalled();
+  });
+
+  describe("several foods, a tool and nothing", () => {
+    /** A recipe line, a Grocery and a recurring grocery naming `food` as `text`, and a Pantry Ingredient if `pantry`. */
+    async function nameEverywhere(
+      food: { aliasId: string; ingredientId: string },
+      text: string,
+      { pantry = true }: { pantry?: boolean } = {}
+    ) {
+      const db = getTestDb();
+      const recipe = await createTestRecipe(actor.userId);
+      const pointers = { ingredientAliasId: food.aliasId, ingredientId: food.ingredientId };
+      const line = await insertTestRecipeLine({ recipeId: recipe.id, name: text }, [food.aliasId]);
+
+      await db.insert(groceries).values({ userId: actor.userId, name: text, ...pointers });
+      await db.insert(recurringGroceries).values({
+        userId: actor.userId,
+        name: text,
+        ...pointers,
+        recurrenceRule: "week",
+        nextPlannedFor: "2027-01-01",
+      });
+      if (pantry) await db.insert(pantryIngredients).values({ userId: actor.userId, ...pointers });
+
+      return { recipe: recipe.id, line: line.id };
+    }
+
+    /** What a line names, in order, and how. */
+    async function lineFoods(lineId: string) {
+      const db = getTestDb();
+      const [line] = await db
+        .select({ joined: recipeIngredients.joined })
+        .from(recipeIngredients)
+        .where(eq(recipeIngredients.id, lineId));
+      const foods = await db
+        .select({ aliasId: recipeIngredientFoods.ingredientAliasId })
+        .from(recipeIngredientFoods)
+        .where(eq(recipeIngredientFoods.recipeIngredientId, lineId))
+        .orderBy(asc(recipeIngredientFoods.position));
+
+      return { joined: line?.joined, aliasIds: foods.map((food) => food.aliasId) };
+    }
+
+    /** The name and alias of every row of `table`, by name. */
+    async function rowsOf(table: typeof groceries | typeof recurringGroceries) {
+      return await getTestDb()
+        .select({ name: table.name, aliasId: table.ingredientAliasId })
+        .from(table)
+        .orderBy(asc(table.name));
+    }
+
+    async function pantryAliases() {
+      const rows = await getTestDb()
+        .select({ aliasId: pantryIngredients.ingredientAliasId })
+        .from(pantryIngredients);
+
+      return rows.map((row) => row.aliasId).sort();
+    }
+
+    async function exists(ingredientId: string) {
+      const rows = await getTestDb()
+        .select({ id: ingredients.id })
+        .from(ingredients)
+        .where(eq(ingredients.id, ingredientId));
+
+      return rows.length > 0;
+    }
+
+    it("splits a food AI is sure names several, everything naming it naming each instead, and removes it", async () => {
+      // Minted before either part was known, so its words could not split it.
+      const joined = await flagged("ketchup and mustard");
+      const ketchup = await kept("ketchup");
+      const mustard = await kept("mustard");
+      const named = await nameEverywhere(joined, "ketchup and mustard");
+
+      reads({ englishName: null, generalFood: null, sure: true });
+      decides("Names several foods at once, joined by and or or", 0.95);
+      splits(["ketchup", "mustard"], "together", true);
+
+      await expect(askAIAbout(joined.ingredientId)).resolves.toMatchObject({
+        outcome: "split",
+        into: ["ketchup", "mustard"],
+      });
+      expect(await lineFoods(named.line)).toEqual({
+        joined: "together",
+        aliasIds: [ketchup.aliasId, mustard.aliasId],
+      });
+      // Together, a grocery is a row per food, each named for its part.
+      const each = [
+        { name: "ketchup", aliasId: ketchup.aliasId },
+        { name: "mustard", aliasId: mustard.aliasId },
+      ];
+
+      expect(await rowsOf(groceries)).toEqual(each);
+      expect(await rowsOf(recurringGroceries)).toEqual(each);
+      expect(await pantryAliases()).toEqual([ketchup.aliasId, mustard.aliasId].sort());
+      expect(await exists(joined.ingredientId)).toBe(false);
+      // Not listed: a split grocery cannot be put back together.
+      expect(await changes()).toEqual([]);
+    });
+
+    it("puts the first of a split's alternatives on the list, and keeps each in the Pantry", async () => {
+      const joined = await flagged("Dijon or yellow mustard");
+      const dijon = await kept("Dijon mustard");
+      const yellow = await kept("yellow mustard");
+      const named = await nameEverywhere(joined, "Dijon or yellow mustard");
+
+      reads({ englishName: null, generalFood: null, sure: true });
+      decides("Names several foods at once, joined by and or or", 0.95);
+      splits(["Dijon mustard", "yellow mustard"], "alternatives", true);
+      await askAIAbout(joined.ingredientId);
+
+      expect(await lineFoods(named.line)).toEqual({
+        joined: "alternatives",
+        aliasIds: [dijon.aliasId, yellow.aliasId],
+      });
+      expect(await rowsOf(groceries)).toEqual([{ name: "Dijon mustard", aliasId: dijon.aliasId }]);
+      expect(await pantryAliases()).toEqual([dijon.aliasId, yellow.aliasId].sort());
+    });
+
+    it("leaves a food AI is not sure names several as it was, flagged as unsure", async () => {
+      const joined = await flagged("Dijon or yellow mustard");
+
+      await kept("Dijon mustard");
+      await kept("yellow mustard");
+      reads({ englishName: null, generalFood: null, sure: false });
+      decides("Names several foods at once, joined by and or or", 0.95);
+      splits(["Dijon mustard", "yellow mustard"], "alternatives", false);
+
+      await expect(askAIAbout(joined.ingredientId)).resolves.toMatchObject({
+        outcome: "unsure",
+        reason: "ai-unsure",
+      });
+      await expect(ingredientFor(joined.aliasId)).resolves.toMatchObject({
+        id: joined.ingredientId,
+        flagged: true,
+        flagReason: "ai-unsure",
+      });
+    });
+
+    it("deletes a food AI is sure is a tool, its lines keeping their text, and Undo brings back the food and its rows", async () => {
+      const roller = await flagged("deegroller");
+      const named = await nameEverywhere(roller, "deegroller", { pantry: false });
+
+      // Nothing known shares a word with it: the language model alone reads, then answers.
+      reads({ englishName: null, generalFood: null, sure: true });
+      compares("tool", null, true);
+
+      await expect(askAIAbout(roller.ingredientId)).resolves.toMatchObject({ outcome: "tool" });
+      expect(await exists(roller.ingredientId)).toBe(false);
+      expect(await lineFoods(named.line)).toEqual({ joined: null, aliasIds: [] });
+      expect(await rowsOf(groceries)).toEqual([{ name: "deegroller", aliasId: null }]);
+      const [change, ...others] = await listAIChanges();
+
+      expect(others).toEqual([]);
+      expect(change).toMatchObject({
+        sure: true,
+        ingredient: null,
+        undo: { kind: "tool", food: { ingredientId: roller.ingredientId, name: "deegroller" } },
+      });
+
+      await undoAIChange(actor, change!.id);
+      await expect(ingredientFor(roller.aliasId)).resolves.toMatchObject({
+        id: roller.ingredientId,
+        name: "deegroller",
+      });
+      expect(await lineFoods(named.line)).toEqual({ joined: null, aliasIds: [roller.aliasId] });
+      expect(await rowsOf(groceries)).toEqual([{ name: "deegroller", aliasId: roller.aliasId }]);
+      expect(await rowsOf(recurringGroceries)).toEqual([
+        { name: "deegroller", aliasId: roller.aliasId },
+      ]);
+
+      // Asked again, AI's same answer deletes it no more.
+      reads({ englishName: null, generalFood: null, sure: true });
+      compares("tool", null, true);
+      await expect(askAIAbout(roller.ingredientId)).resolves.toMatchObject({
+        outcome: "skipped",
+        reason: "undone",
+      });
+      expect(await exists(roller.ingredientId)).toBe(true);
+    });
+
+    it("deletes the lines of a food AI is sure names nothing as Junk Lines, which Undo puts back where they were", async () => {
+      const melted = await flagged("melted");
+      const bars = await kept("snickers bars");
+      const cream = await kept("heavy cream");
+      const recipe = await createTestRecipe(actor.userId, { name: "snickers ice cream bars" });
+
+      for (const [order, food, text] of [
+        [0, bars, "snickers bars"],
+        [1, melted, "melted"],
+        [2, cream, "heavy cream"],
+      ] as const) {
+        await insertTestRecipeLine({ recipeId: recipe.id, name: text, order: String(order) }, [
+          food.aliasId,
+        ]);
+      }
+      await getTestDb().insert(groceries).values({
+        userId: actor.userId,
+        name: "melted",
+        ingredientAliasId: melted.aliasId,
+        ingredientId: melted.ingredientId,
+      });
+      const linesOf = async () =>
+        (
+          await getTestDb()
+            .select({ name: recipeIngredients.name })
+            .from(recipeIngredients)
+            .where(eq(recipeIngredients.recipeId, recipe.id))
+            .orderBy(asc(recipeIngredients.order))
+        ).map((line) => line.name);
+
+      reads({ englishName: null, generalFood: null, sure: true });
+      compares("nothing", null, true);
+
+      await expect(askAIAbout(melted.ingredientId)).resolves.toMatchObject({
+        outcome: "junk",
+        lines: 1,
+      });
+      expect(await linesOf()).toEqual(["snickers bars", "heavy cream"]);
+      expect(await exists(melted.ingredientId)).toBe(false);
+      // A grocery a person typed is never deleted: it stays, naming no food.
+      expect(await rowsOf(groceries)).toEqual([{ name: "melted", aliasId: null }]);
+      expect(await changes()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ kind: "junk-line", food: null, sure: true }),
+          expect.objectContaining({ kind: "not-a-food", food: null, sure: true }),
+        ])
+      );
+
+      const junk = (await listAIChanges()).find((change) => change.undo.kind === "junk-line")!;
+
+      expect(junk.recipe).toMatchObject({ id: recipe.id, name: "snickers ice cream bars" });
+      await undoAIChange(actor, junk.id);
+      expect(await linesOf()).toEqual(["snickers bars", "melted", "heavy cream"]);
+
+      // Asked again about the same text, minted anew, AI deletes it no more.
+      const again = await flagged("melted");
+
+      reads({ englishName: null, generalFood: null, sure: true });
+      compares("nothing", null, true);
+      await expect(askAIAbout(again.ingredientId)).resolves.toMatchObject({
+        outcome: "skipped",
+        reason: "undone",
+      });
+      expect(await exists(again.ingredientId)).toBe(true);
+    });
+
+    it("keeps a food AI deletes as naming nothing for Undo where a joined line still named it", async () => {
+      const melted = await flagged("melted");
+      const butter = await kept("butter");
+      const recipe = await createTestRecipe(actor.userId);
+      const line = await insertTestRecipeLine(
+        { recipeId: recipe.id, name: "butter, melted", joined: "together" },
+        [butter.aliasId, melted.aliasId]
+      );
+
+      reads({ englishName: null, generalFood: null, sure: true });
+      compares("nothing", null, true);
+      await expect(askAIAbout(melted.ingredientId)).resolves.toMatchObject({
+        outcome: "junk",
+        lines: 0,
+      });
+      expect(await lineFoods(line.id)).toMatchObject({ aliasIds: [butter.aliasId] });
+
+      const [change] = await listAIChanges();
+
+      expect(change).toMatchObject({ undo: { kind: "not-a-food" } });
+      await undoAIChange(actor, change!.id);
+      expect(await lineFoods(line.id)).toMatchObject({
+        aliasIds: [butter.aliasId, melted.aliasId],
+      });
+    });
+
+    it("flags a food AI is not sure is a tool or names nothing with that doubt, deleting nothing", async () => {
+      const roller = await flagged("deegroller");
+      const melted = await flagged("melted");
+
+      reads({ englishName: null, generalFood: null, sure: false });
+      compares("tool", null, false);
+      await expect(askAIAbout(roller.ingredientId)).resolves.toMatchObject({
+        outcome: "unsure",
+        reason: "ai-tool",
+      });
+      reads({ englishName: null, generalFood: null, sure: false });
+      compares("nothing", null, false);
+      await expect(askAIAbout(melted.ingredientId)).resolves.toMatchObject({
+        outcome: "unsure",
+        reason: "ai-junk",
+      });
+
+      await expect(ingredientFor(roller.aliasId)).resolves.toMatchObject({
+        flagged: true,
+        flagReason: "ai-tool",
+      });
+      await expect(ingredientFor(melted.aliasId)).resolves.toMatchObject({
+        flagged: true,
+        flagReason: "ai-junk",
+      });
+      expect(await changes()).toEqual([]);
+    });
+
+    it("keeps a food a Pantry Ingredient names, flagged, however sure AI is that it names nothing", async () => {
+      const melted = await flagged("melted");
+
+      await nameEverywhere(melted, "melted");
+      reads({ englishName: null, generalFood: null, sure: true });
+      compares("nothing", null, true);
+
+      await expect(askAIAbout(melted.ingredientId)).resolves.toMatchObject({
+        outcome: "unsure",
+        reason: "ai-junk",
+      });
+      expect(await exists(melted.ingredientId)).toBe(true);
+      expect(await pantryAliases()).toEqual([melted.aliasId]);
+      await expect(
+        getTestDb()
+          .select({ id: recipeIngredients.id })
+          .from(recipeIngredients)
+          .where(inArray(recipeIngredients.name, ["melted"]))
+      ).resolves.toHaveLength(1);
+    });
   });
 });

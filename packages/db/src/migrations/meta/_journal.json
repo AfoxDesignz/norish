@@ -554,6 +554,13 @@
       "when": 1792423694532,
       "tag": "0078_ai_changes",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1792440949479,
+      "tag": "0079_ai_deletes",
+      "breakpoints": true
     }
   ]
 }

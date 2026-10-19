@@ -19,7 +19,7 @@ import { getIngredientPermissionPolicy } from "@norish/shared-server/config/serv
 
 import type { CatalogueActor } from "./catalogue";
 import type { IconSet } from "./icons";
-import { CatalogueEditError, mayEditIngredientRow, setDrawnIcon } from "./catalogue";
+import { CatalogueEditError, mayEditOwnedRow, setDrawnIcon } from "./catalogue";
 import { ingredientChanges } from "./changes";
 import { drawDraftIcon, generateIngredientIcon } from "./icon-drafts";
 import { chooseIcon, shippedIconSet } from "./icons";
@@ -41,7 +41,7 @@ export async function listIconRoundFoods(
 
   for (const node of nodes.values()) {
     if (node.icon || (node.offId && vague.has(node.offId))) continue;
-    if (!mayEditIngredientRow(policy.edit, actor, node.ownerId)) continue;
+    if (!mayEditOwnedRow(policy.edit, actor, node.ownerId)) continue;
     const food = { id: node.id, name: node.name };
 
     scopes.unowned.push(food);

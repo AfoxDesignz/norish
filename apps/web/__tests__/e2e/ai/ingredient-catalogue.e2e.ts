@@ -266,7 +266,14 @@ test("AI merges a food a recipe mints by itself, Changed by AI lists the merge, 
     // The recipe's save asks what the line is, and is not sure it is garlic: a food of its own, flagged.
     {
       kind: "success",
-      content: JSON.stringify({ verdict: "new", food: null, sure: false, englishName: null }),
+      content: JSON.stringify({
+        verdict: "new",
+        food: null,
+        sure: false,
+        parts: null,
+        joined: null,
+        englishName: null,
+      }),
     },
     // Then AI's pass, with nobody asking: it reads the name, and compares it with garlic.
     {
@@ -275,7 +282,14 @@ test("AI merges a food a recipe mints by itself, Changed by AI lists the merge, 
     },
     {
       kind: "success",
-      content: JSON.stringify({ verdict: "same", food: 1, sure: true, englishName: "garlic" }),
+      content: JSON.stringify({
+        verdict: "same",
+        food: 1,
+        sure: true,
+        parts: null,
+        joined: null,
+        englishName: "garlic",
+      }),
     }
   );
   await createRecipe(aiStack, "Knoflookbrood", ["knoflookteentjes"]);
@@ -339,6 +353,59 @@ test("AI gives a food a recipe mints its plain name by itself, listed on Changed
   await expect(rename).toContainText("zalmmoot");
   await panel.getByRole("button", { name: "Close panel" }).click();
   await expect(ingredientRow("zalmmoot")).toBeVisible();
+});
+
+test("AI deletes a line a recipe mints that names nothing, and Undo on Changed by AI puts it back", async ({
+  ai,
+  aiStack,
+}) => {
+  await waitForAIPasses(aiStack);
+  // "gesmolten" shares no word with a known food, so only the pass asks: it reads the name as no
+  // food, then answers that it names nothing at all.
+  ai.control.enqueueIngredients(
+    {
+      kind: "success",
+      content: JSON.stringify({ englishName: null, generalFood: null, sure: true }),
+    },
+    {
+      kind: "success",
+      content: JSON.stringify({
+        verdict: "nothing",
+        food: null,
+        sure: true,
+        parts: null,
+        joined: null,
+        englishName: null,
+      }),
+    }
+  );
+  const id = await createRecipe(aiStack, "Snickers ijstaart", ["garlic", "gesmolten"]);
+  // The create answers before the recipe is written, and a recipe not written yet is not found.
+  const lines = () =>
+    queryTrpc<{ recipeIngredients: Array<{ ingredientName: string }> }>(
+      aiStack.baseURL,
+      aiStack.ownerCookies,
+      "recipes.get",
+      { id }
+    ).then(
+      (recipe) => recipe.recipeIngredients.map((line) => line.ingredientName),
+      () => undefined
+    );
+
+  await expect.poll(lines, { timeout: 30_000 }).toEqual(["garlic"]);
+
+  await page.goto("/settings?tab=ingredients");
+  await page.getByTestId("ingredients-ai-changes-open").click();
+  const panel = page.getByRole("dialog", { name: "Changed by AI" });
+  const junk = panel
+    .getByTestId("ingredient-ai-change")
+    .filter({ hasText: "Removed the line gesmolten" });
+
+  await expect(junk).toHaveAttribute("data-kind", "junk-line");
+  await expect(junk.getByTestId("ingredient-ai-change-recipe")).toHaveText("Snickers ijstaart");
+  await junk.getByTestId("ingredient-ai-change-undo").click();
+  await expect(junk).toHaveCount(0);
+  await expect.poll(lines).toEqual(["garlic", "gesmolten"]);
 });
 
 /** The panel a row opens: a dialog named after the food. */

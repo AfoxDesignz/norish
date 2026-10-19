@@ -383,7 +383,9 @@
       "ai-key-rejected": "Der KI-Anbieter hat den API-Schlüssel abgelehnt, daher konnte die KI diesen Namen nicht prüfen.",
       "food-gone": "KI ordnete dies einer Zutat zu, die zusammengeführt wurde, bevor der Name dazukommen konnte.",
       "upgrade": "Es konnte keine bekannte Zutat zugeordnet werden.",
-      "seed-ambiguous": "Der Katalog kennt mehrere Zutaten, die dies sein könnten."
+      "seed-ambiguous": "Der Katalog kennt mehrere Zutaten, die dies sein könnten.",
+      "ai-tool": "KI hielt dies für ein Küchenutensil, keine Zutat, und war nicht sicher.",
+      "ai-junk": "KI meinte, dies nennt nichts, etwa ein Bruchstück einer Rezeptzeile, und war nicht sicher."
     },
     "empty": "Keine Zutaten gefunden",
     "emptyFlagged": "Nichts ist markiert",
@@ -391,10 +393,14 @@
     "delete": "Löschen",
     "deleteTitle": "{name} löschen?",
     "deleteConfirm": "Die Übersetzungen gehen mit, und was dein Haushalt Norish darüber beigebracht hat.",
+    "deleteAsJunk": "Als Unsinn löschen",
+    "deleteAsJunkTitle": "{name} als Unsinn löschen?",
+    "deleteAsJunkConfirm": "Rezeptzeilen, die nur dies nennen, werden ebenfalls entfernt. Jede kann unter Von KI geändert zurückgeholt werden.",
     "deleteTouches": {
       "recipeLines": "{count, plural, one {# Rezeptzeile behält ihren Text, ohne die Zutat} other {# Rezeptzeilen behalten ihren Text, ohne die Zutat}}",
       "groceries": "{count, plural, one {# Einkauf behält seinen Text, ohne die Zutat} other {# Einkäufe behalten ihren Text, ohne die Zutat}}",
-      "pantry": "{count, plural, one {# Vorratseintrag wird entfernt} other {# Vorratseinträge werden entfernt}}"
+      "pantry": "{count, plural, one {# Vorratseintrag wird entfernt} other {# Vorratseinträge werden entfernt}}",
+      "junkLines": "{count, plural, one {# Rezeptzeile wird entfernt} other {# Rezeptzeilen werden entfernt}}"
     },
     "markDistinct": "Als eigenständig markieren",
     "summary": "{spellings, plural, one {# Übersetzung} other {# Übersetzungen}}{kinds, plural, =0 {} one {, # Sorte} other {, # Sorten}}{parent, select, none {} other {, übergeordnet: {parent}}}",
@@ -545,7 +551,10 @@
       "merge": "{from} hiermit zusammengeführt",
       "parent": "Unter {of} eingeordnet",
       "parentFromName": "Unter {of} eingeordnet, nach dem Namen",
-      "plainName": "Umbenannt von {from}"
+      "plainName": "Umbenannt von {from}",
+      "tool": "Als Küchenutensil gelöscht. Die Rezeptzeilen bleiben, ohne Zutat.",
+      "notAFood": "Gelöscht, da es keine Zutat nennt. Die Einkäufe behalten ihren Text.",
+      "junkLine": "Zeile {from} entfernt"
     },
     "icon": {
       "change": "Symbol ändern",

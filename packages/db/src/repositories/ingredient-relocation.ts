@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import type { SQL } from "drizzle-orm";
-import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
+import { asc, count, eq, inArray, sql } from "drizzle-orm";
 
 import type { Db, DbTransaction } from "@norish/db/drizzle";
+import type { LineJoin } from "@norish/shared/lib/line-foods";
 import { db, holdLock } from "@norish/db/drizzle";
 import {
   aisleLinks,
@@ -12,11 +14,16 @@ import {
   ingredients,
   ingredientStorePreferences,
   pantryIngredients,
+  recipeIngredientFoods,
+  recipeIngredients,
   recurringGroceries,
   storeProductLinks,
 } from "@norish/db/schema";
+import { distinctFoods } from "@norish/shared/lib/line-foods";
 
 import { moveMergedAIChanges } from "./ingredient-ai-changes";
+import { rowsNaming } from "./ingredient-catalogue";
+import { writeRecipeLineFoodsTx } from "./ingredients";
 import { lockPantryFood } from "./pantry";
 
 /**
@@ -283,4 +290,125 @@ export async function moveCatalogueAlias(
       .set({ ingredientId: targetId })
       .where(eq(table.ingredientAliasId, aliasId));
   }
+}
+
+/** One food a split gives a row: the spelling its part resolved to, that food, and the part as written. */
+export interface SplitPart {
+  aliasId: string;
+  ingredientId: string;
+  text: string;
+}
+
+/**
+ * Point every row naming a food at the parts it splits into, then delete it (ADR-0037); the caller
+ * holds the tree lock and the foods' locks.
+ */
+export async function splitCatalogueIngredient(
+  tx: DbTransaction,
+  sourceId: string,
+  parts: readonly [SplitPart, ...SplitPart[]],
+  joined: LineJoin
+): Promise<void> {
+  const naming = rowsNaming(sourceId);
+  const lineRows = await tx
+    .select({
+      lineId: recipeIngredientFoods.recipeIngredientId,
+      aliasId: recipeIngredientFoods.ingredientAliasId,
+      ingredientId: ingredientAliases.ingredientId,
+      joined: recipeIngredients.joined,
+    })
+    .from(recipeIngredientFoods)
+    .innerJoin(ingredientAliases, eq(ingredientAliases.id, recipeIngredientFoods.ingredientAliasId))
+    .innerJoin(
+      recipeIngredients,
+      eq(recipeIngredients.id, recipeIngredientFoods.recipeIngredientId)
+    )
+    .where(
+      inArray(
+        recipeIngredientFoods.recipeIngredientId,
+        tx
+          .select({ id: recipeIngredientFoods.recipeIngredientId })
+          .from(recipeIngredientFoods)
+          .where(naming.lineFoods)
+      )
+    )
+    .orderBy(asc(recipeIngredientFoods.recipeIngredientId), asc(recipeIngredientFoods.position));
+  const lines = new Map<string, { joined: LineJoin | null; foods: SplitPart[] }>();
+
+  for (const row of lineRows) {
+    const line = lines.get(row.lineId) ?? { joined: row.joined, foods: [] };
+
+    line.foods.push(...(row.ingredientId === sourceId ? parts : [{ ...row, text: "" }]));
+    lines.set(row.lineId, line);
+  }
+  for (const line of lines.values()) line.foods = distinctFoods(line.foods);
+  await writeRecipeLineFoodsTx(
+    tx,
+    [...lines].map(([id, line]) => ({ id, aliasIds: line.foods.map((food) => food.aliasId) }))
+  );
+  for (const [id, line] of lines) {
+    await tx
+      .update(recipeIngredients)
+      .set({
+        joined: line.foods.length > 1 ? (line.joined ?? joined) : null,
+        version: sql`${recipeIngredients.version} + 1`,
+      })
+      .where(eq(recipeIngredients.id, id));
+  }
+
+  const [first, ...rest] = parts;
+  const others = joined === "together" ? rest : [];
+  const asPart = (part: SplitPart) => ({
+    name: part.text,
+    ingredientAliasId: part.aliasId,
+    ingredientId: part.ingredientId,
+  });
+
+  for (const { id, version: _version, ...row } of await tx
+    .select()
+    .from(groceries)
+    .where(naming.groceries)) {
+    await tx
+      .update(groceries)
+      .set({ ...asPart(first), version: sql`${groceries.version} + 1` })
+      .where(eq(groceries.id, id));
+    // ponytail: a copy of a recurring grocery's row recurs with neither; link them if it matters.
+    for (const part of others) {
+      await tx
+        .insert(groceries)
+        .values({ ...row, ...asPart(part), id: randomUUID(), recurringGroceryId: null });
+    }
+  }
+  for (const { id, version: _version, ...row } of await tx
+    .select()
+    .from(recurringGroceries)
+    .where(naming.recurringGroceries)) {
+    await tx
+      .update(recurringGroceries)
+      .set({ ...asPart(first), version: sql`${recurringGroceries.version} + 1` })
+      .where(eq(recurringGroceries.id, id));
+    for (const part of others) {
+      await tx.insert(recurringGroceries).values({ ...row, ...asPart(part), id: randomUUID() });
+    }
+  }
+
+  const keepers = await tx
+    .select({ userId: pantryIngredients.userId })
+    .from(pantryIngredients)
+    .where(eq(pantryIngredients.ingredientId, sourceId));
+
+  for (const part of keepers.length > 0 ? parts : []) {
+    await tx
+      .insert(pantryIngredients)
+      .values(
+        keepers.map(({ userId }) => ({
+          userId,
+          ingredientId: part.ingredientId,
+          ingredientAliasId: part.aliasId,
+        }))
+      )
+      .onConflictDoNothing();
+    await keepOnePantryRowPerHousehold(tx, part.ingredientId);
+  }
+  await tx.delete(ingredients).where(eq(ingredients.id, sourceId));
 }

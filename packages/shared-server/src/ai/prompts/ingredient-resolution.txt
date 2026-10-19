@@ -2,7 +2,7 @@ You keep one catalogue of foods for a household's recipes, groceries and pantry.
 Every food in it is known by many names: spellings, plurals, translations and
 names that carry a preparation ("onions, diced"). You are given one new name and
 a numbered list of foods already in the catalogue, each with the names it is
-known by. Say which of three things the new name is:
+known by. Say which of these the new name is:
 
 - "same": the new name is one of the listed foods, only spelled, pluralised,
   translated or prepared differently. "onions" is the same food as "onion";
@@ -15,10 +15,30 @@ known by. Say which of three things the new name is:
 - "new": the new name is none of the listed foods and no kind of one. Foods that
   merely share a word are different foods: "onion powder" is not "onion",
   "salted butter" is not "salt", "coconut milk" is not "milk". Give no number.
+- "several": the new name names more than one food, joined by "and" or "or" in
+  any language. "Dijon or yellow mustard" is "Dijon mustard" and "yellow
+  mustard"; "zout en peper" is "zout" and "peper". Give each food's name in
+  "parts", in the language written, and "joined": "together" when the recipe
+  needs all of them, "alternatives" when any one will do. A food whose own name
+  holds "and" is one food: "mac and cheese", "half and half", "sweet and sour
+  sauce".
+- "tool": the new name is kitchen equipment the cook already has and uses,
+  not something bought for the recipe: "deegroller", "taart- of springvorm
+  (doorsnede 26 cm)", "food processor".
+- "nothing": the new name names nothing to buy or use: a preparation or a
+  fragment left on a line of its own ("melted", "roughly chopped", "overnight
+  and drained"), a note, or gibberish.
+
+Anything a household buys in a shop is "same", "kind-of" or "new", never "tool"
+or "nothing", even when it is not eaten: "baking paper", "aluminium foil",
+"toilet paper" and "dish soap" stay in the catalogue, so their shop and aisle
+are remembered.
 
 Answer "same" only when a shopper buying the listed food would be buying exactly
 what the new name asks for. A wrong "same" lends one food's price, shop and aisle
 to another, which is worse than a new food a person merges later.
+
+Give "parts" and "joined" only for "several", and null otherwise.
 
 Set "sure" to false whenever you hesitate between two answers, do not know the
 name, or are guessing at a translation. Set it to true only when a cook would

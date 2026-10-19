@@ -34,7 +34,10 @@ import type {
 } from "@norish/shared/lib/ingredient-search";
 import { withTransaction } from "@norish/db/drizzle";
 import { isConstraintViolation } from "@norish/db/repositories/constraint-violation";
-import { keepOpenAIChangesOf } from "@norish/db/repositories/ingredient-ai-changes";
+import {
+  deleteJunkLines,
+  keepOpenAIChangesOf,
+} from "@norish/db/repositories/ingredient-ai-changes";
 import { findLocaleNames } from "@norish/db/repositories/ingredient-aliases";
 import {
   deleteCatalogueAlias,
@@ -94,7 +97,7 @@ export class CatalogueEditError extends Error {
  * Whether `actor` may edit a row owned by `ownerId` under `level`. Pure, so
  * a page of rows is judged against one read of the policy.
  */
-export function mayEditIngredientRow(
+export function mayEditOwnedRow(
   level: PermissionLevel,
   actor: CatalogueActor,
   ownerId: string | null
@@ -192,7 +195,7 @@ export async function listIngredients(
       offset,
     }),
   ]);
-  const may = (ownerId: string | null) => mayEditIngredientRow(policy.edit, actor, ownerId);
+  const may = (ownerId: string | null) => mayEditOwnedRow(policy.edit, actor, ownerId);
   const page = rows.slice(0, INGREDIENT_PAGE_SIZE);
   const [parentNames, icons] = await Promise.all([
     findLocaleNames(page.flatMap((row) => (row.parent ? [row.parent.id] : []))),
@@ -218,7 +221,7 @@ export async function listSpellings(
   ]);
 
   return aliases.map((alias) =>
-    spelling(alias, (ownerId) => mayEditIngredientRow(policy.edit, actor, ownerId))
+    spelling(alias, (ownerId) => mayEditOwnedRow(policy.edit, actor, ownerId))
   );
 }
 
@@ -305,7 +308,7 @@ export async function assertMayEdit<T extends CatalogueOwner>(
   if (!row) throw new CatalogueEditError("not-found");
   const policy = await getIngredientPermissionPolicy();
 
-  if (!mayEditIngredientRow(policy.edit, actor, row.ownerId)) {
+  if (!mayEditOwnedRow(policy.edit, actor, row.ownerId)) {
     throw new CatalogueEditError("forbidden");
   }
 
@@ -471,12 +474,13 @@ async function setParentIn(
 }
 
 /**
- * Delete an Ingredient and its spellings; follows `edit`. Its lines and Groceries keep their
- * text and name no food, and its Pantry Ingredients go, since the Pantry holds only foods.
+ * Delete an Ingredient; follows `edit`. Lines and Groceries keep their text, Pantry Ingredients go;
+ * `asJunk` deletes its Junk Lines in the recipes the actor may edit, for Changed by AI to put back.
  */
 export async function deleteIngredient(
   actor: CatalogueActor,
-  ingredientId: string
+  ingredientId: string,
+  { asJunk = false }: { asJunk?: boolean } = {}
 ): Promise<CatalogueEdit> {
   return await inEdit(async (tx) => {
     await assertMayEditIngredient(tx, actor, ingredientId);
@@ -484,6 +488,7 @@ export async function deleteIngredient(
     // a merge into this Ingredient must not land while it goes.
     await lockTree(tx);
     if ((await lockIngredients(tx, [ingredientId])) < 1) throw new CatalogueEditError("not-found");
+    if (asJunk) await deleteJunkLines(tx, ingredientId, { editableBy: actor });
     await deleteCatalogueIngredient(tx, ingredientId);
 
     return { changed: [ingredientId] };

@@ -91,6 +91,8 @@ export async function cleanDatabase() {
   // Groceries point at Ingredient Aliases, which go with their Ingredients.
   await db.delete(schema.groceries);
   await db.delete(schema.recurringGroceries);
+  // A deleted food's AI Changes name no food, so they do not go with the Ingredients.
+  await db.delete(schema.ingredientAIChanges);
   await db.delete(schema.ingredients);
   await db.delete(schema.plannedItems);
   await db.delete(schema.householdUsers);

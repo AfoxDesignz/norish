@@ -476,7 +476,7 @@ export interface IngredientUses {
  * What names a food, one condition per table: a line's food through its spelling, and a Grocery,
  * recurring grocery or Pantry Ingredient through its spelling or the food itself.
  */
-function rowsNaming(food: string | SQL) {
+export function rowsNaming(food: string | SQL) {
   const spellings = db
     .select({ id: ingredientAliases.id })
     .from(ingredientAliases)
