@@ -20,14 +20,36 @@ See `CONTEXT.md` (Flagged Ingredient, AI Change, Plain Name) and ADR-0037's firs
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A sure merge answer merges and records a sure AI Change, with no flag.
-- [ ] An unsure parent answer sets the parent, flags the food and lists the change under Keep and Undo.
-- [ ] Undo per kind restores the prior state: the merged translations and their lines are back on a food of their own, the old parent is back, the old name is back and settled.
-- [ ] The same question asked again after an Undo does not repeat the undone change.
-- [ ] Keep clears the flag, and a later round skips the food.
-- [ ] Foods a person kept distinct, renamed or parented, and seeded foods, are not asked about.
-- [ ] The suggestions table is dropped by a migration. The Suggestions panel, Confirm all and their translations are gone.
-- [ ] Browser: Ask AI on a flagged food (AI stub) merges it, the merge shows on Changed by AI, and Undo puts it back. The two suggestion scenarios in the catalogue spec are rewritten to this.
-- [ ] Pass tests run against a real database with AI mocked at the runtime, replacing the review, suggestion and plain-name tests. All `CONTRIBUTING.md` gates pass.
+- [x] A sure merge answer merges and records a sure AI Change, with no flag.
+- [x] An unsure parent answer sets the parent, flags the food and lists the change under Keep and Undo.
+- [x] Undo per kind restores the prior state: the merged translations and their lines are back on a food of their own, the old parent is back, the old name is back and settled.
+- [x] The same question asked again after an Undo does not repeat the undone change.
+- [x] Keep clears the flag, and a later round skips the food.
+- [x] Foods a person kept distinct, renamed or parented, and seeded foods, are not asked about.
+- [x] The suggestions table is dropped by a migration. The Suggestions panel, Confirm all and their translations are gone.
+- [x] Browser: Ask AI on a flagged food (AI stub) merges it, the merge shows on Changed by AI, and Undo puts it back. The two suggestion scenarios in the catalogue spec are rewritten to this.
+- [x] Pass tests run against a real database with AI mocked at the runtime, replacing the review, suggestion and plain-name tests. All `CONTRIBUTING.md` gates pass.
+
+## Comments
+
+2026-10-19, implemented:
+
+- `ingredient_ai_changes` (migration 0078) holds each change with what Undo needs as JSON; the suggestions table is dropped. Undo per kind: a merge's spellings move back out to a new food named as before, carrying their lines; a parent goes back to where the food was before AI (past any parent change it replaced); a Plain Name goes back, still settled.
+- Undo memory: a merge undone means those spellings never merge into that food again; a parent undone means that food never goes under that parent again. A Plain Name undone settles the name, so AI never names the food again.
+- AI skips a food a person kept distinct, parented or named. "Named" needed a new `ingredients.name_chosen`, set by a person's rename: `name_settled` is also set by AI's own Plain Name, so it cannot say who named the food.
+- Keep on a parent or a Plain Name marks the food kept distinct. Keep on a merge only lifts the flag the merge raised: the food it joined is often seeded, so marking it would edit a food only an administrator may edit. Undo of a sure change leaves every flag alone.
+- An unsure "a food of its own" records no change, since nothing changed: the food stays flagged `ai-unsure`, with Mark distinct as before.
+- A parent the words of a new food's name guessed (mint, startup recheck) is an unsure parent change marked `fromWords`, replacing the `words` suggestion.
+- Keep and Undo take the tree lock before the change row, as the pass does; the other order deadlocked against a pass on the same food (`ai-changes.test.ts` reproduces it).
+- Ask AI, Find parent and both rounds now run the one pass (`askAIAbout`), which goes on to the Plain Name after a non-merge answer. Fix catalogue offers "Check flagged ingredients" and "Clean names".
+- The release notes and the Ingredients docs page are ticket 09's, with the other tickets' notes.
+
+Open, from the review (not done, for Mike):
+
+- The Plain Name reader has no sureness, so a rename is always a sure change. CONTEXT says an unsure rename flags its food; that needs a `sure` field in the plain-name answer schema.
+- An unsure "kind of X" at import files the food and flags it, but records no change behind the flag (rung 3's mint, ticket 07's ground).
+- The seed adopting a flagged own food clears its flag and drops its open parent changes, but leaves open merges into it listed as "Not sure".
+- `estimateCleanTokens` moved from `plain-names.ts` to `review.ts` to break an import cycle.
+
