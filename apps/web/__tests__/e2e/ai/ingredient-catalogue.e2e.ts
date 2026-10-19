@@ -4,8 +4,8 @@
  * What a household actually sees: a Dutch "ui" put in the Pantry leaves an
  * English recipe's "onion" off the list, because both are spellings of one
  * Ingredient; a food Norish was not sure about is marked on the Ingredients
- * page; AI asks about a food a recipe mints by itself, its merge listed on
- * Changed by AI and undone from there; merging it into the food that holds an Aisle Link
+ * page; AI asks about a food a recipe mints by itself, its merge or Plain Name
+ * listed on Changed by AI and a merge undone from there; merging it into the food that holds an Aisle Link
  * files its grocery in that aisle; and a recipe line naming two foods puts
  * each on the list on its own. The scenario seeds a small catalogue of its own
  * rather than fetching Open Food Facts. The real Norish server, database,
@@ -13,14 +13,16 @@
  */
 import type { Locator, Page } from "@playwright/test";
 
-import { callTrpc, queryTrpc } from "../harness/trpc";
+import { queryTrpc } from "../harness/trpc";
 import { expect, test } from "./fixture";
 import {
+  createRecipe,
   readIngredientOf,
   resetCatalogueScenario,
   seedCatalogue,
   seedStoreFiling,
   setParent,
+  waitForAIPasses,
 } from "./ingredient-catalogue-support";
 import { readGroceryNames, readPantryNames, seedRecipeWithIngredients } from "./pantry-support";
 
@@ -259,6 +261,7 @@ test("AI merges a food a recipe mints by itself, Changed by AI lists the merge, 
   ai,
   aiStack,
 }) => {
+  await waitForAIPasses(aiStack);
   ai.control.enqueueIngredients(
     // The recipe's save asks what the line is, and is not sure it is garlic: a food of its own, flagged.
     {
@@ -275,26 +278,7 @@ test("AI merges a food a recipe mints by itself, Changed by AI lists the merge, 
       content: JSON.stringify({ verdict: "same", food: 1, sure: true, englishName: "garlic" }),
     }
   );
-  await callTrpc<string>(aiStack.baseURL, aiStack.ownerCookies, "recipes.create", {
-    name: "Knoflookbrood",
-    systemUsed: "metric",
-    servings: 2,
-    recipeIngredients: [
-      {
-        ingredientName: "knoflookteentjes",
-        ingredientId: null,
-        amount: null,
-        unit: null,
-        order: 0,
-      },
-    ],
-    steps: [],
-    tags: [],
-    cuisines: [],
-    categories: [],
-    images: [],
-    videos: [],
-  });
+  await createRecipe(aiStack, "Knoflookbrood", ["knoflookteentjes"]);
 
   // The pass merges it into garlic.
   await expect.poll(() => readIngredientOf("knoflookteentjes"), { timeout: 30_000 }).toBe("garlic");
@@ -322,6 +306,39 @@ test("AI merges a food a recipe mints by itself, Changed by AI lists the merge, 
   await expect.poll(() => readIngredientOf("knoflookteentjes")).toBe("knoflookteentjes");
   await page.getByTestId("ingredients-search").fill("knoflook");
   await expect(ingredientRow("knoflookteentjes")).toBeVisible();
+});
+
+test("AI gives a food a recipe mints its plain name by itself, listed on Changed by AI", async ({
+  ai,
+  aiStack,
+}) => {
+  await waitForAIPasses(aiStack);
+  // Nothing known shares a word with the name, so only the pass asks: it reads the name as a
+  // food of its own, then asks its plain name.
+  ai.control.enqueueIngredients(
+    {
+      kind: "success",
+      content: JSON.stringify({ englishName: "salmon fillet", generalFood: null, sure: true }),
+    },
+    { kind: "success", content: JSON.stringify({ plainName: "zalmmoot" }) }
+  );
+  await createRecipe(aiStack, "Zalm uit de oven", ["Lekkerste Zalmmoot"]);
+
+  await expect
+    .poll(() => readIngredientOf("Lekkerste Zalmmoot"), { timeout: 30_000 })
+    .toBe("zalmmoot");
+
+  await page.goto("/settings?tab=ingredients");
+  await page.getByTestId("ingredients-ai-changes-open").click();
+  const panel = page.getByRole("dialog", { name: "Changed by AI" });
+  const rename = panel
+    .getByTestId("ingredient-ai-change")
+    .filter({ hasText: "Renamed from Lekkerste Zalmmoot" });
+
+  await expect(rename).toHaveAttribute("data-kind", "plain-name");
+  await expect(rename).toContainText("zalmmoot");
+  await panel.getByRole("button", { name: "Close panel" }).click();
+  await expect(ingredientRow("zalmmoot")).toBeVisible();
 });
 
 /** The panel a row opens: a dialog named after the food. */
@@ -405,20 +422,7 @@ test("a recipe line naming two foods puts each on the list as a grocery of its o
     { name: "zout", aliases: [{ text: "zout", locale: "nl" }] },
     { name: "peper", aliases: [{ text: "peper", locale: "nl" }] },
   ]);
-  const id = await callTrpc<string>(aiStack.baseURL, aiStack.ownerCookies, "recipes.create", {
-    name: "Gebakken eieren",
-    systemUsed: "metric",
-    servings: 2,
-    recipeIngredients: [
-      { ingredientName: "zout en peper", ingredientId: null, amount: null, unit: null, order: 0 },
-    ],
-    steps: [],
-    tags: [],
-    cuisines: [],
-    categories: [],
-    images: [],
-    videos: [],
-  });
+  const id = await createRecipe(aiStack, "Gebakken eieren", ["zout en peper"]);
   // The create answers before the recipe is written, and a recipe not written yet is not found.
   const lineFoods = () =>
     queryTrpc<{ recipeIngredients: Array<{ foods?: Array<{ name: string }> }> }>(

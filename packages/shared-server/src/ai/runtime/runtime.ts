@@ -83,6 +83,7 @@ import {
   createTranscriptionModel,
   requestOllamaTranscription,
 } from "./providers";
+import { SYSTEM_MESSAGES as SYSTEM_MESSAGE_TEXTS } from "./system-messages";
 
 // ============================================================================
 // System messages — code-owned, keyed by the prompt they accompany
@@ -99,42 +100,8 @@ export type StructuredPromptName = Exclude<PromptName, ImagePromptName>;
 /** The prompts that start an image request: a dish's picture's style, and an Ingredient Icon's. */
 export type ImagePromptName = "image-generation-style" | "ingredient-icon-style";
 
-/**
- * System messages are not configuration. They encode invariants the code
- * depends on: schema-parseable output, and Recipe Provenance's deliberate
- * silence about language — a system message naming a language would override
- * the prompt's inference from the recipe. An administrator's intent is
- * already expressible in the prompt, which follows the system message.
- */
-const SYSTEM_MESSAGES: Record<StructuredPromptName, string> = {
-  "recipe-extraction": "You extract recipe data as JSON-LD with both metric and US measurements.",
-  "image-extraction":
-    "You extract recipe data from images as JSON-LD with both metric and US measurements.",
-  "unit-conversion": "Convert recipe measurements between metric and US systems.",
-  "nutrition-estimation":
-    "Estimate nutritional values for this recipe based on the ingredients. Return accurate per-serving values.",
-  "auto-tagging":
-    "You are a recipe tagging assistant. Analyze the recipe and assign relevant tags based on the provided rules.",
-  "auto-categorization":
-    "You are a culinary assistant that assigns breakfast/lunch/dinner/snack categories to recipes.",
-  "allergy-detection":
-    "You are an allergy detection assistant. Analyze recipe ingredients to identify allergens. Be accurate and only report allergens that are definitely present.",
-  // Deliberately no language instruction: the prompt decides the note's
-  // language from the recipe, and a system message naming one would win.
-  "recipe-provenance":
-    "You are a culinary historian who places dishes in their country and region of origin.",
-  "ingredient-linking":
-    "You are a careful recipe reader who says which ingredient lines each step uses, and only what the text supports.",
-  "ingredient-resolution":
-    "You keep a catalogue of foods and say whether a name is a food already in it, a kind of one, or a food of its own.",
-  "ingredient-plain-name":
-    "You keep a catalogue of foods tidy, and give a name back with only the food left in it, in its own language.",
-  // English by instruction, not by system message alone: the brief is a model
-  // instruction rather than recipe content, so ADR-0018's language care does
-  // not apply to it.
-  "image-generation-brief":
-    "You write short visual briefs that tell an image model what a finished dish looks like.",
-};
+/** Each structured prompt's system message; typed here so a prompt without one fails to compile. */
+const SYSTEM_MESSAGES: Record<StructuredPromptName, string> = SYSTEM_MESSAGE_TEXTS;
 
 // ============================================================================
 // Structured generation

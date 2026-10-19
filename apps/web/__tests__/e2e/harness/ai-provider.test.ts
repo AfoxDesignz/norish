@@ -14,6 +14,8 @@ import { APICallError, experimental_decide, generateImage, generateText, Output 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
+import { SYSTEM_MESSAGES } from "@norish/shared-server/ai/runtime/system-messages";
+
 import type { FakeAIProvider } from "./ai-provider";
 import { buildChatCompletionBody, createFakeAIProvider } from "./ai-provider";
 
@@ -212,8 +214,7 @@ describe("the ingredient lane", () => {
     return generateText({
       model: harnessModel(),
       output: Output.object({ schema }),
-      system:
-        "You keep a catalogue of foods and say whether a name is a food already in it, a kind of one, or a food of its own.",
+      system: SYSTEM_MESSAGES["ingredient-resolution"],
       prompt: "Name: uien",
       maxRetries,
     });

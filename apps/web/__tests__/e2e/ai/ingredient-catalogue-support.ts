@@ -1,4 +1,7 @@
+import type { AIE2EStack } from "./fixture";
+import { callTrpc, queryTrpc } from "../harness/trpc";
 import { withDatabase } from "./database";
+import { expect } from "./fixture";
 
 /** One food the scenario's catalogue knows, with its spellings and their languages. */
 export interface SeededFood {
@@ -110,4 +113,45 @@ export function setParent(childId: string, parentId: string): Promise<void> {
       [parentId, childId]
     );
   });
+}
+
+/** A recipe with these amount-less lines, saved through tRPC as the recipe form saves one; its id. */
+export function createRecipe(
+  stack: Pick<AIE2EStack, "baseURL" | "ownerCookies">,
+  name: string,
+  lines: readonly string[]
+): Promise<string> {
+  return callTrpc<string>(stack.baseURL, stack.ownerCookies, "recipes.create", {
+    name,
+    systemUsed: "metric",
+    servings: 2,
+    recipeIngredients: lines.map((ingredientName, order) => ({
+      ingredientName,
+      ingredientId: null,
+      amount: null,
+      unit: null,
+      order,
+    })),
+    steps: [],
+    tags: [],
+    cuisines: [],
+    categories: [],
+    images: [],
+    videos: [],
+  });
+}
+
+/** Wait until no AI pass is queued or running, so none takes the ingredient answers queued next. */
+export async function waitForAIPasses(stack: Pick<AIE2EStack, "baseURL" | "ownerCookies">) {
+  await expect
+    .poll(
+      () =>
+        queryTrpc<unknown[]>(stack.baseURL, stack.ownerCookies, "admin.jobs.list", {
+          queue: "ingredient-review",
+          states: ["waiting", "active", "delayed"],
+          limit: 1,
+        }),
+      { timeout: 60_000 }
+    )
+    .toEqual([]);
 }

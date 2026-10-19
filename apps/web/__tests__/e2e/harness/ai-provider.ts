@@ -20,15 +20,16 @@
  * the Decision block reaches through its `endpoint` (ADR-0035).
  *
  * Responses are selected at runtime through {@link AIProviderControl}: a
- * persistent default plus an optional FIFO queue of one-shot responses. The
- * ingredient questions (rung 3 and the AI pass a mint queues in the
- * background) have a lane of their own, apart from the counts and captures,
- * so a pass from an earlier scenario never takes another scenario's answer. Tests
+ * persistent default plus an optional FIFO queue of one-shot responses.
+ * Ingredient questions have a lane of their own, so a background pass never
+ * takes another scenario's answer. Tests
  * run the provider in-process and drive the control directly, while the server
  * under test reaches it over the loopback interface.
  */
 import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
+
+import { SYSTEM_MESSAGES } from "@norish/shared-server/ai/runtime/system-messages";
 
 /** A deterministic success: `content` is returned as the assistant message. */
 export interface SuccessDirective {
@@ -331,28 +332,16 @@ class Controller implements AIProviderControl {
 
   /** Record a request and resolve the response for it from its route's lane. */
   resolve(request: CapturedRequest, lane: Lane = "chat"): Directive {
-    if (lane === "ingredients") {
-      this.ingredientCaptured.push(request);
-
-      return (
-        this.ingredientQueue.shift() ?? {
-          kind: "error",
-          status: 400,
-          body: errorBody(
-            "no ingredient answer configured for the harness",
-            "invalid_request_error"
-          ),
-        }
-      );
-    }
-    this.captured.push(request);
+    (lane === "ingredients" ? this.ingredientCaptured : this.captured).push(request);
 
     const [queue, fallback] =
       lane === "image"
         ? [this.imageQueue, this.imageDefaultDirective]
         : lane === "decision"
           ? [this.decisionQueue, this.decisionDefaultDirective]
-          : [this.queue, this.defaultDirective];
+          : lane === "ingredients"
+            ? [this.ingredientQueue, UNANSWERED_INGREDIENT]
+            : [this.queue, this.defaultDirective];
 
     return (
       queue.shift() ??
@@ -365,12 +354,22 @@ class Controller implements AIProviderControl {
   }
 }
 
+/** An ingredient question nobody answered: refused at once, so the asker does not retry. */
+const UNANSWERED_INGREDIENT: Directive = {
+  kind: "error",
+  status: 400,
+  body: errorBody("no ingredient answer configured for the harness", "invalid_request_error"),
+};
+
 type Lane = "chat" | "image" | "decision" | "ingredients";
 
-/**
- * Whether a chat request asks an ingredient question: the runtime's system message for the
- * `ingredient-resolution` and `ingredient-plain-name` prompts opens so.
- */
+/** The system messages the ingredient questions are sent with; a JSON-mode request appends to one. */
+const INGREDIENT_SYSTEM_MESSAGES = [
+  SYSTEM_MESSAGES["ingredient-resolution"],
+  SYSTEM_MESSAGES["ingredient-plain-name"],
+];
+
+/** Whether a chat request asks an ingredient question, by its system message. */
 function asksAboutIngredients(body: unknown): boolean {
   const messages =
     body && typeof body === "object" && "messages" in body
@@ -378,7 +377,10 @@ function asksAboutIngredients(body: unknown): boolean {
       : undefined;
   const system = messages?.[0]?.content;
 
-  return typeof system === "string" && system.startsWith("You keep a catalogue of foods");
+  return (
+    typeof system === "string" &&
+    INGREDIENT_SYSTEM_MESSAGES.some((message) => system.startsWith(message))
+  );
 }
 
 /**
