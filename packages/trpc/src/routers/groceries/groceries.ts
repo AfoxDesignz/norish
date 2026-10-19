@@ -268,28 +268,22 @@ export const createGroceryProcedure = authedProcedure
       protect: true,
       tags: ["Groceries"],
       summary: "Create a grocery",
+      description:
+        "Answers with a grocery per food the name names: `zout en peper` is `zout` and `peper`. A name already on the list adds to that grocery.",
       errorResponses: {
         401: "Missing or invalid API credentials",
       },
     },
   })
   .input(createGroceryApiInputSchema)
-  .output(GrocerySelectBaseSchema)
+  .output(z.array(GrocerySelectBaseSchema))
   .mutation(async ({ ctx, input }) => {
     log.info({ userId: ctx.user.id }, "Creating grocery via API");
 
     try {
-      const result = await createGroceriesData(ctx, [input]);
-      const grocery = result.returnedGroceries[0];
+      const { returnedGroceries } = await createGroceriesData(ctx, [input]);
 
-      if (!grocery) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create grocery",
-        });
-      }
-
-      return grocery;
+      return returnedGroceries;
     } catch (err) {
       log.error({ err, userId: ctx.user.id }, "Failed to create grocery via API");
       void groceries.publish(

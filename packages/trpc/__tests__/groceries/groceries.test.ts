@@ -187,7 +187,7 @@ describe("groceries openapi procedures", () => {
     expect(result).toEqual(mockGroceries);
   });
 
-  it("creates and returns a single grocery for the API endpoint", async () => {
+  it("creates and returns the groceries for the API endpoint", async () => {
     const storeId = crypto.randomUUID();
 
     listGroceriesByUsers.mockResolvedValue([]);
@@ -208,11 +208,30 @@ describe("groceries openapi procedures", () => {
     });
 
     expect(createGroceries).toHaveBeenCalled();
-    expect(result).toEqual(
-      expect.objectContaining({
-        name: "Apples",
+    expect(result).toEqual([expect.objectContaining({ name: "Apples" })]);
+  });
+
+  it("answers the API with a grocery per food a name joins", async () => {
+    listGroceriesByUsers.mockResolvedValue([]);
+    createGroceries.mockImplementation(
+      async (items: Array<{ id: string; groceries: { name: string | null } }>) => ({
+        created: items.map(({ id, groceries }) => createMockGrocery({ id, name: groceries.name })),
+        shifted: [],
       })
     );
+
+    const caller = openApiGroceriesRouter.createCaller(createMockCallerContext(ctx));
+    const result = await caller.createGrocery({
+      name: "zout en peper",
+      amount: 1,
+      unit: null,
+      isDone: false,
+    });
+
+    expect(result).toEqual([
+      expect.objectContaining({ name: "zout" }),
+      expect.objectContaining({ name: "peper" }),
+    ]);
   });
 
   it("toasts a failed create to the actor alone, never the household", async () => {
