@@ -43,10 +43,7 @@ const FUSE_OPTIONS: IFuseOptions<IngredientStorePreferenceDto & { ingredientName
  * back with the Store's ordered aisle list attached, in one query for however
  * many Stores, before it is parsed as a Store.
  */
-async function withAisles(
-  rows: (typeof stores.$inferSelect)[],
-  tx: Db = db
-): Promise<StoreDto[]> {
+async function withAisles(rows: (typeof stores.$inferSelect)[], tx: Db = db): Promise<StoreDto[]> {
   const aisles = await listAislesByStoreIds(
     rows.map((row) => row.id),
     tx
