@@ -915,12 +915,8 @@
         "imageGeneration": "Генериране на изображения",
         "imageGenerationDescription": "Нарисувай снимка на ястието за нови рецепти, които нямат никакво изображение"
       },
-      "automaticIngredients": "Автоматично за нови съставки",
-      "automaticIngredientsDescription": "Какво става, когато в каталога се добавят нови съставки.",
-      "automaticIngredientsKinds": {
-        "icon": "Нарисувай икона",
-        "iconDescription": "Само за храна без икона, дори без тази на родителя ѝ"
-      },
+      "automaticIngredients": "Рисувай икони за нови съставки",
+      "automaticIngredientsDescription": "Само за съставка без икона, дори без тази на родителя ѝ.",
       "tagStrategy": "Стратегия за етикетите",
       "tagStrategyDescription": "Кои етикети може да използва автоматичното етикетиране и дали се изпълнява автоматично или ръчно",
       "tagStrategies": {

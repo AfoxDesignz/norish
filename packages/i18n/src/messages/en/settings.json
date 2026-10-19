@@ -915,12 +915,8 @@
         "imageGeneration": "Image generation",
         "imageGenerationDescription": "Draw a picture of the dish for new recipes that have no image at all"
       },
-      "automaticIngredients": "Automatic for new ingredients",
-      "automaticIngredientsDescription": "What happens when new ingredients are added to the catalogue.",
-      "automaticIngredientsKinds": {
-        "icon": "Draw an icon",
-        "iconDescription": "Only for a food with no icon to show, not even its parent's"
-      },
+      "automaticIngredients": "Draw icons for new ingredients",
+      "automaticIngredientsDescription": "Only for an ingredient with no icon to show, not even its parent's.",
       "tagStrategy": "Tag strategy",
       "tagStrategyDescription": "Which tags auto-tagging may use, whether it runs automatically or manually",
       "tagStrategies": {

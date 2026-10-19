@@ -915,12 +915,8 @@
         "imageGeneration": "이미지 생성",
         "imageGenerationDescription": "이미지가 전혀 없는 새 레시피에 요리 사진을 그려줍니다"
       },
-      "automaticIngredients": "새 재료에 자동 적용",
-      "automaticIngredientsDescription": "카탈로그에 새 재료가 추가될 때 일어나는 일입니다.",
-      "automaticIngredientsKinds": {
-        "icon": "아이콘 그리기",
-        "iconDescription": "상위 항목의 아이콘도 없는 식품에만 그립니다"
-      },
+      "automaticIngredients": "새 재료에 아이콘 그리기",
+      "automaticIngredientsDescription": "상위 항목의 아이콘도 없는 재료에만 그립니다.",
       "tagStrategy": "태그 전략",
       "tagStrategyDescription": "자동 또는 수동 실행 여부와 관계없이 자동 태그 지정이 사용할 수 있는 태그",
       "tagStrategies": {

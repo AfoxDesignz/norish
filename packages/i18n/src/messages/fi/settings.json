@@ -915,12 +915,8 @@
         "imageGeneration": "Kuvien luonti",
         "imageGenerationDescription": "Piirrä kuva ruoasta uusille resepteille, joilla ei ole lainkaan kuvaa"
       },
-      "automaticIngredients": "Automaattisesti uusille ainesosille",
-      "automaticIngredientsDescription": "Mitä tapahtuu, kun luetteloon lisätään uusia ainesosia.",
-      "automaticIngredientsKinds": {
-        "icon": "Piirrä kuvake",
-        "iconDescription": "Vain ruoka-aineelle, jolla ei ole kuvaketta, ei edes yläkäsitteensä"
-      },
+      "automaticIngredients": "Piirrä kuvakkeet uusille ainesosille",
+      "automaticIngredientsDescription": "Vain ainesosalle, jolla ei ole kuvaketta, ei edes yläkäsitteensä.",
       "tagStrategy": "Sallitut tunnisteet",
       "tagStrategyDescription": "Mitä tunnisteita tunnisteiden luonti saa käyttää, ajetaanpa se automaattisesti tai käsin",
       "tagStrategies": {

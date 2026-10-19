@@ -915,12 +915,8 @@
         "imageGeneration": "Bildgenerierung",
         "imageGenerationDescription": "Zeichnet ein Bild des Gerichts für neue Rezepte, die gar kein Bild haben"
       },
-      "automaticIngredients": "Automatisch für neue Zutaten",
-      "automaticIngredientsDescription": "Was passiert, wenn neue Zutaten in den Katalog kommen.",
-      "automaticIngredientsKinds": {
-        "icon": "Symbol zeichnen",
-        "iconDescription": "Nur für eine Zutat ohne Symbol, auch ohne das ihrer übergeordneten Zutat"
-      },
+      "automaticIngredients": "Symbole für neue Zutaten zeichnen",
+      "automaticIngredientsDescription": "Nur für eine Zutat ohne Symbol, auch ohne das ihrer übergeordneten Zutat.",
       "tagStrategy": "Tag-Strategie",
       "tagStrategyDescription": "Welche Tags die automatische Verschlagwortung verwenden darf, ob automatisch oder manuell",
       "tagStrategies": {

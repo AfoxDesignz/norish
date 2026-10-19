@@ -915,12 +915,8 @@
         "imageGeneration": "Afbeeldingen Genereren",
         "imageGenerationDescription": "Teken een foto van het gerecht voor nieuwe recepten die helemaal geen afbeelding hebben"
       },
-      "automaticIngredients": "Automatisch voor nieuwe ingrediënten",
-      "automaticIngredientsDescription": "Wat er gebeurt als er nieuwe ingrediënten aan de catalogus worden toegevoegd.",
-      "automaticIngredientsKinds": {
-        "icon": "Icoon tekenen",
-        "iconDescription": "Alleen voor een ingrediënt zonder icoon, ook niet dat van zijn ouder"
-      },
+      "automaticIngredients": "Iconen tekenen voor nieuwe ingrediënten",
+      "automaticIngredientsDescription": "Alleen voor een ingrediënt zonder icoon, ook niet dat van zijn ouder.",
       "tagStrategy": "Tagstrategie",
       "tagStrategyDescription": "Welke tags automatisch taggen mag gebruiken, of het nu automatisch of handmatig draait",
       "tagStrategies": {

@@ -915,12 +915,8 @@
         "imageGeneration": "Billedgenerering",
         "imageGenerationDescription": "Tegn et billede af retten til nye opskrifter helt uden billede"
       },
-      "automaticIngredients": "Automatisk for nye ingredienser",
-      "automaticIngredientsDescription": "Hvad der sker, når nye ingredienser føjes til kataloget.",
-      "automaticIngredientsKinds": {
-        "icon": "Tegn et ikon",
-        "iconDescription": "Kun for en fødevare uden ikon, heller ikke dens forælders"
-      },
+      "automaticIngredients": "Tegn ikoner til nye ingredienser",
+      "automaticIngredientsDescription": "Kun for en ingrediens uden ikon, heller ikke dens forælders.",
       "tagStrategy": "Tagstrategi",
       "tagStrategyDescription": "Hvilke tags automatisk tagging må bruge, uanset om den kører automatisk eller manuelt",
       "tagStrategies": {

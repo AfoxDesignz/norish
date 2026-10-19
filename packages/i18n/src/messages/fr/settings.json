@@ -915,12 +915,8 @@
         "imageGeneration": "Génération d'images",
         "imageGenerationDescription": "Dessine une photo du plat pour les nouvelles recettes qui n'ont aucune image"
       },
-      "automaticIngredients": "Automatique pour les nouveaux ingrédients",
-      "automaticIngredientsDescription": "Ce qui se passe quand de nouveaux ingrédients sont ajoutés au catalogue.",
-      "automaticIngredientsKinds": {
-        "icon": "Dessiner une icône",
-        "iconDescription": "Seulement pour un aliment sans icône, pas même celle de son parent"
-      },
+      "automaticIngredients": "Dessiner des icônes pour les nouveaux ingrédients",
+      "automaticIngredientsDescription": "Seulement pour un ingrédient sans icône, pas même celle de son parent.",
       "tagStrategy": "Stratégie d'étiquetage",
       "tagStrategyDescription": "Quelles étiquettes l'étiquetage automatique peut utiliser, qu'il soit automatique ou manuel",
       "tagStrategies": {

@@ -915,12 +915,8 @@
         "imageGeneration": "Generación de Imágenes",
         "imageGenerationDescription": "Dibuja una foto del plato para recetas nuevas que no tienen ninguna imagen"
       },
-      "automaticIngredients": "Automático para ingredientes nuevos",
-      "automaticIngredientsDescription": "Qué pasa cuando se añaden ingredientes nuevos al catálogo.",
-      "automaticIngredientsKinds": {
-        "icon": "Dibujar un icono",
-        "iconDescription": "Solo para un alimento sin icono, ni siquiera el de su padre"
-      },
+      "automaticIngredients": "Dibujar iconos para ingredientes nuevos",
+      "automaticIngredientsDescription": "Solo para un ingrediente sin icono, ni siquiera el de su padre.",
       "tagStrategy": "Estrategia de etiquetas",
       "tagStrategyDescription": "Qué etiquetas puede usar el etiquetado automático, se ejecute automática o manualmente",
       "tagStrategies": {

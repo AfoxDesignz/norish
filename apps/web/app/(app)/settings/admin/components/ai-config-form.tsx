@@ -77,10 +77,6 @@ const AUTOMATIC_ENRICHMENT_KEYS = [
   "imageGeneration",
 ] as const satisfies readonly (keyof AutomaticEnrichmentConfig)[];
 
-/** What may run on a food once AI's pass is done with it: its icon. */
-const AUTOMATIC_INGREDIENT_KEYS = [
-  "icon",
-] as const satisfies readonly (keyof AutomaticIngredientsConfig)[];
 export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
   const t = useTranslations("settings.admin.aiConfig");
   const tActions = useTranslations("common.actions");
@@ -235,11 +231,8 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
           automaticEnrichment[key] !==
           (aiConfig.automaticEnrichment?.[key] ?? DEFAULT_AUTOMATIC_ENRICHMENT[key])
       ) ||
-      AUTOMATIC_INGREDIENT_KEYS.some(
-        (key) =>
-          automaticIngredients[key] !==
-          (aiConfig.automaticIngredients?.[key] ?? DEFAULT_AUTOMATIC_INGREDIENTS[key])
-      ) ||
+      automaticIngredients.icon !==
+        (aiConfig.automaticIngredients?.icon ?? DEFAULT_AUTOMATIC_INGREDIENTS.icon) ||
       apiKey.trim() !== ""
     );
   }, [
@@ -286,20 +279,6 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
       ) as AutomaticEnrichmentConfig
     );
   }, []);
-
-  // The same picker for new foods; an icon left on while the image provider is
-  // off stays as stored, and simply is not offered.
-  const offeredIngredientKinds = AUTOMATIC_INGREDIENT_KEYS.filter(
-    (key) => key !== "icon" || canDrawIcons
-  );
-  const selectedIngredientKinds = offeredIngredientKinds.filter((key) => automaticIngredients[key]);
-  const handleIngredientKindsChange = (chosen: string[]) => {
-    const selected = new Set(chosen);
-
-    setAutomaticIngredients((current) => ({
-      icon: canDrawIcons ? selected.has("icon") : current.icon,
-    }));
-  };
 
   // Clear model fields when provider changes to avoid invalid model selection
   const handleProviderChange = (newProvider: AIConfig["provider"]) => {
@@ -604,61 +583,18 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
         </Select>
       </SettingRow>
 
-      {/* Nothing to offer without an image provider. */}
-      {offeredIngredientKinds.length > 0 ? (
-        <SettingRow
+      {canDrawIcons ? (
+        <SwitchRow
           description={t("automaticIngredientsDescription")}
           title={t("automaticIngredients")}
         >
-          <Select
-            aria-label={t("automaticIngredients")}
-            className="w-full"
+          <SettingsSwitch
             data-testid="ai-automatic-ingredients"
             isDisabled={!enabled}
-            placeholder={t("automaticEnrichmentPlaceholder")}
-            selectionMode="multiple"
-            value={selectedIngredientKinds}
-            variant="secondary"
-            onChange={(selected) => handleIngredientKindsChange(selected.map(String))}
-          >
-            <Label className="sr-only">{t("automaticIngredients")}</Label>
-            <Select.Trigger>
-              <Select.Value className="min-w-0">
-                {({ defaultChildren, isPlaceholder }) =>
-                  isPlaceholder ? (
-                    defaultChildren
-                  ) : (
-                    <span className="block truncate">
-                      {selectedIngredientKinds
-                        .map((key) => t(`automaticIngredientsKinds.${key}`))
-                        .join(", ")}
-                    </span>
-                  )
-                }
-              </Select.Value>
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
-              <ListBox selectionMode="multiple">
-                {offeredIngredientKinds.map((key) => (
-                  <ListBox.Item
-                    key={key}
-                    id={key}
-                    textValue={t(`automaticIngredientsKinds.${key}`)}
-                  >
-                    <div className="flex flex-col">
-                      <span>{t(`automaticIngredientsKinds.${key}`)}</span>
-                      <span className="text-muted text-xs">
-                        {t(`automaticIngredientsKinds.${key}Description`)}
-                      </span>
-                    </div>
-                    <ListBox.ItemIndicator />
-                  </ListBox.Item>
-                ))}
-              </ListBox>
-            </Select.Popover>
-          </Select>
-        </SettingRow>
+            isSelected={automaticIngredients.icon}
+            onValueChange={(icon) => setAutomaticIngredients({ icon })}
+          />
+        </SwitchRow>
       ) : null}
 
       <Select

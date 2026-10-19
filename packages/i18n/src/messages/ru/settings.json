@@ -915,12 +915,8 @@
         "imageGeneration": "Генерация изображений",
         "imageGenerationDescription": "Нарисовать фото блюда для новых рецептов, у которых нет ни одного изображения"
       },
-      "automaticIngredients": "Автоматически для новых ингредиентов",
-      "automaticIngredientsDescription": "Что происходит, когда в каталог добавляются новые ингредиенты.",
-      "automaticIngredientsKinds": {
-        "icon": "Нарисовать значок",
-        "iconDescription": "Только для продукта без значка, даже без значка родителя"
-      },
+      "automaticIngredients": "Рисовать значки для новых ингредиентов",
+      "automaticIngredientsDescription": "Только для ингредиента без значка, даже без значка родителя.",
       "tagStrategy": "Стратегия тегов",
       "tagStrategyDescription": "Какие теги может использовать автоматическое тегирование, как автоматически, так и вручную",
       "tagStrategies": {

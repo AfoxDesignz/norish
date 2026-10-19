@@ -915,12 +915,8 @@
         "imageGeneration": "Генерування зображень",
         "imageGenerationDescription": "Малювати страву для нових рецептів, які зовсім не мають зображення"
       },
-      "automaticIngredients": "Автоматично для нових інгредієнтів",
-      "automaticIngredientsDescription": "Що відбувається, коли до каталогу додаються нові інгредієнти.",
-      "automaticIngredientsKinds": {
-        "icon": "Намалювати іконку",
-        "iconDescription": "Лише для продукту без іконки, навіть без іконки батьківського"
-      },
+      "automaticIngredients": "Малювати іконки для нових інгредієнтів",
+      "automaticIngredientsDescription": "Лише для інгредієнта без іконки, навіть без іконки батьківського.",
       "tagStrategy": "Стратегія тегів",
       "tagStrategyDescription": "Які теги може використовувати автотегування — і в автоматичному, і в ручному режимі",
       "tagStrategies": {
