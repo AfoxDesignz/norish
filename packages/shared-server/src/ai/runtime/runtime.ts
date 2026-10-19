@@ -375,44 +375,6 @@ async function assemblePrompt(
   return [filled, ...sections].join("\n\n");
 }
 
-/**
- * Characters to a token: the rule of thumb for English across the common
- * tokenizers. Only an estimate reads it; nothing sent depends on it.
- */
-const CHARS_PER_TOKEN = 4;
-
-/** About how many tokens a request would send, and the model it would go to. */
-export interface TokenEstimate {
-  provider: string;
-  model: string;
-  tokens: number;
-}
-
-/**
- * About how many tokens one structured request would send before its answer:
- * the system message, the administrator's prompt as it stands, the sections,
- * and the answer's schema, which a strict request carries beside the prompt
- * and a plain-JSON one inside it. Nothing is asked. For a feature that says
- * what a batch of requests costs before anyone starts it; once asked, the
- * provider's own count is in the model-use ledger.
- */
-export async function estimateStructuredInputTokens<T>(
-  options: Pick<GenerateOptions<T>, "prompt" | "schema" | "sections" | "fill">
-): Promise<TokenEstimate> {
-  const { prompt: promptName, schema, sections = [], fill } = options;
-  const [config, prompt] = await Promise.all([
-    getAIConfig(true),
-    assemblePrompt(promptName, sections, fill),
-  ]);
-  const instructions = `${SYSTEM_MESSAGES[promptName]}\n\n${await jsonModeInstruction(schema)}`;
-
-  return {
-    provider: config?.provider ?? "",
-    model: config ? selectedModelId(config, false) : "",
-    tokens: Math.ceil((instructions.length + prompt.length) / CHARS_PER_TOKEN),
-  };
-}
-
 /** The model a structured request runs on: the vision model when images ride along. */
 function selectedModelId(config: AIConfig, useVision: boolean): string {
   return useVision ? (config.visionModel ?? config.model) : config.model;
@@ -1092,28 +1054,6 @@ export async function decide<const Q extends DecisionQuestions>(
 
     throw aiError;
   }
-}
-
-/**
- * About how many tokens one Decision would send: its state and questions as
- * JSON, to the Decision Model as configured. That model wraps them in
- * instructions of its own, which come on top and are not Norish's to count.
- * Nothing is asked.
- */
-export async function estimateDecisionInputTokens({
-  state,
-  questions,
-}: Pick<DecideOptions<DecisionQuestions>, "state" | "questions">): Promise<TokenEstimate> {
-  const decisionConfig = await getDecisionConfig(true);
-  const settings = isDecisionConfigValid(decisionConfig)
-    ? resolveDecisionSettings(decisionConfig)
-    : null;
-
-  return {
-    provider: decisionConfig?.provider ?? "",
-    model: settings?.model ?? "",
-    tokens: Math.ceil(JSON.stringify({ state, questions }).length / CHARS_PER_TOKEN),
-  };
 }
 
 /** How long the admin's Test buttons wait, whatever the AI timeout is tuned to. */

@@ -1,45 +1,39 @@
 // @vitest-environment node
 /**
- * A round of Ask AI over Ingredients: one job, a step per food, each step
- * saying what came of it and what AI was asked, what the round changed
- * announced together as it ends and the round's count following, written
- * down every twentieth of the way so a round of every flagged food stays
- * cheap. A food out of the asker's reach is passed over, a food whose
- * question broke is recorded as failed with the cause, and neither ends the
- * round; only a round that has spent its attempts is told to every page as
- * ended.
+ * The AI pass over Ingredients: one job, a step per food, each step saying what came of it and
+ * what AI was asked, what the pass changed announced together as it ends, written down every
+ * twentieth of the way. A food whose question broke is recorded as failed with the cause and the
+ * pass goes on. Once every food is answered, the ones still showing no icon go to the icons
+ * queue, where "Draw an icon" is on.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { IngredientReviewJobData } from "@norish/queue/contracts/job-types";
-import type { ReviewMode } from "@norish/shared/contracts/ingredient-catalogue";
-import {
-  findRunningReviewRound,
-  readLatestReviewReport,
-  readReviewReport,
-  readRoundTokens,
-  summarizeReviewRound,
-} from "@norish/queue/ingredient-review/progress";
-import {
-  handleIngredientReviewFailure,
-  processIngredientReviewJob,
-} from "@norish/queue/ingredient-review/worker";
-import { completeStep, readStepProgress, reportStep } from "@norish/queue/job-steps";
+import { processIngredientReviewJob } from "@norish/queue/ingredient-review/worker";
+import { readStepProgress } from "@norish/queue/job-steps";
 import {
   createModelUseLedger,
   recordModelUse,
   runWithModelUseLedger,
 } from "@norish/shared-server/ai/runtime/model-use-ledger";
-import { CatalogueEditError } from "@norish/shared-server/ingredients/catalogue";
 import { ingredientChanges } from "@norish/shared-server/ingredients/changes";
 
 const reviewer = vi.hoisted(() => ({ askAIAbout: vi.fn() }));
 const realtime = vi.hoisted(() => ({ publish: vi.fn(async () => undefined) }));
+const config = vi.hoisted(() => ({
+  getAutomaticIngredientsConfig: vi.fn(async () => ({ icon: false })),
+}));
+const icons = vi.hoisted(() => ({
+  listFoodsShowingNoIcon: vi.fn(async (): Promise<Array<{ id: string; name: string }>> => []),
+}));
+const iconQueue = vi.hoisted(() => ({ add: vi.fn(async () => ({ id: "icons-1" })) }));
+/** What happened, in order: each food asked about, and the icons job. */
+const sequence: string[] = [];
 
 vi.mock("@norish/shared-server/ingredients/review", () => reviewer);
-const plainNames = vi.hoisted(() => ({ cleanNameWithAI: vi.fn() }));
-
-vi.mock("@norish/shared-server/ingredients/plain-names", () => plainNames);
+vi.mock("@norish/shared-server/ingredients/icon-rounds", () => icons);
+vi.mock("@norish/shared-server/config/server-config-loader", () => config);
+vi.mock("@norish/queue/registry", () => ({ getQueues: () => ({ ingredientIcons: iconQueue }) }));
 vi.mock("@norish/config/env-config-server", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@norish/config/env-config-server")>();
 
@@ -49,30 +43,20 @@ vi.mock("@norish/config/env-config-server", async (importOriginal) => {
   };
 });
 vi.mock("@norish/shared-server/realtime/ingredients", () => ({ ingredients: realtime }));
-vi.mock("@norish/shared-server/config/server-config-loader", () => ({
-  getIngredientPermissionPolicy: vi.fn(),
-}));
-const catalogue = vi.hoisted(() => ({ findCatalogueIngredient: vi.fn() }));
-
-vi.mock("@norish/db/repositories/ingredient-catalogue", () => catalogue);
-vi.mock("@norish/db/repositories/ingredient-relocation", () => ({}));
 vi.mock("@norish/queue/redis/bullmq", () => ({ getBullClient: vi.fn() }));
 vi.mock("@norish/shared-server/logger", () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 
-const actor = { userId: "me", householdUserIds: null, isServerAdmin: false };
-
 /** A job as the processor sees it, keeping whatever progress it writes. */
-function fakeJob(ingredientIds: string[], attemptsMade = 0, mode: ReviewMode = "review") {
+function fakeJob(ingredientIds: string[]) {
   const job = {
-    id: "round-1",
-    attemptsMade,
+    id: "pass-1",
+    attemptsMade: 0,
     opts: { attempts: 2 },
-    // The job names each food as the router looked it up: "id!" here.
+    // The producer names each food as the catalogue has it: "id!" here.
     data: {
-      ingredients: ingredientIds.map((id) => ({ id, name: `${id}!`, mode })),
-      actor,
+      ingredients: ingredientIds.map((id) => ({ id, name: `${id}!` })),
     } satisfies IngredientReviewJobData,
     progress: {} as unknown,
     updateProgress: vi.fn(async (progress: unknown) => {
@@ -84,28 +68,18 @@ function fakeJob(ingredientIds: string[], attemptsMade = 0, mode: ReviewMode = "
   return job as unknown as Parameters<typeof processIngredientReviewJob>[0];
 }
 
-function published(event: string) {
+function changed() {
   return realtime.publish.mock.calls
-    .filter(([name]) => name === event)
+    .filter(([name]) => name === "changed")
     .map(([, payload]) => payload as Record<string, unknown>);
 }
 
 const trace = { considered: ["onion", "shallot"], englishName: "onion" };
-const ZERO = {
-  merge: 0,
-  parent: 0,
-  distinct: 0,
-  unsure: 0,
-  rename: 0,
-  plain: 0,
-  skipped: 0,
-  failed: 0,
-};
 
 /** What the pass came to for each food in turn, announcing the food as its edits do. */
-function answers(mock: typeof reviewer.askAIAbout, ...outcomes: Array<Record<string, unknown>>) {
+function answers(...outcomes: Array<Record<string, unknown>>) {
   for (const outcome of outcomes) {
-    mock.mockImplementationOnce(async (_actor: unknown, id: string) => {
+    reviewer.askAIAbout.mockImplementationOnce(async (id: string) => {
       if (outcome.outcome !== "skipped") await ingredientChanges().changed([id]);
 
       return outcome;
@@ -115,212 +89,105 @@ function answers(mock: typeof reviewer.askAIAbout, ...outcomes: Array<Record<str
 
 beforeEach(() => {
   reviewer.askAIAbout.mockReset();
-  plainNames.cleanNameWithAI.mockReset();
   realtime.publish.mockClear();
+  config.getAutomaticIngredientsConfig.mockReset().mockResolvedValue({ icon: false });
+  icons.listFoodsShowingNoIcon.mockReset().mockResolvedValue([]);
+  iconQueue.add.mockClear();
+  sequence.length = 0;
 });
 
 describe("processIngredientReviewJob", () => {
-  it("asks about each food in a parent round, announcing what changed once, together", async () => {
+  it("asks about each food in turn, and records what came of it and what was asked", async () => {
     answers(
-      reviewer.askAIAbout,
-      { outcome: "parent", of: "onion", sure: true, ...trace },
-      { outcome: "merge", into: "onion", sure: false, ...trace }
+      { outcome: "merge", into: "onion", sure: true, ...trace },
+      { outcome: "unsure", reason: "ai-unsure", ...trace },
+      { outcome: "skipped", reason: "decided", considered: [], englishName: null }
     );
-    const job = fakeJob(["red", "onions"], 0, "parent");
-
-    await processIngredientReviewJob(job);
-
-    expect(plainNames.cleanNameWithAI).not.toHaveBeenCalled();
-    expect(reviewer.askAIAbout.mock.calls).toEqual([
-      [actor, "red"],
-      [actor, "onions"],
-    ]);
-    expect(published("changed")).toEqual([{ ingredientIds: ["red", "onions"] }]);
-    expect(published("review").at(-1)).toMatchObject({
-      counts: { parent: 1, merge: 1 },
-      finished: true,
-    });
-  });
-
-  it("asks each food for its Plain Name in a round of Clean names, counting renames and plain names", async () => {
-    answers(
-      plainNames.cleanNameWithAI,
-      { outcome: "rename", to: "tonijn uit blik" },
-      { outcome: "plain" },
-      { outcome: "skipped", reason: "settled" }
-    );
-    const job = fakeJob(["tonijn", "salt", "settled"], 0, "name");
-
-    await processIngredientReviewJob(job);
-
-    expect(reviewer.askAIAbout).not.toHaveBeenCalled();
-    expect(plainNames.cleanNameWithAI.mock.calls).toEqual([
-      [actor, "tonijn"],
-      [actor, "salt"],
-      [actor, "settled"],
-    ]);
-    // A rename and a name settled are announced; a food passed over is not.
-    expect(published("changed")).toEqual([{ ingredientIds: ["tonijn", "salt"] }]);
-    expect(published("review").at(-1)).toMatchObject({
-      counts: { rename: 1, plain: 1, skipped: 1 },
-      finished: true,
-    });
-  });
-
-  it("asks about each food in turn as the asker, and records what came of it and what was asked", async () => {
-    reviewer.askAIAbout
-      .mockResolvedValueOnce({ outcome: "merge", into: "onion", sure: true, ...trace })
-      .mockResolvedValueOnce({ outcome: "unsure", reason: "ai-unsure", ...trace })
-      .mockResolvedValueOnce({
-        outcome: "skipped",
-        reason: "decided",
-        considered: [],
-        englishName: null,
-      });
     const job = fakeJob(["uien", "knaks", "settled"]);
 
     await processIngredientReviewJob(job);
 
-    expect(reviewer.askAIAbout.mock.calls).toEqual([
-      [actor, "uien"],
-      [actor, "knaks"],
-      [actor, "settled"],
-    ]);
+    expect(reviewer.askAIAbout.mock.calls).toEqual([["uien"], ["knaks"], ["settled"]]);
     const [attempt] = readStepProgress(job.progress)!.attempts;
 
-    expect(attempt!.timeline.map((step) => [step.id, step.detail])).toEqual([
-      [
-        "asking-ai:1/3",
+    // A step per food, numbered in the order the answers came; three are asked at once.
+    expect(attempt!.timeline.map((step) => step.id)).toEqual([
+      "asking-ai:1/3",
+      "asking-ai:2/3",
+      "asking-ai:3/3",
+    ]);
+    expect(attempt!.timeline.map((step) => step.detail)).toEqual(
+      expect.arrayContaining([
         {
           ingredientId: "uien",
           name: "uien!",
-          mode: "review",
           outcome: "merge",
           into: "onion",
           sure: true,
           ...trace,
         },
-      ],
-      [
-        "asking-ai:2/3",
-        {
-          ingredientId: "knaks",
-          name: "knaks!",
-          mode: "review",
-          outcome: "unsure",
-          reason: "ai-unsure",
-          ...trace,
-        },
-      ],
-      [
-        "asking-ai:3/3",
+        { ingredientId: "knaks", name: "knaks!", outcome: "unsure", reason: "ai-unsure", ...trace },
         {
           ingredientId: "settled",
           name: "settled!",
-          mode: "review",
           outcome: "skipped",
           reason: "decided",
           considered: [],
           englishName: null,
         },
-      ],
-    ]);
+      ])
+    );
+    // The foods it changed are announced once, together, never one it passed over.
+    expect(changed()).toEqual([{ ingredientIds: ["uien", "knaks"] }]);
   });
 
-  it("asks each food its own question in a round that asks both, and records what each one took", async () => {
+  it("records what each food's question took, and gives the attempt every request too", async () => {
     reviewer.askAIAbout.mockImplementationOnce(async () => {
       recordModelUse({ provider: "openai", model: "gpt", outcome: "completed", tokens: 3000 });
 
-      return { outcome: "merge", into: "onion", ...trace };
+      return { outcome: "merge", into: "onion", sure: true, ...trace };
     });
-    plainNames.cleanNameWithAI.mockImplementationOnce(async () => {
+    reviewer.askAIAbout.mockImplementationOnce(async () => {
       recordModelUse({ provider: "openai", model: "gpt", outcome: "completed", tokens: 120 });
 
-      return { outcome: "rename", to: "tonijn uit blik" };
+      return { outcome: "rename", to: "tonijn uit blik", ...trace };
     });
     const job = fakeJob(["uien", "tonijn"]);
     const ledger = createModelUseLedger();
 
-    job.data.ingredients[1]!.mode = "name";
     await runWithModelUseLedger(ledger, () => processIngredientReviewJob(job));
 
-    expect(reviewer.askAIAbout.mock.calls).toEqual([[actor, "uien"]]);
-    expect(plainNames.cleanNameWithAI.mock.calls).toEqual([[actor, "tonijn"]]);
     const [attempt] = readStepProgress(job.progress)!.attempts;
 
-    expect(
-      attempt!.timeline.map((step) => [step.detail, step.models?.map((use) => use.tokens)])
-    ).toEqual([
-      [expect.objectContaining({ ingredientId: "uien", mode: "review" }), [3000]],
-      [expect.objectContaining({ ingredientId: "tonijn", mode: "name" }), [120]],
+    expect(attempt!.timeline.map((step) => step.models?.map((use) => use.tokens))).toEqual([
+      [3000],
+      [120],
     ]);
-    // The attempt's ledger still gets every request, for the job monitor.
     expect(ledger.uses.map((use) => use.tokens)).toEqual([3000, 120]);
-  });
-
-  it("announces the foods it changed together, never a food it passed over", async () => {
-    answers(
-      reviewer.askAIAbout,
-      { outcome: "distinct" },
-      { outcome: "skipped", reason: "decided" }
-    );
-
-    await processIngredientReviewJob(fakeJob(["kwark", "settled"]));
-
-    expect(published("changed")).toEqual([{ ingredientIds: ["kwark"] }]);
   });
 
   it("asks as many foods at once as INGREDIENT_REVIEW_CONCURRENCY allows", async () => {
     let inFlight = 0;
     let most = 0;
 
-    reviewer.askAIAbout.mockImplementation(async (_actor: unknown, id: string) => {
+    reviewer.askAIAbout.mockImplementation(async (id: string) => {
       inFlight += 1;
       most = Math.max(most, inFlight);
       await new Promise((resolve) => setTimeout(resolve, 5));
       inFlight -= 1;
       await ingredientChanges().changed([id]);
 
-      return { outcome: "distinct" };
+      return { outcome: "distinct", ...trace };
     });
 
     await processIngredientReviewJob(fakeJob(["a", "b", "c", "d", "e", "f"]));
 
     expect(most).toBe(3);
     expect(reviewer.askAIAbout).toHaveBeenCalledTimes(6);
-    expect(published("changed")).toEqual([{ ingredientIds: ["a", "b", "c", "d", "e", "f"] }]);
-    expect(published("review").at(-1)).toMatchObject({ done: 6, finished: true });
+    expect(changed()).toEqual([{ ingredientIds: ["a", "b", "c", "d", "e", "f"] }]);
   });
 
-  it("tells every page the count after each food, and that the round ended after the last", async () => {
-    reviewer.askAIAbout
-      .mockResolvedValueOnce({ outcome: "parent", of: "pasta", sure: true })
-      .mockResolvedValueOnce({ outcome: "unsure", reason: "ai-unsure" });
-
-    await processIngredientReviewJob(fakeJob(["fusilli", "knaks"]));
-
-    expect(published("review")).toEqual([
-      {
-        jobId: "round-1",
-        done: 1,
-        total: 2,
-        counts: { ...ZERO, parent: 1 },
-        // A row waits until its own answer is written down.
-        pending: ["knaks"],
-        finished: false,
-      },
-      {
-        jobId: "round-1",
-        done: 2,
-        total: 2,
-        counts: { ...ZERO, parent: 1, unsure: 1 },
-        pending: [],
-        finished: true,
-      },
-    ]);
-  });
-
-  it("writes the round down and tells the pages every twentieth of the way, not after every food", async () => {
+  it("writes the pass down every twentieth of the way, not after every food", async () => {
     reviewer.askAIAbout.mockResolvedValue({ outcome: "distinct", ...trace });
     const ids = Array.from({ length: 100 }, (_, index) => `food-${index}`);
     const job = fakeJob(ids);
@@ -329,59 +196,21 @@ describe("processIngredientReviewJob", () => {
 
     // A hundred foods, written five at a time: twenty writes rather than a hundred.
     expect(vi.mocked(job.updateProgress)).toHaveBeenCalledTimes(20);
-    // Each food is still a step of its own and a line of its own in the log.
     const [attempt] = readStepProgress(job.progress)!.attempts;
 
     expect(attempt!.timeline.map((step) => step.id)).toEqual(
       ids.map((_, index) => `asking-ai:${index + 1}/100`)
     );
-    expect(vi.mocked(job.log)).toHaveBeenCalledTimes(100);
-    // The count follows at each write, and the end is told once.
-    expect(published("review").map((round) => round.done)).toEqual([
-      ...Array.from({ length: 19 }, (_, index) => (index + 1) * 5),
-      100,
-    ]);
-    expect(published("review").filter((round) => round.finished)).toHaveLength(1);
-  });
-
-  it("records how long each food's question took", async () => {
-    reviewer.askAIAbout.mockImplementation(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-
-      return { outcome: "distinct" };
-    });
-    const job = fakeJob(["slow"]);
-
-    await processIngredientReviewJob(job);
-
-    const [step] = readStepProgress(job.progress)!.attempts[0]!.timeline;
-
-    expect(step!.endedAt! - step!.startedAt).toBeGreaterThanOrEqual(15);
-  });
-
-  it("passes over a food the asker may not edit, or that is gone, and goes on", async () => {
-    reviewer.askAIAbout
-      .mockRejectedValueOnce(new CatalogueEditError("forbidden"))
-      .mockRejectedValueOnce(new CatalogueEditError("not-found"))
-      .mockResolvedValueOnce({ outcome: "distinct" });
-    const job = fakeJob(["theirs", "gone", "mine"]);
-
-    await processIngredientReviewJob(job);
-
-    expect(summarizeReviewRound(job, true)).toMatchObject({
-      done: 3,
-      counts: { distinct: 1, skipped: 2 },
-    });
   });
 
   it("records a food whose question broke, with the cause, and asks the rest", async () => {
-    answers(reviewer.askAIAbout, { outcome: "distinct", ...trace });
+    answers({ outcome: "distinct", ...trace });
     reviewer.askAIAbout.mockRejectedValueOnce(
       new Error("Failed query: update ingredients", {
         cause: new Error('column "parent_chosen" does not exist'),
       })
     );
-    answers(reviewer.askAIAbout, { outcome: "distinct", ...trace });
+    answers({ outcome: "distinct", ...trace });
     const job = fakeJob(["mine", "broken", "next"]);
 
     await processIngredientReviewJob(job);
@@ -393,23 +222,16 @@ describe("processIngredientReviewJob", () => {
     ).toEqual({
       ingredientId: "broken",
       name: "broken!",
-      mode: "review",
       outcome: "failed",
       error: 'Failed query: update ingredients: column "parent_chosen" does not exist',
     });
-    expect(published("changed")).toEqual([{ ingredientIds: ["mine", "next"] }]);
-    expect(published("review").at(-1)).toMatchObject({
-      done: 3,
-      counts: { distinct: 2, failed: 1 },
-      finished: true,
-    });
+    expect(changed()).toEqual([{ ingredientIds: ["mine", "next"] }]);
   });
-});
 
-describe("a cancelled round", () => {
-  it("asks no further food once its job is stopped, and does not report itself finished", async () => {
+  it("asks no further food once its job is stopped, and queues no icons", async () => {
     const job = new AbortController();
 
+    config.getAutomaticIngredientsConfig.mockResolvedValue({ icon: true });
     // The administrator cancels while the first food is being asked.
     reviewer.askAIAbout.mockImplementationOnce(async () => {
       job.abort("Cancelled by an administrator");
@@ -422,274 +244,53 @@ describe("a cancelled round", () => {
     ).rejects.toBe("Cancelled by an administrator");
 
     expect(reviewer.askAIAbout).toHaveBeenCalledTimes(1);
-    expect(published("review").some((round) => round.finished)).toBe(false);
+    expect(iconQueue.add).not.toHaveBeenCalled();
   });
 });
 
-describe("handleIngredientReviewFailure", () => {
-  it("ends the round on every page once the attempts are spent, at the count it reached", async () => {
-    // The round's own bookkeeping broke after the first food: the process died.
-    reviewer.askAIAbout.mockResolvedValueOnce({
-      outcome: "merge",
-      into: "onion",
-      ...trace,
+describe("the icons after a pass", () => {
+  beforeEach(() => {
+    reviewer.askAIAbout.mockImplementation(async (id: string) => {
+      sequence.push(`ask:${id}`);
+
+      return { outcome: "distinct", ...trace };
     });
-    const job = fakeJob(["uien", "next"], 1);
+    iconQueue.add.mockImplementation(async () => {
+      sequence.push("icons");
 
-    await reportStep(job, "asking-ai:1/2", { ingredientId: "uien" });
-    await completeStep(job, { ingredientId: "uien", outcome: "merge" });
-    realtime.publish.mockClear();
-    // BullMQ counts the attempt before it tells the worker it failed.
-    (job as { attemptsMade: number }).attemptsMade = 2;
-    await handleIngredientReviewFailure(job, new Error("database away"));
+      return { id: "icons-1" };
+    });
+  });
 
-    expect(published("review")).toEqual([
-      expect.objectContaining({ jobId: "round-1", done: 1, total: 2, finished: true }),
+  it("queues the foods the pass left showing no icon, once every food is answered", async () => {
+    config.getAutomaticIngredientsConfig.mockResolvedValue({ icon: true });
+    // "uien" was merged away and "kipfilet" borrows its parent's icon: only kohlrabi shows none.
+    icons.listFoodsShowingNoIcon.mockResolvedValue([{ id: "kohlrabi", name: "kohlrabi" }]);
+
+    await processIngredientReviewJob(fakeJob(["uien", "kohlrabi", "kipfilet"]));
+
+    expect(icons.listFoodsShowingNoIcon).toHaveBeenCalledExactlyOnceWith([
+      "uien",
+      "kohlrabi",
+      "kipfilet",
     ]);
-  });
-
-  it("says nothing while an attempt is still to come", async () => {
-    await handleIngredientReviewFailure(fakeJob(["uien"], 0), new Error("database away"));
-    await handleIngredientReviewFailure(undefined, new Error("no job"));
-
-    expect(realtime.publish).not.toHaveBeenCalled();
-  });
-});
-
-describe("summarizeReviewRound", () => {
-  it("reads a round that has not started as nothing done", () => {
-    expect(summarizeReviewRound(fakeJob(["a", "b"]), false)).toEqual({
-      jobId: "round-1",
-      done: 0,
-      total: 2,
-      counts: ZERO,
-      pending: ["a", "b"],
-      finished: false,
+    expect(iconQueue.add).toHaveBeenCalledExactlyOnceWith("draw", {
+      ingredients: [{ id: "kohlrabi", name: "kohlrabi" }],
+      actor: null,
     });
+    expect(sequence).toEqual(["ask:uien", "ask:kohlrabi", "ask:kipfilet", "icons"]);
   });
 
-  it("counts the latest attempt only, and a step still running as not done", async () => {
-    const job = fakeJob(["a", "b"]);
+  it("queues no icons with Draw an icon off, or where every food shows one", async () => {
+    icons.listFoodsShowingNoIcon.mockResolvedValue([{ id: "kohlrabi", name: "kohlrabi" }]);
+    await processIngredientReviewJob(fakeJob(["kohlrabi"]));
 
-    await reportStep(job, "asking-ai:1/2", { ingredientId: "a" });
-    await completeStep(job, { ingredientId: "a", outcome: "merge" });
-    (job as { attemptsMade: number }).attemptsMade = 1;
-    await reportStep(job, "asking-ai:1/2", { ingredientId: "a" });
-    await completeStep(job, { ingredientId: "a", outcome: "skipped", reason: "decided" });
-    await reportStep(job, "asking-ai:2/2", { ingredientId: "b" });
+    expect(icons.listFoodsShowingNoIcon).not.toHaveBeenCalled();
 
-    expect(summarizeReviewRound(job, false)).toMatchObject({
-      done: 1,
-      counts: { merge: 0, skipped: 1 },
-      pending: ["b"],
-    });
-  });
-});
+    config.getAutomaticIngredientsConfig.mockResolvedValue({ icon: true });
+    icons.listFoodsShowingNoIcon.mockResolvedValue([]);
+    await processIngredientReviewJob(fakeJob(["onion"]));
 
-describe("findRunningReviewRound", () => {
-  it("reads a round whose every food is answered as over, while its job winds up", async () => {
-    const job = fakeJob(["a"]);
-
-    await reportStep(job, "asking-ai:1/1", { ingredientId: "a" });
-    await completeStep(job, { ingredientId: "a", outcome: "distinct" });
-
-    expect(summarizeReviewRound(job, false)).toMatchObject({ pending: [], finished: true });
-    await expect(
-      findRunningReviewRound({ getJobs: vi.fn(async () => [job]) } as unknown as Parameters<
-        typeof findRunningReviewRound
-      >[0])
-    ).resolves.toBeNull();
-  });
-
-  it("summarizes the one round in flight, or answers null", async () => {
-    const running = fakeJob(["a", "b"]);
-    const queue = { getJobs: vi.fn(async () => [running]) };
-
-    await expect(
-      findRunningReviewRound(queue as unknown as Parameters<typeof findRunningReviewRound>[0])
-    ).resolves.toMatchObject({ jobId: "round-1", total: 2, finished: false });
-    expect(queue.getJobs).toHaveBeenCalledWith(
-      ["active", "waiting", "prioritized", "delayed"],
-      0,
-      0,
-      true
-    );
-
-    queue.getJobs.mockResolvedValue([]);
-    await expect(
-      findRunningReviewRound(queue as unknown as Parameters<typeof findRunningReviewRound>[0])
-    ).resolves.toBeNull();
-  });
-});
-
-describe("readReviewReport", () => {
-  it("reads back what the latest attempt did to each food, in order, what it has still to ask, and whether the round is over", async () => {
-    const job = fakeJob(["a", "b", "c"]);
-
-    await reportStep(job, "asking-ai:1/2", { ingredientId: "a", name: "uitjes" });
-    await completeStep(job, {
-      ingredientId: "a",
-      name: "uitjes",
-      outcome: "merge",
-      into: "onion",
-      ...trace,
-    });
-    await reportStep(job, "asking-ai:2/2", { ingredientId: "b", name: "Unox Knaks" });
-    await completeStep(job, {
-      ingredientId: "b",
-      name: "Unox Knaks",
-      outcome: "failed",
-      error: "Failed query",
-    });
-    const getState = vi.fn(async () => "active");
-    const queue = { getJob: vi.fn(async () => ({ ...job, getState })) };
-    const read = () =>
-      readReviewReport(queue as unknown as Parameters<typeof readReviewReport>[0], "round-1");
-
-    await expect(read()).resolves.toEqual({
-      jobId: "round-1",
-      finished: false,
-      entries: [
-        { ingredientId: "a", name: "uitjes", outcome: "merge", into: "onion", ...trace },
-        { ingredientId: "b", name: "Unox Knaks", outcome: "failed", error: "Failed query" },
-      ],
-      waiting: [{ ingredientId: "c", name: "c!" }],
-    });
-    expect(queue.getJob).toHaveBeenCalledWith("round-1");
-
-    getState.mockResolvedValue("completed");
-    await expect(read()).resolves.toMatchObject({ finished: true, waiting: [] });
-
-    // A round the queue has let go is no longer on record.
-    queue.getJob.mockResolvedValue(null as never);
-    await expect(read()).resolves.toBeNull();
-  });
-});
-
-describe("readLatestReviewReport", () => {
-  it("reads back the round to have ended last, completed or failed", async () => {
-    const older = { ...fakeJob(["a"]), id: "older", finishedOn: 1 };
-    const newer = { ...fakeJob(["b"]), id: "newer", finishedOn: 2 };
-    const queue = {
-      getJobs: vi.fn(async () => [older, newer]),
-      getJob: vi.fn(async (id: string) => ({
-        ...(id === "newer" ? newer : older),
-        getState: async () => "failed",
-      })),
-    };
-    const read = () =>
-      readLatestReviewReport(queue as unknown as Parameters<typeof readLatestReviewReport>[0]);
-
-    await expect(read()).resolves.toMatchObject({ jobId: "newer", finished: true });
-    expect(queue.getJobs).toHaveBeenCalledWith(["completed", "failed"], 0, 0, false);
-
-    // None kept: nothing to read.
-    queue.getJobs.mockResolvedValue([]);
-    await expect(read()).resolves.toBeNull();
-  });
-});
-
-describe("readRoundTokens", () => {
-  /** A finished round's job: what came of each food, and the models its step asked. */
-  function finishedRound(
-    steps: { detail: Record<string, unknown>; uses: { model: string; tokens?: number }[] }[]
-  ) {
-    return {
-      id: "round-done",
-      data: { ingredients: [], actor },
-      progress: {
-        step: "asking-ai",
-        updatedAt: 0,
-        attempts: [
-          {
-            attempt: 1,
-            timeline: steps.map(({ detail, uses }, index) => ({
-              id: `asking-ai:${index + 1}/${steps.length}`,
-              startedAt: 0,
-              endedAt: 1,
-              detail: { ingredientId: `food-${index}`, ...detail },
-              models: uses.map(({ model, tokens }) => ({
-                provider: model.startsWith("jev") ? "typesafe" : "openai",
-                model,
-                outcome: tokens === undefined ? "failed" : "completed",
-                ...(tokens === undefined ? {} : { tokens }),
-              })),
-            })),
-          },
-        ],
-      },
-    };
-  }
-
-  function queueOf(...jobs: unknown[]) {
-    const queue = { getJobs: vi.fn(async () => jobs) };
-
-    return {
-      queue,
-      read: () => readRoundTokens(queue as unknown as Parameters<typeof readRoundTokens>[0]),
-    };
-  }
-
-  it("measures a food's question per model over the latest finished round, leaving out the foods it passed over", async () => {
-    const { queue, read } = queueOf(
-      finishedRound([
-        {
-          detail: { outcome: "distinct", ...trace },
-          uses: [
-            { model: "gpt-5.6-luna", tokens: 900 },
-            { model: "jev-1.13.0", tokens: 1700 },
-          ],
-        },
-        { detail: { outcome: "skipped", reason: "decided" }, uses: [] },
-        {
-          detail: { outcome: "merge", into: "onion", ...trace },
-          uses: [{ model: "gpt-5.6-luna", tokens: 1100 }, { model: "gpt-5.6-luna" }],
-        },
-      ])
-    );
-
-    // Over the two foods it asked about: 2,000 tokens on the language model, 1,700 on the Decision Model.
-    await expect(read()).resolves.toEqual({
-      foods: 2,
-      models: [
-        { provider: "openai", model: "gpt-5.6-luna", perFood: 1000 },
-        { provider: "typesafe", model: "jev-1.13.0", perFood: 850 },
-      ],
-    });
-    expect(queue.getJobs).toHaveBeenCalledWith(["completed"], 0, 9, false);
-  });
-
-  it("looks past a round from before tokens were counted, and answers null where no round counted any", async () => {
-    const distinct = { outcome: "distinct", ...trace };
-    const old = finishedRound([{ detail: distinct, uses: [{ model: "gpt-5.6-luna" }] }]);
-    const measured = finishedRound([
-      { detail: distinct, uses: [{ model: "gpt-5.6-luna", tokens: 3553 }] },
-    ]);
-
-    await expect(queueOf(old, measured).read()).resolves.toEqual({
-      foods: 1,
-      models: [{ provider: "openai", model: "gpt-5.6-luna", perFood: 3553 }],
-    });
-    await expect(queueOf(old).read()).resolves.toBeNull();
-    await expect(queueOf().read()).resolves.toBeNull();
-  });
-
-  it("measures Clean names over the foods asked for their names, and Ask AI over the others, in one round", async () => {
-    const both = finishedRound([
-      {
-        detail: { mode: "name", outcome: "plain" },
-        uses: [{ model: "gpt-5.6-luna", tokens: 120 }],
-      },
-      {
-        detail: { mode: "review", outcome: "distinct", ...trace },
-        uses: [{ model: "gpt-5.6-luna", tokens: 3553 }],
-      },
-    ]);
-    const queue = { getJobs: vi.fn(async () => [both]) };
-    const read = (mode: "review" | "name") =>
-      readRoundTokens(queue as unknown as Parameters<typeof readRoundTokens>[0], mode);
-
-    await expect(read("name")).resolves.toMatchObject({ models: [{ perFood: 120 }] });
-    await expect(read("review")).resolves.toMatchObject({ models: [{ perFood: 3553 }] });
+    expect(iconQueue.add).not.toHaveBeenCalled();
   });
 });

@@ -67,79 +67,13 @@ export type ReviewVerdict =
   | { outcome: "rename"; to: string }
   | { outcome: "distinct" }
   | { outcome: "unsure"; reason: FlagReason }
-  | { outcome: "skipped"; reason: "decided" | "undone" };
+  | { outcome: "skipped"; reason: "decided" | "undone" | "not-found" };
 
 export interface ReviewTrace {
   /** The names of the foods AI was asked to compare the name with, in order. */
   considered: string[];
   /** The plain English food AI read the name as, when it said. */
   englishName: string | null;
-}
-
-/** What a round of Ask AI came to for one food, as its step records it: the change, the skip or the error. */
-export type ReviewReportEntry = { ingredientId: string; name?: string; mode?: ReviewMode } & (
-  | ({ outcome: "merge"; into: string; sure?: boolean } & ReviewTrace)
-  | ({ outcome: "parent"; of: string; sure?: boolean } & ReviewTrace)
-  | ({ outcome: "distinct" } & ReviewTrace)
-  | ({ outcome: "unsure"; reason: string } & ReviewTrace)
-  | PlainNameEntry
-  | {
-      outcome: "skipped";
-      reason: "decided" | "undone" | "forbidden" | "not-found" | "settled";
-    }
-  | { outcome: "failed"; error: string }
-);
-
-/** The outcomes a round makes no change for: Changed by AI lists them under the changes. */
-export const UNCHANGED_OUTCOMES: ReadonlySet<ReviewReportEntry["outcome"]> = new Set([
-  "unsure",
-  "skipped",
-  "failed",
-]);
-
-/** What a round of Clean names came to for one food beyond a merge: a rename, or the name already plain. */
-export type PlainNameEntry = { outcome: "rename"; to: string } | { outcome: "plain" };
-
-/**
- * A round of Ask AI read back: what it came to for each food, in the order it
- * took them, and while it runs, the foods it has still to ask about.
- */
-export interface ReviewReport {
-  jobId: string;
-  finished: boolean;
-  entries: ReviewReportEntry[];
-  waiting: Array<{ ingredientId: string; name: string }>;
-}
-
-/** What a round of Ask AI asks of each food: what it is, what it is a kind of, or its Plain Name. */
-export type ReviewMode = "review" | "parent" | "name";
-
-/** What a round of Fix catalogue asks about: the flagged foods, and the unflagged ones with unsettled names. */
-export const FIX_PARTS = ["flagged", "name"] as const;
-
-export type FixPart = (typeof FIX_PARTS)[number];
-
-/** About how many tokens one food's question takes on one model. */
-export interface ModelTokenEstimate {
-  provider: string;
-  model: string;
-  perFood: number;
-}
-
-/**
- * About how many tokens one food's question takes, per model it asks:
- * measured over the last round, as the providers reported them; or, before
- * any round was measured, counted from what would be sent, which leaves out
- * a model's reasoning.
- */
-export type ReviewTokenEstimate =
-  | { basis: "measured"; foods: number; models: ModelTokenEstimate[] }
-  | { basis: "prompt"; models: ModelTokenEstimate[] };
-
-/** How many flagged foods a round of Fix catalogue would ask about, and the tokens a food takes. */
-export interface ReviewScopeSummary {
-  flagged: number;
-  tokens: ReviewTokenEstimate;
 }
 
 /**
@@ -154,12 +88,3 @@ export type IconScope = (typeof ICON_SCOPES)[number];
 
 /** How many icons each scope of a Draw icons round would draw, for the asker. */
 export type IconScopeSummary = Record<IconScope, number>;
-
-/**
- * What a round of Clean names would ask about, for the asker: how many
- * unflagged foods whose names are not settled, and the tokens a food takes.
- */
-export interface NameScopeSummary {
-  foods: number;
-  tokens: ReviewTokenEstimate;
-}

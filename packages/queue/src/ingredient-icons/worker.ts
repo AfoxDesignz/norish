@@ -2,7 +2,8 @@
  * Ingredient Icons Worker
  *
  * A Draw icons round (`@norish/shared-server/ingredients/icon-rounds`): one
- * job for however many foods a person asked to be drawn, one step per food,
+ * job for however many foods a person asked to be drawn, or an AI pass left
+ * showing no icon, one step per food,
  * drawn one after another with the instance's image provider and set as the
  * food's own icon. The round's count, and which foods are still to be drawn,
  * follow over the socket as icons land, and the changes are announced
@@ -18,7 +19,10 @@ import type { Job } from "bullmq";
 
 import type { IngredientIconsJobData } from "@norish/queue/contracts/job-types";
 import { announcingTogether } from "@norish/shared-server/ingredients/changes";
-import { drawRoundIcon } from "@norish/shared-server/ingredients/icon-rounds";
+import {
+  drawNewIngredientIcon,
+  drawRoundIcon,
+} from "@norish/shared-server/ingredients/icon-rounds";
 import { createLogger } from "@norish/shared-server/logger";
 import { ingredients } from "@norish/shared-server/realtime/ingredients";
 
@@ -53,13 +57,22 @@ function describe(error: unknown): string {
   return cause ? `${error.message}: ${cause}` : error.message;
 }
 
-/** Draw one food's icon. Nothing here ends the round: a failure is recorded on the food's step. */
+/**
+ * Draw one food's icon: a person's round where they may edit it, the AI pass's where it shows
+ * none at all. Nothing here ends the round: a failure is recorded on the food's step.
+ */
 async function draw(
   job: Job<IngredientIconsJobData>,
   ingredientId: string
 ): Promise<IconStepDetail> {
+  const { actor } = job.data;
+
   try {
-    return { ingredientId, ...(await drawRoundIcon(job.data.actor, ingredientId)) };
+    const outcome = actor
+      ? await drawRoundIcon(actor, ingredientId)
+      : await drawNewIngredientIcon(ingredientId);
+
+    return { ingredientId, ...outcome };
   } catch (error) {
     log.error({ err: error, jobId: job.id, ingredientId }, "Drawing an Ingredient Icon failed");
 

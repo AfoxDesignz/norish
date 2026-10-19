@@ -398,49 +398,6 @@
     },
     "markDistinct": "Marker som egen",
     "summary": "{spellings, plural, one {# oversettelse} other {# oversettelser}}{kinds, plural, =0 {} one {, # type} other {, # typer}}{parent, select, none {} other {, overordnet: {parent}}}",
-    "askAI": "Spør AI",
-    "fixCatalogue": "Rett opp katalogen",
-    "askAIRound": {
-      "intro": "AI sjekker hvor flaggede ingredienser hører hjemme, retter uensartede navn og gjør hver endring selv. Du kan angre dem under Endret av AI.",
-      "scopeLabel": "Hva som skal rettes",
-      "scopes": {
-        "flagged": "Sjekk merkede ingredienser",
-        "name": "Rydd opp i navn"
-      },
-      "hints": {
-        "flagged": "Ser etter duplikater, underingredienser eller unike.",
-        "name": "Renser ingrediensnavn til bare ingrediensen. Merkede ingredienser er med hvis avkrysningsboksen over er huket av."
-      },
-      "scopeSize": "{count, plural, =0 {Ingen ingredienser} one {# ingrediens · omtrent {tokens} tokens} other {# ingredienser · omtrent {tokens} tokens}}",
-      "modelTokens": "omtrent {tokens} tokens",
-      "basisMeasured": "Basert på hva forrige runde brukte."
-    },
-    "roundProgress": "Spør AI · {done, number} av {total, number}",
-    "roundSection": {
-      "title": "Spør AI",
-      "progress": "{done, number} av {total, number}",
-      "waiting": "{count, plural, one {# ingrediens venter} other {# ingredienser venter}}"
-    },
-    "reviewing": "Spør AI…",
-    "aiOutcomes": {
-      "parent": "AI plasserte {name} under {of}.",
-      "distinct": "Ifølge AI er {name} en egen ingrediens.",
-      "unsure": "AI er fortsatt ikke sikker på hva {name} er.",
-      "skippedNotFlagged": "{name} var ikke lenger merket.",
-      "skippedForbidden": "{name} kan du ikke endre.",
-      "skippedNotFound": "{name} var borte da AI kom dit.",
-      "failed": "Spørsmålet om {name} mislyktes.",
-      "merge": "AI slo sammen {name} med {into}.",
-      "rename": "AI ga {name} det nye navnet {to}.",
-      "decided": "Noen har allerede bestemt {name}, så AI lar den være.",
-      "undone": "AI-svaret for {name} er en endring du har angret, så ingenting er endret."
-    },
-    "aiTrace": {
-      "readAs": "AI leste det som «{name}».",
-      "compared": "Sammenlignet med: {names}.",
-      "comparedNothing": "Det var ingen kjent matvare å sammenligne med.",
-      "noFood": "AI fant ingen matvare i dette navnet."
-    },
     "addAlias": "Legg til en oversettelse",
     "removeAlias": "Fjern {alias}",
     "mergeInto": "Slå sammen med…",
@@ -571,28 +528,17 @@
       "none": "Ingenting bruker den lenger"
     },
     "keepAlias": "Behold {alias}",
-    "reportOutcomes": {
-      "parent": "Under en forelder",
-      "distinct": "Egen matvare",
-      "unsure": "Ikke sikker",
-      "skipped": "Hoppet over",
-      "failed": "Mislyktes",
-      "merge": "Slå sammen"
-    },
     "expandKinds": "Vis typer av {name}",
     "collapseKinds": "Skjul typer av {name}",
     "layoutSection": "Visning",
     "asTree": "Hierarkisk visning",
     "showOnly": "Vis bare",
     "standaloneOnly": "Uten forelder eller typer",
-    "checkWithAI": "Sjekk med AI",
-    "checkAllWithAI": "Sjekk disse med AI",
     "changedByAI": {
       "title": "Endret av AI",
       "open": "{count, plural, =0 {Endret av AI} other {Endret av AI · # å sjekke}}",
       "unsure": "Ikke sikker",
       "sure": "Endret",
-      "unchanged": "Ikke endret",
       "empty": "AI har ikke endret noe den siste måneden.",
       "keep": "Behold",
       "undo": "Angre",
@@ -600,13 +546,6 @@
       "parent": "Plassert under {of}",
       "parentFromName": "Plassert under {of}, ut fra navnet",
       "plainName": "Fikk nytt navn, var {from}"
-    },
-    "skippedReasons": {
-      "forbidden": "Not yours to edit",
-      "notFound": "No longer exists",
-      "settled": "Navnet er allerede fastsatt",
-      "decided": "Allerede bestemt",
-      "undone": "Angret tidligere"
     },
     "icon": {
       "change": "Endre ikonet",
@@ -979,8 +918,6 @@
       "automaticIngredients": "Automatisk for nye ingredienser",
       "automaticIngredientsDescription": "Hva som skjer når nye ingredienser legges til i katalogen.",
       "automaticIngredientsKinds": {
-        "plainName": "Rydd opp i navnet",
-        "plainNameDescription": "Fjern det som ikke er matvaren, som mengder og pakningskoder",
         "icon": "Tegn et ikon",
         "iconDescription": "Bare for en matvare uten ikon, heller ikke forelderens"
       },
@@ -1212,8 +1149,7 @@
         "image-generation": "Bildegenerering",
         "store-lookup": "Butikkoppslag",
         "ingredient-review": "Spør AI om ingredienser",
-        "ingredient-icons": "Tegn ingrediensikoner",
-        "new-ingredients": "Nye ingredienser"
+        "ingredient-icons": "Tegn ingrediensikoner"
       },
       "summary": {
         "failed": "{count} failed"

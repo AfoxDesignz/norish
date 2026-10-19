@@ -111,12 +111,3 @@ export function setParent(childId: string, parentId: string): Promise<void> {
     );
   });
 }
-
-/** Settle every name but these foods', as if AI or a person had named them, so a round of Clean names asks about these alone. */
-export function settleNamesExcept(ingredientIds: readonly string[]): Promise<void> {
-  return withDatabase(async (database) => {
-    await database.query(`update ingredients set name_settled = (id <> all($1::uuid[]))`, [
-      ingredientIds,
-    ]);
-  });
-}

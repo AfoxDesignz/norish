@@ -19,9 +19,7 @@ const INDENT_PX = 24;
  * Pressing it opens the Ingredient's panel, where the spellings and every
  * edit the server says the viewer may make live. In the page's tree a food
  * with kinds carries a chevron that folds them out beneath it, set in by
- * `depth`. `reviewing` is the food's turn in a round of Ask AI: the row
- * shows it in place of its flag, and settles as its own change when the
- * answer lands. `drawing` is its turn in a Draw icons round, shown in its
+ * `depth`. `drawing` is its turn in a Draw icons round, shown in its
  * icon's place until the icon lands. A row re-renders only when its own item
  * or turn changes, so a page of fifty rows stays out of the way of typing.
  */
@@ -30,7 +28,6 @@ export const IngredientRow = memo(function IngredientRow({
   depth = 0,
   expanded = false,
   loadingKinds = false,
-  reviewing = false,
   drawing = false,
   onOpen,
   onToggleKinds,
@@ -39,7 +36,6 @@ export const IngredientRow = memo(function IngredientRow({
   depth?: number;
   expanded?: boolean;
   loadingKinds?: boolean;
-  reviewing?: boolean;
   drawing?: boolean;
   onOpen: (id: string) => void;
   /** Fold the food's kinds out or back; absent where the list is flat. */
@@ -118,7 +114,7 @@ export const IngredientRow = memo(function IngredientRow({
             {displayName !== item.name ? (
               <span className="text-muted truncate text-sm">{item.name}</span>
             ) : null}
-            <IngredientStatusChip flagged={item.flagged} reviewing={reviewing} />
+            <IngredientStatusChip flagged={item.flagged} />
           </div>
           <span className="text-muted text-sm">
             {item.flagged ? (

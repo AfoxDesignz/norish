@@ -13,9 +13,8 @@ import { startImageGenerationWorker } from "@norish/queue/image-generation/worke
 import { startImageImportWorker } from "@norish/queue/image-import/worker";
 import { startIngredientIconsWorker } from "@norish/queue/ingredient-icons/worker";
 import { startIngredientLinkingWorker } from "@norish/queue/ingredient-linking/worker";
+import { addIngredientReviewJob } from "@norish/queue/ingredient-review/producer";
 import { startIngredientReviewWorker } from "@norish/queue/ingredient-review/worker";
-import { addNewIngredientsJob } from "@norish/queue/new-ingredients/producer";
-import { startNewIngredientsWorker } from "@norish/queue/new-ingredients/worker";
 import { startNutritionEstimationWorker } from "@norish/queue/nutrition-estimation/worker";
 import { startPasteImportWorker } from "@norish/queue/paste-import/worker";
 import { startRecipeImportWorker } from "@norish/queue/recipe-import/worker";
@@ -56,13 +55,12 @@ export async function startWorkers(): Promise<void> {
   startImageGenerationWorker();
   startIngredientReviewWorker();
   startIngredientIconsWorker();
-  startNewIngredientsWorker();
   startCaldavSyncWorker();
   startScheduledTasksWorker();
   startStoreLookupWorker();
 
-  // Foods someone's action mints get what the administrator turned on for new foods.
-  onIngredientsMinted(addNewIngredientsJob);
+  // AI asks about every food someone's action mints, in the background.
+  onIngredientsMinted(addIngredientReviewJob);
 
   await initializeScheduledJobs(getQueues().scheduledTasks);
 

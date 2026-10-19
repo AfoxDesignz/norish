@@ -398,49 +398,6 @@
     },
     "markDistinct": "Merkitse erilliseksi",
     "summary": "{spellings, plural, one {# käännös} other {# käännöstä}}{kinds, plural, =0 {} one {, # laji} other {, # lajia}}{parent, select, none {} other {, yläkäsite: {parent}}}",
-    "askAI": "Kysy tekoälyltä",
-    "fixCatalogue": "Korjaa luettelo",
-    "askAIRound": {
-      "intro": "Tekoäly tarkistaa, minne merkityt ainekset kuuluvat, korjaa epäyhtenäiset nimet ja tekee jokaisen muutoksen itse. Voit perua ne kohdassa Tekoälyn muutokset.",
-      "scopeLabel": "Mitä korjataan",
-      "scopes": {
-        "flagged": "Tarkista merkityt ainesosat",
-        "name": "Siivoa nimet"
-      },
-      "hints": {
-        "flagged": "Etsii kaksoiskappaleita, ala-ainesosia tai ainutlaatuisia.",
-        "name": "Siistii ainesosien nimet pelkäksi ainesosaksi. Merkityt ainesosat ovat mukana, jos yllä oleva valintaruutu on valittuna."
-      },
-      "scopeSize": "{count, plural, =0 {Ei ainesosia} one {# ainesosa · noin {tokens} tokenia} other {# ainesosaa · noin {tokens} tokenia}}",
-      "modelTokens": "noin {tokens} tokenia",
-      "basisMeasured": "Edellisen kierroksen käytön mukaan."
-    },
-    "roundProgress": "Kysytään tekoälyltä · {done, number}/{total, number}",
-    "roundSection": {
-      "title": "Kysytään tekoälyltä",
-      "progress": "{done, number}/{total, number}",
-      "waiting": "{count, plural, one {# ainesosa odottaa} other {# ainesosaa odottaa}}"
-    },
-    "reviewing": "Kysytään tekoälyltä…",
-    "aiOutcomes": {
-      "parent": "Tekoäly sijoitti aineksen {name} kohtaan {of}.",
-      "distinct": "Tekoälyn mukaan {name} on oma aineksensa.",
-      "unsure": "Tekoäly ei vieläkään ole varma, mikä {name} on.",
-      "skippedNotFlagged": "{name} ei ollut enää merkitty.",
-      "skippedForbidden": "{name} ei ole sinun muutettavissasi.",
-      "skippedNotFound": "{name} oli poissa, kun tekoäly ehti siihen.",
-      "failed": "Kysymys aineesta {name} epäonnistui.",
-      "merge": "Tekoäly yhdisti aineksen {name} ainekseen {into}.",
-      "rename": "Tekoäly nimesi aineksen {name} uudelleen: {to}.",
-      "decided": "Aineksesta {name} on jo päätetty, joten tekoäly ei koske siihen.",
-      "undone": "Tekoälyn vastaus ainekselle {name} on muutos, jonka peruit, joten mikään ei muuttunut."
-    },
-    "aiTrace": {
-      "readAs": "Tekoäly luki sen nimellä ”{name}”.",
-      "compared": "Verrattiin: {names}.",
-      "comparedNothing": "Ei ollut tunnettua ruoka-ainetta, johon verrata.",
-      "noFood": "Tekoäly ei löytänyt tästä nimestä ruoka-ainetta."
-    },
     "addAlias": "Lisää käännös",
     "removeAlias": "Poista {alias}",
     "mergeInto": "Yhdistä…",
@@ -571,28 +528,17 @@
       "none": "Mikään ei enää käytä sitä"
     },
     "keepAlias": "Säilytä {alias}",
-    "reportOutcomes": {
-      "parent": "Yläkäsitteen alle",
-      "distinct": "Oma ruoka-aine",
-      "unsure": "Epävarma",
-      "skipped": "Ohitettu",
-      "failed": "Epäonnistui",
-      "merge": "Yhdistä"
-    },
     "expandKinds": "Näytä lajit: {name}",
     "collapseKinds": "Piilota lajit: {name}",
     "layoutSection": "Näkymä",
     "asTree": "Hierarkkinen näkymä",
     "showOnly": "Näytä vain",
     "standaloneOnly": "Ilman yläkäsitettä tai lajeja",
-    "checkWithAI": "Tarkista tekoälyllä",
-    "checkAllWithAI": "Tarkista nämä tekoälyllä",
     "changedByAI": {
       "title": "Tekoälyn muutokset",
       "open": "{count, plural, =0 {Tekoälyn muutokset} other {Tekoälyn muutokset · # tarkistettavaa}}",
       "unsure": "Ei varma",
       "sure": "Muutettu",
-      "unchanged": "Ei muutettu",
       "empty": "Tekoäly ei ole muuttanut mitään viimeisen kuukauden aikana.",
       "keep": "Pidä",
       "undo": "Peru",
@@ -600,13 +546,6 @@
       "parent": "Sijoitettu kohtaan {of}",
       "parentFromName": "Sijoitettu kohtaan {of} nimen perusteella",
       "plainName": "Nimetty uudelleen, oli {from}"
-    },
-    "skippedReasons": {
-      "forbidden": "Not yours to edit",
-      "notFound": "No longer exists",
-      "settled": "Nimi on jo vahvistettu",
-      "decided": "Jo päätetty",
-      "undone": "Peruttu aiemmin"
     },
     "icon": {
       "change": "Vaihda kuvake",
@@ -979,8 +918,6 @@
       "automaticIngredients": "Automaattisesti uusille ainesosille",
       "automaticIngredientsDescription": "Mitä tapahtuu, kun luetteloon lisätään uusia ainesosia.",
       "automaticIngredientsKinds": {
-        "plainName": "Siivoa nimi",
-        "plainNameDescription": "Poista se, mikä ei ole ruoka-ainetta, kuten määrät ja pakkauskoodit",
         "icon": "Piirrä kuvake",
         "iconDescription": "Vain ruoka-aineelle, jolla ei ole kuvaketta, ei edes yläkäsitteensä"
       },
@@ -1212,8 +1149,7 @@
         "image-generation": "Kuvien luonti",
         "store-lookup": "Kaupan haku",
         "ingredient-review": "Kysy tekoälyltä ainesosista",
-        "ingredient-icons": "Ainesosien kuvakkeiden piirto",
-        "new-ingredients": "Uudet ainesosat"
+        "ingredient-icons": "Ainesosien kuvakkeiden piirto"
       },
       "summary": {
         "failed": "{count} epäonnistui"

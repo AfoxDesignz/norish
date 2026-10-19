@@ -89,29 +89,42 @@ export async function drawRoundIcon(
   }
 }
 
+/** These foods as they stand: those still there that show no icon at all, by name. */
+export async function listFoodsShowingNoIcon(
+  ingredientIds: readonly string[],
+  set: IconSet = shippedIconSet()
+): Promise<IconRoundFood[]> {
+  const lineage = await findIconLineage(ingredientIds);
+
+  return ingredientIds.flatMap((id) => {
+    const food = lineage.get(id);
+
+    return food && !chooseIcon(id, lineage, set) ? [{ id, name: food.name }] : [];
+  });
+}
+
 /**
- * Draw a food just minted by someone's action an icon of its own, where it
- * would show none at all: no icon of its own, none shipped, none to borrow
- * from a Parent Ingredient. A red onion under onion keeps showing the onion.
- * Set with no review, as a Draw icons round sets one, unless a person gave
- * it one meanwhile. Whether one was set. Throws whatever drawing throws.
+ * Draw a food an icon of its own where it would show none at all: no icon of its own, none
+ * shipped, none to borrow from a Parent Ingredient. A red onion under onion keeps showing the
+ * onion. Set with no review, as a Draw icons round sets one, unless a person gave it one
+ * meanwhile. For the foods an AI pass leaves showing none; throws whatever drawing throws.
  */
 export async function drawNewIngredientIcon(
   ingredientId: string,
   set: IconSet = shippedIconSet()
-): Promise<boolean> {
+): Promise<IconRoundOutcome> {
   const lineage = await findIconLineage([ingredientId]);
 
-  if (!lineage.has(ingredientId) || chooseIcon(ingredientId, lineage, set)) return false;
+  if (!lineage.has(ingredientId)) return { outcome: "skipped", reason: "not-found" };
+  if (chooseIcon(ingredientId, lineage, set)) return { outcome: "skipped", reason: "has-icon" };
 
   const drawn = await drawDraftIcon(ingredientId);
-
   const own = await withTransaction((tx) =>
     setIngredientIcon(tx, ingredientId, drawn.file, { unlessSet: true })
   );
 
-  if (!own) return false;
+  if (!own) return { outcome: "skipped", reason: "has-icon" };
   await ingredientChanges().changed([ingredientId]);
 
-  return true;
+  return { outcome: "drawn" };
 }

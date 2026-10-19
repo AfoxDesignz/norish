@@ -166,18 +166,16 @@ export const QUEUE_SETTINGS: Record<QueueName, QueueSettings> = {
     withoutOperationContext: true,
   },
   [QUEUE_NAMES.INGREDIENT_REVIEW]: {
-    // A round of Ask AI over flagged Ingredients. A food's own failure is
-    // recorded on its step and never fails the round; a second attempt covers
-    // a crash of the round itself, and is safe: a food the first attempt
-    // settled is no longer flagged and is skipped, so the retry only finishes
-    // what the crash left.
+    // The AI pass over Ingredients, after a mint and nightly. A food's own
+    // failure is recorded on its step and never fails the pass; a second
+    // attempt covers a crash of the pass itself, and is safe: a change the
+    // first attempt made is not made twice.
     jobOptions: { attempts: 2, backoff: { type: "exponential", delay: 5_000 } },
-    // One round at a time: a round already asks its foods one after another,
-    // and two rounds over the same flagged foods would ask each twice.
+    // One pass at a time: a pass already asks its foods a few at once.
     concurrency: 1,
     stalledInterval: 60_000,
-    // A round may ask every flagged food in the catalogue, each within its
-    // 30 s budget: a thousand of them, a few at a time, run for well over an hour.
+    // The first start's pass asks every undecided food, each within its 30 s
+    // budget: a thousand of them, a few at a time, run for well over an hour.
     hangingThresholdMs: 4 * 60 * 60_000,
   },
   [QUEUE_NAMES.INGREDIENT_ICONS]: {
@@ -192,16 +190,5 @@ export const QUEUE_SETTINGS: Record<QueueName, QueueSettings> = {
     stalledInterval: 60_000,
     // A round may draw thousands of icons, one at a time.
     hangingThresholdMs: 24 * 60 * 60_000,
-  },
-  [QUEUE_NAMES.NEW_INGREDIENTS]: {
-    // Upkeep of new foods is best-effort: a food it misses is still the Clean
-    // names and Draw icons rounds'.
-    jobOptions: { attempts: 1 },
-    // One save's new foods after another: an icon is an image call, billed per
-    // request and rate-limited hard, as for Draw icons.
-    concurrency: 1,
-    stalledInterval: 60_000,
-    // A save's few new foods, each a name and an icon that may wait out a rate limit.
-    hangingThresholdMs: 15 * 60_000,
   },
 };

@@ -3,64 +3,35 @@
 import type { AIChange } from "@/components/ingredients/types";
 import type { ReactNode } from "react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useTRPC } from "@/app/providers/trpc-provider";
 import { AIChangeActions } from "@/components/ingredients/ai-change-actions";
 import { IngredientPanel } from "@/components/ingredients/ingredient-panel";
-import { changeMessage, reviewTrace, skippedReason } from "@/components/ingredients/review-copy";
+import { changeMessage } from "@/components/ingredients/review-copy";
 import { isOpenChange, useAIChanges } from "@/components/ingredients/use-ai-changes";
 import Panel from "@/components/Panel/Panel";
-import { ChevronDownIcon } from "@heroicons/react/16/solid";
-import { Chip, Label, ProgressBar, Spinner } from "@heroui/react";
-import { useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useLocale, useTranslations } from "next-intl";
 import { twMerge } from "tailwind-merge";
 
-import type { ReviewReportEntry } from "@norish/shared/contracts/ingredient-catalogue";
-import type { ReviewRound } from "@norish/shared/contracts/realtime/ingredients";
-import { UNCHANGED_OUTCOMES } from "@norish/shared/contracts/ingredient-catalogue";
 import { ingredientDisplayName } from "@norish/shared/lib/ingredient-names";
-
-const UNCHANGED_COLOR: Record<string, "warning" | "default" | "danger"> = {
-  unsure: "warning",
-  skipped: "default",
-  failed: "danger",
-};
-
-/** One food a round changed nothing for, as the report lists it. */
-type Unchanged = Extract<ReviewReportEntry, { outcome: "unsure" | "skipped" | "failed" }>;
 
 /** One line of the panel: all it shows is one virtualised run of these. */
 type PanelRow =
-  | { kind: "round" }
-  | { kind: "waiting"; ingredientId: string; name: string }
   | { kind: "empty" }
-  | { kind: "heading"; of: "unsure" | "sure" | "unchanged" }
-  | { kind: "change"; change: AIChange }
-  | { kind: "loading"; of: "waiting" | "report" }
-  | { kind: "unchanged"; entry: Unchanged };
+  | { kind: "heading"; of: "unsure" | "sure" }
+  | { kind: "change"; change: AIChange };
 
 /** What each kind of row is likely to measure, until the virtualizer has measured it. */
 const ESTIMATED_HEIGHT: Record<PanelRow["kind"], number> = {
-  round: 72,
-  waiting: 26,
   empty: 44,
   heading: 40,
   change: 72,
-  loading: 36,
-  unchanged: 76,
 };
 const ROW_OVERSCAN = 8;
 
 function rowKey(row: PanelRow): string {
   switch (row.kind) {
-    case "waiting":
-      return `waiting:${row.ingredientId}`;
     case "change":
       return `change:${row.change.id}`;
-    case "unchanged":
-      return `unchanged:${row.entry.ingredientId}`;
-    case "loading":
     case "heading":
       return `${row.kind}:${row.of}`;
     default:
@@ -69,9 +40,9 @@ function rowKey(row: PanelRow): string {
 }
 
 /**
- * The panel's rows, virtualised against the panel's own scrolling body: a
- * round over the whole catalogue leaves a thousand changes, a row each with
- * a button or two, and only the rows in and around view are in the tree.
+ * The panel's rows, virtualised against the panel's own scrolling body: the
+ * first start's pass over the whole catalogue leaves a thousand changes, a row
+ * each with a button or two, and only the rows in and around view are in the tree.
  * Rows carry their own spacing; the virtualizer measures each one.
  */
 function VirtualRows({
@@ -142,56 +113,28 @@ function VirtualRows({
 }
 
 /**
- * Changed by AI: the last month's AI Changes, open ones first with Keep and Undo, then a running
- * round's progress and the foods the latest round changed nothing for. A name opens its panel.
+ * Changed by AI: the last month's AI Changes, open ones first with Keep and Undo. A name opens
+ * its panel.
  */
 export function ChangedByAIPanel({
-  jobId,
-  round,
   open,
-  reviewing,
   onClose,
   onChanged,
 }: {
-  jobId: string | null;
-  /** The round of Ask AI running on the instance, if any. */
-  round: ReviewRound | null;
   open: boolean;
-  /** The foods a round of Ask AI is asking about, which a food's panel holds still. */
-  reviewing: ReadonlySet<string>;
   onClose: () => void;
   /** A food's panel changed it: the page reads its lists again. */
   onChanged: () => void;
 }) {
   const t = useTranslations("settings.ingredients");
   const locale = useLocale();
-  const trpc = useTRPC();
   const { changes, keep, undo } = useAIChanges();
   // The food whose own panel is open over this one.
   const [openId, setOpenId] = useState<string | null>(null);
-  // Whether the round's waiting foods are folded out.
-  const [waitingOpen, setWaitingOpen] = useState(false);
-  // The round running now, else the last one this tab saw end, else the instance's latest.
-  const reportJobId = round?.jobId ?? jobId;
-  const report = useQuery({
-    ...trpc.ingredients.reviewReport.queryOptions(reportJobId ? { jobId: reportJobId } : {}),
-    enabled: open,
-  });
-  const reportData = report.data;
-  const reportLoading = report.isFetching && !reportData;
 
   // Everything the panel shows, in order, as the rows of one list.
   const rows = useMemo(() => {
     const out: PanelRow[] = [];
-    const waiting = reportData?.waiting ?? [];
-
-    if (round) {
-      out.push({ kind: "round" });
-      if (waitingOpen && round.pending.length > 0) {
-        if (waiting.length === 0) out.push({ kind: "loading", of: "waiting" });
-        for (const food of waiting) out.push({ kind: "waiting", ...food });
-      }
-    }
     const unsure = changes.filter(isOpenChange);
     const rest = changes.filter((change) => !isOpenChange(change));
 
@@ -201,91 +144,29 @@ export function ChangedByAIPanel({
     // A heading for the rest only sets them apart from the unsure ones above.
     if (unsure.length > 0 && rest.length > 0) out.push({ kind: "heading", of: "sure" });
     for (const change of rest) out.push({ kind: "change", change });
-    if (reportLoading) out.push({ kind: "loading", of: "report" });
-    const unchanged = (reportData?.entries ?? []).filter((entry): entry is Unchanged =>
-      UNCHANGED_OUTCOMES.has(entry.outcome)
-    );
-
-    if (unchanged.length > 0) {
-      out.push({ kind: "heading", of: "unchanged" });
-      for (const entry of unchanged) out.push({ kind: "unchanged", entry });
-    }
 
     return out;
-  }, [round, waitingOpen, changes, reportData, reportLoading]);
+  }, [changes]);
 
-  /** A food's name, opening its panel; one gone since the round is only its name. */
-  const foodName = (ingredientId: string, name: string, gone = false) =>
-    gone ? (
-      <span className="min-w-0 text-sm font-medium break-words">{name}</span>
-    ) : (
-      <button
-        className="text-accent focus-visible:ring-focus min-w-0 cursor-[var(--cursor-interactive)] rounded text-left text-sm font-medium break-words hover:underline focus-visible:ring-2 focus-visible:outline-none"
-        data-testid="ingredient-ai-change-open"
-        type="button"
-        onClick={() => setOpenId(ingredientId)}
-      >
-        {name}
-      </button>
-    );
+  /** A food's name, opening its panel. */
+  const foodName = (ingredientId: string, name: string) => (
+    <button
+      className="text-accent focus-visible:ring-focus min-w-0 cursor-[var(--cursor-interactive)] rounded text-left text-sm font-medium break-words hover:underline focus-visible:ring-2 focus-visible:outline-none"
+      data-testid="ingredient-ai-change-open"
+      type="button"
+      onClick={() => setOpenId(ingredientId)}
+    >
+      {name}
+    </button>
+  );
 
-  /**
-   * One row. A row in a run of its kind is ruled off from the one above it,
-   * and the first after the round's waiting foods keeps a gap from them,
-   * padded rather than margined so the virtualizer measures it.
-   */
+  /** One row. A row in a run of its kind is ruled off from the one above it. */
   const renderRow = (row: PanelRow, index: number): ReactNode => {
-    const above = index > 0 ? rows[index - 1]?.kind : undefined;
-    const ruled = above === row.kind;
-    const afterWaiting = above === "waiting" && row.kind !== "waiting";
+    const ruled = index > 0 && rows[index - 1]?.kind === row.kind;
 
     switch (row.kind) {
-      case "round":
-        return round ? (
-          <section className="flex flex-col gap-2 pb-2" data-testid="ingredients-round">
-            <ProgressBar size="sm" value={round.total > 0 ? (round.done / round.total) * 100 : 0}>
-              <Label>{t("roundSection.title")}</Label>
-              <ProgressBar.Output>
-                {t("roundSection.progress", { done: round.done, total: round.total })}
-              </ProgressBar.Output>
-              <ProgressBar.Track>
-                <ProgressBar.Fill />
-              </ProgressBar.Track>
-            </ProgressBar>
-            {round.pending.length > 0 ? (
-              <button
-                aria-expanded={waitingOpen}
-                className="text-muted focus-visible:ring-focus flex w-full cursor-[var(--cursor-interactive)] items-center justify-between gap-2 rounded py-1 text-left text-sm focus-visible:ring-2 focus-visible:outline-none"
-                data-testid="ingredients-round-waiting"
-                type="button"
-                onClick={() => setWaitingOpen(!waitingOpen)}
-              >
-                {t("roundSection.waiting", { count: round.pending.length })}
-                <ChevronDownIcon
-                  aria-hidden
-                  className={twMerge(
-                    "size-4 shrink-0 transition-transform motion-reduce:transition-none",
-                    waitingOpen && "rotate-180"
-                  )}
-                />
-              </button>
-            ) : null}
-          </section>
-        ) : null;
-      case "waiting":
-        return <div className="flex py-0.5 ps-3">{foodName(row.ingredientId, row.name)}</div>;
       case "empty":
-        return (
-          <p className={twMerge("text-muted py-3 text-sm", afterWaiting && "pt-6")}>
-            {t("changedByAI.empty")}
-          </p>
-        );
-      case "loading":
-        return (
-          <div className="flex justify-center py-2">
-            <Spinner color="accent" size="sm" />
-          </div>
-        );
+        return <p className="text-muted py-3 text-sm">{t("changedByAI.empty")}</p>;
       case "heading":
         return (
           <h3
@@ -304,8 +185,7 @@ export function ChangedByAIPanel({
           <div
             className={twMerge(
               "flex items-start justify-between gap-3 py-3",
-              ruled && "border-border/40 border-t",
-              afterWaiting && "pt-6"
+              ruled && "border-border/40 border-t"
             )}
             data-kind={change.kind}
             data-sure={change.sure}
@@ -320,42 +200,6 @@ export function ChangedByAIPanel({
               onKeep={(it) => void keep(it)}
               onUndo={(it) => void undo(it)}
             />
-          </div>
-        );
-      }
-      case "unchanged": {
-        const { entry } = row;
-
-        return (
-          <div
-            className={twMerge("flex flex-col gap-1 py-3", ruled && "border-border/40 border-t")}
-            data-outcome={entry.outcome}
-            data-testid="ingredients-review-entry"
-          >
-            <div className="flex items-start justify-between gap-3">
-              {foodName(
-                entry.ingredientId,
-                entry.name ?? entry.ingredientId,
-                entry.outcome === "skipped" && entry.reason === "not-found"
-              )}
-              <Chip
-                className="shrink-0"
-                color={UNCHANGED_COLOR[entry.outcome]}
-                size="sm"
-                variant="soft"
-              >
-                {t(`reportOutcomes.${entry.outcome}`)}
-              </Chip>
-            </div>
-            <p className="text-muted text-xs break-words">
-              {entry.outcome === "skipped"
-                ? skippedReason(t, entry.reason)
-                : entry.outcome === "failed"
-                  ? entry.error
-                  : entry.reason === "no-food"
-                    ? t("aiTrace.noFood")
-                    : reviewTrace(t, entry)}
-            </p>
           </div>
         );
       }
@@ -381,7 +225,6 @@ export function ChangedByAIPanel({
         id={openId}
         item={null}
         open={openId !== null}
-        reviewing={openId !== null && reviewing.has(openId)}
         onChanged={onChanged}
         onClose={() => setOpenId(null)}
       />

@@ -393,17 +393,15 @@ export async function getAutomaticEnrichmentConfig(): Promise<AutomaticEnrichmen
 }
 
 /**
- * What runs on a food just minted by someone's action: its Plain Name, its
- * icon. Both off while AI is off; the icon also needs an image provider.
+ * What runs on a food once AI's pass is done with it: its icon. Off while AI
+ * is off, or without an image provider.
  */
 export async function getAutomaticIngredientsConfig(): Promise<AutomaticIngredientsConfig> {
   const aiConfig = await getAIConfig();
 
   if (!aiConfig?.enabled) return DEFAULT_AUTOMATIC_INGREDIENTS;
 
-  const { plainName, icon } = aiConfig.automaticIngredients;
-
-  return { plainName, icon: icon && (await isImageGenerationConfigured()) };
+  return { icon: aiConfig.automaticIngredients.icon && (await isImageGenerationConfigured()) };
 }
 
 // ============================================================================

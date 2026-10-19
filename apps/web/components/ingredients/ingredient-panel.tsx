@@ -11,9 +11,7 @@ import {
   ActionButtonGroup,
   IconActionButton,
 } from "@/components/shared/action-button";
-import { AIButton } from "@/components/shared/ai-button";
 import UiSwitch from "@/components/shared/ui-switch";
-import { usePermissionsContext } from "@/context/permissions-context";
 import { useSpellingRules } from "@/hooks/config";
 import { useGroceriesQuery } from "@/hooks/groceries";
 import { usePantryMutations, usePantryQuery } from "@/hooks/pantry";
@@ -28,7 +26,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 
 import type { PantryIngredientDto } from "@norish/shared/contracts";
-import type { ReviewOutcome } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LocaleNames } from "@norish/shared/lib/ingredient-names";
 import { ingredientDisplayName } from "@norish/shared/lib/ingredient-names";
 import { groceryOnTheList } from "@norish/shared/lib/pantry";
@@ -44,7 +41,7 @@ import { IngredientIconField } from "./ingredient-icon-field";
 import { IngredientNutritionSection } from "./ingredient-nutrition";
 import { IngredientRelocationPanel } from "./ingredient-relocation";
 import { IngredientStatusChip } from "./ingredient-status-chip";
-import { changeMessage, reviewMessage, reviewTrace, showRefusal } from "./review-copy";
+import { changeMessage, showRefusal } from "./review-copy";
 import { isOpenChange, useAIChanges } from "./use-ai-changes";
 import { useIngredientCache } from "./use-ingredient-cache";
 
@@ -60,8 +57,7 @@ type DraftParent = { id: string; name: string; localeNames?: LocaleNames } | nul
  * Ingredient (a merge, a parent, a spelling's move) is picked in a second
  * panel over this one: a parent joins the draft, a merge or a move is an
  * action of its own with its own confirm. A flagged food says why at the
- * top, with the two ways to settle it, under what AI was unsure of, to keep
- * or undo. The
+ * top, with Mark distinct, under what AI was unsure of, to keep or undo. The
  * panel follows the item it was opened for through the list, and reads it on
  * its own once the list no longer lists it, so its own edit, a housemate's or
  * AI's shows here too. Every edit shows the moment it is made: the row and
@@ -73,7 +69,6 @@ export function IngredientPanel({
   item,
   open,
   nested = false,
-  reviewing = false,
   onClose,
   onChanged,
 }: {
@@ -84,8 +79,6 @@ export function IngredientPanel({
   open: boolean;
   /** Opened from another panel, over it: closing comes back to that one. */
   nested?: boolean;
-  /** A round of Ask AI is asking about this food: nothing is edited meanwhile. */
-  reviewing?: boolean;
   onClose: () => void;
   /** An edit landed: the opener reads what it lists again. */
   onChanged?: () => void;
@@ -118,7 +111,6 @@ export function IngredientPanel({
       item={shown}
       nested={nested}
       open={open}
-      reviewing={reviewing}
       onChanged={onChanged}
       onClose={onClose}
     />
@@ -129,14 +121,12 @@ function IngredientPanelContent({
   item,
   open,
   nested,
-  reviewing,
   onClose,
   onChanged,
 }: {
   item: IngredientItem;
   open: boolean;
   nested: boolean;
-  reviewing: boolean;
   onClose: () => void;
   onChanged?: () => void;
 }) {
@@ -175,7 +165,6 @@ function IngredientPanelContent({
   const unsure = aiChanges.changes.filter(
     (change) => change.ingredient.id === item.id && isOpenChange(change)
   );
-  const { isAIEnabled } = usePermissionsContext();
 
   // Whether the household keeps the food, and the draft's say on it (null: untouched).
   const tPantry = useTranslations("groceries.pantry");
@@ -206,12 +195,6 @@ function IngredientPanelContent({
   const merge = useMutation(trpc.ingredients.merge.mutationOptions());
   const moveAlias = useMutation(trpc.ingredients.moveAlias.mutationOptions());
   const remove = useMutation(trpc.ingredients.remove.mutationOptions());
-  const review = useMutation(trpc.ingredients.reviewWithAI.mutationOptions());
-  // AI is asking about this food, from here or in a round: its answer is
-  // about the food as it stands, so nothing is edited until it lands. An
-  // edit of the viewer's own never waits: it shows at once and lands behind.
-  const asking = review.isPending || reviewing;
-  const busy = asking;
 
   /**
    * Make an edit: `show` changes the cache as the server will, now; `edit`
@@ -248,7 +231,7 @@ function IngredientPanelContent({
    * changes nothing, keeps them in the draft and says why.
    */
   const save = async () => {
-    if (!dirty || busy) return;
+    if (!dirty) return;
     if (pantryChanged) {
       if (kept) removePantryIngredient(kept.id);
       else
@@ -362,24 +345,6 @@ function IngredientPanelContent({
     );
   };
 
-  /** Ask AI what this food is and say what it changed; a merge takes the food away. */
-  const askAI = async (context: "review" | "check") => {
-    await run(
-      context,
-      () => undefined,
-      async () => {
-        const outcome: ReviewOutcome = await review.mutateAsync({ ingredientId: item.id });
-
-        if (outcome.outcome === "merge") onClose();
-        toast(reviewMessage(t, displayName, outcome), {
-          description: reviewTrace(t, outcome),
-          variant:
-            outcome.outcome === "unsure" || outcome.outcome === "skipped" ? "warning" : "accent",
-        });
-      }
-    );
-  };
-
   /**
    * One spelling the food goes by. One the viewer may edit is a button: the
    * chip itself moves the spelling to another food, the cross removes it.
@@ -401,7 +366,6 @@ function IngredientPanelContent({
             aria-label={t("moveAlias", { alias: spelling.text })}
             className="hover:text-foreground cursor-[var(--cursor-interactive)]"
             data-testid="ingredient-alias-move"
-            disabled={busy}
             type="button"
             onClick={() =>
               setRelocation({ kind: "move", aliasId: spelling.id, text: spelling.text })
@@ -421,7 +385,6 @@ function IngredientPanelContent({
             }
             className="text-muted hover:text-foreground ml-1 cursor-[var(--cursor-interactive)]"
             data-testid="ingredient-alias-remove"
-            disabled={busy}
             type="button"
             onClick={() =>
               setRemoved((current) => {
@@ -450,7 +413,7 @@ function IngredientPanelContent({
       nested={nested}
       open={open}
       title={displayName}
-      titleAddon={<IngredientStatusChip flagged={item.flagged} reviewing={asking} />}
+      titleAddon={<IngredientStatusChip flagged={item.flagged} />}
       onOpenChange={(isOpen) => {
         if (!isOpen) onClose();
       }}
@@ -470,7 +433,6 @@ function IngredientPanelContent({
                     <p className="text-sm font-medium">{changeMessage(t, change, locale)}</p>
                     <AIChangeActions
                       change={change}
-                      isDisabled={busy}
                       onKeep={(it) => void aiChanges.keep(it)}
                       onUndo={(it) => void aiChanges.undo(it)}
                     />
@@ -486,21 +448,8 @@ function IngredientPanelContent({
               </p>
               {item.canEdit ? (
                 <div className="flex flex-wrap items-center gap-2">
-                  {isAIEnabled ? (
-                    <AIButton
-                      data-testid="ingredient-ask-ai"
-                      isDisabled={busy}
-                      isPending={review.isPending || reviewing}
-                      size="sm"
-                      variant="secondary"
-                      onPress={() => void askAI("review")}
-                    >
-                      {t("askAI")}
-                    </AIButton>
-                  ) : null}
                   <Button
                     data-testid="ingredient-mark-distinct"
-                    isDisabled={busy}
                     size="sm"
                     variant="secondary"
                     onPress={() =>
@@ -525,12 +474,11 @@ function IngredientPanelContent({
 
           <Section title={t("nameSection")}>
             <div className="flex items-center gap-3">
-              <IngredientIconField busy={busy} draft={icon} item={item} onDraftChange={setIcon} />
+              <IngredientIconField draft={icon} item={item} onDraftChange={setIcon} />
               {item.canEdit ? (
                 <TextField
                   aria-label={t("rename")}
                   className="min-w-0 flex-1"
-                  isDisabled={busy}
                   value={name}
                   onChange={setName}
                 >
@@ -571,7 +519,6 @@ function IngredientPanelContent({
                       aria-label={t("clearParent")}
                       className="text-muted hover:text-foreground ml-1 cursor-[var(--cursor-interactive)]"
                       data-testid="ingredient-clear-parent"
-                      disabled={busy}
                       type="button"
                       onClick={() => setParent(null)}
                     >
@@ -583,7 +530,6 @@ function IngredientPanelContent({
               {item.canEdit ? (
                 <Button
                   data-testid="ingredient-set-parent"
-                  isDisabled={busy}
                   size="sm"
                   variant="secondary"
                   onPress={() => setRelocation({ kind: "parent" })}
@@ -591,19 +537,6 @@ function IngredientPanelContent({
                   <PencilSquareIcon className="size-4" />
                   {parent ? t("changeParent") : t("setParent")}
                 </Button>
-              ) : null}
-              {/* A flagged food offers the same question as Ask AI, above. */}
-              {isAIEnabled && item.canEdit && !item.parent && !item.flagged ? (
-                <AIButton
-                  data-testid="ingredient-check-with-ai"
-                  isDisabled={busy}
-                  isPending={review.isPending}
-                  size="sm"
-                  variant="secondary"
-                  onPress={() => void askAI("check")}
-                >
-                  {t("checkWithAI")}
-                </AIButton>
               ) : null}
             </div>
           </Section>
@@ -632,7 +565,6 @@ function IngredientPanelContent({
               <ActionButton
                 action="delete"
                 data-testid="ingredient-delete"
-                isDisabled={busy}
                 onPress={() => setDeleting(true)}
               >
                 {t("delete")}
@@ -644,7 +576,6 @@ function IngredientPanelContent({
             <ActionButton
               action="merge"
               data-testid="ingredient-merge"
-              isDisabled={busy}
               onPress={() => setRelocation({ kind: "merge" })}
             >
               {t("merge")}
@@ -653,7 +584,7 @@ function IngredientPanelContent({
           <ActionButton
             action="save"
             data-testid="ingredient-save"
-            isDisabled={busy || !dirty}
+            isDisabled={!dirty}
             onPress={() => void save()}
           >
             {tActions("save")}
@@ -690,7 +621,6 @@ function IngredientPanelContent({
                     aria-label={t("removeAlias", { alias: text })}
                     className="text-muted hover:text-foreground ml-1 cursor-[var(--cursor-interactive)]"
                     data-testid="ingredient-alias-remove"
-                    disabled={busy}
                     type="button"
                     onClick={() => setAdded((current) => current.filter((it) => it !== text))}
                   >
@@ -703,7 +633,6 @@ function IngredientPanelContent({
               <TextField
                 aria-label={t("addAlias")}
                 className="min-w-0 flex-1"
-                isDisabled={busy}
                 value={alias}
                 onChange={setAlias}
               >
@@ -718,7 +647,7 @@ function IngredientPanelContent({
               </TextField>
               <IconActionButton
                 action="add"
-                isDisabled={busy || !alias.trim()}
+                isDisabled={!alias.trim()}
                 label={t("addAlias")}
                 variant="tertiary"
                 onPress={stageAlias}
@@ -736,7 +665,6 @@ function IngredientPanelContent({
       </Panel>
 
       <IngredientRelocationPanel
-        busy={busy}
         ingredient={item}
         relocation={relocation}
         onClose={() => setRelocation(null)}

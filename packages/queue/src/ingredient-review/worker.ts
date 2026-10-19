@@ -1,33 +1,44 @@
 /**
- * A round of Ask AI over Ingredients: one job, one step per food, each answer made as an AI Change.
- * A food passed over or whose question broke is recorded on its step; neither ends the round.
+ * The AI pass over Ingredients (ADR-0037, amended 2026-10-17): one job, one step per food, each
+ * answer made as an AI Change. No person starts it: a mint queues it, and so does the nightly task.
+ * A food passed over or whose question broke is recorded on its step; neither ends the pass.
+ * Once it is over, the foods still there and showing no icon are queued on the icons queue, where
+ * "Draw an icon" is on, so nothing is drawn for a food AI merged away.
  */
 
 import type { Job } from "bullmq";
 
 import type { IngredientReviewJobData } from "@norish/queue/contracts/job-types";
 import type { ModelUse } from "@norish/shared-server/ai/runtime/model-use-ledger";
+import type { ReviewOutcome } from "@norish/shared/contracts/ingredient-catalogue";
 import { SERVER_CONFIG } from "@norish/config/env-config-server";
 import {
   createModelUseLedger,
   recordModelUse,
   runWithModelUseLedger,
 } from "@norish/shared-server/ai/runtime/model-use-ledger";
-import { CatalogueEditError } from "@norish/shared-server/ingredients/catalogue";
+import { getAutomaticIngredientsConfig } from "@norish/shared-server/config/server-config-loader";
 import { announcingTogether } from "@norish/shared-server/ingredients/changes";
-import { cleanNameWithAI } from "@norish/shared-server/ingredients/plain-names";
+import { listFoodsShowingNoIcon } from "@norish/shared-server/ingredients/icon-rounds";
 import { askAIAbout } from "@norish/shared-server/ingredients/review";
 import { createLogger } from "@norish/shared-server/logger";
-import { ingredients } from "@norish/shared-server/realtime/ingredients";
 
 import type { JobStepEvent } from "../job-steps";
-import type { ReviewStepDetail } from "./progress";
-import { createWorker, isFinalFailure } from "../create-worker";
+import { createWorker } from "../create-worker";
+import { addIngredientIconsJob } from "../ingredient-icons/producer";
 import { recordCompletedSteps } from "../job-steps";
 import { QUEUE_NAMES } from "../queue-names";
-import { REVIEW_STEP, summarizeReviewRound } from "./progress";
+import { getQueues } from "../registry";
 
 const log = createLogger("worker:ingredient-review");
+
+/** The base id of every food's step; the food's place in the pass follows a colon. */
+export const REVIEW_STEP = "asking-ai";
+
+/** What a food's step records: the answer made and what AI was asked, a skip, or what broke. */
+export type ReviewStepDetail = { ingredientId: string; name?: string } & (
+  ReviewOutcome | { outcome: "failed"; error: string }
+);
 
 /** An error's message, with the cause a wrapper hides: a failed query names the database's complaint. */
 function describe(error: unknown): string {
@@ -38,60 +49,42 @@ function describe(error: unknown): string {
 }
 
 /**
- * The question, asked of one food. Nothing here ends the round: a refusal is
- * the food's, and an error — the model, the database — is recorded on the
- * food's step for the monitor and counted, so the other foods still get asked.
+ * The question, asked of one food. Nothing here ends the pass: an error — the model, the
+ * database — is recorded on the food's step for the monitor, so the other foods still get asked.
  */
-async function ask(
-  job: Job<IngredientReviewJobData>,
-  { id: ingredientId, mode }: IngredientReviewJobData["ingredients"][number]
-): Promise<ReviewStepDetail> {
+async function ask(job: Job<IngredientReviewJobData>, ingredientId: string) {
   try {
-    const outcome =
-      mode === "name"
-        ? await cleanNameWithAI(job.data.actor, ingredientId)
-        : await askAIAbout(job.data.actor, ingredientId);
-
-    return { ingredientId, ...outcome };
+    return { ingredientId, ...(await askAIAbout(ingredientId)) };
   } catch (error) {
-    if (
-      error instanceof CatalogueEditError &&
-      (error.refusal === "forbidden" || error.refusal === "not-found")
-    ) {
-      return { ingredientId, outcome: "skipped", reason: error.refusal };
-    }
     log.error({ err: error, jobId: job.id, ingredientId }, "Asking AI about a food failed");
 
-    return { ingredientId, outcome: "failed", error: describe(error) };
-  }
-}
-
-/** Tell every open page how far the round is. Best-effort: the round itself has gone through. */
-async function announceRound(job: Job<IngredientReviewJobData>, finished: boolean): Promise<void> {
-  try {
-    await ingredients.publish("review", summarizeReviewRound(job, finished), undefined);
-  } catch (error) {
-    log.warn({ err: error, jobId: job.id }, "Could not announce the round's progress");
+    return { ingredientId, outcome: "failed" as const, error: describe(error) };
   }
 }
 
 /**
- * How many foods are asked about at once (`INGREDIENT_REVIEW_CONCURRENCY`).
- * The questions are independent, so a round of twenty takes a couple of
- * questions' time rather than twenty; a self-hosted model that struggles
- * with parallel requests gets a lower number.
+ * How many foods are asked about at once (`INGREDIENT_REVIEW_CONCURRENCY`). The questions are
+ * independent; a self-hosted model that struggles with parallel requests gets a lower number.
  */
 function reviewConcurrency(): number {
   return SERVER_CONFIG.INGREDIENT_REVIEW_CONCURRENCY;
 }
 
 /**
- * How many times a round writes its answers down and tells the pages how far
- * it has come. A round may be every flagged food in the catalogue, and the
- * job's progress is one value rewritten whole on each write, so a write per
- * food would store the square of the round's size; twenty keep it linear.
+ * How many times a pass writes its answers down. A nightly pass may hold many foods, and the
+ * job's progress is one value rewritten whole on each write, so twenty keep it linear.
  */
-const ROUND_WRITES = 20;
+const PASS_WRITES = 20;
+
+/** Queue the pass's foods that are still there and show no icon, where "Draw an icon" is on. */
+async function queueIcons(ingredientIds: readonly string[]): Promise<void> {
+  if (!(await getAutomaticIngredientsConfig()).icon) return;
+  const foods = await listFoodsShowingNoIcon(ingredientIds);
+
+  if (foods.length > 0) {
+    await addIngredientIconsJob(getQueues().ingredientIcons, { ingredients: foods, actor: null });
+  }
+}
 
 /** Exported so the job body can be exercised without a Redis-backed worker. */
 export async function processIngredientReviewJob(
@@ -100,7 +93,7 @@ export async function processIngredientReviewJob(
   signal?: AbortSignal
 ): Promise<void> {
   const { ingredients: foods } = job.data;
-  const writeEvery = Math.max(1, Math.ceil(foods.length / ROUND_WRITES));
+  const writeEvery = Math.max(1, Math.ceil(foods.length / PASS_WRITES));
   let next = 0;
   let settled = 0;
   // The answers not yet written down, as the steps the job monitor shows.
@@ -108,7 +101,7 @@ export async function processIngredientReviewJob(
   // Writes go out one after another, so the timeline keeps the order foods settled in.
   let recording = Promise.resolve();
 
-  log.info({ jobId: job.id, count: foods.length }, "Asking AI about flagged Ingredients");
+  log.info({ jobId: job.id, count: foods.length }, "Asking AI about Ingredients");
 
   const record = (
     food: IngredientReviewJobData["ingredients"][number],
@@ -116,47 +109,40 @@ export async function processIngredientReviewJob(
     detail: ReviewStepDetail,
     models: ModelUse[]
   ) => {
-    const { ingredientId, ...outcome } = detail;
-
     settled += 1;
     unwritten.push({
       id: `${REVIEW_STEP}:${settled}/${foods.length}`,
       startedAt,
       endedAt: Date.now(),
-      detail: { ingredientId, name: food.name, mode: food.mode, ...outcome },
+      detail: { ...detail, name: food.name },
       models,
     });
     if (unwritten.length < writeEvery && settled < foods.length) return recording;
 
     const steps = unwritten;
-    const over = settled === foods.length;
 
     unwritten = [];
-    recording = recording.then(async () => {
-      await recordCompletedSteps(job, steps);
-      // The count, and which foods still wait, follow as answers are written down.
-      if (!over) await announceRound(job, false);
-    });
+    recording = recording.then(() => recordCompletedSteps(job, steps));
 
     return recording;
   };
 
   const askNext = async (): Promise<void> => {
-    // A cancelled round asks no further food.
+    // A cancelled pass asks no further food.
     while (next < foods.length && !signal?.aborted) {
       const food = foods[next++]!;
       const startedAt = Date.now();
-      // The food's own requests, so a round that asks two questions still says
-      // what each took; the attempt's ledger gets them too, for the job monitor.
+      // The food's own requests, so the monitor says what each food took; the
+      // attempt's ledger gets them too.
       const own = createModelUseLedger();
-      const detail = await runWithModelUseLedger(own, () => ask(job, food));
+      const detail = await runWithModelUseLedger(own, () => ask(job, food.id));
 
       for (const use of own.uses) recordModelUse(use);
       await record(food, startedAt, detail, own.uses);
     }
   };
 
-  // What the round changed is announced once, together, as it ends.
+  // What the pass changed is announced once, together, as it ends.
   await announcingTogether(() =>
     Promise.all(
       Array.from({ length: Math.min(reviewConcurrency(), foods.length) }, () => askNext())
@@ -164,23 +150,9 @@ export async function processIngredientReviewJob(
   );
   await recording;
   signal?.throwIfAborted();
-  await announceRound(job, true);
-}
-
-/**
- * A round that gave up ends on every open page too, at the count it reached.
- * An attempt that will be retried says nothing: the round is still on.
- */
-export async function handleIngredientReviewFailure(
-  job: Job<IngredientReviewJobData> | undefined,
-  error: Error
-): Promise<void> {
-  if (!job || !isFinalFailure(job, error)) return;
-  await announceRound(job, true);
+  await queueIcons(foods.map((food) => food.id));
 }
 
 export function startIngredientReviewWorker(): void {
-  createWorker<IngredientReviewJobData>(QUEUE_NAMES.INGREDIENT_REVIEW, processIngredientReviewJob, {
-    onFailed: handleIngredientReviewFailure,
-  });
+  createWorker<IngredientReviewJobData>(QUEUE_NAMES.INGREDIENT_REVIEW, processIngredientReviewJob);
 }

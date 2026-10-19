@@ -363,20 +363,18 @@ export const DEFAULT_AUTOMATIC_ENRICHMENT: AutomaticEnrichmentConfig = {
 };
 
 /**
- * What runs on a food just minted by someone's action (ADR-0037, amended
- * 2026-10-10): AI gives it its Plain Name, and the image provider draws it an
- * icon where it would show none. Both cost a request per food, so both are
- * off until an administrator opts in.
+ * What runs on a food once AI's pass is done with it (ADR-0037, amended
+ * 2026-10-17): the image provider draws it an icon where it shows none. A
+ * request per food, so off until an administrator opts in. A stored
+ * `plainName` from before the pass named foods itself is dropped on read.
  */
 export const AutomaticIngredientsSchema = z.object({
-  plainName: z.boolean(),
   icon: z.boolean(),
 });
 
 export type AutomaticIngredientsConfig = z.infer<typeof AutomaticIngredientsSchema>;
 
 export const DEFAULT_AUTOMATIC_INGREDIENTS: AutomaticIngredientsConfig = {
-  plainName: false,
   icon: false,
 };
 

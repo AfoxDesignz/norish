@@ -17,7 +17,6 @@ import type {
   ImageImportJobData,
   IngredientIconsJobData,
   IngredientReviewJobData,
-  NewIngredientsJobData,
   PasteImportJobData,
   RecipeEnrichmentJobData,
   RecipeImportJobData,
@@ -68,7 +67,6 @@ interface QueueRegistry {
   storeLookup: Queue<StoreLookupJobData>;
   ingredientReview: Queue<IngredientReviewJobData>;
   ingredientIcons: Queue<IngredientIconsJobData>;
-  newIngredients: Queue<NewIngredientsJobData>;
 }
 
 /**
@@ -92,7 +90,6 @@ const QUEUE_KEYS: Record<keyof QueueRegistry, QueueName> = {
   storeLookup: QUEUE_NAMES.STORE_LOOKUP,
   ingredientReview: QUEUE_NAMES.INGREDIENT_REVIEW,
   ingredientIcons: QUEUE_NAMES.INGREDIENT_ICONS,
-  newIngredients: QUEUE_NAMES.NEW_INGREDIENTS,
 };
 
 /**

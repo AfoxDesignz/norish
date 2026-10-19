@@ -398,49 +398,6 @@
     },
     "markDistinct": "Mark distinct",
     "summary": "{spellings, plural, one {# translation} other {# translations}}{kinds, plural, =0 {} one {, # kind} other {, # kinds}}{parent, select, none {} other {, parent: {parent}}}",
-    "askAI": "Ask AI",
-    "fixCatalogue": "Fix catalogue",
-    "askAIRound": {
-      "intro": "AI checks where flagged ingredients belong, fixes inconsistent names and makes each change itself. You can undo any of them under Changed by AI.",
-      "scopeLabel": "What to fix",
-      "scopes": {
-        "flagged": "Check flagged ingredients",
-        "name": "Clean names"
-      },
-      "hints": {
-        "flagged": "Looks for duplicates, a child ingredient or unique.",
-        "name": "Cleans ingredient names to just the ingredient. Flagged ingredients are included if the above checkbox is checked."
-      },
-      "scopeSize": "{count, plural, =0 {No ingredients} one {# ingredient · about {tokens} tokens} other {# ingredients · about {tokens} tokens}}",
-      "modelTokens": "about {tokens} tokens",
-      "basisMeasured": "Based on what the last round used."
-    },
-    "roundProgress": "Asking AI · {done, number} of {total, number}",
-    "roundSection": {
-      "title": "Asking AI",
-      "progress": "{done, number} of {total, number}",
-      "waiting": "{count, plural, one {# ingredient waiting} other {# ingredients waiting}}"
-    },
-    "reviewing": "Asking AI…",
-    "aiOutcomes": {
-      "parent": "AI filed {name} under {of}.",
-      "distinct": "AI says {name} is a food of its own.",
-      "unsure": "AI is still not sure what {name} is.",
-      "skippedNotFlagged": "{name} was no longer flagged.",
-      "skippedForbidden": "{name} is not yours to change.",
-      "skippedNotFound": "{name} was gone by the time AI reached it.",
-      "failed": "Asking about {name} failed.",
-      "merge": "AI merged {name} into {into}.",
-      "rename": "AI renamed {name} to {to}.",
-      "decided": "Someone already decided about {name}, so AI leaves it alone.",
-      "undone": "AI's answer for {name} is a change you undid, so nothing changed."
-    },
-    "aiTrace": {
-      "readAs": "AI read it as “{name}”.",
-      "compared": "Compared with: {names}.",
-      "comparedNothing": "There was no known food to compare it with.",
-      "noFood": "AI found no food in this name."
-    },
     "addAlias": "Add a translation",
     "removeAlias": "Remove {alias}",
     "mergeInto": "Merge into…",
@@ -571,28 +528,17 @@
       "none": "Nothing uses it any more"
     },
     "keepAlias": "Keep {alias}",
-    "reportOutcomes": {
-      "parent": "Filed under a parent",
-      "distinct": "Its own food",
-      "unsure": "Not sure",
-      "skipped": "Passed over",
-      "failed": "Failed",
-      "merge": "Merge"
-    },
     "expandKinds": "Show the kinds of {name}",
     "collapseKinds": "Hide the kinds of {name}",
     "layoutSection": "Layout",
     "asTree": "Hierarchical view",
     "showOnly": "Show only",
     "standaloneOnly": "Without parent or kinds",
-    "checkWithAI": "Check with AI",
-    "checkAllWithAI": "Check these with AI",
     "changedByAI": {
       "title": "Changed by AI",
       "open": "{count, plural, =0 {Changed by AI} other {Changed by AI · # to check}}",
       "unsure": "Not sure",
       "sure": "Changed",
-      "unchanged": "Not changed",
       "empty": "AI changed nothing in the last month.",
       "keep": "Keep",
       "undo": "Undo",
@@ -600,13 +546,6 @@
       "parent": "Filed under {of}",
       "parentFromName": "Filed under {of}, from its name",
       "plainName": "Renamed from {from}"
-    },
-    "skippedReasons": {
-      "forbidden": "Not yours to edit",
-      "notFound": "No longer exists",
-      "settled": "Name already settled",
-      "decided": "Already decided",
-      "undone": "Undone before"
     },
     "icon": {
       "change": "Change the icon",
@@ -979,8 +918,6 @@
       "automaticIngredients": "Automatic for new ingredients",
       "automaticIngredientsDescription": "What happens when new ingredients are added to the catalogue.",
       "automaticIngredientsKinds": {
-        "plainName": "Clean the name",
-        "plainNameDescription": "Take off what is not the food, such as amounts and pack codes",
         "icon": "Draw an icon",
         "iconDescription": "Only for a food with no icon to show, not even its parent's"
       },
@@ -1212,8 +1149,7 @@
         "image-generation": "Image generation",
         "store-lookup": "Store lookup",
         "ingredient-review": "Ask AI about ingredients",
-        "ingredient-icons": "Draw ingredient icons",
-        "new-ingredients": "New ingredients"
+        "ingredient-icons": "Draw ingredient icons"
       },
       "summary": {
         "failed": "{count} failed"

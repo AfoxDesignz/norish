@@ -398,49 +398,6 @@
     },
     "markDistinct": "Oznacz jako odrębny",
     "summary": "{spellings, plural, one {# tłumaczenie} few {# tłumaczenia} other {# tłumaczeń}}{kinds, plural, =0 {} one {, # rodzaj} few {, # rodzaje} many {, # rodzajów} other {, # rodzaju}}{parent, select, none {} other {, nadrzędny: {parent}}}",
-    "askAI": "Zapytaj AI",
-    "fixCatalogue": "Popraw katalog",
-    "askAIRound": {
-      "intro": "AI sprawdza, gdzie należą oznaczone składniki, poprawia niespójne nazwy i sama wprowadza każdą zmianę. Każdą z nich możesz cofnąć w sekcji Zmienione przez AI.",
-      "scopeLabel": "Co poprawić",
-      "scopes": {
-        "flagged": "Sprawdź oznaczone składniki",
-        "name": "Uporządkuj nazwy"
-      },
-      "hints": {
-        "flagged": "Szuka duplikatów, składników podrzędnych lub unikalnych.",
-        "name": "Czyści nazwy składników, zostawiając sam składnik. Oznaczone składniki są uwzględniane, jeśli powyższe pole jest zaznaczone."
-      },
-      "scopeSize": "{count, plural, =0 {Brak składników} one {# składnik · około {tokens} tokenów} few {# składniki · około {tokens} tokenów} many {# składników · około {tokens} tokenów} other {# składnika · około {tokens} tokenów}}",
-      "modelTokens": "około {tokens} tokenów",
-      "basisMeasured": "Na podstawie zużycia w ostatniej rundzie."
-    },
-    "roundProgress": "Pytanie AI · {done, number} z {total, number}",
-    "roundSection": {
-      "title": "Pytanie AI",
-      "progress": "{done, number} z {total, number}",
-      "waiting": "{count, plural, one {# składnik czeka} few {# składniki czekają} many {# składników czeka} other {# składnika czeka}}"
-    },
-    "reviewing": "Pytam AI…",
-    "aiOutcomes": {
-      "parent": "AI umieściła {name} pod {of}.",
-      "distinct": "Według AI {name} to osobny składnik.",
-      "unsure": "AI nadal nie jest pewne, czym jest {name}.",
-      "skippedNotFlagged": "{name} nie było już oznaczone.",
-      "skippedForbidden": "{name} nie jest twoje do zmiany.",
-      "skippedNotFound": "{name} zniknęło, zanim AI do niego dotarła.",
-      "failed": "Pytanie o {name} nie powiodło się.",
-      "merge": "AI scaliła {name} z {into}.",
-      "rename": "AI zmieniła nazwę {name} na {to}.",
-      "decided": "O {name} już zdecydowano, więc AI tego nie rusza.",
-      "undone": "Odpowiedź AI dla {name} to zmiana, którą cofnięto, więc nic się nie zmieniło."
-    },
-    "aiTrace": {
-      "readAs": "AI odczytało to jako „{name}”.",
-      "compared": "Porównano z: {names}.",
-      "comparedNothing": "Nie było znanego produktu do porównania.",
-      "noFood": "AI nie znalazło w tej nazwie żadnego produktu spożywczego."
-    },
     "addAlias": "Dodaj tłumaczenie",
     "removeAlias": "Usuń {alias}",
     "mergeInto": "Scal z…",
@@ -571,28 +528,17 @@
       "none": "Nic już tego nie używa"
     },
     "keepAlias": "Zachowaj {alias}",
-    "reportOutcomes": {
-      "parent": "Pod rodzicem",
-      "distinct": "Własny produkt",
-      "unsure": "Niepewne",
-      "skipped": "Pominięto",
-      "failed": "Niepowodzenie",
-      "merge": "Połącz"
-    },
     "expandKinds": "Pokaż rodzaje {name}",
     "collapseKinds": "Ukryj rodzaje {name}",
     "layoutSection": "Widok",
     "asTree": "Widok hierarchiczny",
     "showOnly": "Pokaż tylko",
     "standaloneOnly": "Bez rodzica i rodzajów",
-    "checkWithAI": "Sprawdź z AI",
-    "checkAllWithAI": "Sprawdź te z AI",
     "changedByAI": {
       "title": "Zmienione przez AI",
       "open": "{count, plural, =0 {Zmienione przez AI} other {Zmienione przez AI · # do sprawdzenia}}",
       "unsure": "Niepewne",
       "sure": "Zmienione",
-      "unchanged": "Bez zmian",
       "empty": "AI niczego nie zmieniła w ostatnim miesiącu.",
       "keep": "Zachowaj",
       "undo": "Cofnij",
@@ -600,13 +546,6 @@
       "parent": "Umieszczono pod {of}",
       "parentFromName": "Umieszczono pod {of} na podstawie nazwy",
       "plainName": "Zmieniono nazwę z {from}"
-    },
-    "skippedReasons": {
-      "forbidden": "Not yours to edit",
-      "notFound": "No longer exists",
-      "settled": "Nazwa już ustalona",
-      "decided": "Już zdecydowano",
-      "undone": "Wcześniej cofnięte"
     },
     "icon": {
       "change": "Zmień ikonę",
@@ -979,8 +918,6 @@
       "automaticIngredients": "Automatycznie dla nowych składników",
       "automaticIngredientsDescription": "Co się dzieje, gdy do katalogu trafiają nowe składniki.",
       "automaticIngredientsKinds": {
-        "plainName": "Uporządkuj nazwę",
-        "plainNameDescription": "Usuń to, co nie jest produktem, np. ilości i kody opakowań",
         "icon": "Narysuj ikonę",
         "iconDescription": "Tylko dla produktu bez ikony, nawet bez ikony rodzica"
       },
@@ -1212,8 +1149,7 @@
         "image-generation": "Generowanie obrazów",
         "store-lookup": "Wyszukiwanie w sklepie",
         "ingredient-review": "Zapytaj AI o składniki",
-        "ingredient-icons": "Rysowanie ikon składników",
-        "new-ingredients": "Nowe składniki"
+        "ingredient-icons": "Rysowanie ikon składników"
       },
       "summary": {
         "failed": "{count} failed"

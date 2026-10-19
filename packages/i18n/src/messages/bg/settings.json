@@ -398,49 +398,6 @@
     },
     "markDistinct": "Отбележи като отделна",
     "summary": "{spellings, plural, one {# превод} other {# превода}}{kinds, plural, =0 {} one {, # вид} other {, # вида}}{parent, select, none {} other {, родител: {parent}}}",
-    "askAI": "Попитай ИИ",
-    "fixCatalogue": "Поправи каталога",
-    "askAIRound": {
-      "intro": "ИИ проверява къде принадлежат маркираните съставки, поправя несъгласуваните имена и сам прави всяка промяна. Можете да отмените всяка от тях в „Променено от ИИ“.",
-      "scopeLabel": "Какво да се поправи",
-      "scopes": {
-        "flagged": "Провери маркираните съставки",
-        "name": "Изчисти имената"
-      },
-      "hints": {
-        "flagged": "Търси дубликати, подсъставки или уникални.",
-        "name": "Почиства имената на съставките до самата съставка. Маркираните съставки са включени, ако горното поле е отметнато."
-      },
-      "scopeSize": "{count, plural, =0 {Няма съставки} one {# съставка · около {tokens} токена} other {# съставки · около {tokens} токена}}",
-      "modelTokens": "около {tokens} токена",
-      "basisMeasured": "Според използваното в последния кръг."
-    },
-    "roundProgress": "Питане на ИИ · {done, number} от {total, number}",
-    "roundSection": {
-      "title": "Питане на ИИ",
-      "progress": "{done, number} от {total, number}",
-      "waiting": "{count, plural, one {# съставка чака} other {# съставки чакат}}"
-    },
-    "reviewing": "Питаме AI…",
-    "aiOutcomes": {
-      "parent": "ИИ постави {name} под {of}.",
-      "distinct": "Според ИИ {name} е отделна храна.",
-      "unsure": "ИИ все още не е сигурен какво е {name}.",
-      "skippedNotFlagged": "{name} вече не беше отбелязано.",
-      "skippedForbidden": "{name} не е ваше за промяна.",
-      "skippedNotFound": "{name} го нямаше, когато ИИ стигна до него.",
-      "failed": "Запитването за {name} не успя.",
-      "merge": "ИИ обедини {name} с {into}.",
-      "rename": "ИИ преименува {name} на {to}.",
-      "decided": "Вече е решено за {name}, затова ИИ не го пипа.",
-      "undone": "Отговорът на ИИ за {name} е промяна, която сте отменили, затова нищо не се промени."
-    },
-    "aiTrace": {
-      "readAs": "ИИ го прочете като „{name}“.",
-      "compared": "Сравнено с: {names}.",
-      "comparedNothing": "Нямаше позната храна за сравнение.",
-      "noFood": "ИИ не намери храна в това име."
-    },
     "addAlias": "Добави превод",
     "removeAlias": "Премахни {alias}",
     "mergeInto": "Обедини с…",
@@ -571,28 +528,17 @@
       "none": "Нищо вече не го използва"
     },
     "keepAlias": "Запази {alias}",
-    "reportOutcomes": {
-      "parent": "Под родител",
-      "distinct": "Отделна храна",
-      "unsure": "Не е сигурно",
-      "skipped": "Пропуснато",
-      "failed": "Неуспешно",
-      "merge": "Обединяване"
-    },
     "expandKinds": "Покажи видовете {name}",
     "collapseKinds": "Скрий видовете {name}",
     "layoutSection": "Изглед",
     "asTree": "Йерархичен изглед",
     "showOnly": "Покажи само",
     "standaloneOnly": "Без родител или видове",
-    "checkWithAI": "Провери с ИИ",
-    "checkAllWithAI": "Провери тези с ИИ",
     "changedByAI": {
       "title": "Променено от ИИ",
       "open": "{count, plural, =0 {Променено от ИИ} other {Променено от ИИ · # за проверка}}",
       "unsure": "Не е сигурно",
       "sure": "Променено",
-      "unchanged": "Непроменено",
       "empty": "ИИ не е променил нищо през последния месец.",
       "keep": "Запази",
       "undo": "Отмени",
@@ -600,13 +546,6 @@
       "parent": "Поставено под {of}",
       "parentFromName": "Поставено под {of} по името",
       "plainName": "Преименувано от {from}"
-    },
-    "skippedReasons": {
-      "forbidden": "Not yours to edit",
-      "notFound": "No longer exists",
-      "settled": "Името вече е установено",
-      "decided": "Вече решено",
-      "undone": "Отменено преди"
     },
     "icon": {
       "change": "Смени иконата",
@@ -979,8 +918,6 @@
       "automaticIngredients": "Автоматично за нови съставки",
       "automaticIngredientsDescription": "Какво става, когато в каталога се добавят нови съставки.",
       "automaticIngredientsKinds": {
-        "plainName": "Изчисти името",
-        "plainNameDescription": "Премахни това, което не е храната, като количества и кодове на опаковки",
         "icon": "Нарисувай икона",
         "iconDescription": "Само за храна без икона, дори без тази на родителя ѝ"
       },
@@ -1212,8 +1149,7 @@
         "image-generation": "Генериране на изображения",
         "store-lookup": "Търсене в магазин",
         "ingredient-review": "Попитай ИИ за съставките",
-        "ingredient-icons": "Рисуване на икони на съставки",
-        "new-ingredients": "Нови съставки"
+        "ingredient-icons": "Рисуване на икони на съставки"
       },
       "summary": {
         "failed": "{count} неуспешни"

@@ -275,58 +275,6 @@ export async function findCatalogueIngredientNames(
   return names;
 }
 
-/** Where an Ingredient stands now, as a finished round's report reads it: flagged, filed under a parent, named for good. */
-export interface CatalogueIngredientState {
-  flagged: boolean;
-  parentId: string | null;
-  nameSettled: boolean;
-}
-
-/**
- * Where these Ingredients stand now, by id, any number at once, a thousand
- * to a query; an id the catalogue no longer holds is left out.
- */
-export async function findCatalogueIngredientStates(
-  ids: readonly string[]
-): Promise<Map<string, CatalogueIngredientState>> {
-  const unique = Array.from(new Set(ids));
-  const states = new Map<string, CatalogueIngredientState>();
-
-  for (let start = 0; start < unique.length; start += CHUNK) {
-    const rows = await db
-      .select({
-        id: ingredients.id,
-        flagged: ingredients.flagged,
-        parentId: ingredients.parentId,
-        nameSettled: ingredients.nameSettled,
-      })
-      .from(ingredients)
-      .where(inArray(ingredients.id, unique.slice(start, start + CHUNK)));
-
-    for (const { id, ...state } of rows) states.set(id, state);
-  }
-
-  return states;
-}
-
-/** A Flagged Ingredient as a round of Ask AI picks from them: whose it is. */
-export interface FlaggedCatalogueIngredient extends CatalogueOwner {
-  id: string;
-  name: string;
-}
-
-/**
- * Every Flagged Ingredient AI may ask about, by name. Nothing here decides
- * which the asker may edit.
- */
-export async function listFlaggedCatalogueIngredients(): Promise<FlaggedCatalogueIngredient[]> {
-  return db
-    .select({ id: ingredients.id, name: ingredients.name, ownerId: ingredients.ownerId })
-    .from(ingredients)
-    .where(and(eq(ingredients.flagged, true), askableByAI))
-    .orderBy(asc(sql`lower(${ingredients.name})`), asc(ingredients.id));
-}
-
 /** Say anew why a Flagged Ingredient is one: AI was asked again and is still not sure. */
 export async function setIngredientFlagReason(id: string, flagReason: string): Promise<void> {
   await db
@@ -659,22 +607,6 @@ export async function sweepUnusedCatalogueIngredients(tx: DbTransaction): Promis
     .where(and(own, isNull(ingredients.unusedSince), sql`not ${ingredientIsNamed()}`));
 
   return deleted.map((row) => row.id);
-}
-
-/**
- * The foods a round of Clean names may ask about: none from the seed, whose
- * names are the catalogue's own, none whose name is settled, and none
- * flagged, whose name the flag's own question asks for once it finds a food
- * of its own. Nothing here decides which the asker may edit.
- */
-export async function listUnsettledNameIngredients(): Promise<
-  Array<CatalogueOwner & { id: string; name: string }>
-> {
-  return db
-    .select({ id: ingredients.id, name: ingredients.name, ownerId: ingredients.ownerId })
-    .from(ingredients)
-    .where(and(eq(ingredients.nameSettled, false), eq(ingredients.flagged, false), askableByAI))
-    .orderBy(asc(sql`lower(${ingredients.name})`), asc(ingredients.id));
 }
 
 /**

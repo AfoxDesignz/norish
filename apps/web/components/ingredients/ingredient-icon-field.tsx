@@ -33,12 +33,10 @@ export type IconDraft = { file: string; address: string } | null | undefined;
 export function IngredientIconField({
   item,
   draft,
-  busy,
   onDraftChange,
 }: {
   item: IngredientItem;
   draft: IconDraft;
-  busy: boolean;
   onDraftChange: (draft: IconDraft) => void;
 }) {
   const t = useTranslations("settings.ingredients.icon");
@@ -123,7 +121,7 @@ export function IngredientIconField({
           aria-label={t("change")}
           className="hover:bg-default/40 focus-visible:ring-focus shrink-0 cursor-[var(--cursor-interactive)] rounded-xl p-1 focus-visible:ring-2 focus-visible:outline-none"
           data-testid="ingredient-panel-icon"
-          isDisabled={busy || pending}
+          isDisabled={pending}
         >
           {icon}
         </Dropdown.Trigger>

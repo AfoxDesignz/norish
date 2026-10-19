@@ -77,9 +77,8 @@ const AUTOMATIC_ENRICHMENT_KEYS = [
   "imageGeneration",
 ] as const satisfies readonly (keyof AutomaticEnrichmentConfig)[];
 
-/** What may run on a new food: its Plain Name, then its icon. */
+/** What may run on a food once AI's pass is done with it: its icon. */
 const AUTOMATIC_INGREDIENT_KEYS = [
-  "plainName",
   "icon",
 ] as const satisfies readonly (keyof AutomaticIngredientsConfig)[];
 export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
@@ -298,7 +297,6 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
     const selected = new Set(chosen);
 
     setAutomaticIngredients((current) => ({
-      plainName: selected.has("plainName"),
       icon: canDrawIcons ? selected.has("icon") : current.icon,
     }));
   };
@@ -606,55 +604,62 @@ export default function AIConfigForm({ onDirtyChange }: AIConfigFormProps) {
         </Select>
       </SettingRow>
 
-      <SettingRow
-        description={t("automaticIngredientsDescription")}
-        title={t("automaticIngredients")}
-      >
-        <Select
-          aria-label={t("automaticIngredients")}
-          className="w-full"
-          data-testid="ai-automatic-ingredients"
-          isDisabled={!enabled}
-          placeholder={t("automaticEnrichmentPlaceholder")}
-          selectionMode="multiple"
-          value={selectedIngredientKinds}
-          variant="secondary"
-          onChange={(selected) => handleIngredientKindsChange(selected.map(String))}
+      {/* Nothing to offer without an image provider. */}
+      {offeredIngredientKinds.length > 0 ? (
+        <SettingRow
+          description={t("automaticIngredientsDescription")}
+          title={t("automaticIngredients")}
         >
-          <Label className="sr-only">{t("automaticIngredients")}</Label>
-          <Select.Trigger>
-            <Select.Value className="min-w-0">
-              {({ defaultChildren, isPlaceholder }) =>
-                isPlaceholder ? (
-                  defaultChildren
-                ) : (
-                  <span className="block truncate">
-                    {selectedIngredientKinds
-                      .map((key) => t(`automaticIngredientsKinds.${key}`))
-                      .join(", ")}
-                  </span>
-                )
-              }
-            </Select.Value>
-            <Select.Indicator />
-          </Select.Trigger>
-          <Select.Popover>
-            <ListBox selectionMode="multiple">
-              {offeredIngredientKinds.map((key) => (
-                <ListBox.Item key={key} id={key} textValue={t(`automaticIngredientsKinds.${key}`)}>
-                  <div className="flex flex-col">
-                    <span>{t(`automaticIngredientsKinds.${key}`)}</span>
-                    <span className="text-muted text-xs">
-                      {t(`automaticIngredientsKinds.${key}Description`)}
+          <Select
+            aria-label={t("automaticIngredients")}
+            className="w-full"
+            data-testid="ai-automatic-ingredients"
+            isDisabled={!enabled}
+            placeholder={t("automaticEnrichmentPlaceholder")}
+            selectionMode="multiple"
+            value={selectedIngredientKinds}
+            variant="secondary"
+            onChange={(selected) => handleIngredientKindsChange(selected.map(String))}
+          >
+            <Label className="sr-only">{t("automaticIngredients")}</Label>
+            <Select.Trigger>
+              <Select.Value className="min-w-0">
+                {({ defaultChildren, isPlaceholder }) =>
+                  isPlaceholder ? (
+                    defaultChildren
+                  ) : (
+                    <span className="block truncate">
+                      {selectedIngredientKinds
+                        .map((key) => t(`automaticIngredientsKinds.${key}`))
+                        .join(", ")}
                     </span>
-                  </div>
-                  <ListBox.ItemIndicator />
-                </ListBox.Item>
-              ))}
-            </ListBox>
-          </Select.Popover>
-        </Select>
-      </SettingRow>
+                  )
+                }
+              </Select.Value>
+              <Select.Indicator />
+            </Select.Trigger>
+            <Select.Popover>
+              <ListBox selectionMode="multiple">
+                {offeredIngredientKinds.map((key) => (
+                  <ListBox.Item
+                    key={key}
+                    id={key}
+                    textValue={t(`automaticIngredientsKinds.${key}`)}
+                  >
+                    <div className="flex flex-col">
+                      <span>{t(`automaticIngredientsKinds.${key}`)}</span>
+                      <span className="text-muted text-xs">
+                        {t(`automaticIngredientsKinds.${key}Description`)}
+                      </span>
+                    </div>
+                    <ListBox.ItemIndicator />
+                  </ListBox.Item>
+                ))}
+              </ListBox>
+            </Select.Popover>
+          </Select>
+        </SettingRow>
+      ) : null}
 
       <Select
         variant="secondary"

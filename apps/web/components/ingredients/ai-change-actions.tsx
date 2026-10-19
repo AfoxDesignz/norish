@@ -9,12 +9,10 @@ import { isOpenChange } from "./use-ai-changes";
 /** Undo, and Keep while the change is open, for a change the viewer may act on. */
 export function AIChangeActions({
   change,
-  isDisabled = false,
   onKeep,
   onUndo,
 }: {
   change: AIChange;
-  isDisabled?: boolean;
   onKeep: (change: AIChange) => void;
   onUndo: (change: AIChange) => void;
 }) {
@@ -26,7 +24,6 @@ export function AIChangeActions({
     <div className="flex shrink-0 items-center gap-2">
       <Button
         data-testid="ingredient-ai-change-undo"
-        isDisabled={isDisabled}
         size="sm"
         variant="danger-soft"
         onPress={() => onUndo(change)}
@@ -36,7 +33,6 @@ export function AIChangeActions({
       {isOpenChange(change) ? (
         <Button
           data-testid="ingredient-ai-change-keep"
-          isDisabled={isDisabled}
           size="sm"
           variant="secondary"
           onPress={() => onKeep(change)}

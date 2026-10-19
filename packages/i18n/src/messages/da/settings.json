@@ -398,49 +398,6 @@
     },
     "markDistinct": "Marker som selvstændig",
     "summary": "{spellings, plural, one {# oversættelse} other {# oversættelser}}{kinds, plural, =0 {} one {, # slags} other {, # slags}}{parent, select, none {} other {, overordnet: {parent}}}",
-    "askAI": "Spørg AI",
-    "fixCatalogue": "Ret kataloget",
-    "askAIRound": {
-      "intro": "AI tjekker, hvor markerede ingredienser hører til, retter uensartede navne og laver selv hver ændring. Du kan fortryde dem under Ændret af AI.",
-      "scopeLabel": "Hvad skal rettes",
-      "scopes": {
-        "flagged": "Tjek markerede ingredienser",
-        "name": "Ryd navne op"
-      },
-      "hints": {
-        "flagged": "Leder efter dubletter, underingredienser eller unikke.",
-        "name": "Renser ingrediensnavne, så kun ingrediensen er tilbage. Markerede ingredienser er med, hvis feltet ovenfor er markeret."
-      },
-      "scopeSize": "{count, plural, =0 {Ingen ingredienser} one {# ingrediens · omkring {tokens} tokens} other {# ingredienser · omkring {tokens} tokens}}",
-      "modelTokens": "omkring {tokens} tokens",
-      "basisMeasured": "Baseret på, hvad den seneste runde brugte."
-    },
-    "roundProgress": "Spørger AI · {done, number} af {total, number}",
-    "roundSection": {
-      "title": "Spørger AI",
-      "progress": "{done, number} af {total, number}",
-      "waiting": "{count, plural, one {# ingrediens venter} other {# ingredienser venter}}"
-    },
-    "reviewing": "Spørger AI…",
-    "aiOutcomes": {
-      "parent": "AI har placeret {name} under {of}.",
-      "distinct": "Ifølge AI er {name} en ingrediens for sig.",
-      "unsure": "AI er stadig ikke sikker på, hvad {name} er.",
-      "skippedNotFlagged": "{name} var ikke længere markeret.",
-      "skippedForbidden": "{name} må du ikke ændre.",
-      "skippedNotFound": "{name} var væk, da AI nåede dertil.",
-      "failed": "Spørgsmålet om {name} mislykkedes.",
-      "merge": "AI har lagt {name} sammen med {into}.",
-      "rename": "AI har omdøbt {name} til {to}.",
-      "decided": "Der er allerede truffet en beslutning om {name}, så AI lader den være.",
-      "undone": "AI's svar for {name} er en ændring, du har fortrudt, så intet er ændret."
-    },
-    "aiTrace": {
-      "readAs": "AI læste det som “{name}”.",
-      "compared": "Sammenlignet med: {names}.",
-      "comparedNothing": "Der var ingen kendt fødevare at sammenligne med.",
-      "noFood": "AI fandt ingen fødevare i dette navn."
-    },
     "addAlias": "Tilføj en oversættelse",
     "removeAlias": "Fjern {alias}",
     "mergeInto": "Flet med…",
@@ -571,28 +528,17 @@
       "none": "Intet bruger den længere"
     },
     "keepAlias": "Behold {alias}",
-    "reportOutcomes": {
-      "parent": "Under en forælder",
-      "distinct": "Egen fødevare",
-      "unsure": "Ikke sikker",
-      "skipped": "Sprunget over",
-      "failed": "Mislykkedes",
-      "merge": "Flet"
-    },
     "expandKinds": "Vis slags af {name}",
     "collapseKinds": "Skjul slags af {name}",
     "layoutSection": "Visning",
     "asTree": "Hierarkisk visning",
     "showOnly": "Vis kun",
     "standaloneOnly": "Uden forælder eller slags",
-    "checkWithAI": "Tjek med AI",
-    "checkAllWithAI": "Tjek disse med AI",
     "changedByAI": {
       "title": "Ændret af AI",
       "open": "{count, plural, =0 {Ændret af AI} other {Ændret af AI · # at tjekke}}",
       "unsure": "Ikke sikker",
       "sure": "Ændret",
-      "unchanged": "Ikke ændret",
       "empty": "AI har ikke ændret noget den seneste måned.",
       "keep": "Behold",
       "undo": "Fortryd",
@@ -600,13 +546,6 @@
       "parent": "Placeret under {of}",
       "parentFromName": "Placeret under {of}, ud fra navnet",
       "plainName": "Omdøbt fra {from}"
-    },
-    "skippedReasons": {
-      "forbidden": "Not yours to edit",
-      "notFound": "No longer exists",
-      "settled": "Navnet ligger allerede fast",
-      "decided": "Allerede besluttet",
-      "undone": "Fortrudt før"
     },
     "icon": {
       "change": "Skift ikonet",
@@ -979,8 +918,6 @@
       "automaticIngredients": "Automatisk for nye ingredienser",
       "automaticIngredientsDescription": "Hvad der sker, når nye ingredienser føjes til kataloget.",
       "automaticIngredientsKinds": {
-        "plainName": "Ryd op i navnet",
-        "plainNameDescription": "Fjern det, der ikke er fødevaren, som mængder og pakningskoder",
         "icon": "Tegn et ikon",
         "iconDescription": "Kun for en fødevare uden ikon, heller ikke dens forælders"
       },
@@ -1212,8 +1149,7 @@
         "image-generation": "Billedgenerering",
         "store-lookup": "Butiksopslag",
         "ingredient-review": "Spørg AI om ingredienser",
-        "ingredient-icons": "Tegn ingrediensikoner",
-        "new-ingredients": "Nye ingredienser"
+        "ingredient-icons": "Tegn ingrediensikoner"
       },
       "summary": {
         "failed": "{count} failed"

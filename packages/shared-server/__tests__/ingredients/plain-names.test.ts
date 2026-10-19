@@ -6,7 +6,7 @@
  * a settled name from the words. The language model is mocked at
  * `generateStructured`.
  */
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
@@ -17,11 +17,7 @@ import { generateStructured } from "@norish/shared-server/ai/runtime/runtime";
 import { isAIEnabled } from "@norish/shared-server/config/server-config-loader";
 import { undoAIChange } from "@norish/shared-server/ingredients/ai-changes";
 import { markDistinct, renameIngredient } from "@norish/shared-server/ingredients/catalogue";
-import {
-  cleanNameWithAI,
-  giveItsPlainName,
-  listNameableIngredients,
-} from "@norish/shared-server/ingredients/plain-names";
+import { giveItsPlainName } from "@norish/shared-server/ingredients/plain-names";
 import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
@@ -31,8 +27,6 @@ import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-tes
 vi.mock("@norish/shared-server/ai/runtime/runtime", () => ({
   decide: vi.fn(),
   generateStructured: vi.fn(),
-  estimateStructuredInputTokens: vi.fn(),
-  estimateDecisionInputTokens: vi.fn(),
 }));
 vi.mock("@norish/shared-server/config/server-config-loader", async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -89,7 +83,7 @@ describe("Plain Names", () => {
     const tonijn = await food("Lekkerste Tonijn Uit Blik");
 
     readsAs("tonijn uit blik");
-    await expect(cleanNameWithAI(actor, tonijn)).resolves.toEqual({
+    await expect(giveItsPlainName(tonijn)).resolves.toEqual({
       outcome: "rename",
       to: "tonijn uit blik",
     });
@@ -110,17 +104,16 @@ describe("Plain Names", () => {
     expect(await listAIChanges()).toMatchObject([
       { sure: true, undo: { kind: "plain-name", formerName: "Lekkerste Tonijn Uit Blik" } },
     ]);
-    expect((await listNameableIngredients(actor)).map((it) => it.id)).not.toContain(tonijn);
   });
 
-  it("settles a name already plain, and a round asks about it no more", async () => {
+  it("settles a name already plain, and asks about it no more", async () => {
     const thyme = await food("tijm");
 
     readsAs("tijm");
-    await expect(cleanNameWithAI(actor, thyme)).resolves.toEqual({ outcome: "plain" });
+    await expect(giveItsPlainName(thyme)).resolves.toEqual({ outcome: "plain" });
     expect(await row(thyme)).toMatchObject({ nameSettled: true, flagged: true });
     expect(await listAIChanges()).toEqual([]);
-    await expect(cleanNameWithAI(actor, thyme)).resolves.toEqual({
+    await expect(giveItsPlainName(thyme)).resolves.toEqual({
       outcome: "skipped",
       reason: "settled",
     });
@@ -131,7 +124,7 @@ describe("Plain Names", () => {
     const messy = await food("Verse Onion Deluxe");
 
     readsAs("onion");
-    await expect(cleanNameWithAI(actor, messy)).resolves.toMatchObject({
+    await expect(giveItsPlainName(messy)).resolves.toMatchObject({
       outcome: "merge",
       into: "onion",
     });
@@ -151,8 +144,8 @@ describe("Plain Names", () => {
 
     readsAs("tonijn uit blik");
     readsAs("tonijn uit blik");
-    await cleanNameWithAI(actor, lekkerste);
-    await expect(cleanNameWithAI(actor, voordeel)).resolves.toMatchObject({
+    await giveItsPlainName(lekkerste);
+    await expect(giveItsPlainName(voordeel)).resolves.toMatchObject({
       outcome: "merge",
       into: "tonijn uit blik",
     });
@@ -165,46 +158,42 @@ describe("Plain Names", () => {
     const knaks = await food("Unox Knaks Original");
 
     readsAs("Unox Knaks");
-    await cleanNameWithAI(actor, knaks);
+    await giveItsPlainName(knaks);
     await undoAIChange(actor, (await listAIChanges())[0]!.id);
 
     expect(await row(knaks)).toMatchObject({ name: "Unox Knaks Original", nameSettled: true });
-    expect((await listNameableIngredients(actor)).map((it) => it.id)).not.toContain(knaks);
   });
 
   it("changes nothing for a name AI finds no food in", async () => {
     const junk = await food("zie stap 3");
 
     readsAs(null);
-    await expect(cleanNameWithAI(actor, junk)).resolves.toMatchObject({
+    await expect(giveItsPlainName(junk)).resolves.toMatchObject({
       outcome: "unsure",
       reason: "no-food",
     });
     expect(await row(junk)).toMatchObject({ nameSettled: false });
   });
 
-  it("asks about neither a seeded food, a flagged one, nor one a person decided about", async () => {
+  it("asks about neither a seeded food nor one a person decided about", async () => {
     const seeded = await food("salt");
-    const tonijn = await food("Lekkerste Tonijn");
     const kept = await food("Verse Kipfilet");
 
-    await food("GR UIEN");
     await getTestDb()
       .update(ingredients)
       .set({ offId: "en:salt" })
       .where(eq(ingredients.id, seeded));
-    // The flag's own question asks about a flagged food first; these two were placed.
-    await getTestDb()
-      .update(ingredients)
-      .set({ flagged: false })
-      .where(inArray(ingredients.id, [tonijn]));
     await markDistinct(actor, kept);
 
-    expect((await listNameableIngredients(actor)).map((it) => it.id)).toEqual([tonijn]);
-    await expect(cleanNameWithAI(actor, kept)).resolves.toEqual({
+    await expect(giveItsPlainName(seeded)).resolves.toEqual({
       outcome: "skipped",
       reason: "decided",
     });
+    await expect(giveItsPlainName(kept)).resolves.toEqual({
+      outcome: "skipped",
+      reason: "decided",
+    });
+    expect(vi.mocked(generateStructured)).not.toHaveBeenCalled();
   });
 
   it("gives a new food its plain name at once, keeping its flag", async () => {
@@ -248,7 +237,7 @@ describe("Plain Names", () => {
 
     await renameIngredient(actor, tonijn, "tonijn");
 
-    await expect(cleanNameWithAI(actor, tonijn)).resolves.toEqual({
+    await expect(giveItsPlainName(tonijn)).resolves.toEqual({
       outcome: "skipped",
       reason: "settled",
     });

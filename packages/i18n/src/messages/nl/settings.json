@@ -398,49 +398,6 @@
     },
     "markDistinct": "Markeer als apart",
     "summary": "{spellings, plural, one {# vertaling} other {# vertalingen}}{kinds, plural, =0 {} one {, # soort} other {, # soorten}}{parent, select, none {} other {, hoofdingrediënt: {parent}}}",
-    "askAI": "Vraag AI",
-    "fixCatalogue": "Catalogus verbeteren",
-    "askAIRound": {
-      "intro": "AI zoekt uit waar gemarkeerde ingrediënten horen, verbetert inconsistente namen en voert elke wijziging zelf door. Je kunt ze ongedaan maken onder Gewijzigd door AI.",
-      "scopeLabel": "Wat verbeteren",
-      "scopes": {
-        "flagged": "Gemarkeerde ingrediënten nakijken",
-        "name": "Namen opschonen"
-      },
-      "hints": {
-        "flagged": "Zoekt naar dubbelen, subingrediënten of unieke ingrediënten.",
-        "name": "Schoont ingrediëntnamen op tot alleen het ingrediënt. Gemarkeerde ingrediënten doen mee als het vakje hierboven is aangevinkt."
-      },
-      "scopeSize": "{count, plural, =0 {Geen ingrediënten} one {# ingrediënt · ongeveer {tokens} tokens} other {# ingrediënten · ongeveer {tokens} tokens}}",
-      "modelTokens": "ongeveer {tokens} tokens",
-      "basisMeasured": "Op basis van wat de vorige ronde gebruikte."
-    },
-    "roundProgress": "AI wordt gevraagd · {done, number} van {total, number}",
-    "roundSection": {
-      "title": "AI wordt gevraagd",
-      "progress": "{done, number} van {total, number}",
-      "waiting": "{count, plural, one {# ingrediënt wacht} other {# ingrediënten wachten}}"
-    },
-    "reviewing": "AI wordt gevraagd…",
-    "aiOutcomes": {
-      "parent": "AI heeft {name} geplaatst onder {of}.",
-      "distinct": "Volgens AI is {name} een eigen ingrediënt.",
-      "unsure": "AI weet nog steeds niet zeker wat {name} is.",
-      "skippedNotFlagged": "{name} was niet meer gemarkeerd.",
-      "skippedForbidden": "{name} mag je niet wijzigen.",
-      "skippedNotFound": "{name} was al weg toen AI eraan toekwam.",
-      "failed": "Vragen naar {name} is mislukt.",
-      "merge": "AI heeft {name} samengevoegd met {into}.",
-      "rename": "AI heeft {name} hernoemd naar {to}.",
-      "decided": "Over {name} is al beslist, dus AI laat het staan.",
-      "undone": "Het antwoord van AI over {name} is een wijziging die je ongedaan hebt gemaakt, dus er is niets veranderd."
-    },
-    "aiTrace": {
-      "readAs": "AI las het als “{name}”.",
-      "compared": "Vergeleken met: {names}.",
-      "comparedNothing": "Er was geen bekend ingrediënt om het mee te vergelijken.",
-      "noFood": "AI vond geen ingrediënt in deze naam."
-    },
     "addAlias": "Vertaling toevoegen",
     "removeAlias": "{alias} verwijderen",
     "mergeInto": "Samenvoegen met…",
@@ -571,28 +528,17 @@
       "none": "Niets gebruikt het meer"
     },
     "keepAlias": "{alias} behouden",
-    "reportOutcomes": {
-      "parent": "Onder een ouder geplaatst",
-      "distinct": "Eigen ingrediënt",
-      "unsure": "Niet zeker",
-      "skipped": "Overgeslagen",
-      "failed": "Mislukt",
-      "merge": "Samenvoegen"
-    },
     "expandKinds": "Toon de soorten {name}",
     "collapseKinds": "Verberg de soorten {name}",
     "layoutSection": "Weergave",
     "asTree": "Hiërarchische weergave",
     "showOnly": "Toon alleen",
     "standaloneOnly": "Zonder ouder of soorten",
-    "checkWithAI": "Nakijken met AI",
-    "checkAllWithAI": "Deze nakijken met AI",
     "changedByAI": {
       "title": "Gewijzigd door AI",
       "open": "{count, plural, =0 {Gewijzigd door AI} other {Gewijzigd door AI · # na te kijken}}",
       "unsure": "Niet zeker",
       "sure": "Gewijzigd",
-      "unchanged": "Niet gewijzigd",
       "empty": "AI heeft de afgelopen maand niets gewijzigd.",
       "keep": "Houden",
       "undo": "Ongedaan maken",
@@ -600,13 +546,6 @@
       "parent": "Geplaatst onder {of}",
       "parentFromName": "Geplaatst onder {of}, op basis van de naam",
       "plainName": "Hernoemd van {from}"
-    },
-    "skippedReasons": {
-      "forbidden": "Niet van jou om te bewerken",
-      "notFound": "Bestaat niet meer",
-      "settled": "Naam staat al vast",
-      "decided": "Al beslist",
-      "undone": "Eerder ongedaan gemaakt"
     },
     "icon": {
       "change": "Icoon wijzigen",
@@ -979,8 +918,6 @@
       "automaticIngredients": "Automatisch voor nieuwe ingrediënten",
       "automaticIngredientsDescription": "Wat er gebeurt als er nieuwe ingrediënten aan de catalogus worden toegevoegd.",
       "automaticIngredientsKinds": {
-        "plainName": "Naam opschonen",
-        "plainNameDescription": "Haal weg wat niet het ingrediënt is, zoals hoeveelheden en verpakkingscodes",
         "icon": "Icoon tekenen",
         "iconDescription": "Alleen voor een ingrediënt zonder icoon, ook niet dat van zijn ouder"
       },
@@ -1212,8 +1149,7 @@
         "image-generation": "Afbeeldingen genereren",
         "store-lookup": "Winkelopzoeking",
         "ingredient-review": "AI vragen over ingrediënten",
-        "ingredient-icons": "Ingrediënticonen tekenen",
-        "new-ingredients": "Nieuwe ingrediënten"
+        "ingredient-icons": "Ingrediënticonen tekenen"
       },
       "summary": {
         "failed": "{count} failed"

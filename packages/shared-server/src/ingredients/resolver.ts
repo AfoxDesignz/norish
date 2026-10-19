@@ -412,7 +412,7 @@ async function resolveTexts(
     });
   }
 
-  // What the administrator turned on for new foods follows someone's action, never a pass with AI off.
+  // AI's pass follows a mint for someone's action, never one made with AI off.
   if (options.ai !== false) await announceMinted([...minted]);
 
   return asWritten.map((spelling) => resolved.get(spelling) ?? null);

@@ -17,7 +17,7 @@ import {
 } from "@norish/queue/ingredient-icons/worker";
 import { readStepProgress } from "@norish/queue/job-steps";
 
-const rounds = vi.hoisted(() => ({ drawRoundIcon: vi.fn() }));
+const rounds = vi.hoisted(() => ({ drawRoundIcon: vi.fn(), drawNewIngredientIcon: vi.fn() }));
 const realtime = vi.hoisted(() => ({ publish: vi.fn(async () => undefined) }));
 
 vi.mock("@norish/shared-server/ingredients/icon-rounds", () => rounds);
@@ -30,14 +30,18 @@ vi.mock("@norish/shared-server/logger", () => ({
 const actor = { userId: "me", householdUserIds: null, isServerAdmin: false };
 
 /** A job as the processor sees it, keeping whatever progress it writes. */
-function fakeJob(ingredientIds: string[], attemptsMade = 0) {
+function fakeJob(
+  ingredientIds: string[],
+  attemptsMade = 0,
+  asker: IngredientIconsJobData["actor"] = actor
+) {
   const job = {
     id: "icons-1",
     attemptsMade,
     opts: { attempts: 2 },
     data: {
       ingredients: ingredientIds.map((id) => ({ id, name: `${id}!` })),
-      actor,
+      actor: asker,
     } satisfies IngredientIconsJobData,
     progress: {} as unknown,
     updateProgress: vi.fn(async (progress: unknown) => {
@@ -57,6 +61,7 @@ function published(event: string) {
 
 beforeEach(() => {
   rounds.drawRoundIcon.mockReset();
+  rounds.drawNewIngredientIcon.mockReset();
   realtime.publish.mockClear();
 });
 
@@ -65,6 +70,22 @@ afterEach(() => {
 });
 
 describe("processIngredientIconsJob", () => {
+  it("draws the foods an AI pass queued, with no asker, only where each shows no icon", async () => {
+    rounds.drawNewIngredientIcon
+      .mockResolvedValueOnce({ outcome: "drawn" })
+      .mockResolvedValueOnce({ outcome: "skipped", reason: "has-icon" });
+    const job = fakeJob(["kohlrabi", "red onion"], 0, null);
+
+    await processIngredientIconsJob(job);
+
+    expect(rounds.drawNewIngredientIcon.mock.calls).toEqual([["kohlrabi"], ["red onion"]]);
+    expect(rounds.drawRoundIcon).not.toHaveBeenCalled();
+    expect(published("icons").at(-1)).toMatchObject({
+      counts: { drawn: 1, skipped: 1 },
+      finished: true,
+    });
+  });
+
   it("draws each food in turn as the asker, one step each, and says how it ended", async () => {
     rounds.drawRoundIcon
       .mockResolvedValueOnce({ outcome: "drawn" })

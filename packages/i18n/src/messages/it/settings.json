@@ -398,49 +398,6 @@
     },
     "markDistinct": "Segna come distinto",
     "summary": "{spellings, plural, one {# traduzione} other {# traduzioni}}{kinds, plural, =0 {} one {, # tipo} other {, # tipi}}{parent, select, none {} other {, genitore: {parent}}}",
-    "askAI": "Chiedi all'IA",
-    "fixCatalogue": "Correggi catalogo",
-    "askAIRound": {
-      "intro": "L'IA verifica dove vanno gli ingredienti segnalati, corregge i nomi incoerenti e applica da sola ogni modifica. Puoi annullarle in Modificato dall'IA.",
-      "scopeLabel": "Cosa correggere",
-      "scopes": {
-        "flagged": "Controlla ingredienti segnalati",
-        "name": "Pulisci i nomi"
-      },
-      "hints": {
-        "flagged": "Cerca duplicati, ingredienti figli o unici.",
-        "name": "Riduce i nomi degli ingredienti al solo ingrediente. Gli ingredienti segnalati sono inclusi se la casella sopra è selezionata."
-      },
-      "scopeSize": "{count, plural, =0 {Nessun ingrediente} one {# ingrediente · circa {tokens} token} other {# ingredienti · circa {tokens} token}}",
-      "modelTokens": "circa {tokens} token",
-      "basisMeasured": "In base a quanto usato nell'ultimo giro."
-    },
-    "roundProgress": "Richiesta all'IA · {done, number} di {total, number}",
-    "roundSection": {
-      "title": "Richiesta all'IA",
-      "progress": "{done, number} di {total, number}",
-      "waiting": "{count, plural, one {# ingrediente in attesa} other {# ingredienti in attesa}}"
-    },
-    "reviewing": "Chiedo all’IA…",
-    "aiOutcomes": {
-      "parent": "L'IA ha classificato {name} sotto {of}.",
-      "distinct": "Secondo l'IA, {name} è un alimento a sé.",
-      "unsure": "L'IA non è ancora sicura di cosa sia {name}.",
-      "skippedNotFlagged": "{name} non era più segnalato.",
-      "skippedForbidden": "{name} non è tuo da modificare.",
-      "skippedNotFound": "{name} non c’era più quando l’IA è arrivata.",
-      "failed": "La domanda su {name} è fallita.",
-      "merge": "L'IA ha unito {name} a {into}.",
-      "rename": "L'IA ha rinominato {name} in {to}.",
-      "decided": "Qualcuno ha già deciso su {name}, quindi l'IA non lo tocca.",
-      "undone": "La risposta dell'IA per {name} è una modifica che hai annullato, quindi non è cambiato nulla."
-    },
-    "aiTrace": {
-      "readAs": "L'IA l'ha letto come “{name}”.",
-      "compared": "Confrontato con: {names}.",
-      "comparedNothing": "Non c'era alcun alimento noto con cui confrontarlo.",
-      "noFood": "L’IA non ha trovato alcun alimento in questo nome."
-    },
     "addAlias": "Aggiungi una traduzione",
     "removeAlias": "Rimuovi {alias}",
     "mergeInto": "Unisci a…",
@@ -571,28 +528,17 @@
       "none": "Niente lo usa più"
     },
     "keepAlias": "Mantieni {alias}",
-    "reportOutcomes": {
-      "parent": "Sotto un genitore",
-      "distinct": "Alimento a sé",
-      "unsure": "Non sicuro",
-      "skipped": "Saltato",
-      "failed": "Fallito",
-      "merge": "Unisci"
-    },
     "expandKinds": "Mostra i tipi di {name}",
     "collapseKinds": "Nascondi i tipi di {name}",
     "layoutSection": "Vista",
     "asTree": "Vista gerarchica",
     "showOnly": "Mostra solo",
     "standaloneOnly": "Senza genitore né tipi",
-    "checkWithAI": "Controlla con l'IA",
-    "checkAllWithAI": "Controlla questi con l'IA",
     "changedByAI": {
       "title": "Modificato dall'IA",
       "open": "{count, plural, =0 {Modificato dall'IA} other {Modificato dall'IA · # da controllare}}",
       "unsure": "Non sicuro",
       "sure": "Modificato",
-      "unchanged": "Non modificato",
       "empty": "L'IA non ha modificato nulla nell'ultimo mese.",
       "keep": "Mantieni",
       "undo": "Annulla",
@@ -600,13 +546,6 @@
       "parent": "Classificato sotto {of}",
       "parentFromName": "Classificato sotto {of}, dal nome",
       "plainName": "Rinominato da {from}"
-    },
-    "skippedReasons": {
-      "forbidden": "Not yours to edit",
-      "notFound": "No longer exists",
-      "settled": "Nome già fissato",
-      "decided": "Già deciso",
-      "undone": "Annullato in precedenza"
     },
     "icon": {
       "change": "Cambia icona",
@@ -979,8 +918,6 @@
       "automaticIngredients": "Automatico per i nuovi ingredienti",
       "automaticIngredientsDescription": "Cosa succede quando vengono aggiunti nuovi ingredienti al catalogo.",
       "automaticIngredientsKinds": {
-        "plainName": "Pulisci il nome",
-        "plainNameDescription": "Togli ciò che non è l’alimento, come quantità e codici di confezione",
         "icon": "Disegna un’icona",
         "iconDescription": "Solo per un alimento senza icona, nemmeno quella del suo genitore"
       },
@@ -1212,8 +1149,7 @@
         "image-generation": "Generazione immagini",
         "store-lookup": "Ricerca nel negozio",
         "ingredient-review": "Chiedere all'IA sugli ingredienti",
-        "ingredient-icons": "Disegno delle icone degli ingredienti",
-        "new-ingredients": "Nuovi ingredienti"
+        "ingredient-icons": "Disegno delle icone degli ingredienti"
       },
       "summary": {
         "failed": "{count} failed"

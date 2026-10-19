@@ -398,49 +398,6 @@
     },
     "markDistinct": "Als eigenständig markieren",
     "summary": "{spellings, plural, one {# Übersetzung} other {# Übersetzungen}}{kinds, plural, =0 {} one {, # Sorte} other {, # Sorten}}{parent, select, none {} other {, übergeordnet: {parent}}}",
-    "askAI": "KI fragen",
-    "fixCatalogue": "Katalog korrigieren",
-    "askAIRound": {
-      "intro": "Die KI prüft, wohin markierte Zutaten gehören, korrigiert uneinheitliche Namen und nimmt jede Änderung selbst vor. Unter „Von KI geändert“ können Sie jede davon rückgängig machen.",
-      "scopeLabel": "Was korrigiert wird",
-      "scopes": {
-        "flagged": "Markierte Zutaten prüfen",
-        "name": "Namen bereinigen"
-      },
-      "hints": {
-        "flagged": "Sucht nach Duplikaten, Unterzutaten oder eigenständigen Zutaten.",
-        "name": "Bereinigt Zutatennamen auf die reine Zutat. Markierte Zutaten sind enthalten, wenn das Kästchen oben aktiviert ist."
-      },
-      "scopeSize": "{count, plural, =0 {Keine Zutaten} one {# Zutat · etwa {tokens} Token} other {# Zutaten · etwa {tokens} Token}}",
-      "modelTokens": "etwa {tokens} Token",
-      "basisMeasured": "Basierend auf dem Verbrauch der letzten Runde."
-    },
-    "roundProgress": "KI wird gefragt · {done, number} von {total, number}",
-    "roundSection": {
-      "title": "KI wird gefragt",
-      "progress": "{done, number} von {total, number}",
-      "waiting": "{count, plural, one {# Zutat wartet} other {# Zutaten warten}}"
-    },
-    "reviewing": "KI wird gefragt…",
-    "aiOutcomes": {
-      "parent": "Die KI hat {name} unter {of} eingeordnet.",
-      "distinct": "Laut KI ist {name} eine eigene Zutat.",
-      "unsure": "KI ist sich weiterhin nicht sicher, was {name} ist.",
-      "skippedNotFlagged": "{name} war nicht mehr markiert.",
-      "skippedForbidden": "{name} dürfen Sie nicht ändern.",
-      "skippedNotFound": "{name} war schon weg, als die KI dazu kam.",
-      "failed": "Die Frage zu {name} ist fehlgeschlagen.",
-      "merge": "Die KI hat {name} mit {into} zusammengeführt.",
-      "rename": "Die KI hat {name} in {to} umbenannt.",
-      "decided": "Über {name} wurde bereits entschieden, die KI lässt es in Ruhe.",
-      "undone": "Die Antwort der KI zu {name} ist eine Änderung, die Sie rückgängig gemacht haben, also hat sich nichts geändert."
-    },
-    "aiTrace": {
-      "readAs": "Die KI las es als „{name}“.",
-      "compared": "Verglichen mit: {names}.",
-      "comparedNothing": "Es gab kein bekanntes Lebensmittel zum Vergleich.",
-      "noFood": "Die KI hat in diesem Namen kein Lebensmittel gefunden."
-    },
     "addAlias": "Übersetzung hinzufügen",
     "removeAlias": "{alias} entfernen",
     "mergeInto": "Zusammenführen mit…",
@@ -571,28 +528,17 @@
       "none": "Nichts verwendet es mehr"
     },
     "keepAlias": "{alias} behalten",
-    "reportOutcomes": {
-      "parent": "Unter eine übergeordnete Zutat gestellt",
-      "distinct": "Eigene Zutat",
-      "unsure": "Nicht sicher",
-      "skipped": "Übersprungen",
-      "failed": "Fehlgeschlagen",
-      "merge": "Zusammenführen"
-    },
     "expandKinds": "Sorten von {name} anzeigen",
     "collapseKinds": "Sorten von {name} ausblenden",
     "layoutSection": "Ansicht",
     "asTree": "Hierarchische Ansicht",
     "showOnly": "Nur anzeigen",
     "standaloneOnly": "Ohne übergeordnete Zutat oder Sorten",
-    "checkWithAI": "Mit KI prüfen",
-    "checkAllWithAI": "Diese mit KI prüfen",
     "changedByAI": {
       "title": "Von KI geändert",
       "open": "{count, plural, =0 {Von KI geändert} other {Von KI geändert · # zu prüfen}}",
       "unsure": "Nicht sicher",
       "sure": "Geändert",
-      "unchanged": "Nicht geändert",
       "empty": "Die KI hat im letzten Monat nichts geändert.",
       "keep": "Behalten",
       "undo": "Rückgängig",
@@ -600,13 +546,6 @@
       "parent": "Unter {of} eingeordnet",
       "parentFromName": "Unter {of} eingeordnet, nach dem Namen",
       "plainName": "Umbenannt von {from}"
-    },
-    "skippedReasons": {
-      "forbidden": "Not yours to edit",
-      "notFound": "No longer exists",
-      "settled": "Name steht bereits fest",
-      "decided": "Bereits entschieden",
-      "undone": "Zuvor rückgängig gemacht"
     },
     "icon": {
       "change": "Symbol ändern",
@@ -979,8 +918,6 @@
       "automaticIngredients": "Automatisch für neue Zutaten",
       "automaticIngredientsDescription": "Was passiert, wenn neue Zutaten in den Katalog kommen.",
       "automaticIngredientsKinds": {
-        "plainName": "Namen bereinigen",
-        "plainNameDescription": "Entfernen, was nicht zum Lebensmittel gehört, etwa Mengen und Packungscodes",
         "icon": "Symbol zeichnen",
         "iconDescription": "Nur für eine Zutat ohne Symbol, auch ohne das ihrer übergeordneten Zutat"
       },
@@ -1212,8 +1149,7 @@
         "image-generation": "Bildgenerierung",
         "store-lookup": "Geschäftsabfrage",
         "ingredient-review": "KI zu Zutaten fragen",
-        "ingredient-icons": "Zutatensymbole zeichnen",
-        "new-ingredients": "Neue Zutaten"
+        "ingredient-icons": "Zutatensymbole zeichnen"
       },
       "summary": {
         "failed": "{count} failed"

@@ -42,12 +42,6 @@ const mutations = {
   merge: vi.fn(async () => ({ success: true })),
   moveAlias: vi.fn(async () => ({ success: true })),
   remove: vi.fn(async () => ({ success: true })),
-  reviewWithAI: vi.fn(async () => ({
-    outcome: "distinct",
-    considered: ["salt"],
-    englishName: null,
-  })),
-  reviewAllWithAI: vi.fn(async () => ({ jobId: "round-1", total: 1, pending: ["onion"] })),
   keepAIChange: vi.fn(async () => ({ success: true })),
   undoAIChange: vi.fn(async () => ({ success: true })),
 };
@@ -89,30 +83,9 @@ const cache = vi.hoisted(() => {
     },
   };
 });
-/** The round running on the server when the page opens, as `reviewRound` answers. */
-let runningRound: unknown = null;
 // A Draw icons round: what each scope holds, and the round running, if any.
 let iconScope: { bare: number; unowned: number } | undefined = undefined;
 let iconRound: unknown = null;
-/** What a round would ask about, across the catalogue, as `reviewScope` answers. */
-const scope = {
-  flagged: 3,
-  tokens: {
-    basis: "measured" as const,
-    foods: 20,
-    models: [{ provider: "openai", model: "gpt-5.6-luna", perFood: 3000 }],
-  },
-};
-/** What a round of Clean names would ask about, as `nameScope` answers. */
-const nameScope = {
-  foods: 4,
-  tokens: {
-    basis: "prompt" as const,
-    models: [{ provider: "openai", model: "gpt-5.6-luna", perFood: 200 }],
-  },
-};
-/** What `reviewReport` answers for the round this tab watched. */
-let report: unknown = null;
 /** What AI changed, as `aiChanges` answers. */
 let changes: unknown[] = [];
 /** What `uses` answers: where the open food is still used. */
@@ -129,11 +102,6 @@ const listEnd = vi.hoisted(() => ({
 }));
 const fetchNextPage = vi.fn();
 let hasNextPage = false;
-/** The last handler the page gave the `onReview` subscription: how a test lets the round move. */
-const review = vi.hoisted(() => ({
-  onEvent: undefined as ((payload: unknown) => void) | undefined,
-}));
-
 vi.mock("@/app/providers/trpc-provider", () => ({
   useTRPC: () => ({
     ingredients: {
@@ -173,28 +141,10 @@ vi.mock("@/app/providers/trpc-provider", () => ({
       merge: { mutationOptions: () => ({ name: "merge" }) },
       moveAlias: { mutationOptions: () => ({ name: "moveAlias" }) },
       remove: { mutationOptions: () => ({ name: "remove" }) },
-      reviewWithAI: { mutationOptions: () => ({ name: "reviewWithAI" }) },
-      reviewAllWithAI: { mutationOptions: () => ({ name: "reviewAllWithAI" }) },
-      reviewRound: {
-        queryOptions: () => ({ queryKey: ["ingredients.reviewRound"] }),
-        queryKey: () => ["ingredients.reviewRound"],
-      },
-      reviewScope: {
-        queryOptions: () => ({ queryKey: ["ingredients.reviewScope"] }),
-        pathKey: () => ["ingredients.reviewScope"],
-      },
-      nameScope: {
-        queryOptions: () => ({ queryKey: ["ingredients.nameScope"] }),
-      },
-      reviewReport: {
-        queryOptions: (input: unknown) => ({ queryKey: ["ingredients.reviewReport", input] }),
-        pathKey: () => ["ingredients.reviewReport"],
-      },
       kinds: {
         queryOptions: (input: { parentId: string }) => ({ queryKey: ["ingredients.kinds", input] }),
         pathKey: () => ["ingredients.kinds"],
       },
-      onReview: "onReview",
       onIcons: "onIcons",
       iconScope: {
         queryOptions: () => ({ queryKey: ["ingredients.iconScope"] }),
@@ -221,11 +171,7 @@ vi.mock("@tanstack/react-virtual", async (importOriginal) => ({
   }),
 }));
 
-vi.mock("@norish/shared-react/realtime", () => ({
-  useRealtimeSubscription: (procedure: unknown, handlers: { onEvent: (p: unknown) => void }) => {
-    if (procedure === "onReview") review.onEvent = handlers.onEvent;
-  },
-}));
+vi.mock("@norish/shared-react/realtime", () => ({ useRealtimeSubscription: () => undefined }));
 
 vi.mock("@tanstack/react-query", () => ({
   keepPreviousData: (data: unknown) => data,
@@ -235,24 +181,16 @@ vi.mock("@tanstack/react-query", () => ({
 
     useSyncExternalStore(cache.subscribe, cache.snapshot);
     switch (queryKey[0]) {
-      case "ingredients.reviewRound":
-        return { data: runningRound, isFetching: false, isPending: false };
       case "ingredients.iconScope":
         return { data: enabled ? iconScope : undefined, isFetching: false, isPending: false };
       case "ingredients.iconRound":
         return { data: enabled ? iconRound : undefined, isFetching: false, isPending: false };
-      case "ingredients.reviewScope":
-        return { data: enabled ? scope : undefined, isFetching: false, isPending: false };
-      case "ingredients.nameScope":
-        return { data: enabled ? nameScope : undefined, isFetching: false, isPending: false };
       case "ingredients.get":
         return { data: enabled ? ownItem : undefined, isFetching: false, isPending: false };
       case "ingredients.uses":
         return { data: enabled ? uses : undefined, isFetching: false, isPending: usesPending };
       case "ingredients.aiChanges":
         return { data: changes, isFetching: false, isPending: false };
-      case "ingredients.reviewReport":
-        return { data: enabled ? report : undefined, isFetching: false, isPending: false };
       default:
         return { data: enabled ? everySpelling : undefined, isFetching: false, isPending: false };
     }
@@ -293,7 +231,7 @@ vi.mock("next-intl", () => ({
 
 vi.mock("@/lib/ui/safe-error-toast", () => ({ showSafeErrorToast: vi.fn() }));
 vi.mock("@/lib/ui/action-toast", () => ({ showActionToast: vi.fn() }));
-/** Whether the instance has AI: with it off, nothing on the page offers it. */
+/** Whether the instance can draw icons. */
 const permissions = vi.hoisted(() => ({ isAIEnabled: true, canDrawImages: false }));
 
 vi.mock("@/context/device-preferences-context", async () =>
@@ -494,15 +432,12 @@ describe("IngredientsSettingsContent", () => {
     everySpelling = [];
     uses = undefined;
     usesPending = false;
-    runningRound = null;
     iconScope = undefined;
     iconRound = null;
     permissions.canDrawImages = false;
-    report = null;
     changes = [];
     ownItem = undefined;
     kinds = {};
-    review.onEvent = undefined;
   });
 
   it("asks for the next page once the end of the list comes into view, and again while it stays", () => {
@@ -973,11 +908,10 @@ describe("IngredientsSettingsContent", () => {
     expect(within(row("onion")).queryByTestId("ingredient-kinds-toggle")).toBeNull();
   });
 
-  it("lists the foods with neither parent nor kinds on request, and offers to check them with AI", async () => {
+  it("lists the foods with neither parent nor kinds on request", async () => {
     items = [{ ...onion, flagged: false, kinds: 0 }, salt];
     render(<IngredientsSettingsContent />);
 
-    expect(screen.queryByTestId("ingredients-check-all-with-ai")).toBeNull();
     fireEvent.click(screen.getByTestId("ingredients-filters"));
     const filters = screen.getByRole("dialog", { name: "title" });
 
@@ -988,41 +922,6 @@ describe("IngredientsSettingsContent", () => {
 
     expect(listInputs.at(-1)).toMatchObject({ standaloneOnly: true });
     expect(listInputs.at(-1)).not.toHaveProperty("rootsOnly", true);
-
-    // Only onion is the viewer's to file; salt has a parent already. No dialog: the foods are on screen.
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("ingredients-check-all-with-ai"));
-    });
-
-    expect(mutations.reviewAllWithAI).toHaveBeenCalledExactlyOnceWith({
-      mode: "parent",
-      ingredientIds: ["onion"],
-    });
-    expect(screen.queryByTestId("ingredients-fix-catalogue-dialog")).toBeNull();
-    // Unflagged, the row still shows its turn in the round.
-    expect(within(row("onion")).getByTestId("ingredient-reviewing")).toBeInTheDocument();
-  });
-
-  it("checks one food with AI from its panel, where it has no parent and no flag", async () => {
-    items = [{ ...onion, flagged: false }, salt];
-    render(<IngredientsSettingsContent />);
-    const opened = await open("onion");
-
-    await act(async () => {
-      fireEvent.click(within(opened).getByTestId("ingredient-check-with-ai"));
-    });
-
-    expect(mutations.reviewWithAI).toHaveBeenCalledWith({ ingredientId: "onion" });
-    expect(toast).toHaveBeenCalledWith(
-      "aiOutcomes.distinct",
-      expect.objectContaining({ variant: "accent" })
-    );
-    expect(invalidateQueries).toHaveBeenCalled();
-
-    // A food with a parent, or one the viewer may not edit, is not offered it.
-    const theirs = await open("salt");
-
-    expect(within(theirs).queryByTestId("ingredient-check-with-ai")).toBeNull();
   });
 
   it("lists flat under a search, where a match may sit at any depth", () => {
@@ -1160,7 +1059,7 @@ describe("IngredientsSettingsContent", () => {
     expect(within(opened).getAllByTestId("ingredient-alias")).toHaveLength(1);
   });
 
-  it("says why a food is flagged, on the fold and in the panel, and offers to ask AI", async () => {
+  it("says why a food is flagged, on the fold and in the panel, and asks no AI from either", async () => {
     items = [{ ...onion, flagReason: "ai-unsure" }, salt];
     render(<IngredientsSettingsContent />);
 
@@ -1174,104 +1073,11 @@ describe("IngredientsSettingsContent", () => {
     expect(within(opened).getByTestId("ingredient-flag-notice")).toHaveTextContent(
       "flagReasons.ai-unsure"
     );
-    await act(async () => {
-      fireEvent.click(within(opened).getByTestId("ingredient-ask-ai"));
-    });
-
-    expect(mutations.reviewWithAI).toHaveBeenCalledWith({ ingredientId: "onion" });
-    expect(invalidateQueries).toHaveBeenCalled();
-  });
-
-  it("asks what to fix first, then asks AI about the flagged foods and the names as one round, and watches it", async () => {
-    render(<IngredientsSettingsContent />);
-
-    fireEvent.click(screen.getByTestId("ingredients-fix-catalogue"));
-
-    // Nothing is asked yet: a dialog says what a round would cover, across the catalogue.
-    const dialog = screen.getByTestId("ingredients-fix-catalogue-dialog");
-
-    expect(mutations.reviewAllWithAI).not.toHaveBeenCalled();
-    expect(within(dialog).getByTestId("ingredients-fix-catalogue-models")).toBeInTheDocument();
-    await act(async () => {
-      fireEvent.click(within(dialog).getByTestId("ingredients-fix-catalogue-start"));
-    });
-
-    // The server picks the foods for the parts; the page waits on the ones it names.
-    expect(mutations.reviewAllWithAI).toHaveBeenCalledExactlyOnceWith({
-      mode: "fix",
-      parts: ["flagged", "name"],
-    });
-    expect(screen.queryByTestId("ingredients-fix-catalogue-dialog")).toBeNull();
-    expect(mutations.reviewWithAI).not.toHaveBeenCalled();
-    // The row shows its turn, and the header how far the round has come, in place of the button.
-    expect(within(row("onion")).getByTestId("ingredient-reviewing")).toBeInTheDocument();
-    expect(screen.getByTestId("ingredients-round-progress")).toHaveTextContent("roundProgress");
+    // AI asks about a food by itself, in the background: the panel offers only Mark distinct.
+    expect(within(opened).getByTestId("ingredient-mark-distinct")).toBeInTheDocument();
+    expect(within(opened).queryByTestId("ingredient-ask-ai")).toBeNull();
+    expect(within(opened).queryByTestId("ingredient-check-with-ai")).toBeNull();
     expect(screen.queryByTestId("ingredients-fix-catalogue")).toBeNull();
-
-    // By the time the round ends, AI has made its changes.
-    changes = [
-      change("c1", "parent", "red onion", { sure: false, target: "onion" }),
-      change("c2", "merge", "onion", { from: "uitjes" }),
-    ];
-    report = {
-      jobId: "round-1",
-      finished: true,
-      entries: [
-        {
-          ingredientId: "onion",
-          name: "uitjes",
-          outcome: "merge",
-          into: "onion",
-          considered: ["onion", "shallot"],
-          englishName: "onions",
-        },
-        { ingredientId: "x", name: "Unox Knaks", outcome: "failed", error: "Failed query" },
-      ],
-    };
-    const counts = { merge: 1, parent: 0, distinct: 0, unsure: 0, skipped: 0, failed: 0 };
-
-    act(() => {
-      review.onEvent?.({
-        jobId: "round-1",
-        done: 1,
-        total: 1,
-        counts,
-        pending: [],
-        finished: true,
-      });
-    });
-
-    // The round this tab started ends with Changed by AI open, no toast, and the list read again.
-    expect(toast).not.toHaveBeenCalled();
-    expect(screen.queryByTestId("ingredient-reviewing")).toBeNull();
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["ingredients.list"] });
-
-    const shown = screen.getByRole("dialog", { name: "changedByAI.title" });
-    const listed = within(shown).getAllByTestId("ingredient-ai-change");
-
-    // The unsure change first, with Keep and Undo; the sure one after, with Undo alone.
-    expect(listed.map((it) => it.getAttribute("data-kind"))).toEqual(["parent", "merge"]);
-    expect(within(listed[0]!).getByTestId("ingredient-ai-change-keep")).toBeInTheDocument();
-    expect(within(listed[1]!).queryByTestId("ingredient-ai-change-keep")).toBeNull();
-    expect(listed[1]).toHaveTextContent("onion");
-    expect(listed[1]).toHaveTextContent("changedByAI.merge");
-    // A food the round changed nothing for says why, below.
-    const unchanged = within(shown).getAllByTestId("ingredients-review-entry");
-
-    expect(unchanged.map((it) => it.getAttribute("data-outcome"))).toEqual(["failed"]);
-    expect(unchanged[0]).toHaveTextContent("Failed query");
-
-    // Undone, the row leaves the list at once, before the server answers; kept, it joins the rest.
-    await act(async () => {
-      fireEvent.click(within(listed[1]!).getByTestId("ingredient-ai-change-undo"));
-    });
-    expect(mutations.undoAIChange).toHaveBeenCalledWith({ changeId: "c2" });
-    expect(within(shown).getAllByTestId("ingredient-ai-change")).toHaveLength(1);
-    await act(async () => {
-      fireEvent.click(within(shown).getByTestId("ingredient-ai-change-keep"));
-    });
-    expect(mutations.keepAIChange).toHaveBeenCalledWith({ changeId: "c1" });
-    expect(within(shown).queryByTestId("ingredient-ai-change-keep")).toBeNull();
   });
 
   it("puts what AI was unsure of about a food at the top of its panel, to keep or undo", async () => {
@@ -1291,111 +1097,6 @@ describe("IngredientsSettingsContent", () => {
     });
     expect(mutations.undoAIChange).toHaveBeenCalledWith({ changeId: "c1" });
     expect(mutations.merge).not.toHaveBeenCalled();
-  });
-
-  it("shows a round someone else is running, and offers no second one meanwhile", () => {
-    runningRound = {
-      jobId: "theirs",
-      done: 2,
-      total: 5,
-      counts: { merge: 1, parent: 0, distinct: 1, unsure: 0, skipped: 0, failed: 0 },
-      pending: ["onion", "x", "y"],
-      finished: false,
-    };
-    report = {
-      jobId: "theirs",
-      finished: false,
-      entries: [],
-      waiting: [
-        { ingredientId: "onion", name: "uitjes" },
-        { ingredientId: "x", name: "Unox Knaks" },
-        { ingredientId: "y", name: "AH pesto" },
-      ],
-    };
-    render(<IngredientsSettingsContent />);
-
-    expect(within(row("onion")).getByTestId("ingredient-reviewing")).toBeInTheDocument();
-    expect(screen.queryByTestId("ingredients-fix-catalogue")).toBeNull();
-    // Its progress opens what it has done so far, and, folded, what it has still to ask.
-    fireEvent.click(screen.getByTestId("ingredients-round-progress"));
-    const panel = screen.getByRole("dialog", { name: "changedByAI.title" });
-    const progress = within(panel).getByTestId("ingredients-round");
-
-    expect(within(progress).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "40");
-    expect(progress).toHaveTextContent("roundSection.progress");
-    expect(within(panel).queryByRole("button", { name: "Unox Knaks" })).toBeNull();
-    fireEvent.click(within(progress).getByRole("button", { name: /roundSection.waiting/ }));
-    expect(within(panel).getByRole("button", { name: "Unox Knaks" })).toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: "AH pesto" })).toBeInTheDocument();
-
-    act(() => {
-      review.onEvent?.({ ...(runningRound as object), done: 5, pending: [], finished: true });
-    });
-
-    // Not this tab's round: the rows settled, and that is the whole message.
-    expect(toast).not.toHaveBeenCalled();
-    expect(screen.queryByTestId("ingredient-reviewing")).toBeNull();
-    expect(screen.queryByTestId("ingredients-round-progress")).toBeNull();
-    expect(screen.getByTestId("ingredients-fix-catalogue")).toBeEnabled();
-  });
-
-  it("reads what a round has written down as it goes, not only when it ends", () => {
-    runningRound = {
-      jobId: "theirs",
-      done: 0,
-      total: 40,
-      counts: { merge: 0, parent: 0, distinct: 0, unsure: 0, skipped: 0, failed: 0 },
-      pending: ["onion"],
-      finished: false,
-    };
-    render(<IngredientsSettingsContent />);
-    invalidateQueries.mockClear();
-
-    act(() => {
-      review.onEvent?.({ ...(runningRound as object), done: 20, pending: ["onion"] });
-    });
-
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["ingredients.aiChanges"] });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["ingredients.list"] });
-    expect(screen.getByTestId("ingredients-round-progress")).toBeInTheDocument();
-  });
-
-  it("locks a food's panel while a round of Ask AI is asking about it", async () => {
-    runningRound = {
-      jobId: "theirs",
-      done: 0,
-      total: 1,
-      counts: { merge: 0, parent: 0, distinct: 0, unsure: 0, skipped: 0, failed: 0 },
-      pending: ["onion"],
-      finished: false,
-    };
-    render(<IngredientsSettingsContent />);
-    const opened = await open("onion");
-
-    // The panel says so with the row's own chip.
-    expect(within(opened).getByTestId("ingredient-reviewing")).toBeInTheDocument();
-    expect(within(opened).getByTestId("ingredient-name-input")).toBeDisabled();
-    expect(within(opened).getByTestId("ingredient-set-parent")).toBeDisabled();
-    expect(within(opened).getByTestId("ingredient-mark-distinct")).toBeDisabled();
-    await showSpellings(opened);
-    expect(screen.getByTestId("ingredient-alias-input")).toBeDisabled();
-  });
-
-  it("offers nothing of AI while AI is off for the instance", async () => {
-    permissions.isAIEnabled = false;
-    try {
-      render(<IngredientsSettingsContent />);
-
-      expect(screen.queryByTestId("ingredients-fix-catalogue")).toBeNull();
-      const opened = await open("onion");
-
-      expect(within(opened).getByTestId("ingredient-flag-notice")).toBeInTheDocument();
-      expect(within(opened).queryByTestId("ingredient-ask-ai")).toBeNull();
-      expect(within(opened).queryByTestId("ingredient-check-with-ai")).toBeNull();
-      expect(within(opened).getByTestId("ingredient-mark-distinct")).toBeInTheDocument();
-    } finally {
-      permissions.isAIEnabled = true;
-    }
   });
 
   it("says a parent came from the food's own name, and keeps it", async () => {
@@ -1442,93 +1143,15 @@ describe("IngredientsSettingsContent", () => {
     expect(within(theirs!).queryByTestId("ingredient-ai-change-undo")).toBeNull();
   });
 
-  it("cleans every unsettled name as one round when Fix catalogue is pointed at the names alone", async () => {
-    render(<IngredientsSettingsContent />);
-    fireEvent.click(screen.getByTestId("ingredients-fix-catalogue"));
-    const dialog = screen.getByTestId("ingredients-fix-catalogue-dialog");
-
-    fireEvent.click(within(dialog).getByRole("checkbox", { name: "askAIRound.scopes.flagged" }));
-    await act(async () => {
-      fireEvent.click(within(dialog).getByTestId("ingredients-fix-catalogue-start"));
-    });
-
-    // The server picks the foods; the round runs in place of the button that starts one.
-    expect(mutations.reviewAllWithAI).toHaveBeenCalledExactlyOnceWith({
-      mode: "fix",
-      parts: ["name"],
-    });
-    expect(screen.queryByTestId("ingredients-fix-catalogue-dialog")).toBeNull();
-    expect(screen.getByTestId("ingredients-round-progress")).toBeInTheDocument();
-    expect(screen.queryByTestId("ingredients-fix-catalogue")).toBeNull();
-  });
-
-  it("still offers what the latest round could not change, after a reload", async () => {
-    // No round seen in this tab and no change: the server's latest round is all there is.
-    report = {
-      jobId: "round-1",
-      finished: true,
-      entries: [
-        {
-          ingredientId: "knaks",
-          name: "Unox Knaks",
-          outcome: "unsure",
-          reason: "ai-unsure",
-          considered: [],
-          englishName: null,
-        },
-      ],
-    };
+  it("opens a food's own panel from its name in Changed by AI, over it", async () => {
+    changes = [change("c1", "merge", "uitjes", { sure: false, from: "onions" })];
+    // The list does not list uitjes, so its panel reads the food on its own.
+    ownItem = { ...onion, id: "uitjes", name: "uitjes" };
     render(<IngredientsSettingsContent />);
     await act(async () => {
       fireEvent.click(screen.getByTestId("ingredients-ai-changes-open"));
     });
     const shown = screen.getByRole("dialog", { name: "changedByAI.title" });
-
-    expect(within(shown).getByTestId("ingredients-review-entry")).toHaveTextContent("Unox Knaks");
-  });
-
-  it("offers nothing for a latest round whose every food was changed or settled since", () => {
-    report = { jobId: "round-1", finished: true, entries: [] };
-    render(<IngredientsSettingsContent />);
-
-    expect(screen.queryByTestId("ingredients-ai-changes-open")).toBeNull();
-  });
-
-  it("opens a food's own panel from its name in Changed by AI, over it", async () => {
-    changes = [change("c1", "merge", "uitjes", { sure: false, from: "onions" })];
-    // The list does not list uitjes, so its panel reads the food on its own.
-    ownItem = { ...onion, id: "uitjes", name: "uitjes" };
-    report = {
-      jobId: "round-1",
-      finished: true,
-      entries: [
-        { ingredientId: "knaks", name: "Unox Knaks", outcome: "failed", error: "Failed query" },
-        { ingredientId: "gone", name: "Gone", outcome: "skipped", reason: "not-found" },
-      ],
-    };
-    render(<IngredientsSettingsContent />);
-    fireEvent.click(screen.getByTestId("ingredients-fix-catalogue"));
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("ingredients-fix-catalogue-start"));
-    });
-    act(() => {
-      review.onEvent?.({
-        jobId: "round-1",
-        done: 1,
-        total: 1,
-        counts: { merge: 1, parent: 0, distinct: 0, unsure: 0, skipped: 1, failed: 1 },
-        pending: [],
-        finished: true,
-      });
-    });
-    const shown = screen.getByRole("dialog", { name: "changedByAI.title" });
-    const [failed, gone] = within(shown).getAllByTestId("ingredients-review-entry");
-
-    // A food the round changed nothing for opens too, unless it is gone.
-    expect(within(failed!).getByTestId("ingredient-ai-change-open")).toHaveTextContent(
-      "Unox Knaks"
-    );
-    expect(within(gone!).queryByTestId("ingredient-ai-change-open")).toBeNull();
 
     await act(async () => {
       fireEvent.click(
@@ -1545,13 +1168,6 @@ describe("IngredientsSettingsContent", () => {
       "changedByAI.merge"
     );
     expect(screen.getByRole("dialog", { name: "changedByAI.title" })).toBeInTheDocument();
-  });
-
-  it("offers Fix catalogue where nothing on screen is flagged, since names may still want cleaning", () => {
-    items = [salt];
-    render(<IngredientsSettingsContent />);
-
-    expect(screen.getByTestId("ingredients-fix-catalogue")).toBeEnabled();
   });
 
   it("keeps the panel of a food a filter no longer lists, and closes it once merged away", async () => {
@@ -1583,9 +1199,6 @@ describe("IngredientsSettingsContent", () => {
     const opened = await open("onion");
 
     expect(within(opened).getByTestId("ingredient-flag-notice")).toBeInTheDocument();
-    // A flagged food is checked from its flag's Ask AI, so the parent section offers no second one.
-    expect(within(opened).getByTestId("ingredient-ask-ai")).toBeInTheDocument();
-    expect(within(opened).queryByTestId("ingredient-check-with-ai")).toBeNull();
     expect(within(opened).getByTestId("ingredient-flagged")).toHaveTextContent("flagged");
 
     // Given a parent under the flagged filter, the row goes and the flag with it:
@@ -1597,7 +1210,6 @@ describe("IngredientsSettingsContent", () => {
     const current = screen.getByRole("dialog", { name: "onion" });
 
     expect(within(current).queryByTestId("ingredient-flag-notice")).toBeNull();
-    expect(within(current).queryByTestId("ingredient-check-with-ai")).toBeNull();
     expect(within(current).getByTestId("ingredient-parent")).toHaveTextContent("vegetable");
   });
 

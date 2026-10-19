@@ -398,49 +398,6 @@
     },
     "markDistinct": "Отметить как отдельный",
     "summary": "{spellings, plural, one {# перевод} few {# перевода} other {# переводов}}{kinds, plural, =0 {} one {, # вид} few {, # вида} many {, # видов} other {, # вида}}{parent, select, none {} other {, родительский: {parent}}}",
-    "askAI": "Спросить ИИ",
-    "fixCatalogue": "Исправить каталог",
-    "askAIRound": {
-      "intro": "ИИ проверяет, куда относятся отмеченные ингредиенты, исправляет несогласованные названия и сам вносит каждое изменение. Любое из них можно отменить в разделе «Изменено ИИ».",
-      "scopeLabel": "Что исправить",
-      "scopes": {
-        "flagged": "Проверить отмеченные ингредиенты",
-        "name": "Очистить названия"
-      },
-      "hints": {
-        "flagged": "Ищет дубликаты, дочерние или уникальные ингредиенты.",
-        "name": "Очищает названия ингредиентов до самого ингредиента. Отмеченные ингредиенты включаются, если отмечен флажок выше."
-      },
-      "scopeSize": "{count, plural, =0 {Нет ингредиентов} one {# ингредиент · около {tokens} токенов} few {# ингредиента · около {tokens} токенов} many {# ингредиентов · около {tokens} токенов} other {# ингредиента · около {tokens} токенов}}",
-      "modelTokens": "около {tokens} токенов",
-      "basisMeasured": "По расходу последнего раунда."
-    },
-    "roundProgress": "Опрос ИИ · {done, number} из {total, number}",
-    "roundSection": {
-      "title": "Опрос ИИ",
-      "progress": "{done, number} из {total, number}",
-      "waiting": "{count, plural, one {# ингредиент ждёт} few {# ингредиента ждут} many {# ингредиентов ждут} other {# ингредиента ждут}}"
-    },
-    "reviewing": "Спрашиваем ИИ…",
-    "aiOutcomes": {
-      "parent": "ИИ поместил {name} в {of}.",
-      "distinct": "По мнению ИИ, {name} является отдельным продуктом.",
-      "unsure": "ИИ всё ещё не уверен, что такое {name}.",
-      "skippedNotFlagged": "{name} уже не был помечен.",
-      "skippedForbidden": "{name} вы не можете менять.",
-      "skippedNotFound": "{name} исчез, пока ИИ до него дошёл.",
-      "failed": "Запрос о {name} не удался.",
-      "merge": "ИИ объединил {name} с {into}.",
-      "rename": "ИИ переименовал {name} в {to}.",
-      "decided": "Решение о {name} уже принято, поэтому ИИ его не трогает.",
-      "undone": "Ответ ИИ для {name} совпадает с отменённым изменением, поэтому ничего не изменилось."
-    },
-    "aiTrace": {
-      "readAs": "ИИ прочитал это как «{name}».",
-      "compared": "Сравнивалось с: {names}.",
-      "comparedNothing": "Не было известного продукта для сравнения.",
-      "noFood": "ИИ не нашёл в этом названии продукта."
-    },
     "addAlias": "Добавить перевод",
     "removeAlias": "Удалить {alias}",
     "mergeInto": "Объединить с…",
@@ -571,28 +528,17 @@
       "none": "Больше ничего это не использует"
     },
     "keepAlias": "Оставить {alias}",
-    "reportOutcomes": {
-      "parent": "Под родителем",
-      "distinct": "Отдельный продукт",
-      "unsure": "Не уверен",
-      "skipped": "Пропущено",
-      "failed": "Ошибка",
-      "merge": "Объединить"
-    },
     "expandKinds": "Показать виды {name}",
     "collapseKinds": "Скрыть виды {name}",
     "layoutSection": "Вид",
     "asTree": "Иерархический вид",
     "showOnly": "Показывать только",
     "standaloneOnly": "Без родителя и видов",
-    "checkWithAI": "Проверить с ИИ",
-    "checkAllWithAI": "Проверить эти с ИИ",
     "changedByAI": {
       "title": "Изменено ИИ",
       "open": "{count, plural, =0 {Изменено ИИ} other {Изменено ИИ · проверить: #}}",
       "unsure": "Не уверен",
       "sure": "Изменено",
-      "unchanged": "Без изменений",
       "empty": "За последний месяц ИИ ничего не изменил.",
       "keep": "Оставить",
       "undo": "Отменить",
@@ -600,13 +546,6 @@
       "parent": "Помещено в {of}",
       "parentFromName": "Помещено в {of} по названию",
       "plainName": "Переименовано из {from}"
-    },
-    "skippedReasons": {
-      "forbidden": "Not yours to edit",
-      "notFound": "No longer exists",
-      "settled": "Название уже закреплено",
-      "decided": "Уже решено",
-      "undone": "Отменено ранее"
     },
     "icon": {
       "change": "Изменить значок",
@@ -979,8 +918,6 @@
       "automaticIngredients": "Автоматически для новых ингредиентов",
       "automaticIngredientsDescription": "Что происходит, когда в каталог добавляются новые ингредиенты.",
       "automaticIngredientsKinds": {
-        "plainName": "Очистить название",
-        "plainNameDescription": "Убрать всё, что не является продуктом, например количества и коды упаковки",
         "icon": "Нарисовать значок",
         "iconDescription": "Только для продукта без значка, даже без значка родителя"
       },
@@ -1212,8 +1149,7 @@
         "image-generation": "Генерация изображений",
         "store-lookup": "Поиск в магазине",
         "ingredient-review": "Спросить ИИ об ингредиентах",
-        "ingredient-icons": "Рисование значков ингредиентов",
-        "new-ingredients": "Новые ингредиенты"
+        "ingredient-icons": "Рисование значков ингредиентов"
       },
       "summary": {
         "failed": "{count} failed"

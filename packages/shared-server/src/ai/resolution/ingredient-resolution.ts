@@ -14,7 +14,7 @@
 import { z } from "zod";
 
 import type { IngredientCandidate } from "@norish/db/repositories/ingredient-aliases";
-import type { FlagReason, ModelTokenEstimate } from "@norish/shared/contracts/ingredient-catalogue";
+import type { FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import {
   findIngredientCandidates,
   findIngredientCandidatesById,
@@ -29,14 +29,8 @@ import { OperationTimeoutError } from "@norish/shared/lib/error-extensions";
 import { foldName } from "@norish/shared/lib/fold-name";
 import { withTimeout } from "@norish/shared/lib/with-timeout";
 
-import type { TokenEstimate } from "../runtime/runtime";
 import { isCredentialRejection } from "../runtime/errors";
-import {
-  decide,
-  estimateDecisionInputTokens,
-  estimateStructuredInputTokens,
-  generateStructured,
-} from "../runtime/runtime";
+import { decide, generateStructured } from "../runtime/runtime";
 
 /**
  * At or above: the Decision's pick is acted on — a text it names as a known
@@ -532,70 +526,4 @@ async function askLanguageModel(
   return answer.sure
     ? { kind: "new", kindOf, flagged: false, reason: null }
     : flaggedNew("ai-unsure", kindOf);
-}
-
-/**
- * What the answer to one request takes on top of what is sent: a small JSON
- * object. A model that reasons before it answers takes more.
- */
-const ANSWER_TOKENS = 50;
-
-/**
- * About how many tokens asking a person's question about these names takes
- * on each model it asks, a name on average, counted from what would be sent
- * rather than by asking: the reading and the comparison with the foods each
- * name's words find on the language model, and the Decision where one is in
- * use, each with its answer. Every request counts in full, though a sure
- * Decision spares the comparison and a reading the catalogue finds nothing
- * for spares both. `bare` is each text without its preparation, as
- * `askWhatFoodThisIs` takes it.
- */
-export async function estimateQuestionTokens(
-  names: readonly { text: string; bare: string }[]
-): Promise<ModelTokenEstimate[]> {
-  if (names.length === 0) return [];
-  const deciding = await isDecisionUseEnabled("ingredientResolution");
-  const byModel = new Map<string, TokenEstimate>();
-  const add = ({ provider, model, tokens }: TokenEstimate) => {
-    const key = `${provider}\u0000${model}`;
-    const seen = byModel.get(key) ?? { provider, model, tokens: 0 };
-
-    seen.tokens += tokens + ANSWER_TOKENS;
-    byModel.set(key, seen);
-  };
-
-  await Promise.all(
-    names.map(async ({ text, bare }) => {
-      const candidates = await findIngredientCandidates(
-        wordStarts(bare || text),
-        MAX_CANDIDATES,
-        null
-      );
-      const [reading, comparing, decision] = await Promise.all([
-        estimateStructuredInputTokens({
-          prompt: "ingredient-resolution",
-          schema: readingSchema,
-          sections: readingSections(text),
-        }),
-        estimateStructuredInputTokens({
-          prompt: "ingredient-resolution",
-          schema: languageModelAnswerSchema,
-          sections: comparingSections(text, candidates),
-        }),
-        deciding && candidates.length > 0
-          ? estimateDecisionInputTokens(foodChoice(text, candidates))
-          : null,
-      ]);
-
-      add(reading);
-      add(comparing);
-      if (decision) add(decision);
-    })
-  );
-
-  return [...byModel.values()].map(({ provider, model, tokens }) => ({
-    provider,
-    model,
-    perFood: Math.round(tokens / names.length),
-  }));
 }

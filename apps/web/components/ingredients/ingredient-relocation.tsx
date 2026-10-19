@@ -23,13 +23,11 @@ export type Relocation =
 export function IngredientRelocationPanel({
   relocation,
   ingredient,
-  busy,
   onConfirm,
   onClose,
 }: {
   relocation: Relocation | null;
   ingredient: { id: string; name: string };
-  busy: boolean;
   onConfirm: (relocation: Relocation, target: IngredientPick) => void;
   onClose: () => void;
 }) {
@@ -91,7 +89,6 @@ export function IngredientRelocationPanel({
               <Button
                 className="self-start"
                 data-testid="ingredient-relocation-new"
-                isDisabled={busy}
                 size="sm"
                 variant="ghost"
                 onPress={() => onConfirm(asked, { id: null })}
@@ -105,14 +102,13 @@ export function IngredientRelocationPanel({
       </Panel.Body>
       <Panel.Footer>
         <ActionButtonGroup>
-          <ActionButton action="cancel" isDisabled={busy} onPress={close}>
+          <ActionButton action="cancel" onPress={close}>
             {tActions("cancel")}
           </ActionButton>
           <ActionButton
             action="apply"
             data-testid="ingredient-relocation-confirm"
-            isDisabled={busy || !target || !asked}
-            isPending={busy}
+            isDisabled={!target || !asked}
             onPress={() => {
               if (asked && target) onConfirm(asked, target);
             }}

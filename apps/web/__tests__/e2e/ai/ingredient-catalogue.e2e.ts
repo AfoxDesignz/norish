@@ -4,8 +4,8 @@
  * What a household actually sees: a Dutch "ui" put in the Pantry leaves an
  * English recipe's "onion" off the list, because both are spellings of one
  * Ingredient; a food Norish was not sure about is marked on the Ingredients
- * page; AI's answer about a flagged food is made, listed on Changed by AI
- * and undone from there; merging it into the food that holds an Aisle Link
+ * page; AI asks about a food a recipe mints by itself, its merge listed on
+ * Changed by AI and undone from there; merging it into the food that holds an Aisle Link
  * files its grocery in that aisle; and a recipe line naming two foods puts
  * each on the list on its own. The scenario seeds a small catalogue of its own
  * rather than fetching Open Food Facts. The real Norish server, database,
@@ -21,7 +21,6 @@ import {
   seedCatalogue,
   seedStoreFiling,
   setParent,
-  settleNamesExcept,
 } from "./ingredient-catalogue-support";
 import { readGroceryNames, readPantryNames, seedRecipeWithIngredients } from "./pantry-support";
 
@@ -52,12 +51,6 @@ test.beforeAll(async ({ browser, aiStack }) => {
       ],
     },
     { name: "uitjes", aliases: [{ text: "uitjes", locale: "nl" }], flagged: true },
-    // Flagged too, for Ask AI to merge into garlic, so "uitjes" stays for the merge below.
-    {
-      name: "knoflookteentjes",
-      aliases: [{ text: "knoflookteentjes", locale: "nl" }],
-      flagged: true,
-    },
     {
       name: "garlic",
       aliases: [
@@ -234,14 +227,13 @@ test("a food Norish was not sure about is marked on the Ingredients page", async
   await expect(ingredientRow("uitjes").getByTestId("ingredient-flag-reason")).toBeVisible();
   await expect(ingredientRow("onion")).toHaveCount(0);
 
-  // The page offers to fix the catalogue at once; a food's own panel says why
-  // it is flagged and offers to ask about it alone.
-  await expect(page.getByTestId("ingredients-fix-catalogue")).toBeVisible();
+  // A food's own panel says why it is flagged; AI asks by itself, so only Mark distinct is offered.
   await ingredientRow("uitjes").getByTestId("ingredient-toggle").click();
   const opened = ingredientPanel("uitjes");
 
   await expect(opened.getByTestId("ingredient-flag-notice")).toBeVisible();
-  await expect(opened.getByTestId("ingredient-ask-ai")).toBeVisible();
+  await expect(opened.getByTestId("ingredient-mark-distinct")).toBeVisible();
+  await expect(opened.getByTestId("ingredient-ask-ai")).toHaveCount(0);
   await opened.getByRole("button", { name: "Close panel" }).click();
   await expect(opened).toBeHidden();
 });
@@ -261,18 +253,19 @@ test("the filters can show only the foods with neither parent nor kinds", async 
   await expect(ingredientRow("shallot")).toBeVisible();
   await expect(ingredientRow("onion")).toHaveCount(0);
   await expect(ingredientRow("red onion")).toHaveCount(0);
-  // The header offers to check them with AI, and a food's panel to check it alone.
-  await expect(page.getByTestId("ingredients-check-all-with-ai")).toBeVisible();
-  await ingredientRow("shallot").getByTestId("ingredient-toggle").click();
-  await expect(ingredientPanel("shallot").getByTestId("ingredient-check-with-ai")).toBeVisible();
-  await ingredientPanel("shallot").getByRole("button", { name: "Close panel" }).click();
 });
 
-test("Ask AI merges a flagged food, Changed by AI lists the merge, and Undo puts it back", async ({
+test("AI merges a food a recipe mints by itself, Changed by AI lists the merge, and Undo puts it back", async ({
   ai,
+  aiStack,
 }) => {
-  // The language model reads the name, then compares it with what that reading finds: garlic.
   ai.control.enqueue(
+    // The recipe's save asks what the line is, and is not sure it is garlic: a food of its own, flagged.
+    {
+      kind: "success",
+      content: JSON.stringify({ verdict: "new", food: null, sure: false, englishName: null }),
+    },
+    // Then AI's pass, with nobody asking: it reads the name, and compares it with garlic.
     {
       kind: "success",
       content: JSON.stringify({ englishName: "garlic", generalFood: null, sure: true }),
@@ -282,24 +275,41 @@ test("Ask AI merges a flagged food, Changed by AI lists the merge, and Undo puts
       content: JSON.stringify({ verdict: "same", food: 1, sure: true, englishName: "garlic" }),
     }
   );
-  await page.goto("/settings?tab=ingredients");
-  await page.getByTestId("ingredients-search").fill("knoflook");
-  await ingredientRow("knoflookteentjes").getByTestId("ingredient-toggle").click();
-  await ingredientPanel("knoflookteentjes").getByTestId("ingredient-ask-ai").click();
+  await callTrpc<string>(aiStack.baseURL, aiStack.ownerCookies, "recipes.create", {
+    name: "Knoflookbrood",
+    systemUsed: "metric",
+    servings: 2,
+    recipeIngredients: [
+      {
+        ingredientName: "knoflookteentjes",
+        ingredientId: null,
+        amount: null,
+        unit: null,
+        order: 0,
+      },
+    ],
+    steps: [],
+    tags: [],
+    cuisines: [],
+    categories: [],
+    images: [],
+    videos: [],
+  });
 
-  // AI makes its answer itself: merged away, the food's panel closes with its row.
-  await expect(ingredientPanel("knoflookteentjes")).toBeHidden({ timeout: 30_000 });
-  await expect(ingredientRow("knoflookteentjes")).toHaveCount(0);
-  await expect.poll(() => readIngredientOf("knoflookteentjes")).toBe("garlic");
+  // The pass merges it into garlic.
+  await expect.poll(() => readIngredientOf("knoflookteentjes"), { timeout: 30_000 }).toBe("garlic");
 
   // Changed by AI lists the merge under the food it joined, with Undo.
+  await page.goto("/settings?tab=ingredients");
   await page.getByTestId("ingredients-ai-changes-open").click();
   const panel = page.getByRole("dialog", { name: "Changed by AI" });
-  const merge = panel.getByTestId("ingredient-ai-change");
+  // Other specs in this database may have left changes of their own: this is the one.
+  const merge = panel
+    .getByTestId("ingredient-ai-change")
+    .filter({ hasText: "Merged knoflookteentjes into it" });
 
   await expect(merge).toHaveAttribute("data-kind", "merge");
   await expect(merge).toContainText("garlic");
-  await expect(merge).toContainText("Merged knoflookteentjes into it");
   // The panel is a phone's width on a desktop too; its rows never scroll it sideways.
   const panelBody = panel.locator('[data-slot="panel-body"]');
 
@@ -307,10 +317,10 @@ test("Ask AI merges a flagged food, Changed by AI lists the merge, and Undo puts
 
   await merge.getByTestId("ingredient-ai-change-undo").click();
   await expect(merge).toHaveCount(0);
-  await expect(panel.getByText("AI changed nothing in the last month.")).toBeVisible();
   await panel.getByRole("button", { name: "Close panel" }).click();
   // Its spelling is a food of its own again, back on the page.
   await expect.poll(() => readIngredientOf("knoflookteentjes")).toBe("knoflookteentjes");
+  await page.getByTestId("ingredients-search").fill("knoflook");
   await expect(ingredientRow("knoflookteentjes")).toBeVisible();
 });
 
@@ -386,64 +396,6 @@ test("a food nothing uses can be deleted, and so can one a grocery uses, which s
   await expect(page.locator('[data-grocery-name="red onion"]').first()).toBeVisible();
   // With no food it has no aisle, so it leaves its parent's.
   await expect.poll(() => rowsIn(AISLE)).toEqual(["uitjes"]);
-});
-
-test("cleaning names with AI renames each food to its plain name, listed on Changed by AI", async ({
-  ai,
-}) => {
-  const tonijn = await seedCatalogue([
-    {
-      name: "GR TONIJN UIT BLIK",
-      aliases: [{ text: "GR TONIJN UIT BLIK", locale: null }],
-      flagged: false,
-    },
-  ]);
-
-  await settleNamesExcept([tonijn["GR TONIJN UIT BLIK"]!]);
-  ai.control.enqueue({
-    kind: "success",
-    content: JSON.stringify({ plainName: "tonijn uit blik" }),
-  });
-  await page.goto("/settings?tab=ingredients");
-  await page.getByTestId("ingredients-search").fill("tonijn");
-  await expect(ingredientRow("GR TONIJN UIT BLIK")).toBeVisible();
-
-  // Fix catalogue asks first, saying how many names and about what cleaning them costs.
-  await page.getByTestId("ingredients-fix-catalogue").click();
-  const dialog = page.getByTestId("ingredients-fix-catalogue-dialog");
-  const names = dialog.getByTestId("ingredients-fix-catalogue-scope-name");
-
-  const flagged = dialog.getByRole("checkbox", { name: "Check flagged ingredients" });
-
-  await expect(names).toContainText(/1 ingredient · about [\d.,]+K? tokens/);
-  await expect(names.getByRole("checkbox", { name: "Clean names" })).toBeChecked();
-  // Only the names, so the model's one answer goes to the one question; whatever earlier tests
-  // left flagged waits. A HeroUI checkbox toggles from its label, not its hidden input.
-  if (await flagged.isChecked()) {
-    await dialog.getByText("Check flagged ingredients", { exact: true }).click();
-  }
-  await expect(flagged).not.toBeChecked();
-  await expect(dialog.getByTestId("ingredients-fix-catalogue-models")).toContainText(
-    "generic-openai · test-model"
-  );
-  ai.control.hold();
-  await dialog.getByTestId("ingredients-fix-catalogue-start").click();
-  await expect(dialog).toBeHidden();
-  await expect(page.getByTestId("ingredients-round-progress")).toContainText("Asking AI · 0 of 1");
-  ai.control.release();
-
-  // The round ends with Changed by AI open, the rename already made.
-  const panel = page.getByRole("dialog", { name: "Changed by AI" });
-
-  await expect(panel).toBeVisible({ timeout: 30_000 });
-  const rename = panel.getByTestId("ingredient-ai-change");
-
-  await expect(rename).toHaveAttribute("data-kind", "plain-name");
-  await expect(rename).toContainText("tonijn uit blik");
-  await expect(rename).toContainText("Renamed from GR TONIJN UIT BLIK");
-  await panel.getByRole("button", { name: "Close panel" }).click();
-  await expect(ingredientRow("tonijn uit blik")).toBeVisible();
-  await expect.poll(() => readIngredientOf("GR TONIJN UIT BLIK")).toBe("tonijn uit blik");
 });
 
 test("a recipe line naming two foods puts each on the list as a grocery of its own", async ({
