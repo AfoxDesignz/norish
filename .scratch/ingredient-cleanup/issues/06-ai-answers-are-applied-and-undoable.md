@@ -44,12 +44,16 @@ See `CONTEXT.md` (Flagged Ingredient, AI Change, Plain Name) and ADR-0037's firs
 - A parent the words of a new food's name guessed (mint, startup recheck) is an unsure parent change marked `fromWords`, replacing the `words` suggestion.
 - Keep and Undo take the tree lock before the change row, as the pass does; the other order deadlocked against a pass on the same food (`ai-changes.test.ts` reproduces it).
 - Ask AI, Find parent and both rounds now run the one pass (`askAIAbout`), which goes on to the Plain Name after a non-merge answer. Fix catalogue offers "Check flagged ingredients" and "Clean names".
+
+2026-10-19, Mike's review:
+
+- A Plain Name is always a sure change: a rename says nothing about which food it is, so it never flags (CONTEXT.md, Plain Name and Flagged Ingredient, say so now).
+- The seed adopting a flagged own food keeps it flagged while an unsure AI merge into it waits (`catalogue-seed.test.ts`).
+- Find parent with AI and Find parents with AI are "Check with AI" and "Check these with AI", since they run the whole question. A flagged food's panel shows only its flag's Ask AI, which is the same question.
 - The release notes and the Ingredients docs page are ticket 09's, with the other tickets' notes.
 
 Open, from the review (not done, for Mike):
 
-- The Plain Name reader has no sureness, so a rename is always a sure change. CONTEXT says an unsure rename flags its food; that needs a `sure` field in the plain-name answer schema.
 - An unsure "kind of X" at import files the food and flags it, but records no change behind the flag (rung 3's mint, ticket 07's ground).
-- The seed adopting a flagged own food clears its flag and drops its open parent changes, but leaves open merges into it listed as "Not sure".
 - `estimateCleanTokens` moved from `plain-names.ts` to `review.ts` to break an import cycle.
 
