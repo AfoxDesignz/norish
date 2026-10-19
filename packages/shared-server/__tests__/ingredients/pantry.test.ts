@@ -103,8 +103,8 @@ describe("the Pantry through aliases", () => {
     expect(await listPantryIngredientsByUserIds([userId])).toEqual([]);
   });
 
-  it("keeps each food a typed text joins together, and the first it offers instead", async () => {
-    const [zout, peper, boter] = await recipeLines("zout", "peper", "boter", "olie");
+  it("keeps each food a typed text joins, together or offered instead", async () => {
+    const [zout, peper, boter, olie] = await recipeLines("zout", "peper", "boter", "olie");
     const id = crypto.randomUUID();
     const added = await addToPantry(id, { userId, userIds: [userId], name: "zout en peper" });
 
@@ -114,8 +114,11 @@ describe("the Pantry through aliases", () => {
     ]);
     await expect(
       addToPantry(crypto.randomUUID(), { userId, userIds: [userId], name: "boter of olie" })
-    ).resolves.toMatchObject([{ item: { ingredientId: boter!.ingredientId }, created: true }]);
-    expect(await pantry()).toHaveLength(3);
+    ).resolves.toMatchObject([
+      { item: { ingredientId: boter!.ingredientId }, created: true },
+      { item: { ingredientId: olie!.ingredientId }, created: true },
+    ]);
+    expect(await pantry()).toHaveLength(4);
   });
 
   it("keeps a picked food as picked, once per household", async () => {

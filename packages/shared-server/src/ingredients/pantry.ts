@@ -5,14 +5,14 @@ import { resolveIngredients, typedParts, writeResolved } from "./resolver";
 
 /**
  * Put what a member typed in the Pantry, resolved like a recipe line: each food its words join
- * (`typedParts`), all or none. A food the household has answers `created: false`.
+ * (`typedParts`), alternatives too, all or none. A food the household has answers `created: false`.
  */
 export async function addToPantry(
   id: string,
   input: { userId: string; userIds: string[]; name: string }
 ): Promise<PantryAdded[]> {
   const typed: { id?: string; name: string } = { id, name: input.name };
-  const [parts = [typed]] = await typedParts([typed], { alternatives: "first" });
+  const [parts = [typed]] = await typedParts([typed], { alternatives: "each" });
 
   return await writeResolved(
     () =>

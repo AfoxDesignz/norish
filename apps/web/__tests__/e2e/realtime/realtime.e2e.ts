@@ -183,7 +183,7 @@ test("a typed name joining two foods is a grocery each, in both browsers", async
   }
 });
 
-test("a rename, a repeating grocery and a Pantry add joining two foods are a row per food", async () => {
+test("a rename, a repeating grocery and a Pantry add naming two foods are a row per food", async () => {
   const names = (rows: Array<{ name: string | null }>) => rows.map((row) => row.name);
   const list = () =>
     callQuery<{
@@ -228,10 +228,11 @@ test("a rename, a repeating grocery and a Pantry add joining two foods are a row
       })
     ).ok
   ).toBe(true);
+  // The Pantry keeps both foods a member offers as alternatives.
   expect(
     (
       await callMutation(pageA, stack.baseURL, "pantry.add", {
-        name: "realtime-kaas en realtime-ham",
+        name: "realtime-kaas or realtime-ham",
       })
     ).ok
   ).toBe(true);
@@ -251,7 +252,7 @@ test("a rename, a repeating grocery and a Pantry add joining two foods are a row
   const joined = [
     "realtime-boter en realtime-olie",
     "realtime-ui en realtime-knoflook",
-    "realtime-kaas en realtime-ham",
+    "realtime-kaas or realtime-ham",
   ];
   const { groceries, recurringGroceries } = await list();
   const stored = [...names(groceries), ...names(recurringGroceries), ...names(await pantry())];
