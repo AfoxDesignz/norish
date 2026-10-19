@@ -12,15 +12,46 @@ See `CONTEXT.md` (Junk Line, AI Change) and ADR-0037's 2026-10-17 amendments.
 
 **Blocked by:** 01, 04, 07
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A sure "several foods" answer splits "Dijon or yellow mustard" into two alternatives. An unsure one leaves one food.
-- [ ] A sure split of an existing joined food re-points all its rows and removes the food.
-- [ ] A sure tool answer keeps "deegroller" in its recipe with no food, and it is skipped when the recipe is added to the groceries.
-- [ ] A sure junk answer removes "melted" from "snickers ice cream bars", lists it on Changed by AI, and Undo restores it at its position. Asked again, it is not deleted.
-- [ ] Junk at import: the line is not stored, and the AI Change lists it.
-- [ ] An unsure junk answer flags the food with Delete as junk. Using it deletes the food and its lines, each restorable.
-- [ ] A typed grocery that AI says names nothing stays on the list.
-- [ ] Resolver and pass tests cover each answer, sure and unsure, against a real database with AI mocked at the runtime.
-- [ ] Browser: a junk line deleted by the AI stub is restored from Changed by AI.
-- [ ] All `CONTRIBUTING.md` gates pass.
+- [x] A sure "several foods" answer splits "Dijon or yellow mustard" into two alternatives. An unsure one leaves one food.
+- [x] A sure split of an existing joined food re-points all its rows and removes the food.
+- [x] A sure tool answer keeps "deegroller" in its recipe with no food, and it is skipped when the recipe is added to the groceries.
+- [x] A sure junk answer removes "melted" from "snickers ice cream bars", lists it on Changed by AI, and Undo restores it at its position. Asked again, it is not deleted.
+- [x] Junk at import: the line is not stored, and the AI Change lists it.
+- [x] An unsure junk answer flags the food with Delete as junk. Using it deletes the food and its lines, each restorable.
+- [x] A typed grocery that AI says names nothing stays on the list.
+- [x] Resolver and pass tests cover each answer, sure and unsure, against a real database with AI mocked at the runtime.
+- [x] Browser: a junk line deleted by the AI stub is restored from Changed by AI.
+- [x] All `CONTRIBUTING.md` gates pass.
+
+## Comments
+
+2026-10-19, implemented:
+
+- Rung 3 has three more answers. The Decision offers "a tool" and "nothing"; its "several foods" defers to the language model, which alone names the parts (`parts`, `joined`). The thorough question also compares a name its reading calls no food, with no candidates, so the pass can hear "tool" or "nothing".
+- At import, sure: several resolves each part as a text of its own (a part AI calls several again is minted whole, flagged); a tool names no food; nothing is a Junk Line, which the recipe write leaves out and records under its recipe (`ingredient_ai_changes.recipe_id`, migration 0079). Unsure, each is a flagged mint: `ai-unsure`, `ai-tool`, `ai-junk`. A Grocery or Pantry text names the first food of several (only that part is resolved), and no food for a tool or nothing.
+- In the pass, sure: a split re-points every line (the parts in its food's place, joined unless it was already), grocery and recurring grocery (the first part; "together" adds a row per other part, named for it) and Pantry Ingredient (each part), then deletes the food. A tool deletes the food as a `tool` AI Change. Nothing deletes its lines as Junk Lines, a change each, and the food, as a `not-a-food` change where anything else still named it (a joined line, a grocery). Undo mints the food again under its own ids and points its rows back; a Junk Line comes back at its order, with those of its foods still there.
+- Memory: an undone tool or not-a-food keeps AI off that food. An undone Junk Line remembers its clean spelling: AI's "nothing" for it then names no food at import, and leaves the food alone in the pass.
+- AI never deletes a food a Pantry Ingredient names, since a Pantry Ingredient cannot name no food: the food stays, flagged with the doubt.
+- On an `ai-junk` flag the panel's Delete is Delete as junk (`remove` with `asJunk`, the same dialog). Not on `ai-tool`: a tool's lines stay, which the plain Delete does. It deletes lines only in recipes the person may edit; the rest lose the food, as with Delete.
+- A Junk Line is listed only to those who may see its recipe, and undone under the recipe's edit policy.
+- The `ai` E2E run had one red on the first run (a Redis stall under swap: every worker's socket timed out at once, 8.2 of 9.2 GB swap used). The file then passed 36/36 with `--repeat-each=3`.
+
+2026-10-19, review fixes:
+
+- The prompt and the Decision keep anything bought in a shop out of "tool" and "nothing" (baking paper, foil, toilet paper, dish soap), since non-food purchases stay Ingredients; "baking paper" had been a tool example.
+- The pass resolves a split's parts as import does (a part split again is minted whole, flagged), and checks again that no person decided about the food before minting them.
+- A typed text AI splits resolves only its first part, so no part is minted that nothing names.
+- One place deletes and records Junk Lines (`deleteJunkLines`) and one builds them (`junkLine`); the split and the deleted-food snapshot read `rowsNaming`; `distinctFoods` (shared) replaces four copies of the dedupe. The AI Change table and its Undo types moved to `schema/ingredient-ai-changes.ts`, so `DeletedLine` takes its join and system from the enums. `mayEditIngredientRow` is `mayEditOwnedRow`, since a Junk Line's recipe policy uses it too. A text kept as no Junk Line is skipped explicitly, not dressed as a tool.
+- Not changed: the module headers of `resolver.ts` and `ingredient-resolution.ts` stay long (a phrase in each was updated); the four words for junk (`nothing`, `not-a-food`, `ai-junk`, Junk Line) are the spec's; the switches on an answer's kind differ per layer (parse, sureness, act at import, act on a food).
+
+Open, for Mike:
+
+- AI never deletes a food a Pantry Ingredient names, against the spec's "leaves groceries and pantry rows pointing at no food": a Pantry Ingredient has no text of its own, so with no food it would name nothing. The food stays, flagged.
+- A name no known food shares a word with is not asked about at import (rung 3's rule, to keep a shopper's add fast), so its Junk Line goes in the pass moments after the mint, not at import.
+- A typed grocery or pantry text that only AI can split stays one row naming its first food; the words already split the common ones ("zout en peper"). Splitting it into rows would ask AI before `typedParts`, which today asks nothing.
+- A split is not an AI Change, so it has no Undo: putting a grocery split in two back together needs the rows the split made remembered. The spec's kinds list has no split, so this follows it; say if a split should be undoable.
+- A grocery split "together" that came from a recurring grocery: the extra rows recur with neither recurring row (`ponytail:` in `splitCatalogueIngredient`).
+
+For ticket 09: release notes (AI deletes tools, junk lines and foods naming nothing, and splits names it is sure are several; Delete as junk), and the Ingredients docs page (Changed by AI lists deleted foods and lines; the `ai-tool` and `ai-junk` flags).
