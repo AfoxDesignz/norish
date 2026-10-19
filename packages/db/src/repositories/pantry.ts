@@ -2,16 +2,13 @@ import type { SQL } from "drizzle-orm";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import z from "zod";
 
-import type { DbTransaction } from "@norish/db/drizzle";
+import type { Db } from "@norish/db/drizzle";
 import type { PantryIngredientDto, PantrySuggestionDto } from "@norish/shared/contracts";
 import { db } from "@norish/db/drizzle";
 import { ingredients, pantryIngredients } from "@norish/db/schema";
 import { PantryIngredientSelectSchema, PantrySuggestionSchema } from "@norish/shared/contracts/zod";
 
 import { findLocaleNames } from "./ingredient-aliases";
-
-/** The connection a caller is already inside, or the shared one. */
-type Db = typeof db | DbTransaction;
 
 const PantryIngredientsSchema = z.array(PantryIngredientSelectSchema);
 

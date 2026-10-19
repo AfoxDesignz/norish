@@ -1,7 +1,7 @@
 import type { SQL } from "drizzle-orm";
 import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 
-import type { DbTransaction } from "@norish/db/drizzle";
+import type { Db, DbTransaction } from "@norish/db/drizzle";
 import { db } from "@norish/db/drizzle";
 import {
   aisleLinks,
@@ -107,7 +107,7 @@ const MAX_DEPTH = 64;
  * parent, and so on. An Ingredient with no parent answers an empty list.
  */
 async function ancestorsOf(
-  tx: typeof db | DbTransaction,
+  tx: Db,
   ids: readonly string[]
 ): Promise<Map<string, string[]>> {
   const wanted = Array.from(new Set(ids));
@@ -138,7 +138,7 @@ async function ancestorsOf(
 /** Every ancestor of each Ingredient, nearest first; read through `tx` when an edit is asking. */
 export async function findIngredientAncestors(
   ids: readonly string[],
-  tx: typeof db | DbTransaction = db
+  tx: Db = db
 ): Promise<Map<string, string[]>> {
   return await ancestorsOf(tx, ids);
 }

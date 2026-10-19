@@ -1,6 +1,6 @@
 import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
-import type { DbTransaction } from "@norish/db/drizzle";
+import type { Db } from "@norish/db/drizzle";
 import { db } from "@norish/db/drizzle";
 import { ingredientAliases, ingredients, recipeIngredientFoods } from "@norish/db/schema";
 
@@ -94,7 +94,7 @@ function toNode(row: {
  * meanwhile. Whether a row was written.
  */
 export async function setIngredientIcon(
-  tx: DbTransaction | typeof db,
+  tx: Db,
   id: string,
   icon: string | null,
   { unlessSet = false }: { unlessSet?: boolean } = {}

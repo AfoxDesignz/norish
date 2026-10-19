@@ -3,7 +3,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import Fuse from "fuse.js";
 import z from "zod";
 
-import type { DbTransaction } from "@norish/db/drizzle";
+import type { Db } from "@norish/db/drizzle";
 import type {
   AisleDto,
   IngredientStorePreferenceDto,
@@ -45,7 +45,7 @@ const FUSE_OPTIONS: IFuseOptions<IngredientStorePreferenceDto & { ingredientName
  */
 async function withAisles(
   rows: (typeof stores.$inferSelect)[],
-  tx: typeof db | DbTransaction = db
+  tx: Db = db
 ): Promise<StoreDto[]> {
   const aisles = await listAislesByStoreIds(
     rows.map((row) => row.id),

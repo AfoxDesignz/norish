@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-import type { DbTransaction } from "@norish/db/drizzle";
+import type { Db } from "@norish/db/drizzle";
 import type {
   SuggestionKind,
   SuggestionSource,
@@ -139,7 +139,7 @@ export async function deleteIngredientSuggestion(id: string): Promise<void> {
 /** Drop whatever AI proposed for an Ingredient, or only a proposal of `kind`: a person has settled it. */
 export async function deleteSuggestionFor(
   ingredientId: string,
-  tx: typeof db | DbTransaction = db,
+  tx: Db = db,
   kind?: SuggestionKind
 ): Promise<void> {
   await tx

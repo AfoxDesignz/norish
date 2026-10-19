@@ -36,6 +36,9 @@ export type DbTransaction = Parameters<
   Parameters<NodePgDatabase<typeof schema>["transaction"]>[0]
 >[0];
 
+/** The connection a caller is already inside, or the shared one. */
+export type Db = typeof db | DbTransaction;
+
 /**
  * Run repository operations inside a single database transaction without
  * exposing the raw client to callers outside the db package.
