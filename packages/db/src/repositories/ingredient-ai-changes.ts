@@ -152,6 +152,14 @@ export async function keepOpenAIChangesOf(tx: Db, ingredientId: string): Promise
     .where(and(eq(ingredientAIChanges.ingredientId, ingredientId), open));
 }
 
+/** Make a food's open changes sure: the seed vouched for the food, so none of them flags it. */
+export async function vouchForOpenAIChanges(tx: Db, ingredientId: string): Promise<void> {
+  await tx
+    .update(ingredientAIChanges)
+    .set({ sure: true })
+    .where(and(eq(ingredientAIChanges.ingredientId, ingredientId), open));
+}
+
 /**
  * Drop a food's open parent changes, which a newer answer replaces; returns the parent the
  * oldest of them found the food under.

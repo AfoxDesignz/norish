@@ -48,7 +48,7 @@ See `CONTEXT.md` (Flagged Ingredient, AI Change, Plain Name) and ADR-0037's firs
 2026-10-19, Mike's review:
 
 - A Plain Name is always a sure change: a rename says nothing about which food it is, so it never flags (CONTEXT.md, Plain Name and Flagged Ingredient, say so now).
-- The seed adopting a flagged own food keeps it flagged while an unsure AI merge into it waits (`catalogue-seed.test.ts`).
+- The seed is always right: a flagged own food it adopts loses its flag, and AI's unsure merges into it become sure, still listed with Undo (`catalogue-seed.test.ts`).
 - Find parent with AI and Find parents with AI are "Check with AI" and "Check these with AI", since they run the whole question. A flagged food's panel shows only its flag's Ask AI, which is the same question.
 - The release notes and the Ingredients docs page are ticket 09's, with the other tickets' notes.
 

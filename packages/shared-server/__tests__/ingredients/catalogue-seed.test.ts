@@ -199,20 +199,18 @@ describe("the ingredient catalogue seed", () => {
       });
     });
 
-    it("keeps an adopted Ingredient flagged while an unsure AI merge into it waits", async () => {
+    it("vouches for an adopted Ingredient's unsure AI merges too: no flag, each sure, still to undo", async () => {
       const mine = await resolve("Onion");
       const rings = await resolve("uienringen");
 
       await mergeByAI(rings.ingredientId, mine.ingredientId, false);
       await applySeedFile(excerpt);
 
-      // The seed vouches for the food, not for the spelling AI was unsure belongs to it.
       await expect(ingredientFor(rings.aliasId)).resolves.toMatchObject({
         id: mine.ingredientId,
-        flagged: true,
-        flagReason: "ai-unsure",
+        flagged: false,
       });
-      expect(await listAIChanges()).toMatchObject([{ sure: false, kept: false }]);
+      expect(await listAIChanges()).toMatchObject([{ sure: true, kept: false }]);
     });
 
     it("keeps an adopted Ingredient's own name where another Ingredient holds the entry's", async () => {

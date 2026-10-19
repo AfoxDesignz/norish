@@ -14,8 +14,8 @@ import {
 
 import {
   recordWordsParent,
-  refreshAIFlag,
   takeOpenParentChanges,
+  vouchForOpenAIChanges,
   wasParentUndone,
 } from "./ingredient-ai-changes";
 import { ingredientIsNamed } from "./ingredient-catalogue";
@@ -208,9 +208,9 @@ export async function applyIngredientSeed(entries: readonly SeedEntry[]): Promis
             version: sql`${ingredients.version} + 1`,
           })
           .where(eq(ingredients.id, row.id));
-        // Where its words would file it is the seed's to say now; an unsure merge into it still waits.
+        // The seed vouches for the food: it files it, and AI's merges into it are sure.
         await takeOpenParentChanges(tx, row.id);
-        await refreshAIFlag(tx, row.id, { unsure: false });
+        await vouchForOpenAIChanges(tx, row.id);
         outcome.adopted += 1;
       } else {
         outcome.absorbed += 1;
