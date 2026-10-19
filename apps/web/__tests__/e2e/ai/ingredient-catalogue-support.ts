@@ -112,21 +112,6 @@ export function setParent(childId: string, parentId: string): Promise<void> {
   });
 }
 
-/** A suggestion waiting on a person, as an earlier question of AI would have left it. */
-export function seedSuggestion(
-  ingredientId: string,
-  kind: "merge" | "parent" | "distinct",
-  targetId: string | null
-): Promise<void> {
-  return withDatabase(async (database) => {
-    await database.query(
-      `insert into ingredient_suggestions (ingredient_id, kind, target_id, considered, source)
-       values ($1, $2, $3, '[]'::jsonb, 'ai')`,
-      [ingredientId, kind, targetId]
-    );
-  });
-}
-
 /** Settle every name but these foods', as if AI or a person had named them, so a round of Clean names asks about these alone. */
 export function settleNamesExcept(ingredientIds: readonly string[]): Promise<void> {
   return withDatabase(async (database) => {

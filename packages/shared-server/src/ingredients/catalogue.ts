@@ -11,12 +11,11 @@
  *   administrator bypasses the policy, as for recipes.
  *
  * Renaming, re-parenting or marking a Flagged Ingredient distinct clears its
- * flag: looking after it counts as reviewing it. Re-parenting or marking
- * distinct also settles whatever AI suggested for it, as a merge does by
- * taking the food away.
+ * flag: looking after it counts as reviewing it, and keeps the AI Changes
+ * that flagged it. Each also keeps AI from asking about the food again.
  *
  * Each edit is one transaction: the owner lookup, the policy check, the
- * locks, the write and the suggestion it settles, all through its `tx`. The
+ * locks, the write and the AI Changes it keeps, all through its `tx`. The
  * repositories answer data; what that means as a refusal is decided here.
  * Every edit announces the Ingredients it changed itself (`changes.ts`).
  */
@@ -35,11 +34,13 @@ import type {
 } from "@norish/shared/lib/ingredient-search";
 import { withTransaction } from "@norish/db/drizzle";
 import { isConstraintViolation } from "@norish/db/repositories/constraint-violation";
+import { keepOpenAIChangesOf } from "@norish/db/repositories/ingredient-ai-changes";
 import { findLocaleNames } from "@norish/db/repositories/ingredient-aliases";
 import {
   deleteCatalogueAlias,
   deleteCatalogueIngredient,
   findCatalogueAliasOwner,
+  findCatalogueIngredient,
   findCatalogueIngredientOwner,
   findIngredientIdByFold,
   insertCatalogueAlias,
@@ -60,7 +61,6 @@ import {
   moveCatalogueAlias,
   setCatalogueIngredientParent,
 } from "@norish/db/repositories/ingredient-relocation";
-import { deleteSuggestionFor } from "@norish/db/repositories/ingredient-suggestions";
 import { getIngredientPermissionPolicy } from "@norish/shared-server/config/server-config-loader";
 import { claimOwnIcon } from "@norish/shared-server/media/ingredient-icon";
 import { isFlagReason } from "@norish/shared/contracts/ingredient-catalogue";
@@ -273,11 +273,13 @@ export interface CatalogueEdit {
 
 /**
  * Run an edit as one unit: the owner lookup, the lock, the write and the
- * suggestion it settles all read and write through the one `tx`, so a
+ * AI Changes it keeps all read and write through the one `tx`, so a
  * refusal anywhere undoes the whole edit. Once it has committed, the
  * Ingredients it changed are announced.
  */
-async function inEdit<T extends CatalogueEdit>(run: (tx: DbTransaction) => Promise<T>): Promise<T> {
+export async function inEdit<T extends CatalogueEdit>(
+  run: (tx: DbTransaction) => Promise<T>
+): Promise<T> {
   const edit = await withTransaction(run);
 
   await ingredientChanges().changed(edit.changed);
@@ -286,7 +288,7 @@ async function inEdit<T extends CatalogueEdit>(run: (tx: DbTransaction) => Promi
 }
 
 /** A write the database refused on a unique constraint (`23505`), as this edit's refusal. */
-async function refusedOn<T>(refusal: CatalogueRefusal, write: () => Promise<T>): Promise<T> {
+export async function refusedOn<T>(refusal: CatalogueRefusal, write: () => Promise<T>): Promise<T> {
   try {
     return await write();
   } catch (error) {
@@ -296,7 +298,7 @@ async function refusedOn<T>(refusal: CatalogueRefusal, write: () => Promise<T>):
 }
 
 /** Refuse unless the row exists and `actor` may edit it, whoever owns it. */
-async function assertMayEdit<T extends CatalogueOwner>(
+export async function assertMayEdit<T extends CatalogueOwner>(
   actor: CatalogueActor,
   row: T | null
 ): Promise<T> {
@@ -316,6 +318,11 @@ async function assertMayEditIngredient(
   ingredientId: string
 ): Promise<void> {
   await assertMayEdit(actor, await findCatalogueIngredientOwner(tx, ingredientId));
+}
+
+/** The Ingredient, if `actor` may edit it; refused otherwise. */
+export async function editableIngredient(actor: CatalogueActor, ingredientId: string) {
+  return await assertMayEdit(actor, await findCatalogueIngredient(ingredientId));
 }
 
 /**
@@ -401,8 +408,8 @@ async function renameIngredientIn(
   );
 
   if (!renamed) throw new CatalogueEditError("not-found");
-  // A person's own name settles it: a rename AI proposed is moot.
-  await deleteSuggestionFor(ingredientId, tx, "rename");
+  // Naming the food is looking after it: what AI was unsure of is the person's now.
+  await keepOpenAIChangesOf(tx, ingredientId);
   const spelling = cleanSpelling(cleaned);
 
   if (spelling) {
@@ -419,7 +426,7 @@ async function renameIngredientIn(
 
 /**
  * Set or clear an Ingredient's Parent Ingredient, which clears its flag and
- * settles what AI suggested for it. Follows `edit` on the Ingredient; the
+ * keeps what AI was unsure of. Follows `edit` on the Ingredient; the
  * parent is only pointed at, so its own policy is not asked. A parent that
  * would close a cycle is refused.
  */
@@ -454,7 +461,7 @@ async function setParentIn(
   const [previous] = (await findIngredientAncestors([ingredientId], tx)).get(ingredientId) ?? [];
 
   await setCatalogueIngredientParent(tx, ingredientId, parentId);
-  await deleteSuggestionFor(ingredientId, tx);
+  await keepOpenAIChangesOf(tx, ingredientId);
 
   return {
     changed: [
@@ -498,7 +505,7 @@ export async function sweepUnusedIngredients(): Promise<{ deleted: number }> {
 
 /**
  * Mark a Flagged Ingredient distinct: Norish's doubt was unfounded, and what
- * AI suggested for it is settled. The decision is kept, so Norish never
+ * AI was unsure of is kept. The decision is kept, so Norish never
  * merges it later. Follows `edit`.
  */
 export async function markDistinct(
@@ -510,7 +517,7 @@ export async function markDistinct(
     if (!(await keepIngredientDistinct(tx, ingredientId))) {
       throw new CatalogueEditError("not-found");
     }
-    await deleteSuggestionFor(ingredientId, tx);
+    await keepOpenAIChangesOf(tx, ingredientId);
 
     return { changed: [ingredientId] };
   });
@@ -519,7 +526,7 @@ export async function markDistinct(
 /**
  * Merge `sourceId` into `targetId`: every spelling of the source, and every
  * line behind them, now means the target, and the source is gone — which is
- * also what clears its flag and takes its suggestion. Needs `edit` on both.
+ * also what clears its flag. Needs `edit` on both.
  */
 export async function mergeIngredients(
   actor: CatalogueActor,

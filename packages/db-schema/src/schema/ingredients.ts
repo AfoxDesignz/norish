@@ -63,9 +63,9 @@ export interface NutritionCodes {
  * directory, named for its content. Null shows the icon Norish ships for
  * `offId`, else the nearest Parent Ingredient's.
  *
- * `nameSettled` says the name is its Plain Name for good: AI gave it, or a
- * person named the food, took a proposed name or turned one down. AI
- * proposes no other, and the recheck never renames it from the words.
+ * `nameSettled` says the name is its Plain Name for good: AI gave it, a person named the food, or
+ * a person undid AI's rename; AI gives no other, and the recheck never renames it from the words.
+ * `nameChosen` says a person named it, which, like `keptDistinct` and `parentChosen`, keeps AI off.
  *
  * `unusedSince` is when the nightly sweep first found nothing naming an own Ingredient; only
  * the sweep sets and clears it, and deletes the food after 90 days.
@@ -87,6 +87,7 @@ export const ingredients = pgTable(
     nutritionCodes: jsonb("nutrition_codes").$type<NutritionCodes>(),
     icon: text("icon"),
     nameSettled: boolean("name_settled").notNull().default(false),
+    nameChosen: boolean("name_chosen").notNull().default(false),
     unusedSince: timestamp("unused_since", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     ...versionColumn,
@@ -129,41 +130,39 @@ export const ingredientAliases = pgTable(
   ]
 );
 
+/** What Undo needs per kind of AI Change; a parent's `fromWords` says the name's words gave it, not AI. */
+export type AIChangeUndo =
+  | {
+      kind: "merge";
+      name: string;
+      ownerId: string | null;
+      aliasIds: string[];
+      parentId: string | null;
+    }
+  | { kind: "parent"; formerParentId: string | null; fromWords?: boolean }
+  | { kind: "plain-name"; formerName: string; name: string };
+
 /**
- * Ingredient Suggestions: what AI proposes for an Ingredient, waiting on a
- * person. AI never edits the catalogue itself; a sure answer lands here, and
- * a person confirms it (the edit is made as if they had made it) or
- * dismisses it (the row goes, the food stays as it was). One per Ingredient:
- * asking again replaces it. `kind` is `merge` (the food is `targetId`),
- * `parent` (the food is a kind of `targetId`), `distinct` (a food of its
- * own, no target) or `rename` (to `proposedName`, no target). Many foods may name the same target, so one general food
- * can gather many proposed kinds. Either food going away takes the
- * suggestion with it. `englishName` and `considered` are how AI got there,
- * shown beside the proposal. `source` says who proposed it: `ai`, or `words`
- * for a parent the resolver gave a mint from inside the words of its name
- * ("garlic cloves" under garlic), already filed and waiting to be confirmed
- * or dismissed — dismissing one of those takes the parent off again.
- * `proposedName` is the Plain Name AI read the food's name as: the new name
- * a `rename` proposes, or the name another food already spells that a
- * `merge` came from. Either answer settles the food's name.
+ * AI Changes (CONTEXT.md): listed under `ingredientId` (a merge's target), naming `targetId` (a
+ * parent). An undone row stays, so AI never makes that change again.
  */
-export const ingredientSuggestions = pgTable(
-  "ingredient_suggestions",
+export const ingredientAIChanges = pgTable(
+  "ingredient_ai_changes",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    kind: text("kind").notNull(),
     ingredientId: uuid("ingredient_id")
       .notNull()
       .references(() => ingredients.id, { onDelete: "cascade" }),
-    kind: text("kind").notNull(),
     targetId: uuid("target_id").references(() => ingredients.id, { onDelete: "cascade" }),
-    englishName: text("english_name"),
-    considered: jsonb("considered").$type<string[]>().notNull().default([]),
-    source: text("source").notNull().default("ai"),
-    proposedName: text("proposed_name"),
+    sure: boolean("sure").notNull(),
+    undo: jsonb("undo").$type<AIChangeUndo>().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    keptAt: timestamp("kept_at", { withTimezone: true }),
+    undoneAt: timestamp("undone_at", { withTimezone: true }),
   },
   (t) => [
-    uniqueIndex("uqidx_ingredient_suggestions_ingredient_id").on(t.ingredientId),
-    index("idx_ingredient_suggestions_target_id").on(t.targetId),
+    index("idx_ingredient_ai_changes_ingredient_id").on(t.ingredientId),
+    index("idx_ingredient_ai_changes_created_at").on(t.createdAt),
   ]
 );

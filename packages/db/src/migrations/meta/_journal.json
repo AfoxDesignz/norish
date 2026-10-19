@@ -547,6 +547,13 @@
       "when": 1792314211540,
       "tag": "0077_recipe_line_foods",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1792423694532,
+      "tag": "0078_ai_changes",
+      "breakpoints": true
     }
   ]
 }

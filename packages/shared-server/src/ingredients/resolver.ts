@@ -67,8 +67,8 @@ import { announceMinted } from "./minted";
  * guess from words may set a parent, never merge (ADR-0037 as amended by
  * ADR-0039). The spelling its text ends with ("ground cumin" under cumin) is
  * filed quietly; one found anywhere else in the words ("garlic cloves" under
- * garlic, "kale large stalks removed" under kale) is filed with a suggestion
- * beside it, for a person to confirm or dismiss.
+ * garlic, "kale large stalks removed" under kale) is an unsure AI Change,
+ * for a person to keep or undo.
  */
 
 /**
@@ -368,7 +368,11 @@ async function resolveTexts(
     if (!match) {
       // No answer means AI was not asked: the name is minted flagged.
       const asked = answers.get(sameFoodKey(spelling));
-      const answer = asked?.answer ?? flaggedNew("upgrade");
+      // An unsure "same" mints a flagged food of its own rather than joining one.
+      const answer =
+        asked?.answer.kind === "same" && !asked.answer.sure
+          ? flaggedNew("ai-unsure")
+          : (asked?.answer ?? flaggedNew("upgrade"));
       const wordsParent = async () => (asked ? asked.words : await parentFromWords(spelling));
       // The food AI named may have been merged away since the question was
       // asked; the text is then minted flagged rather than failing its save.
@@ -482,8 +486,8 @@ export async function resolveIngredient(
  * alias, so "onions, diced" first and "onions" or "onions, sliced" later are
  * the one food. Flagged unless a sure AI answer said it is a food of its own;
  * placed under the food AI said it is a kind of, where it said so, else under
- * the one its words suggest, with a suggestion to confirm where that was a
- * guess from inside the words.
+ * the one its words suggest, an unsure AI Change where that was a guess
+ * from inside the words.
  */
 async function mint(
   spelling: Spelling,
@@ -500,7 +504,7 @@ async function mint(
     flagged: flagReason !== null,
     flagReason,
     parentId: parent?.id ?? null,
-    suggestParent: parent !== null && !parent.sure,
+    parentUnsure: parent !== null && !parent.sure,
   });
 }
 

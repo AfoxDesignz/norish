@@ -401,16 +401,14 @@
     "askAI": "Ask AI",
     "fixCatalogue": "Fix catalogue",
     "askAIRound": {
-      "intro": "AI checks where flagged ingredients belong and fixes inconsistent names. Nothing changes until you confirm a suggestion.",
+      "intro": "AI checks where flagged ingredients belong, fixes inconsistent names and makes each change itself. You can undo any of them under Changed by AI.",
       "scopeLabel": "What to fix",
       "scopes": {
-        "unsuggested": "Check flagged ingredients",
-        "suggested": "Recheck suggestions",
+        "flagged": "Check flagged ingredients",
         "name": "Clean names"
       },
       "hints": {
-        "unsuggested": "Looks for duplicates, a child ingredient or unique.",
-        "suggested": "Rechecks flagged ingredients.",
+        "flagged": "Looks for duplicates, a child ingredient or unique.",
         "name": "Cleans ingredient names to just the ingredient. Flagged ingredients are included if the above checkbox is checked."
       },
       "scopeSize": "{count, plural, =0 {No ingredients} one {# ingredient · about {tokens} tokens} other {# ingredients · about {tokens} tokens}}",
@@ -425,21 +423,22 @@
     },
     "reviewing": "Asking AI…",
     "aiOutcomes": {
-      "parent": "AI suggests filing {name} as a kind of {of}.",
-      "distinct": "AI suggests {name} is a food of its own.",
+      "parent": "AI filed {name} under {of}.",
+      "distinct": "AI says {name} is a food of its own.",
       "unsure": "AI is still not sure what {name} is.",
-      "notFlagged": "{name} is not flagged.",
       "skippedNotFlagged": "{name} was no longer flagged.",
       "skippedForbidden": "{name} is not yours to change.",
       "skippedNotFound": "{name} was gone by the time AI reached it.",
       "failed": "Asking about {name} failed.",
-      "merge": "AI suggests merging {name} into {into}."
+      "merge": "AI merged {name} into {into}.",
+      "rename": "AI renamed {name} to {to}.",
+      "decided": "Someone already decided about {name}, so AI leaves it alone.",
+      "undone": "AI's answer for {name} is a change you undid, so nothing changed."
     },
     "aiTrace": {
       "readAs": "AI read it as “{name}”.",
       "compared": "Compared with: {names}.",
       "comparedNothing": "There was no known food to compare it with.",
-      "fromWords": "Based on name.",
       "noFood": "AI found no food in this name."
     },
     "addAlias": "Add a translation",
@@ -588,35 +587,26 @@
     "standaloneOnly": "Without parent or kinds",
     "findParent": "Find parent with AI",
     "findParentsAll": "Find parents with AI",
-    "suggestion": {
-      "merge": "Merge {name} into {into}",
-      "parent": "File {name} under {of}",
-      "distinct": "Keep {name} as a food of its own",
-      "filedFromName": "{name} filed under {of}",
-      "rename": "Rename {name} to {to}"
-    },
-    "suggestionsTitle": "Suggestions",
-    "suggestionsEmpty": "Nothing is waiting on you.",
-    "suggestionsNone": "No suggestion",
-    "suggestionsOpen": "{count, plural, =0 {Suggestions} one {# suggestion} other {# suggestions}}",
-    "suggestionsFailed": "{count, plural, one {# suggestion} other {# suggestions}} could not be applied: {reason}",
-    "confirmSuggestion": "Confirm",
-    "dismissSuggestion": "Dismiss",
-    "confirmAll": "Confirm all ({count})",
-    "dismissAll": "Dismiss all",
-    "suggestedByAI": "Suggested by AI",
-    "suggestedFromName": "Based on name",
-    "proposal": {
-      "merge": "Merge into {into}",
-      "parent": "File under {of}",
-      "distinct": "Food of its own",
-      "rename": "Rename to {to}"
+    "changedByAI": {
+      "title": "Changed by AI",
+      "open": "{count, plural, =0 {Changed by AI} other {Changed by AI · # to check}}",
+      "unsure": "Not sure",
+      "sure": "Changed",
+      "unchanged": "Not changed",
+      "empty": "AI changed nothing in the last month.",
+      "keep": "Keep",
+      "undo": "Undo",
+      "merge": "Merged {from} into it",
+      "parent": "Filed under {of}",
+      "parentFromName": "Filed under {of}, from its name",
+      "plainName": "Renamed from {from}"
     },
     "skippedReasons": {
-      "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
       "notFound": "No longer exists",
-      "settled": "Name already settled, or a suggestion waits"
+      "settled": "Name already settled",
+      "decided": "Already decided",
+      "undone": "Undone before"
     },
     "icon": {
       "change": "Change the icon",

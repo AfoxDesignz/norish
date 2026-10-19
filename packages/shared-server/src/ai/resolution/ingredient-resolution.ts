@@ -57,12 +57,13 @@ const WORD_START = 4;
 const SHOWN_ALIASES = 5;
 
 /**
- * What rung 3 made of a name: a known food it is, or a food of its own to
- * mint — flagged where nothing sure said so, and under a known food as its
- * Parent Ingredient where the answer was that it is a kind of that food.
+ * What rung 3 made of a name: a known food it is, sure or not, or a food of
+ * its own to mint — flagged where nothing sure said so, and under a known
+ * food as its Parent Ingredient where the answer was that it is a kind of
+ * that food.
  */
 export type AIResolution =
-  | { kind: "same"; ingredientId: string }
+  | { kind: "same"; ingredientId: string; sure: boolean }
   | { kind: "new"; kindOf: string | null; flagged: false; reason: null }
   | { kind: "new"; kindOf: string | null; flagged: true; reason: FlagReason };
 
@@ -246,7 +247,12 @@ async function settleWithWords(
   candidates: readonly IngredientCandidate[]
 ): Promise<AIResolution> {
   if (!words) return answer;
-  if (answer.kind === "same") return answer;
+  if (answer.kind === "same") {
+    if (answer.sure) return answer;
+
+    // An unsure "same" is weighed against the words as an unsure food of its own.
+    return settleWithWords(text, { answer: flaggedNew("ai-unsure"), from }, words, candidates);
+  }
   if (answer.kindOf === words.id)
     return { kind: "new", kindOf: words.id, flagged: false, reason: null };
   if (from === "decision" || !(await isDecisionUseEnabled("ingredientResolution"))) return answer;
@@ -410,7 +416,7 @@ function foodChoice(text: string, candidates: readonly IngredientCandidate[]) {
 
   candidates.forEach((candidate, index) => {
     criteria[`same_${index + 1}`] = `Is ${candidate.name}`;
-    options.set(`same_${index + 1}`, { kind: "same", ingredientId: candidate.id });
+    options.set(`same_${index + 1}`, { kind: "same", ingredientId: candidate.id, sure: true });
     criteria[`kind_${index + 1}`] = `Is a kind of ${candidate.name}`;
     options.set(`kind_${index + 1}`, {
       kind: "new",
@@ -500,8 +506,7 @@ function comparingSections(text: string, candidates: readonly IngredientCandidat
 
 /**
  * The language model's answer to the same question, under the administrator's
- * Prompt. It says itself whether it is sure, and an unsure answer mints a
- * flagged food rather than joining one.
+ * Prompt. It says itself whether it is sure.
  */
 async function askLanguageModel(
   text: string,
@@ -517,7 +522,9 @@ async function askLanguageModel(
   aiLogger.info({ text, ...answer }, "Language model answered what food a name is");
 
   if (answer.verdict === "same") {
-    return food && answer.sure ? { kind: "same", ingredientId: food.id } : flaggedNew("ai-unsure");
+    return food
+      ? { kind: "same", ingredientId: food.id, sure: answer.sure }
+      : flaggedNew("ai-unsure");
   }
 
   const kindOf = answer.verdict === "kind-of" ? (food?.id ?? null) : null;

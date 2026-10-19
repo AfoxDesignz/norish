@@ -21,14 +21,11 @@ import { FIX_PARTS } from "@norish/shared/contracts/ingredient-catalogue";
 /** What a part of the catalogue holds: how many foods, and what a food's question takes. */
 type PartSize = { count: number; tokens: ReviewTokenEstimate };
 
-/** Picked when the dialog first opens: every part but asking again, which replaces suggestions. */
-const DEFAULT_PARTS: readonly FixPart[] = ["unsuggested", "name"];
-
 /** How many foods a part holds, and what a food's question takes. */
 function sizeOf(review: ReviewScopeSummary, names: NameScopeSummary, part: FixPart): PartSize {
-  if (part === "name") return { count: names.foods, tokens: names.tokens };
-
-  return { count: review[part], tokens: review.tokens };
+  return part === "name"
+    ? { count: names.foods, tokens: names.tokens }
+    : { count: review.flagged, tokens: review.tokens };
 }
 
 /**
@@ -75,10 +72,9 @@ function RoundTokens({ sizes, testId }: { sizes: PartSize[]; testId: string }) {
 }
 
 /**
- * Asks before a round of Fix catalogue starts, and what it fixes, any parts
- * together in one round: the flagged ingredients no suggestion waits on,
- * asking what each is; the flagged ones that have one, asking again and
- * replacing it; and the names, asking for each unsettled name's Plain Name.
+ * Asks before a round of Fix catalogue starts, and what it fixes, either or
+ * both in one round: the flagged ingredients, asking what each is; and the
+ * names, asking for each unsettled name's Plain Name.
  * No food is in two parts. Each part says how many ingredients it holds, the
  * whole catalogue's rather than the screen's, and about how many tokens it
  * takes, side by side so they compare at a glance. Below them, the picked
@@ -106,7 +102,7 @@ export function FixCatalogueModal({
       ? new Map(FIX_PARTS.map((part) => [part, sizeOf(review.data, names.data, part)]))
       : null;
   // The person's pick stays for the next round, less any part with nothing left in it.
-  const [picked, setPicked] = useState<readonly FixPart[]>(DEFAULT_PARTS);
+  const [picked, setPicked] = useState<readonly FixPart[]>(FIX_PARTS);
   const parts = sizes ? picked.filter((part) => sizes.get(part)!.count > 0) : [];
 
   /** About how many tokens, compact: "2.4M". */

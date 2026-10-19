@@ -1,14 +1,6 @@
 /**
- * Ask AI about an Ingredient after the fact (ADR-0037): the question rung 3
- * asks of a new name, asked again of a food a person wants sorted out, with
- * the food itself left out of the candidates and a second look by the plain
- * food AI says it is. AI never edits the catalogue here: a sure answer is
- * recorded as a suggestion — merge into X, a kind of X, or a food of its own
- * — for a person to confirm or dismiss. A parent is proposed even when AI
- * was not sure of it; an unsure answer that names nothing leaves the flag,
- * with the reason brought up to date. The question always looks for a
- * parent: it asks what the food is a kind of, never what is a kind of it.
- * Follows `edit` on the Ingredient.
+ * The AI pass over a food already in the catalogue (ADR-0037, amended 2026-10-17): rung 3's
+ * thorough question, its answer made as an AI Change (`ai-changes.ts`), sure or not.
  */
 import type { FlaggedCatalogueIngredient } from "@norish/db/repositories/ingredient-catalogue";
 import type {
@@ -16,8 +8,6 @@ import type {
   ModelTokenEstimate,
   ReviewOutcome,
   ReviewReport,
-  ReviewVerdict,
-  SuggestionKind,
 } from "@norish/shared/contracts/ingredient-catalogue";
 import {
   findCatalogueIngredient,
@@ -25,17 +15,18 @@ import {
   listFlaggedCatalogueIngredients,
   setIngredientFlagReason,
 } from "@norish/db/repositories/ingredient-catalogue";
-import {
-  deleteSuggestionFor,
-  upsertIngredientSuggestion,
-} from "@norish/db/repositories/ingredient-suggestions";
 import { getIngredientPermissionPolicy } from "@norish/shared-server/config/server-config-loader";
+import { UNCHANGED_OUTCOMES } from "@norish/shared/contracts/ingredient-catalogue";
 import { stripPreparation } from "@norish/shared/lib/spelling-keys";
 
 import type { AskTrace } from "../ai/resolution/ingredient-resolution";
 import type { CatalogueActor } from "./catalogue";
 import { askWhatFoodThisIs, estimateQuestionTokens } from "../ai/resolution/ingredient-resolution";
-import { CatalogueEditError, mayEditIngredientRow } from "./catalogue";
+import { estimatePlainNameTokens } from "../ai/resolution/plain-name";
+import { flagByAnswer, mergeByAI, parentByAI } from "./ai-changes";
+import { editableIngredient, mayEditIngredientRow } from "./catalogue";
+import { ingredientChanges } from "./changes";
+import { nameAfterAnswer } from "./plain-names";
 
 /**
  * How long a person's question may take. Longer than an import's budget: the
@@ -45,39 +36,7 @@ export const REVIEW_BUDGET_MS = 30_000;
 
 export type { ReviewOutcome };
 
-type Answer = Awaited<ReturnType<typeof askWhatFoodThisIs>>;
-
-/** Why a question got no answer at all: AI off, failing, or its key refused. */
-const NO_ANSWER: readonly FlagReason[] = ["ai-off", "ai-unavailable", "ai-key-rejected"];
-
-/** The food, if the actor may edit it; refused otherwise. */
-async function editableRow(actor: CatalogueActor, ingredientId: string) {
-  const [row, policy] = await Promise.all([
-    findCatalogueIngredient(ingredientId),
-    getIngredientPermissionPolicy(),
-  ]);
-
-  if (!row) throw new CatalogueEditError("not-found");
-  if (!mayEditIngredientRow(policy.edit, actor, row.ownerId)) {
-    throw new CatalogueEditError("forbidden");
-  }
-
-  return row;
-}
-
-async function ask(ingredientId: string, name: string, trace: AskTrace): Promise<Answer> {
-  return askWhatFoodThisIs(name, stripPreparation(name), {
-    excludeId: ingredientId,
-    thorough: true,
-    budgetMs: REVIEW_BUDGET_MS,
-    trace,
-  });
-}
-
-/**
- * The Flagged Ingredients the actor may edit, by name, each saying whether a
- * suggestion waits on it: what a round of Fix catalogue asks about.
- */
+/** The Flagged Ingredients AI may ask about that the actor may edit, by name: what a round of Fix catalogue asks about. */
 export async function listReviewableIngredients(
   actor: CatalogueActor
 ): Promise<FlaggedCatalogueIngredient[]> {
@@ -112,102 +71,77 @@ export async function estimateReviewTokens(
   );
 }
 
-/** Ask AI about a Flagged Ingredient, and record what it proposes. */
-export async function reviewFlaggedWithAI(
+/**
+ * About how many tokens one food's question takes, counted from what would
+ * be sent for a few of these names, before any round of Clean names was
+ * measured.
+ */
+export async function estimateCleanTokens(names: readonly string[]): Promise<ModelTokenEstimate[]> {
+  return estimatePlainNameTokens(estimateSample(names));
+}
+
+/** Ask AI what a food is and make the answer; a food not merged away then gets its Plain Name. */
+export async function askAIAbout(
   actor: CatalogueActor,
   ingredientId: string
 ): Promise<ReviewOutcome> {
-  const row = await editableRow(actor, ingredientId);
+  const row = await editableIngredient(actor, ingredientId);
   const trace: AskTrace = { considered: [], englishName: null };
 
-  if (!row.flagged) return { outcome: "not-flagged", ...trace };
+  if (!row.askable) return { outcome: "skipped", reason: "decided", ...trace };
 
-  const verdict = await suggest(ingredientId, await ask(ingredientId, row.name, trace), trace, {
-    distinct: true,
+  const answer = await askWhatFoodThisIs(row.name, stripPreparation(row.name), {
+    excludeId: ingredientId,
+    thorough: true,
+    budgetMs: REVIEW_BUDGET_MS,
+    trace,
   });
 
-  if (verdict.outcome === "unsure") await setIngredientFlagReason(ingredientId, verdict.reason);
+  if (answer.kind === "same") {
+    const into = await findCatalogueIngredient(answer.ingredientId);
+    const applied = into ? await mergeByAI(ingredientId, into.id, answer.sure) : "gone";
 
-  return { ...verdict, ...trace };
+    if (applied === "undone") return { outcome: "skipped", reason: "undone", ...trace };
+    if (!into || applied === "gone") return await unanswered(ingredientId, "food-gone", trace);
+
+    return { outcome: "merge", into: into.name, sure: answer.sure, ...trace };
+  }
+  if (answer.reason !== null && answer.reason !== "ai-unsure") {
+    return await unanswered(ingredientId, answer.reason, trace);
+  }
+
+  const sure = answer.reason === null;
+  const parent = answer.kindOf ? await findCatalogueIngredient(answer.kindOf) : null;
+  const filed = parent ? await parentByAI(ingredientId, parent.id, sure) : null;
+
+  if (filed !== "applied") await flagByAnswer(ingredientId, sure);
+  if (filed === "undone") return { outcome: "skipped", reason: "undone", ...trace };
+
+  const named = row.nameSettled ? null : await nameAfterAnswer(ingredientId);
+
+  if (named) return { ...trace, ...named };
+  if (parent && filed === "applied") return { outcome: "parent", of: parent.name, sure, ...trace };
+
+  return sure
+    ? { outcome: "distinct", ...trace }
+    : { outcome: "unsure", reason: "ai-unsure", ...trace };
 }
 
-/**
- * Ask AI what food an Ingredient is a kind of, flagged or not, and record
- * what it proposes. "A food of its own" proposes nothing for a food nobody
- * doubted, and an unsure answer leaves the food as it is.
- */
-export async function findParentWithAI(
-  actor: CatalogueActor,
-  ingredientId: string
-): Promise<ReviewOutcome> {
-  const row = await editableRow(actor, ingredientId);
-  const trace: AskTrace = { considered: [], englishName: null };
-  const verdict = await suggest(ingredientId, await ask(ingredientId, row.name, trace), trace, {
-    distinct: row.flagged,
-  });
-
-  return { ...verdict, ...trace };
-}
-
-/**
- * Record the answer as a suggestion, replacing what AI proposed before (an
- * answer that proposes nothing drops it), and say what it proposes. A food
- * AI names that went away meanwhile is a person's turn after all. `distinct` says whether "a food of its own" is
- * worth proposing: only for a flagged food, whose flag it would clear.
- */
-async function suggest(
+/** No answer that changes anything: the food stays as it was, and its flag says why. */
+async function unanswered(
   ingredientId: string,
-  answer: Answer,
-  trace: AskTrace,
-  options: { distinct: boolean }
-): Promise<Exclude<ReviewVerdict, { outcome: "not-flagged" }>> {
-  const record = (kind: SuggestionKind, targetId: string | null) =>
-    upsertIngredientSuggestion({
-      ingredientId,
-      kind,
-      targetId,
-      englishName: trace.englishName,
-      considered: trace.considered,
-    });
-  const targetId = answer.kind === "same" ? answer.ingredientId : answer.kindOf;
+  reason: FlagReason,
+  trace: AskTrace
+): Promise<ReviewOutcome> {
+  await setIngredientFlagReason(ingredientId, reason);
+  await ingredientChanges().changed([ingredientId]);
 
-  // A parent is proposed even when AI was not sure of it: a person confirms it either way.
-  if (targetId) {
-    const target = await findCatalogueIngredient(targetId);
-
-    if (!target) {
-      await deleteSuggestionFor(ingredientId);
-
-      return { outcome: "unsure", reason: "food-gone" };
-    }
-    if (answer.kind === "same") {
-      await record("merge", target.id);
-
-      return { outcome: "merge", into: target.name };
-    }
-    await record("parent", target.id);
-
-    return { outcome: "parent", of: target.name };
-  }
-  if (answer.kind === "same") return { outcome: "unsure", reason: "food-gone" };
-  if (answer.flagged) {
-    // An unsure answer replaces what AI proposed before; no answer leaves it waiting.
-    if (!NO_ANSWER.includes(answer.reason)) await deleteSuggestionFor(ingredientId);
-
-    return { outcome: "unsure", reason: answer.reason };
-  }
-  if (options.distinct) await record("distinct", null);
-  else await deleteSuggestionFor(ingredientId);
-
-  return { outcome: "distinct" };
+  return { outcome: "unsure", reason, ...trace };
 }
 
-/** The outcomes a round leaves no suggestion behind for, which its report lists. */
-const UNSUGGESTED: ReadonlySet<string> = new Set(["unsure", "skipped", "failed"]);
-
 /**
- * A finished round's report as it stands now. A food it got no suggestion
- * for is listed while the question it was asked is still open: still flagged
+ * A finished round's report as it stands now. A food it made no change for
+ * is listed while the question it was asked is still open: still flagged
  * after a review, still without a parent after a round of Find parents, its
  * name still unsettled after Clean names. One settled since, or gone, drops
  * out. A round still running is as it was.
@@ -215,10 +149,8 @@ const UNSUGGESTED: ReadonlySet<string> = new Set(["unsure", "skipped", "failed"]
 export async function withoutSettled(report: ReviewReport): Promise<ReviewReport> {
   if (!report.finished) return report;
 
-  const unsuggested = report.entries.filter((entry) => UNSUGGESTED.has(entry.outcome));
-  const states = await findCatalogueIngredientStates(
-    unsuggested.map((entry) => entry.ingredientId)
-  );
+  const unchanged = report.entries.filter((entry) => UNCHANGED_OUTCOMES.has(entry.outcome));
+  const states = await findCatalogueIngredientStates(unchanged.map((entry) => entry.ingredientId));
   const open = ({ ingredientId, mode }: ReviewReport["entries"][number]) => {
     const state = states.get(ingredientId);
 
@@ -236,6 +168,8 @@ export async function withoutSettled(report: ReviewReport): Promise<ReviewReport
 
   return {
     ...report,
-    entries: report.entries.filter((entry) => !UNSUGGESTED.has(entry.outcome) || open(entry)),
+    entries: report.entries.filter(
+      (entry) => !UNCHANGED_OUTCOMES.has(entry.outcome) || open(entry)
+    ),
   };
 }

@@ -7,7 +7,6 @@ import { db } from "@norish/db/drizzle";
 import {
   ingredientAliases,
   ingredients,
-  ingredientSuggestions,
   recipeIngredientFoods,
   recipeIngredients,
 } from "@norish/db/schema";
@@ -15,6 +14,7 @@ import { CATALOGUE_LANGUAGES, chooseLocaleNames } from "@norish/shared/lib/ingre
 
 import type { LineResolution } from "./ingredients";
 import { isConstraintViolation } from "./constraint-violation";
+import { recordWordsParent } from "./ingredient-ai-changes";
 
 /**
  * The Ingredient Alias rows the ingredient resolver reads and writes. Nothing
@@ -176,11 +176,10 @@ export interface MintIngredientInput {
   /** The Parent Ingredient, where the food is a kind of a known one; none where that one is gone. */
   parentId?: string | null;
   /**
-   * Whether the parent is a guess from the words of the name that a person
-   * should confirm: a `words` suggestion is recorded beside the mint, in the
-   * same transaction, so the two never disagree.
+   * Whether the parent is a guess from the words of the name: an unsure AI Change, recorded in
+   * the mint's transaction.
    */
-  suggestParent?: boolean;
+  parentUnsure?: boolean;
 }
 
 /**
@@ -259,18 +258,9 @@ async function mintOnce(input: MintIngredientInput): Promise<IngredientAliasRow[
         .where(eq(ingredients.id, ingredientId));
     }
 
-    // Only a parent that was actually applied is put to a person; a name that
-    // joined an existing Ingredient got none.
-    if ((minted || takenOver) && input.parentId && input.suggestParent) {
-      await tx
-        .insert(ingredientSuggestions)
-        .values({
-          ingredientId,
-          kind: "parent",
-          targetId: input.parentId,
-          source: "words",
-        })
-        .onConflictDoNothing();
+    // Only a parent the mint applied is an AI Change; a name that joined an existing food got none.
+    if ((minted || takenOver) && input.parentId && input.parentUnsure) {
+      await recordWordsParent(tx, ingredientId, input.parentId);
     }
 
     await tx

@@ -401,16 +401,14 @@
     "askAI": "Chiedi all'IA",
     "fixCatalogue": "Correggi catalogo",
     "askAIRound": {
-      "intro": "L'IA verifica dove vanno gli ingredienti segnalati e corregge i nomi incoerenti. Non cambia nulla finché non confermi un suggerimento.",
+      "intro": "L'IA verifica dove vanno gli ingredienti segnalati, corregge i nomi incoerenti e applica da sola ogni modifica. Puoi annullarle in Modificato dall'IA.",
       "scopeLabel": "Cosa correggere",
       "scopes": {
-        "unsuggested": "Controlla ingredienti segnalati",
-        "suggested": "Ricontrolla i suggerimenti",
+        "flagged": "Controlla ingredienti segnalati",
         "name": "Pulisci i nomi"
       },
       "hints": {
-        "unsuggested": "Cerca duplicati, ingredienti figli o unici.",
-        "suggested": "Ricontrolla gli ingredienti segnalati.",
+        "flagged": "Cerca duplicati, ingredienti figli o unici.",
         "name": "Riduce i nomi degli ingredienti al solo ingrediente. Gli ingredienti segnalati sono inclusi se la casella sopra è selezionata."
       },
       "scopeSize": "{count, plural, =0 {Nessun ingrediente} one {# ingrediente · circa {tokens} token} other {# ingredienti · circa {tokens} token}}",
@@ -425,21 +423,22 @@
     },
     "reviewing": "Chiedo all’IA…",
     "aiOutcomes": {
-      "parent": "L'IA suggerisce di classificare {name} come un tipo di {of}.",
-      "distinct": "L'IA suggerisce che {name} sia un alimento a sé.",
+      "parent": "L'IA ha classificato {name} sotto {of}.",
+      "distinct": "Secondo l'IA, {name} è un alimento a sé.",
       "unsure": "L'IA non è ancora sicura di cosa sia {name}.",
-      "notFlagged": "{name} non è segnalato.",
       "skippedNotFlagged": "{name} non era più segnalato.",
       "skippedForbidden": "{name} non è tuo da modificare.",
       "skippedNotFound": "{name} non c’era più quando l’IA è arrivata.",
       "failed": "La domanda su {name} è fallita.",
-      "merge": "L'IA suggerisce di unire {name} a {into}."
+      "merge": "L'IA ha unito {name} a {into}.",
+      "rename": "L'IA ha rinominato {name} in {to}.",
+      "decided": "Qualcuno ha già deciso su {name}, quindi l'IA non lo tocca.",
+      "undone": "La risposta dell'IA per {name} è una modifica che hai annullato, quindi non è cambiato nulla."
     },
     "aiTrace": {
       "readAs": "L'IA l'ha letto come “{name}”.",
       "compared": "Confrontato con: {names}.",
       "comparedNothing": "Non c'era alcun alimento noto con cui confrontarlo.",
-      "fromWords": "Based on name.",
       "noFood": "L’IA non ha trovato alcun alimento in questo nome."
     },
     "addAlias": "Aggiungi una traduzione",
@@ -588,35 +587,26 @@
     "standaloneOnly": "Senza genitore né tipi",
     "findParent": "Trova il genitore con l’IA",
     "findParentsAll": "Trova i genitori con l’IA",
-    "suggestion": {
-      "merge": "Unisci {name} a {into}",
-      "parent": "Classifica {name} sotto {of}",
-      "distinct": "Mantieni {name} come alimento a sé",
-      "filedFromName": "{name} filed under {of}",
-      "rename": "Rinomina {name} in {to}"
-    },
-    "suggestionsTitle": "Suggerimenti dell'IA",
-    "suggestionsEmpty": "Niente in attesa.",
-    "suggestionsNone": "Nessun suggerimento",
-    "suggestionsOpen": "{count, plural, =0 {Suggerimenti} one {# suggerimento} other {# suggerimenti}}",
-    "suggestionsFailed": "{count, plural, one {# suggerimento non è stato applicato} other {# suggerimenti non sono stati applicati}}: {reason}",
-    "confirmSuggestion": "Conferma",
-    "dismissSuggestion": "Ignora",
-    "confirmAll": "Conferma tutto ({count})",
-    "dismissAll": "Ignora tutto",
-    "suggestedByAI": "Suggerito dall'IA",
-    "suggestedFromName": "Based on name",
-    "proposal": {
-      "merge": "Merge into {into}",
-      "parent": "File under {of}",
-      "distinct": "Food of its own",
-      "rename": "Rinomina in {to}"
+    "changedByAI": {
+      "title": "Modificato dall'IA",
+      "open": "{count, plural, =0 {Modificato dall'IA} other {Modificato dall'IA · # da controllare}}",
+      "unsure": "Non sicuro",
+      "sure": "Modificato",
+      "unchanged": "Non modificato",
+      "empty": "L'IA non ha modificato nulla nell'ultimo mese.",
+      "keep": "Mantieni",
+      "undo": "Annulla",
+      "merge": "{from} unito qui",
+      "parent": "Classificato sotto {of}",
+      "parentFromName": "Classificato sotto {of}, dal nome",
+      "plainName": "Rinominato da {from}"
     },
     "skippedReasons": {
-      "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
       "notFound": "No longer exists",
-      "settled": "Nome già fissato, o c’è un suggerimento in attesa"
+      "settled": "Nome già fissato",
+      "decided": "Già deciso",
+      "undone": "Annullato in precedenza"
     },
     "icon": {
       "change": "Cambia icona",

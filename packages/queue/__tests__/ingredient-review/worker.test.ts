@@ -1,13 +1,13 @@
 // @vitest-environment node
 /**
- * A round of Ask AI over Flagged Ingredients: one job, a step per food, each
- * step saying what came of it and what AI was asked, every settled food
- * announced as its own change and the round's count following, written down
- * every twentieth of the way so a round of every flagged food stays cheap. A
- * food no longer flagged or out of the asker's reach is passed over, a food
- * whose question broke is recorded as failed with the cause, and neither ends
- * the round; only a round that has spent its attempts is told to every page
- * as ended.
+ * A round of Ask AI over Ingredients: one job, a step per food, each step
+ * saying what came of it and what AI was asked, what the round changed
+ * announced together as it ends and the round's count following, written
+ * down every twentieth of the way so a round of every flagged food stays
+ * cheap. A food out of the asker's reach is passed over, a food whose
+ * question broke is recorded as failed with the cause, and neither ends the
+ * round; only a round that has spent its attempts is told to every page as
+ * ended.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -31,8 +31,9 @@ import {
   runWithModelUseLedger,
 } from "@norish/shared-server/ai/runtime/model-use-ledger";
 import { CatalogueEditError } from "@norish/shared-server/ingredients/catalogue";
+import { ingredientChanges } from "@norish/shared-server/ingredients/changes";
 
-const reviewer = vi.hoisted(() => ({ reviewFlaggedWithAI: vi.fn(), findParentWithAI: vi.fn() }));
+const reviewer = vi.hoisted(() => ({ askAIAbout: vi.fn() }));
 const realtime = vi.hoisted(() => ({ publish: vi.fn(async () => undefined) }));
 
 vi.mock("@norish/shared-server/ingredients/review", () => reviewer);
@@ -101,26 +102,36 @@ const ZERO = {
   failed: 0,
 };
 
+/** What the pass came to for each food in turn, announcing the food as its edits do. */
+function answers(mock: typeof reviewer.askAIAbout, ...outcomes: Array<Record<string, unknown>>) {
+  for (const outcome of outcomes) {
+    mock.mockImplementationOnce(async (_actor: unknown, id: string) => {
+      if (outcome.outcome !== "skipped") await ingredientChanges().changed([id]);
+
+      return outcome;
+    });
+  }
+}
+
 beforeEach(() => {
-  reviewer.reviewFlaggedWithAI.mockReset();
-  reviewer.findParentWithAI.mockReset();
+  reviewer.askAIAbout.mockReset();
   plainNames.cleanNameWithAI.mockReset();
-  // A flagged food AI calls its own is asked its name next; unless a test says otherwise, it is settled.
-  plainNames.cleanNameWithAI.mockResolvedValue({ outcome: "skipped", reason: "settled" });
   realtime.publish.mockClear();
 });
 
 describe("processIngredientReviewJob", () => {
-  it("asks what each food is a kind of in a parent round, announcing every suggestion", async () => {
-    reviewer.findParentWithAI
-      .mockResolvedValueOnce({ outcome: "parent", of: "onion", ...trace })
-      .mockResolvedValueOnce({ outcome: "merge", into: "onion", ...trace });
+  it("asks about each food in a parent round, announcing what changed once, together", async () => {
+    answers(
+      reviewer.askAIAbout,
+      { outcome: "parent", of: "onion", sure: true, ...trace },
+      { outcome: "merge", into: "onion", sure: false, ...trace }
+    );
     const job = fakeJob(["red", "onions"], 0, "parent");
 
     await processIngredientReviewJob(job);
 
-    expect(reviewer.reviewFlaggedWithAI).not.toHaveBeenCalled();
-    expect(reviewer.findParentWithAI.mock.calls).toEqual([
+    expect(plainNames.cleanNameWithAI).not.toHaveBeenCalled();
+    expect(reviewer.askAIAbout.mock.calls).toEqual([
       [actor, "red"],
       [actor, "onions"],
     ]);
@@ -132,21 +143,23 @@ describe("processIngredientReviewJob", () => {
   });
 
   it("asks each food for its Plain Name in a round of Clean names, counting renames and plain names", async () => {
-    plainNames.cleanNameWithAI
-      .mockResolvedValueOnce({ outcome: "rename", to: "tonijn uit blik" })
-      .mockResolvedValueOnce({ outcome: "plain" })
-      .mockResolvedValueOnce({ outcome: "skipped", reason: "settled" });
+    answers(
+      plainNames.cleanNameWithAI,
+      { outcome: "rename", to: "tonijn uit blik" },
+      { outcome: "plain" },
+      { outcome: "skipped", reason: "settled" }
+    );
     const job = fakeJob(["tonijn", "salt", "settled"], 0, "name");
 
     await processIngredientReviewJob(job);
 
-    expect(reviewer.reviewFlaggedWithAI).not.toHaveBeenCalled();
+    expect(reviewer.askAIAbout).not.toHaveBeenCalled();
     expect(plainNames.cleanNameWithAI.mock.calls).toEqual([
       [actor, "tonijn"],
       [actor, "salt"],
       [actor, "settled"],
     ]);
-    // A rename waiting and a name settled are worth announcing; a food passed over is not.
+    // A rename and a name settled are announced; a food passed over is not.
     expect(published("changed")).toEqual([{ ingredientIds: ["tonijn", "salt"] }]);
     expect(published("review").at(-1)).toMatchObject({
       counts: { rename: 1, plain: 1, skipped: 1 },
@@ -155,15 +168,20 @@ describe("processIngredientReviewJob", () => {
   });
 
   it("asks about each food in turn as the asker, and records what came of it and what was asked", async () => {
-    reviewer.reviewFlaggedWithAI
-      .mockResolvedValueOnce({ outcome: "merge", into: "onion", ...trace })
+    reviewer.askAIAbout
+      .mockResolvedValueOnce({ outcome: "merge", into: "onion", sure: true, ...trace })
       .mockResolvedValueOnce({ outcome: "unsure", reason: "ai-unsure", ...trace })
-      .mockResolvedValueOnce({ outcome: "not-flagged", considered: [], englishName: null });
+      .mockResolvedValueOnce({
+        outcome: "skipped",
+        reason: "decided",
+        considered: [],
+        englishName: null,
+      });
     const job = fakeJob(["uien", "knaks", "settled"]);
 
     await processIngredientReviewJob(job);
 
-    expect(reviewer.reviewFlaggedWithAI.mock.calls).toEqual([
+    expect(reviewer.askAIAbout.mock.calls).toEqual([
       [actor, "uien"],
       [actor, "knaks"],
       [actor, "settled"],
@@ -179,6 +197,7 @@ describe("processIngredientReviewJob", () => {
           mode: "review",
           outcome: "merge",
           into: "onion",
+          sure: true,
           ...trace,
         },
       ],
@@ -200,14 +219,16 @@ describe("processIngredientReviewJob", () => {
           name: "settled!",
           mode: "review",
           outcome: "skipped",
-          reason: "not-flagged",
+          reason: "decided",
+          considered: [],
+          englishName: null,
         },
       ],
     ]);
   });
 
   it("asks each food its own question in a round that asks both, and records what each one took", async () => {
-    reviewer.reviewFlaggedWithAI.mockImplementationOnce(async () => {
+    reviewer.askAIAbout.mockImplementationOnce(async () => {
       recordModelUse({ provider: "openai", model: "gpt", outcome: "completed", tokens: 3000 });
 
       return { outcome: "merge", into: "onion", ...trace };
@@ -223,7 +244,7 @@ describe("processIngredientReviewJob", () => {
     job.data.ingredients[1]!.mode = "name";
     await runWithModelUseLedger(ledger, () => processIngredientReviewJob(job));
 
-    expect(reviewer.reviewFlaggedWithAI.mock.calls).toEqual([[actor, "uien"]]);
+    expect(reviewer.askAIAbout.mock.calls).toEqual([[actor, "uien"]]);
     expect(plainNames.cleanNameWithAI.mock.calls).toEqual([[actor, "tonijn"]]);
     const [attempt] = readStepProgress(job.progress)!.attempts;
 
@@ -237,10 +258,12 @@ describe("processIngredientReviewJob", () => {
     expect(ledger.uses.map((use) => use.tokens)).toEqual([3000, 120]);
   });
 
-  it("announces the settled foods together, never a food it passed over", async () => {
-    reviewer.reviewFlaggedWithAI
-      .mockResolvedValueOnce({ outcome: "distinct" })
-      .mockResolvedValueOnce({ outcome: "not-flagged" });
+  it("announces the foods it changed together, never a food it passed over", async () => {
+    answers(
+      reviewer.askAIAbout,
+      { outcome: "distinct" },
+      { outcome: "skipped", reason: "decided" }
+    );
 
     await processIngredientReviewJob(fakeJob(["kwark", "settled"]));
 
@@ -251,11 +274,12 @@ describe("processIngredientReviewJob", () => {
     let inFlight = 0;
     let most = 0;
 
-    reviewer.reviewFlaggedWithAI.mockImplementation(async () => {
+    reviewer.askAIAbout.mockImplementation(async (_actor: unknown, id: string) => {
       inFlight += 1;
       most = Math.max(most, inFlight);
       await new Promise((resolve) => setTimeout(resolve, 5));
       inFlight -= 1;
+      await ingredientChanges().changed([id]);
 
       return { outcome: "distinct" };
     });
@@ -263,14 +287,14 @@ describe("processIngredientReviewJob", () => {
     await processIngredientReviewJob(fakeJob(["a", "b", "c", "d", "e", "f"]));
 
     expect(most).toBe(3);
-    expect(reviewer.reviewFlaggedWithAI).toHaveBeenCalledTimes(6);
+    expect(reviewer.askAIAbout).toHaveBeenCalledTimes(6);
     expect(published("changed")).toEqual([{ ingredientIds: ["a", "b", "c", "d", "e", "f"] }]);
     expect(published("review").at(-1)).toMatchObject({ done: 6, finished: true });
   });
 
   it("tells every page the count after each food, and that the round ended after the last", async () => {
-    reviewer.reviewFlaggedWithAI
-      .mockResolvedValueOnce({ outcome: "parent", of: "pasta" })
+    reviewer.askAIAbout
+      .mockResolvedValueOnce({ outcome: "parent", of: "pasta", sure: true })
       .mockResolvedValueOnce({ outcome: "unsure", reason: "ai-unsure" });
 
     await processIngredientReviewJob(fakeJob(["fusilli", "knaks"]));
@@ -296,44 +320,8 @@ describe("processIngredientReviewJob", () => {
     ]);
   });
 
-  it("asks a flagged food AI calls its own for its Plain Name next, whose rename replaces the 'distinct'", async () => {
-    reviewer.reviewFlaggedWithAI.mockImplementation(async () => {
-      recordModelUse({ provider: "openai", model: "gpt", outcome: "completed", tokens: 3000 });
-
-      return { outcome: "distinct", ...trace };
-    });
-    plainNames.cleanNameWithAI.mockImplementation(async (_actor, id: string) => {
-      recordModelUse({ provider: "openai", model: "gpt", outcome: "completed", tokens: 120 });
-      if (id === "broken") throw new Error("model down");
-
-      return id === "tonijn" ? { outcome: "rename", to: "tonijn uit blik" } : { outcome: "plain" };
-    });
-    const job = fakeJob(["tonijn", "zout", "broken"]);
-
-    await processIngredientReviewJob(job);
-
-    expect(plainNames.cleanNameWithAI.mock.calls).toEqual([
-      [actor, "tonijn", { afterReview: true }],
-      [actor, "zout", { afterReview: true }],
-      [actor, "broken", { afterReview: true }],
-    ]);
-    const [attempt] = readStepProgress(job.progress)!.attempts;
-
-    // One step a food, with both questions' tokens; a plain name or a broken name question keeps "distinct".
-    expect(
-      attempt!.timeline.map((step) => [step.detail, step.models?.map((use) => use.tokens)])
-    ).toEqual([
-      [
-        expect.objectContaining({ ingredientId: "tonijn", mode: "review", outcome: "rename" }),
-        [3000, 120],
-      ],
-      [expect.objectContaining({ ingredientId: "zout", outcome: "distinct" }), [3000, 120]],
-      [expect.objectContaining({ ingredientId: "broken", outcome: "distinct" }), [3000, 120]],
-    ]);
-  });
-
   it("writes the round down and tells the pages every twentieth of the way, not after every food", async () => {
-    reviewer.reviewFlaggedWithAI.mockResolvedValue({ outcome: "distinct", ...trace });
+    reviewer.askAIAbout.mockResolvedValue({ outcome: "distinct", ...trace });
     const ids = Array.from({ length: 100 }, (_, index) => `food-${index}`);
     const job = fakeJob(ids);
 
@@ -357,7 +345,7 @@ describe("processIngredientReviewJob", () => {
   });
 
   it("records how long each food's question took", async () => {
-    reviewer.reviewFlaggedWithAI.mockImplementation(async () => {
+    reviewer.askAIAbout.mockImplementation(async () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
 
       return { outcome: "distinct" };
@@ -372,7 +360,7 @@ describe("processIngredientReviewJob", () => {
   });
 
   it("passes over a food the asker may not edit, or that is gone, and goes on", async () => {
-    reviewer.reviewFlaggedWithAI
+    reviewer.askAIAbout
       .mockRejectedValueOnce(new CatalogueEditError("forbidden"))
       .mockRejectedValueOnce(new CatalogueEditError("not-found"))
       .mockResolvedValueOnce({ outcome: "distinct" });
@@ -387,14 +375,13 @@ describe("processIngredientReviewJob", () => {
   });
 
   it("records a food whose question broke, with the cause, and asks the rest", async () => {
-    reviewer.reviewFlaggedWithAI
-      .mockResolvedValueOnce({ outcome: "distinct", ...trace })
-      .mockRejectedValueOnce(
-        new Error("Failed query: update ingredients", {
-          cause: new Error('column "parent_chosen" does not exist'),
-        })
-      )
-      .mockResolvedValueOnce({ outcome: "distinct", ...trace });
+    answers(reviewer.askAIAbout, { outcome: "distinct", ...trace });
+    reviewer.askAIAbout.mockRejectedValueOnce(
+      new Error("Failed query: update ingredients", {
+        cause: new Error('column "parent_chosen" does not exist'),
+      })
+    );
+    answers(reviewer.askAIAbout, { outcome: "distinct", ...trace });
     const job = fakeJob(["mine", "broken", "next"]);
 
     await processIngredientReviewJob(job);
@@ -424,7 +411,7 @@ describe("a cancelled round", () => {
     const job = new AbortController();
 
     // The administrator cancels while the first food is being asked.
-    reviewer.reviewFlaggedWithAI.mockImplementationOnce(async () => {
+    reviewer.askAIAbout.mockImplementationOnce(async () => {
       job.abort("Cancelled by an administrator");
 
       return { outcome: "distinct", ...trace };
@@ -434,7 +421,7 @@ describe("a cancelled round", () => {
       processIngredientReviewJob(fakeJob(["first", "second", "third"]), undefined, job.signal)
     ).rejects.toBe("Cancelled by an administrator");
 
-    expect(reviewer.reviewFlaggedWithAI).toHaveBeenCalledTimes(1);
+    expect(reviewer.askAIAbout).toHaveBeenCalledTimes(1);
     expect(published("review").some((round) => round.finished)).toBe(false);
   });
 });
@@ -442,7 +429,7 @@ describe("a cancelled round", () => {
 describe("handleIngredientReviewFailure", () => {
   it("ends the round on every page once the attempts are spent, at the count it reached", async () => {
     // The round's own bookkeeping broke after the first food: the process died.
-    reviewer.reviewFlaggedWithAI.mockResolvedValueOnce({
+    reviewer.askAIAbout.mockResolvedValueOnce({
       outcome: "merge",
       into: "onion",
       ...trace,
@@ -488,7 +475,7 @@ describe("summarizeReviewRound", () => {
     await completeStep(job, { ingredientId: "a", outcome: "merge" });
     (job as { attemptsMade: number }).attemptsMade = 1;
     await reportStep(job, "asking-ai:1/2", { ingredientId: "a" });
-    await completeStep(job, { ingredientId: "a", outcome: "skipped", reason: "not-flagged" });
+    await completeStep(job, { ingredientId: "a", outcome: "skipped", reason: "decided" });
     await reportStep(job, "asking-ai:2/2", { ingredientId: "b" });
 
     expect(summarizeReviewRound(job, false)).toMatchObject({
@@ -653,7 +640,7 @@ describe("readRoundTokens", () => {
             { model: "jev-1.13.0", tokens: 1700 },
           ],
         },
-        { detail: { outcome: "skipped", reason: "not-flagged" }, uses: [] },
+        { detail: { outcome: "skipped", reason: "decided" }, uses: [] },
         {
           detail: { outcome: "merge", into: "onion", ...trace },
           uses: [{ model: "gpt-5.6-luna", tokens: 1100 }, { model: "gpt-5.6-luna" }],

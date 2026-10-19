@@ -401,16 +401,14 @@
     "askAI": "KI fragen",
     "fixCatalogue": "Katalog korrigieren",
     "askAIRound": {
-      "intro": "Die KI prüft, wohin markierte Zutaten gehören, und korrigiert uneinheitliche Namen. Nichts ändert sich, bis du einen Vorschlag bestätigst.",
+      "intro": "Die KI prüft, wohin markierte Zutaten gehören, korrigiert uneinheitliche Namen und nimmt jede Änderung selbst vor. Unter „Von KI geändert“ kannst du jede davon rückgängig machen.",
       "scopeLabel": "Was korrigiert wird",
       "scopes": {
-        "unsuggested": "Markierte Zutaten prüfen",
-        "suggested": "Vorschläge erneut prüfen",
+        "flagged": "Markierte Zutaten prüfen",
         "name": "Namen bereinigen"
       },
       "hints": {
-        "unsuggested": "Sucht nach Duplikaten, Unterzutaten oder eigenständigen Zutaten.",
-        "suggested": "Prüft markierte Zutaten erneut.",
+        "flagged": "Sucht nach Duplikaten, Unterzutaten oder eigenständigen Zutaten.",
         "name": "Bereinigt Zutatennamen auf die reine Zutat. Markierte Zutaten sind enthalten, wenn das Kästchen oben aktiviert ist."
       },
       "scopeSize": "{count, plural, =0 {Keine Zutaten} one {# Zutat · etwa {tokens} Token} other {# Zutaten · etwa {tokens} Token}}",
@@ -425,21 +423,22 @@
     },
     "reviewing": "KI wird gefragt…",
     "aiOutcomes": {
-      "parent": "Die KI schlägt vor, {name} als eine Art {of} einzuordnen.",
-      "distinct": "Die KI schlägt vor, dass {name} eine eigene Zutat ist.",
+      "parent": "Die KI hat {name} unter {of} eingeordnet.",
+      "distinct": "Laut KI ist {name} eine eigene Zutat.",
       "unsure": "KI ist sich weiterhin nicht sicher, was {name} ist.",
-      "notFlagged": "{name} ist nicht markiert.",
       "skippedNotFlagged": "{name} war nicht mehr markiert.",
       "skippedForbidden": "{name} darfst du nicht ändern.",
       "skippedNotFound": "{name} war schon weg, als die KI dazu kam.",
       "failed": "Die Frage zu {name} ist fehlgeschlagen.",
-      "merge": "Die KI schlägt vor, {name} mit {into} zusammenzuführen."
+      "merge": "Die KI hat {name} mit {into} zusammengeführt.",
+      "rename": "Die KI hat {name} in {to} umbenannt.",
+      "decided": "Über {name} wurde bereits entschieden, die KI lässt es in Ruhe.",
+      "undone": "Die Antwort der KI zu {name} ist eine Änderung, die du rückgängig gemacht hast, also hat sich nichts geändert."
     },
     "aiTrace": {
       "readAs": "Die KI las es als „{name}“.",
       "compared": "Verglichen mit: {names}.",
       "comparedNothing": "Es gab kein bekanntes Lebensmittel zum Vergleich.",
-      "fromWords": "Based on name.",
       "noFood": "Die KI hat in diesem Namen kein Lebensmittel gefunden."
     },
     "addAlias": "Übersetzung hinzufügen",
@@ -588,35 +587,26 @@
     "standaloneOnly": "Ohne übergeordnete Zutat oder Sorten",
     "findParent": "Übergeordnete Zutat mit KI finden",
     "findParentsAll": "Übergeordnete Zutaten mit KI finden",
-    "suggestion": {
-      "merge": "{name} mit {into} zusammenführen",
-      "parent": "{name} unter {of} einordnen",
-      "distinct": "{name} als eigene Zutat behalten",
-      "filedFromName": "{name} filed under {of}",
-      "rename": "{name} in {to} umbenennen"
-    },
-    "suggestionsTitle": "KI-Vorschläge",
-    "suggestionsEmpty": "Nichts wartet auf dich.",
-    "suggestionsNone": "Kein Vorschlag",
-    "suggestionsOpen": "{count, plural, =0 {Vorschläge} one {# Vorschlag} other {# Vorschläge}}",
-    "suggestionsFailed": "{count, plural, one {# Vorschlag konnte} other {# Vorschläge konnten}} nicht übernommen werden: {reason}",
-    "confirmSuggestion": "Bestätigen",
-    "dismissSuggestion": "Verwerfen",
-    "confirmAll": "Alle bestätigen ({count})",
-    "dismissAll": "Alle verwerfen",
-    "suggestedByAI": "Von der KI vorgeschlagen",
-    "suggestedFromName": "Based on name",
-    "proposal": {
-      "merge": "Merge into {into}",
-      "parent": "File under {of}",
-      "distinct": "Food of its own",
-      "rename": "In {to} umbenennen"
+    "changedByAI": {
+      "title": "Von KI geändert",
+      "open": "{count, plural, =0 {Von KI geändert} other {Von KI geändert · # zu prüfen}}",
+      "unsure": "Nicht sicher",
+      "sure": "Geändert",
+      "unchanged": "Nicht geändert",
+      "empty": "Die KI hat im letzten Monat nichts geändert.",
+      "keep": "Behalten",
+      "undo": "Rückgängig",
+      "merge": "{from} hiermit zusammengeführt",
+      "parent": "Unter {of} eingeordnet",
+      "parentFromName": "Unter {of} eingeordnet, nach dem Namen",
+      "plainName": "Umbenannt von {from}"
     },
     "skippedReasons": {
-      "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
       "notFound": "No longer exists",
-      "settled": "Name steht bereits fest, oder ein Vorschlag wartet"
+      "settled": "Name steht bereits fest",
+      "decided": "Bereits entschieden",
+      "undone": "Zuvor rückgängig gemacht"
     },
     "icon": {
       "change": "Symbol ändern",

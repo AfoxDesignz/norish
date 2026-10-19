@@ -33,6 +33,11 @@ import {
 import { getQueues } from "@norish/queue/registry";
 import { canDrawImages } from "@norish/shared-server/config/server-config-loader";
 import {
+  keepAIChange as keepCatalogueAIChange,
+  listAIChangesFor,
+  undoAIChange as undoCatalogueAIChange,
+} from "@norish/shared-server/ingredients/ai-changes";
+import {
   addAlias as addCatalogueAlias,
   CatalogueEditError,
   deleteIngredient,
@@ -46,7 +51,6 @@ import {
   saveDraft as saveIngredientDraft,
   setParent as setCatalogueParent,
 } from "@norish/shared-server/ingredients/catalogue";
-import { announcingTogether, ingredientChanges } from "@norish/shared-server/ingredients/changes";
 import {
   generateIngredientIcon,
   uploadIngredientIcon,
@@ -61,24 +65,15 @@ import {
 } from "@norish/shared-server/ingredients/nutrition/corrections";
 import { resolveIngredientNutrition } from "@norish/shared-server/ingredients/nutrition/ingredient-nutrition";
 import { spoonMeasureFor } from "@norish/shared-server/ingredients/nutrition/spoon-measure";
-import {
-  estimateCleanTokens,
-  listNameableIngredients,
-} from "@norish/shared-server/ingredients/plain-names";
+import { listNameableIngredients } from "@norish/shared-server/ingredients/plain-names";
 import { findIngredientFor } from "@norish/shared-server/ingredients/resolver";
 import {
+  askAIAbout,
+  estimateCleanTokens,
   estimateReviewTokens,
-  findParentWithAI,
   listReviewableIngredients,
-  reviewFlaggedWithAI,
   withoutSettled,
 } from "@norish/shared-server/ingredients/review";
-import {
-  confirmSuggestion,
-  dismissSuggestion,
-  inConfirmOrder,
-  listSuggestions,
-} from "@norish/shared-server/ingredients/suggestions";
 import { trpcLogger as log } from "@norish/shared-server/logger";
 import { ICON_FILE_PATTERN } from "@norish/shared-server/media/ingredient-icon";
 import { ICON_PICTURE_MIME_TYPES } from "@norish/shared/contracts";
@@ -252,9 +247,9 @@ const removeAlias = authedProcedure
   });
 
 /**
- * Ask AI what a Flagged Ingredient is, and act on a sure answer. Follows
- * `edit` on the Ingredient, and AI being on for the instance, as every AI
- * use does. Answers what came of it, for the page to say.
+ * Ask AI what an Ingredient is, and make its answer, sure or not, as an AI
+ * Change. Follows `edit` on the Ingredient, and AI being on for the
+ * instance, as every AI use does. Answers what came of it, for the page to say.
  */
 const reviewWithAI = authedProcedure
   .input(z.object({ ingredientId: z.uuid() }))
@@ -262,42 +257,10 @@ const reviewWithAI = authedProcedure
     await assertAIEnabled();
     log.info(
       { userId: ctx.user.id, ingredientId: input.ingredientId },
-      "Asking AI about a flagged Ingredient"
+      "Asking AI about an Ingredient"
     );
 
-    return translated(async () => {
-      const outcome = await reviewFlaggedWithAI(viewerOf(ctx), input.ingredientId);
-
-      // A suggestion recorded, or a flag's reason brought up to date.
-      if (outcome.outcome !== "not-flagged") {
-        await ingredientChanges().changed([input.ingredientId]);
-      }
-
-      return outcome;
-    });
-  });
-
-/**
- * Ask AI what food an Ingredient is a kind of, and file it there on a sure
- * answer. Follows `edit` on the Ingredient. Answers what came of it.
- */
-const findParentWithAI_ = authedProcedure
-  .input(z.object({ ingredientId: z.uuid() }))
-  .mutation(async ({ ctx, input }) => {
-    await assertAIEnabled();
-    log.info(
-      { userId: ctx.user.id, ingredientId: input.ingredientId },
-      "Asking AI what an Ingredient is a kind of"
-    );
-
-    return translated(async () => {
-      const outcome = await findParentWithAI(viewerOf(ctx), input.ingredientId);
-
-      // A suggestion recorded or cleared.
-      await ingredientChanges().changed([input.ingredientId]);
-
-      return outcome;
-    });
+    return translated(() => askAIAbout(viewerOf(ctx), input.ingredientId));
   });
 
 /** The foods each part of Fix catalogue holds for the actor, flagged ones first, with the question each is asked. */
@@ -305,16 +268,11 @@ async function fixFoods(
   actor: CatalogueActor,
   parts: readonly FixPart[]
 ): Promise<IngredientReviewJobData["ingredients"]> {
-  const flagged =
-    parts.includes("unsuggested") || parts.includes("suggested")
-      ? await listReviewableIngredients(actor)
-      : [];
+  const flagged = parts.includes("flagged") ? await listReviewableIngredients(actor) : [];
   const names = parts.includes("name") ? await listNameableIngredients(actor) : [];
 
   return [
-    ...flagged
-      .filter((food) => parts.includes(food.suggested ? "suggested" : "unsuggested"))
-      .map(({ id, name }) => ({ id, name, mode: "review" as const })),
+    ...flagged.map(({ id, name }) => ({ id, name, mode: "review" as const })),
     ...names.map(({ id, name }) => ({ id, name, mode: "name" as const })),
   ];
 }
@@ -328,12 +286,11 @@ async function namedFoods(ids: readonly string[]): Promise<{ id: string; name: s
 
 /**
  * Fix catalogue (`mode: "fix"`): ask AI about the parts of the catalogue the
- * asker picked, any of them together, which the server fills however many
- * foods they hold: the flagged Ingredients the asker may edit that no
- * suggestion waits on, those that have one, asked again, and the Plain Name
+ * asker picked, either or both, which the server fills however many foods
+ * they hold: the flagged Ingredients the asker may edit, and the Plain Name
  * of every unflagged food whose name is not settled. Or what food each
  * Ingredient on the page is a kind of (`mode: "parent"`). No food is in two
- * parts; a flagged food AI calls its own is asked its Plain Name next. One job, a step per food, that keeps
+ * parts; a food AI calls its own is asked its Plain Name next. One job, a step per food, that keeps
  * going after the tab is closed. Each food's edit follows `edit` on that food, checked again
  * by the round as it reaches it, so a food the asker may no longer edit is
  * passed over rather than refused here. Answers the job the page watches the
@@ -384,8 +341,7 @@ const reviewAllWithAI = authedProcedure
 
 /**
  * What a round of Fix catalogue would ask about the flagged Ingredients, for
- * the asker: how many each part holds, and about how many tokens a food's
- * question takes. Measured over the latest finished round where the queue
+ * the asker: how many, and about how many tokens a food's question takes. Measured over the latest finished round where the queue
  * still holds one that recorded its tokens; counted from the prompt
  * otherwise.
  */
@@ -395,11 +351,8 @@ const reviewScope = authedProcedure.query(async ({ ctx }): Promise<ReviewScopeSu
   const foods = await listReviewableIngredients(viewerOf(ctx));
   const measured = await readRoundTokens(getQueues().ingredientReview);
 
-  const suggested = foods.filter((food) => food.suggested).length;
-
   return {
-    unsuggested: foods.length - suggested,
-    suggested,
+    flagged: foods.length,
     tokens: measured
       ? { basis: "measured", ...measured }
       : { basis: "prompt", models: await estimateReviewTokens(foods.map((food) => food.name)) },
@@ -433,8 +386,8 @@ const reviewRound = authedProcedure.query(() =>
 /**
  * A round of Ask AI read back: what it did to each food and how, for the
  * summary the page offers once the round is over. Without a job, the latest
- * round to have ended, so the page finds what it could not suggest after a
- * reload. A food it got no suggestion for and that has been settled since
+ * round to have ended, so the page finds what it could not change after a
+ * reload. A food it made no change for and that has been settled since
  * drops out. Null once the queue has let the job go.
  */
 const reviewReport = authedProcedure
@@ -448,58 +401,23 @@ const reviewReport = authedProcedure
     return report ? await withoutSettled(report) : null;
   });
 
-/** The suggestions waiting on the viewer: only those about foods they may edit. */
-const suggestions = authedProcedure.query(({ ctx }) => listSuggestions(viewerOf(ctx)));
+/** Every change Changed by AI lists, each saying whether the viewer may keep or undo it. */
+const aiChanges = authedProcedure.query(({ ctx }) => listAIChangesFor(viewerOf(ctx)));
 
-// As many as there are: Confirm all answers every suggestion a round over the catalogue left.
-const suggestionIds = z.object({ suggestionIds: z.array(z.uuid()).min(1) });
+const aiChangeId = z.object({ changeId: z.uuid() });
 
-/**
- * Answer suggestions one by one, confirming (the edit each proposes is made
- * as the viewer's own) or dismissing them, and announce what they changed
- * once, together. One that is refused does not stop the rest; the answer
- * counts them and names the first refusal, for the page to say why. One
- * already gone by its turn was settled another way, by an earlier answer in
- * the same go (two foods suggested into each other) or by someone else, and
- * is neither done nor refused.
- */
-async function answerSuggestions(
-  ctx: AuthedProcedureContext,
-  ids: readonly string[],
-  answer: typeof confirmSuggestion
-): Promise<{ done: number; failed: number; refusal: CatalogueRefusal | null }> {
-  return announcingTogether(async () => {
-    let done = 0;
-    let failed = 0;
-    let refusal: CatalogueRefusal | null = null;
+/** Keep an unsure AI Change: the viewer's own decision about its food. Follows `edit` on the food. */
+const keepAIChange = authedProcedure.input(aiChangeId).mutation(({ ctx, input }) => {
+  log.info({ userId: ctx.user.id, changeId: input.changeId }, "Keeping an AI Change");
 
-    for (const id of ids) {
-      try {
-        await answer(viewerOf(ctx), id);
-        done += 1;
-      } catch (error) {
-        if (!(error instanceof CatalogueEditError)) throw error;
-        if (error.refusal === "not-found") continue;
-        failed += 1;
-        refusal ??= error.refusal;
-      }
-    }
-
-    return { done, failed, refusal };
-  });
-}
-
-const confirmSuggestions = authedProcedure.input(suggestionIds).mutation(async ({ ctx, input }) => {
-  log.info({ userId: ctx.user.id, count: input.suggestionIds.length }, "Confirming AI suggestions");
-
-  // A merge first would take away the food a merge into it names.
-  return answerSuggestions(ctx, await inConfirmOrder(input.suggestionIds), confirmSuggestion);
+  return asEditResult(() => keepCatalogueAIChange(viewerOf(ctx), input.changeId));
 });
 
-const dismissSuggestions = authedProcedure.input(suggestionIds).mutation(({ ctx, input }) => {
-  log.info({ userId: ctx.user.id, count: input.suggestionIds.length }, "Dismissing AI suggestions");
+/** Undo an AI Change, which AI then never makes again. Follows `edit` on the food. */
+const undoAIChange = authedProcedure.input(aiChangeId).mutation(({ ctx, input }) => {
+  log.info({ userId: ctx.user.id, changeId: input.changeId }, "Undoing an AI Change");
 
-  return answerSuggestions(ctx, input.suggestionIds, dismissSuggestion);
+  return asEditResult(() => undoCatalogueAIChange(viewerOf(ctx), input.changeId));
 });
 
 /**
@@ -808,15 +726,14 @@ export const ingredientsRouter = router({
   saveDraft,
   remove,
   reviewWithAI,
-  findParentWithAI: findParentWithAI_,
   reviewAllWithAI,
   reviewScope,
   nameScope,
   reviewRound,
   reviewReport,
-  suggestions,
-  confirmSuggestions,
-  dismissSuggestions,
+  aiChanges,
+  keepAIChange,
+  undoAIChange,
   merge,
   moveAlias,
   setParent,

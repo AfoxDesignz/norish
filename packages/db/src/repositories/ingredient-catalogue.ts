@@ -23,7 +23,6 @@ import {
   groceries,
   ingredientAliases,
   ingredients,
-  ingredientSuggestions,
   pantryIngredients,
   recipeIngredientFoods,
   recipeIngredients,
@@ -207,16 +206,42 @@ export async function listCatalogueAliasesOf(ingredientId: string): Promise<Cata
     .orderBy(asc(ingredientAliases.createdAt), asc(ingredientAliases.id));
 }
 
-/** One Ingredient as an edit reads it: its name, whether it is flagged, and whose it is. */
-export async function findCatalogueIngredient(
-  id: string
-): Promise<(CatalogueOwner & { id: string; name: string; flagged: boolean }) | null> {
+/**
+ * Whether AI may ask about an Ingredient (ADR-0037, amended 2026-10-17): one
+ * someone's action minted, that no person kept distinct, named or parented.
+ */
+export const askableByAI = sql<boolean>`(${and(
+  isNull(ingredients.offId),
+  eq(ingredients.keptDistinct, false),
+  eq(ingredients.nameChosen, false),
+  eq(ingredients.parentChosen, false)
+)})`;
+
+/**
+ * One Ingredient as an edit reads it: its name, whether it is flagged, whose
+ * it is, its parent, whether its name is settled, and whether AI may ask
+ * about it.
+ */
+export async function findCatalogueIngredient(id: string): Promise<
+  | (CatalogueOwner & {
+      id: string;
+      name: string;
+      flagged: boolean;
+      parentId: string | null;
+      nameSettled: boolean;
+      askable: boolean;
+    })
+  | null
+> {
   const [row] = await db
     .select({
       id: ingredients.id,
       name: ingredients.name,
       flagged: ingredients.flagged,
       ownerId: ingredients.ownerId,
+      parentId: ingredients.parentId,
+      nameSettled: ingredients.nameSettled,
+      askable: askableByAI,
     })
     .from(ingredients)
     .where(eq(ingredients.id, id))
@@ -284,31 +309,21 @@ export async function findCatalogueIngredientStates(
   return states;
 }
 
-/**
- * A Flagged Ingredient as a round of Ask AI picks from them: whose it is, and
- * whether a suggestion waits on it.
- */
+/** A Flagged Ingredient as a round of Ask AI picks from them: whose it is. */
 export interface FlaggedCatalogueIngredient extends CatalogueOwner {
   id: string;
   name: string;
-  suggested: boolean;
 }
 
 /**
- * Every Flagged Ingredient, by name. Nothing here decides which the asker may
- * edit. An Ingredient has one suggestion at most, so the join adds no rows.
+ * Every Flagged Ingredient AI may ask about, by name. Nothing here decides
+ * which the asker may edit.
  */
 export async function listFlaggedCatalogueIngredients(): Promise<FlaggedCatalogueIngredient[]> {
   return db
-    .select({
-      id: ingredients.id,
-      name: ingredients.name,
-      ownerId: ingredients.ownerId,
-      suggested: sql<boolean>`${ingredientSuggestions.id} is not null`,
-    })
+    .select({ id: ingredients.id, name: ingredients.name, ownerId: ingredients.ownerId })
     .from(ingredients)
-    .leftJoin(ingredientSuggestions, eq(ingredientSuggestions.ingredientId, ingredients.id))
-    .where(eq(ingredients.flagged, true))
+    .where(and(eq(ingredients.flagged, true), askableByAI))
     .orderBy(asc(sql`lower(${ingredients.name})`), asc(ingredients.id));
 }
 
@@ -368,6 +383,7 @@ export async function renameCatalogueIngredient(
       flagged: false,
       flagReason: null,
       nameSettled: true,
+      nameChosen: true,
       version: sql`${ingredients.version} + 1`,
     })
     .where(eq(ingredients.id, id))
@@ -647,10 +663,9 @@ export async function sweepUnusedCatalogueIngredients(tx: DbTransaction): Promis
 
 /**
  * The foods a round of Clean names may ask about: none from the seed, whose
- * names are the catalogue's own, none whose name is settled, none a
- * suggestion waits on, and none flagged, whose name the flag's own question
- * asks for once it finds a food of its own. Nothing here decides which the
- * asker may edit.
+ * names are the catalogue's own, none whose name is settled, and none
+ * flagged, whose name the flag's own question asks for once it finds a food
+ * of its own. Nothing here decides which the asker may edit.
  */
 export async function listUnsettledNameIngredients(): Promise<
   Array<CatalogueOwner & { id: string; name: string }>
@@ -658,35 +673,8 @@ export async function listUnsettledNameIngredients(): Promise<
   return db
     .select({ id: ingredients.id, name: ingredients.name, ownerId: ingredients.ownerId })
     .from(ingredients)
-    .leftJoin(ingredientSuggestions, eq(ingredientSuggestions.ingredientId, ingredients.id))
-    .where(
-      and(
-        isNull(ingredients.offId),
-        eq(ingredients.nameSettled, false),
-        eq(ingredients.flagged, false),
-        isNull(ingredientSuggestions.id)
-      )
-    )
+    .where(and(eq(ingredients.nameSettled, false), eq(ingredients.flagged, false), askableByAI))
     .orderBy(asc(sql`lower(${ingredients.name})`), asc(ingredients.id));
-}
-
-/** One Ingredient as a Plain Name question reads it: its name, whose it is, and whether the name is settled. */
-export async function findIngredientNaming(
-  id: string
-): Promise<(CatalogueOwner & { name: string; nameSettled: boolean; suggested: boolean }) | null> {
-  const [row] = await db
-    .select({
-      name: ingredients.name,
-      ownerId: ingredients.ownerId,
-      nameSettled: ingredients.nameSettled,
-      suggested: sql<boolean>`${ingredientSuggestions.id} is not null`,
-    })
-    .from(ingredients)
-    .leftJoin(ingredientSuggestions, eq(ingredientSuggestions.ingredientId, ingredients.id))
-    .where(eq(ingredients.id, id))
-    .limit(1);
-
-  return row ?? null;
 }
 
 /**
@@ -719,6 +707,11 @@ export async function findIngredientHolding(
   return row ?? null;
 }
 
+/** Whether no Ingredient but `ingredientId` goes by `name`, in any case. */
+export function nameIsFree(ingredientId: string, name: string): SQL {
+  return sql`not exists (select 1 from ${ingredients} o where o.id <> ${ingredientId} and lower(o.name) = lower(${name}))`;
+}
+
 /**
  * Settle an Ingredient's name, under `plain` where one is given: the name
  * becomes a spelling too, as a person's rename's does, while the flag stays
@@ -729,11 +722,12 @@ export async function findIngredientHolding(
  */
 export async function settleIngredientName(
   id: string,
-  plain?: { text: string; fold: string }
+  plain?: { text: string; fold: string },
+  /** The transaction to write through, where the caller records the rename beside it. */
+  tx?: DbTransaction
 ): Promise<boolean> {
-  return await db.transaction(async (tx) => {
-    const free = sql`not exists (select 1 from ${ingredients} o where o.id <> ${id} and lower(o.name) = lower(${plain?.text ?? ""}))`;
-    const [row] = await tx
+  const settle = async (write: DbTransaction) => {
+    const [row] = await write
       .update(ingredients)
       .set({
         nameSettled: true,
@@ -741,17 +735,23 @@ export async function settleIngredientName(
         version: sql`${ingredients.version} + 1`,
       })
       .where(
-        and(eq(ingredients.id, id), eq(ingredients.nameSettled, false), ...(plain ? [free] : []))
+        and(
+          eq(ingredients.id, id),
+          eq(ingredients.nameSettled, false),
+          ...(plain ? [nameIsFree(id, plain.text)] : [])
+        )
       )
       .returning({ id: ingredients.id });
 
     if (row && plain) {
-      await tx
+      await write
         .insert(ingredientAliases)
         .values({ text: plain.text, fold: plain.fold, ingredientId: id, ownerId: null })
         .onConflictDoNothing();
     }
 
     return row !== undefined;
-  });
+  };
+
+  return tx ? await settle(tx) : await db.transaction(settle);
 }

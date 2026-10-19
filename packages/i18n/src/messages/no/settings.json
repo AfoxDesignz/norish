@@ -401,16 +401,14 @@
     "askAI": "Spør AI",
     "fixCatalogue": "Rett opp katalogen",
     "askAIRound": {
-      "intro": "AI finner ut hvor merkede ingredienser hører hjemme, og retter opp uensartede navn. Ingenting endres før du bekrefter et forslag.",
+      "intro": "AI sjekker hvor flaggede ingredienser hører hjemme, retter uensartede navn og gjør hver endring selv. Du kan angre dem under Endret av AI.",
       "scopeLabel": "Hva som skal rettes",
       "scopes": {
-        "unsuggested": "Sjekk merkede ingredienser",
-        "suggested": "Sjekk forslag på nytt",
+        "flagged": "Sjekk merkede ingredienser",
         "name": "Rydd opp i navn"
       },
       "hints": {
-        "unsuggested": "Ser etter duplikater, underingredienser eller unike.",
-        "suggested": "Sjekker merkede ingredienser på nytt.",
+        "flagged": "Ser etter duplikater, underingredienser eller unike.",
         "name": "Renser ingrediensnavn til bare ingrediensen. Merkede ingredienser er med hvis avkrysningsboksen over er huket av."
       },
       "scopeSize": "{count, plural, =0 {Ingen ingredienser} one {# ingrediens · omtrent {tokens} tokens} other {# ingredienser · omtrent {tokens} tokens}}",
@@ -425,21 +423,22 @@
     },
     "reviewing": "Spør AI…",
     "aiOutcomes": {
-      "parent": "AI foreslår å plassere {name} som en type {of}.",
-      "distinct": "AI foreslår at {name} er en egen matvare.",
+      "parent": "AI plasserte {name} under {of}.",
+      "distinct": "Ifølge AI er {name} en egen ingrediens.",
       "unsure": "AI er fortsatt ikke sikker på hva {name} er.",
-      "notFlagged": "{name} er ikke merket.",
       "skippedNotFlagged": "{name} var ikke lenger merket.",
       "skippedForbidden": "{name} kan du ikke endre.",
       "skippedNotFound": "{name} var borte da AI kom dit.",
       "failed": "Spørsmålet om {name} mislyktes.",
-      "merge": "AI foreslår å slå sammen {name} med {into}."
+      "merge": "AI slo sammen {name} med {into}.",
+      "rename": "AI ga {name} det nye navnet {to}.",
+      "decided": "Noen har allerede bestemt {name}, så AI lar den være.",
+      "undone": "AI-svaret for {name} er en endring du har angret, så ingenting er endret."
     },
     "aiTrace": {
       "readAs": "AI leste det som «{name}».",
       "compared": "Sammenlignet med: {names}.",
       "comparedNothing": "Det var ingen kjent matvare å sammenligne med.",
-      "fromWords": "Based on name.",
       "noFood": "AI fant ingen matvare i dette navnet."
     },
     "addAlias": "Legg til en oversettelse",
@@ -588,35 +587,26 @@
     "standaloneOnly": "Uten forelder eller typer",
     "findParent": "Finn forelder med AI",
     "findParentsAll": "Finn foreldre med AI",
-    "suggestion": {
-      "merge": "Slå sammen {name} med {into}",
-      "parent": "Plasser {name} under {of}",
-      "distinct": "Behold {name} som egen matvare",
-      "filedFromName": "{name} filed under {of}",
-      "rename": "Endre navn på {name} til {to}"
-    },
-    "suggestionsTitle": "AI-forslag",
-    "suggestionsEmpty": "Ingenting venter på deg.",
-    "suggestionsNone": "Ingen forslag",
-    "suggestionsOpen": "{count, plural, =0 {Forslag} one {# forslag} other {# forslag}}",
-    "suggestionsFailed": "{count, plural, one {# forslag} other {# forslag}} kunne ikke brukes: {reason}",
-    "confirmSuggestion": "Bekreft",
-    "dismissSuggestion": "Avvis",
-    "confirmAll": "Bekreft alle ({count})",
-    "dismissAll": "Avvis alle",
-    "suggestedByAI": "Foreslått av AI",
-    "suggestedFromName": "Based on name",
-    "proposal": {
-      "merge": "Merge into {into}",
-      "parent": "File under {of}",
-      "distinct": "Food of its own",
-      "rename": "Endre navn til {to}"
+    "changedByAI": {
+      "title": "Endret av AI",
+      "open": "{count, plural, =0 {Endret av AI} other {Endret av AI · # å sjekke}}",
+      "unsure": "Ikke sikker",
+      "sure": "Endret",
+      "unchanged": "Ikke endret",
+      "empty": "AI har ikke endret noe den siste måneden.",
+      "keep": "Behold",
+      "undo": "Angre",
+      "merge": "{from} slått sammen hit",
+      "parent": "Plassert under {of}",
+      "parentFromName": "Plassert under {of}, ut fra navnet",
+      "plainName": "Fikk nytt navn, var {from}"
     },
     "skippedReasons": {
-      "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
       "notFound": "No longer exists",
-      "settled": "Navnet er allerede fastsatt, eller et forslag venter"
+      "settled": "Navnet er allerede fastsatt",
+      "decided": "Allerede bestemt",
+      "undone": "Angret tidligere"
     },
     "icon": {
       "change": "Endre ikonet",

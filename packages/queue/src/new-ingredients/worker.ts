@@ -15,7 +15,7 @@ import type { Job } from "bullmq";
 import type { NewIngredientsJobData } from "@norish/queue/contracts/job-types";
 import { getAutomaticIngredientsConfig } from "@norish/shared-server/config/server-config-loader";
 import { drawNewIngredientIcon } from "@norish/shared-server/ingredients/icon-rounds";
-import { giveNewIngredientItsPlainName } from "@norish/shared-server/ingredients/plain-names";
+import { giveItsPlainName } from "@norish/shared-server/ingredients/plain-names";
 import { createLogger } from "@norish/shared-server/logger";
 
 import { createWorker } from "../create-worker";
@@ -37,7 +37,7 @@ export async function processNewIngredientsJob(
     if (plainName) {
       await reportStep(job, "naming", { ingredientId });
       try {
-        await giveNewIngredientItsPlainName(ingredientId);
+        await giveItsPlainName(ingredientId);
       } catch (error) {
         log.warn({ err: error, jobId: job.id, ingredientId }, "Naming a new Ingredient failed");
       }

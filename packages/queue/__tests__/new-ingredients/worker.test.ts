@@ -12,7 +12,7 @@ import type { NewIngredientsJobData } from "@norish/queue/contracts/job-types";
 const settings = vi.hoisted(() => ({ value: { plainName: true, icon: true } }));
 const calls = vi.hoisted(() => [] as string[]);
 const plainNames = vi.hoisted(() => ({
-  giveNewIngredientItsPlainName: vi.fn(async (id: string) => void calls.push(`name:${id}`)),
+  giveItsPlainName: vi.fn(async (id: string) => void calls.push(`name:${id}`)),
 }));
 const icons = vi.hoisted(() => ({
   drawNewIngredientIcon: vi.fn(async (id: string) => {
@@ -48,7 +48,7 @@ function job(ingredientIds: string[]) {
 beforeEach(() => {
   calls.length = 0;
   settings.value = { plainName: true, icon: true };
-  plainNames.giveNewIngredientItsPlainName.mockClear();
+  plainNames.giveItsPlainName.mockClear();
   icons.drawNewIngredientIcon.mockClear();
   queue.add.mockClear();
 });
@@ -68,7 +68,7 @@ describe("processNewIngredientsJob", () => {
   });
 
   it("keeps going past a food whose question or drawing failed", async () => {
-    plainNames.giveNewIngredientItsPlainName.mockRejectedValueOnce(new Error("rate limited"));
+    plainNames.giveItsPlainName.mockRejectedValueOnce(new Error("rate limited"));
     icons.drawNewIngredientIcon.mockRejectedValueOnce(new Error("refused"));
     await processNewIngredientsJob(job(["a", "b"]));
 

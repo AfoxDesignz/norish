@@ -13,8 +13,8 @@
  * plain name the resolver would mint it under today ("garlic cloves" for
  * "garlic cloves crushed"), so the sibling mints after it ("garlic cloves
  * thinly sliced") resolve to it and merge, and is filed under the seeded
- * spelling its name contains, staying flagged — with a suggestion to confirm
- * where the spelling is not what the name ends with; where they name
+ * spelling its name contains, staying flagged — an unsure AI Change where
+ * the spelling is not what the name ends with; where they name
  * several, it is left for a person.
  * Nothing here is the resolver's rules over again: it asks the resolver.
  */

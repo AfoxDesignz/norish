@@ -1,4 +1,4 @@
-import type { FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
+import type { AIChangeKind, FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LocaleNames } from "@norish/shared/lib/ingredient-names";
 
 /** One spelling of a food; `canRemove` is `edit` on the alias, which moving it needs too. */
@@ -28,3 +28,20 @@ export interface IngredientItem {
   aliases: Spelling[];
   hiddenSpellings?: number;
 }
+
+/** One AI Change as Changed by AI lists it, saying whether the viewer may keep or undo it. */
+export type AIChange = {
+  id: string;
+  kind: AIChangeKind;
+  sure: boolean;
+  kept: boolean;
+  createdAt: Date;
+  /** The food it is listed under: a merge's is the food the other joined. */
+  ingredient: { id: string; name: string; localeNames: LocaleNames };
+  /** A parent's parent. */
+  target: { id: string; name: string; localeNames: LocaleNames } | null;
+  /** The merged food's name, or the name AI replaced. */
+  from: string | null;
+  fromWords: boolean;
+  canAct: boolean;
+};

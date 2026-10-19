@@ -401,16 +401,14 @@
     "askAI": "Zapytaj AI",
     "fixCatalogue": "Popraw katalog",
     "askAIRound": {
-      "intro": "AI sprawdza, gdzie pasują oznaczone składniki, i poprawia niespójne nazwy. Nic się nie zmieni, dopóki nie potwierdzisz sugestii.",
+      "intro": "AI sprawdza, gdzie należą oznaczone składniki, poprawia niespójne nazwy i sama wprowadza każdą zmianę. Każdą z nich możesz cofnąć w sekcji Zmienione przez AI.",
       "scopeLabel": "Co poprawić",
       "scopes": {
-        "unsuggested": "Sprawdź oznaczone składniki",
-        "suggested": "Sprawdź sugestie ponownie",
+        "flagged": "Sprawdź oznaczone składniki",
         "name": "Uporządkuj nazwy"
       },
       "hints": {
-        "unsuggested": "Szuka duplikatów, składników podrzędnych lub unikalnych.",
-        "suggested": "Ponownie sprawdza oznaczone składniki.",
+        "flagged": "Szuka duplikatów, składników podrzędnych lub unikalnych.",
         "name": "Czyści nazwy składników, zostawiając sam składnik. Oznaczone składniki są uwzględniane, jeśli powyższe pole jest zaznaczone."
       },
       "scopeSize": "{count, plural, =0 {Brak składników} one {# składnik · około {tokens} tokenów} few {# składniki · około {tokens} tokenów} many {# składników · około {tokens} tokenów} other {# składnika · około {tokens} tokenów}}",
@@ -425,21 +423,22 @@
     },
     "reviewing": "Pytam AI…",
     "aiOutcomes": {
-      "parent": "AI sugeruje przypisanie {name} jako rodzaju {of}.",
-      "distinct": "AI sugeruje, że {name} to osobny produkt.",
+      "parent": "AI umieściła {name} pod {of}.",
+      "distinct": "Według AI {name} to osobny składnik.",
       "unsure": "AI nadal nie jest pewne, czym jest {name}.",
-      "notFlagged": "{name} nie jest oznaczony.",
       "skippedNotFlagged": "{name} nie było już oznaczone.",
       "skippedForbidden": "{name} nie jest twoje do zmiany.",
       "skippedNotFound": "{name} zniknęło, zanim AI do niego dotarła.",
       "failed": "Pytanie o {name} nie powiodło się.",
-      "merge": "AI sugeruje połączenie {name} z {into}."
+      "merge": "AI scaliła {name} z {into}.",
+      "rename": "AI zmieniła nazwę {name} na {to}.",
+      "decided": "O {name} już zdecydowano, więc AI tego nie rusza.",
+      "undone": "Odpowiedź AI dla {name} to zmiana, którą cofnięto, więc nic się nie zmieniło."
     },
     "aiTrace": {
       "readAs": "AI odczytało to jako „{name}”.",
       "compared": "Porównano z: {names}.",
       "comparedNothing": "Nie było znanego produktu do porównania.",
-      "fromWords": "Based on name.",
       "noFood": "AI nie znalazło w tej nazwie żadnego produktu spożywczego."
     },
     "addAlias": "Dodaj tłumaczenie",
@@ -588,35 +587,26 @@
     "standaloneOnly": "Bez rodzica i rodzajów",
     "findParent": "Znajdź rodzica z AI",
     "findParentsAll": "Znajdź rodziców z AI",
-    "suggestion": {
-      "merge": "Połącz {name} z {into}",
-      "parent": "Przypisz {name} do {of}",
-      "distinct": "Zachowaj {name} jako osobny produkt",
-      "filedFromName": "{name} filed under {of}",
-      "rename": "Zmień nazwę {name} na {to}"
-    },
-    "suggestionsTitle": "Sugestie AI",
-    "suggestionsEmpty": "Nic na Ciebie nie czeka.",
-    "suggestionsNone": "Brak sugestii",
-    "suggestionsOpen": "{count, plural, =0 {Sugestie} one {# sugestia} few {# sugestie} many {# sugestii} other {# sugestii}}",
-    "suggestionsFailed": "Nie udało się zastosować {count, plural, one {# sugestii} few {# sugestii} many {# sugestii} other {# sugestii}}: {reason}",
-    "confirmSuggestion": "Potwierdź",
-    "dismissSuggestion": "Odrzuć",
-    "confirmAll": "Potwierdź wszystkie ({count})",
-    "dismissAll": "Odrzuć wszystkie",
-    "suggestedByAI": "Zasugerowane przez AI",
-    "suggestedFromName": "Based on name",
-    "proposal": {
-      "merge": "Merge into {into}",
-      "parent": "File under {of}",
-      "distinct": "Food of its own",
-      "rename": "Zmień nazwę na {to}"
+    "changedByAI": {
+      "title": "Zmienione przez AI",
+      "open": "{count, plural, =0 {Zmienione przez AI} other {Zmienione przez AI · # do sprawdzenia}}",
+      "unsure": "Niepewne",
+      "sure": "Zmienione",
+      "unchanged": "Bez zmian",
+      "empty": "AI niczego nie zmieniła w ostatnim miesiącu.",
+      "keep": "Zachowaj",
+      "undo": "Cofnij",
+      "merge": "Scalono tu {from}",
+      "parent": "Umieszczono pod {of}",
+      "parentFromName": "Umieszczono pod {of} na podstawie nazwy",
+      "plainName": "Zmieniono nazwę z {from}"
     },
     "skippedReasons": {
-      "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
       "notFound": "No longer exists",
-      "settled": "Nazwa jest już ustalona albo czeka sugestia"
+      "settled": "Nazwa już ustalona",
+      "decided": "Już zdecydowano",
+      "undone": "Wcześniej cofnięte"
     },
     "icon": {
       "change": "Zmień ikonę",

@@ -50,41 +50,24 @@ export function isFlagReason(value: unknown): value is FlagReason {
   return (FLAG_REASONS as readonly unknown[]).includes(value);
 }
 
-/**
- * What AI may propose for an Ingredient (ADR-0037): that it is another food
- * (`merge`), a kind of another food (`parent`), a food of its own
- * (`distinct`), or that its name is better as its Plain Name (`rename`). AI
- * never makes the edit itself; a person confirms or dismisses the
- * suggestion.
- */
-export const SUGGESTION_KINDS = ["merge", "parent", "distinct", "rename"] as const;
+/** What an AI Change did: merged a food into another, filed it under a parent, or gave it its Plain Name. */
+export const AI_CHANGE_KINDS = ["merge", "parent", "plain-name"] as const;
 
-export type SuggestionKind = (typeof SUGGESTION_KINDS)[number];
+export type AIChangeKind = (typeof AI_CHANGE_KINDS)[number];
 
 /**
- * Who proposed a suggestion: AI, asked about the food; or the words of the
- * food's own name (`words`), for a parent the resolver filed a mint under
- * from inside its name ("garlic cloves" under garlic). A `words` parent is
- * already in place; confirming keeps it, dismissing takes it off again.
- */
-export const SUGGESTION_SOURCES = ["ai", "words"] as const;
-
-export type SuggestionSource = (typeof SUGGESTION_SOURCES)[number];
-
-/**
- * What asking AI about an Ingredient came to, as the procedure answers it,
- * with what was asked: the foods the name was compared with and what AI read
- * the name as, so a person can see what AI tried. A sure answer is a
- * suggestion waiting on a person, named here by the food it proposes.
+ * What asking AI about an Ingredient came to, with what AI tried (`ReviewTrace`). `unsure` changed
+ * nothing: no answer came, or AI doubted the food is its own.
  */
 export type ReviewOutcome = ReviewVerdict & ReviewTrace;
 
 export type ReviewVerdict =
-  | { outcome: "merge"; into: string }
-  | { outcome: "parent"; of: string }
+  | { outcome: "merge"; into: string; sure: boolean }
+  | { outcome: "parent"; of: string; sure: boolean }
+  | { outcome: "rename"; to: string }
   | { outcome: "distinct" }
   | { outcome: "unsure"; reason: FlagReason }
-  | { outcome: "not-flagged" };
+  | { outcome: "skipped"; reason: "decided" | "undone" };
 
 export interface ReviewTrace {
   /** The names of the foods AI was asked to compare the name with, in order. */
@@ -93,29 +76,28 @@ export interface ReviewTrace {
   englishName: string | null;
 }
 
-/**
- * What a round of Ask AI came to for one food, as the round's report reads
- * it back: the question the food was asked (`mode`), and the suggestion and
- * the food it names with what was asked (`ReviewTrace`); or why the food was
- * passed over; or what broke. The worker records one per step, and the
- * Ingredients page lists the foods that got no suggestion beside the ones
- * waiting to be confirmed.
- */
+/** What a round of Ask AI came to for one food, as its step records it: the change, the skip or the error. */
 export type ReviewReportEntry = { ingredientId: string; name?: string; mode?: ReviewMode } & (
-  | ({ outcome: "merge"; into: string } & ReviewTrace)
-  | ({ outcome: "parent"; of: string } & ReviewTrace)
+  | ({ outcome: "merge"; into: string; sure?: boolean } & ReviewTrace)
+  | ({ outcome: "parent"; of: string; sure?: boolean } & ReviewTrace)
   | ({ outcome: "distinct" } & ReviewTrace)
   | ({ outcome: "unsure"; reason: string } & ReviewTrace)
   | PlainNameEntry
-  | { outcome: "skipped"; reason: "not-flagged" | "forbidden" | "not-found" | "settled" }
+  | {
+      outcome: "skipped";
+      reason: "decided" | "undone" | "forbidden" | "not-found" | "settled";
+    }
   | { outcome: "failed"; error: string }
 );
 
-/**
- * What a round of Clean names came to for one food, beyond a merge: a
- * rename to its Plain Name waiting on a person, or its name already plain,
- * which settles it.
- */
+/** The outcomes a round makes no change for: Changed by AI lists them under the changes. */
+export const UNCHANGED_OUTCOMES: ReadonlySet<ReviewReportEntry["outcome"]> = new Set([
+  "unsure",
+  "skipped",
+  "failed",
+]);
+
+/** What a round of Clean names came to for one food beyond a merge: a rename, or the name already plain. */
 export type PlainNameEntry = { outcome: "rename"; to: string } | { outcome: "plain" };
 
 /**
@@ -132,13 +114,8 @@ export interface ReviewReport {
 /** What a round of Ask AI asks of each food: what it is, what it is a kind of, or its Plain Name. */
 export type ReviewMode = "review" | "parent" | "name";
 
-/**
- * What a round of Fix catalogue asks about, any of them together, each a set
- * of the foods the asker may edit that no other part holds: the flagged foods
- * no suggestion waits on, the flagged foods asked again about, which replaces
- * the suggestion they had, and the unflagged foods whose names are not settled.
- */
-export const FIX_PARTS = ["unsuggested", "suggested", "name"] as const;
+/** What a round of Fix catalogue asks about: the flagged foods, and the unflagged ones with unsettled names. */
+export const FIX_PARTS = ["flagged", "name"] as const;
 
 export type FixPart = (typeof FIX_PARTS)[number];
 
@@ -159,14 +136,9 @@ export type ReviewTokenEstimate =
   | { basis: "measured"; foods: number; models: ModelTokenEstimate[] }
   | { basis: "prompt"; models: ModelTokenEstimate[] };
 
-/**
- * What a round of Fix catalogue would ask about the flagged foods, for the
- * asker: how many no suggestion waits on, how many have one, and the tokens a
- * food takes.
- */
+/** How many flagged foods a round of Fix catalogue would ask about, and the tokens a food takes. */
 export interface ReviewScopeSummary {
-  unsuggested: number;
-  suggested: number;
+  flagged: number;
   tokens: ReviewTokenEstimate;
 }
 

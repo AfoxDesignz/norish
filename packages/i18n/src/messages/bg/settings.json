@@ -401,16 +401,14 @@
     "askAI": "Попитай ИИ",
     "fixCatalogue": "Поправи каталога",
     "askAIRound": {
-      "intro": "ИИ проверява къде принадлежат маркираните съставки и поправя несъответстващите имена. Нищо не се променя, докато не потвърдите предложение.",
+      "intro": "ИИ проверява къде принадлежат маркираните съставки, поправя несъгласуваните имена и сам прави всяка промяна. Можете да отмените всяка от тях в „Променено от ИИ“.",
       "scopeLabel": "Какво да се поправи",
       "scopes": {
-        "unsuggested": "Провери маркираните съставки",
-        "suggested": "Провери предложенията отново",
+        "flagged": "Провери маркираните съставки",
         "name": "Изчисти имената"
       },
       "hints": {
-        "unsuggested": "Търси дубликати, подсъставки или уникални.",
-        "suggested": "Проверява отново маркираните съставки.",
+        "flagged": "Търси дубликати, подсъставки или уникални.",
         "name": "Почиства имената на съставките до самата съставка. Маркираните съставки са включени, ако горното поле е отметнато."
       },
       "scopeSize": "{count, plural, =0 {Няма съставки} one {# съставка · около {tokens} токена} other {# съставки · около {tokens} токена}}",
@@ -425,21 +423,22 @@
     },
     "reviewing": "Питаме AI…",
     "aiOutcomes": {
-      "parent": "ИИ предлага {name} да се класира като вид {of}.",
-      "distinct": "ИИ предлага {name} да е самостоятелна храна.",
+      "parent": "ИИ постави {name} под {of}.",
+      "distinct": "Според ИИ {name} е отделна храна.",
       "unsure": "ИИ все още не е сигурен какво е {name}.",
-      "notFlagged": "{name} не е маркирана.",
       "skippedNotFlagged": "{name} вече не беше отбелязано.",
       "skippedForbidden": "{name} не е ваше за промяна.",
       "skippedNotFound": "{name} го нямаше, когато ИИ стигна до него.",
       "failed": "Запитването за {name} не успя.",
-      "merge": "ИИ предлага {name} да се обедини с {into}."
+      "merge": "ИИ обедини {name} с {into}.",
+      "rename": "ИИ преименува {name} на {to}.",
+      "decided": "Вече е решено за {name}, затова ИИ не го пипа.",
+      "undone": "Отговорът на ИИ за {name} е промяна, която сте отменили, затова нищо не се промени."
     },
     "aiTrace": {
       "readAs": "ИИ го прочете като „{name}“.",
       "compared": "Сравнено с: {names}.",
       "comparedNothing": "Нямаше позната храна за сравнение.",
-      "fromWords": "Based on name.",
       "noFood": "ИИ не намери храна в това име."
     },
     "addAlias": "Добави превод",
@@ -588,35 +587,26 @@
     "standaloneOnly": "Без родител или видове",
     "findParent": "Намери родител с ИИ",
     "findParentsAll": "Намери родители с ИИ",
-    "suggestion": {
-      "merge": "Обедини {name} с {into}",
-      "parent": "Класирай {name} под {of}",
-      "distinct": "Запази {name} като самостоятелна храна",
-      "filedFromName": "{name} filed under {of}",
-      "rename": "Преименувай {name} на {to}"
-    },
-    "suggestionsTitle": "Предложения от ИИ",
-    "suggestionsEmpty": "Нищо не чака вашето решение.",
-    "suggestionsNone": "Без предложение",
-    "suggestionsOpen": "{count, plural, =0 {Предложения} one {# предложение} other {# предложения}}",
-    "suggestionsFailed": "{count, plural, one {# предложение не можа да бъде приложено} other {# предложения не можаха да бъдат приложени}}: {reason}",
-    "confirmSuggestion": "Потвърди",
-    "dismissSuggestion": "Отхвърли",
-    "confirmAll": "Потвърди всички ({count})",
-    "dismissAll": "Отхвърли всички",
-    "suggestedByAI": "Предложено от ИИ",
-    "suggestedFromName": "Based on name",
-    "proposal": {
-      "merge": "Merge into {into}",
-      "parent": "File under {of}",
-      "distinct": "Food of its own",
-      "rename": "Преименувай на {to}"
+    "changedByAI": {
+      "title": "Променено от ИИ",
+      "open": "{count, plural, =0 {Променено от ИИ} other {Променено от ИИ · # за проверка}}",
+      "unsure": "Не е сигурно",
+      "sure": "Променено",
+      "unchanged": "Непроменено",
+      "empty": "ИИ не е променил нищо през последния месец.",
+      "keep": "Запази",
+      "undo": "Отмени",
+      "merge": "{from} обединено тук",
+      "parent": "Поставено под {of}",
+      "parentFromName": "Поставено под {of} по името",
+      "plainName": "Преименувано от {from}"
     },
     "skippedReasons": {
-      "notFlagged": "No longer flagged",
       "forbidden": "Not yours to edit",
       "notFound": "No longer exists",
-      "settled": "Името вече е уточнено или чака предложение"
+      "settled": "Името вече е установено",
+      "decided": "Вече решено",
+      "undone": "Отменено преди"
     },
     "icon": {
       "change": "Смени иконата",

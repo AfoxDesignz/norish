@@ -2,7 +2,7 @@
  * Where an edit to the catalogue says which Ingredients it changed — what
  * they are (a merge, an alias move, a rename, a new parent, a deletion) or how
  * the page shows them (a spelling added or removed, a flag cleared, a
- * suggestion answered) — so every client refetches what it derived from them.
+ * change of AI's kept or undone) — so every client refetches what it derived from them.
  * The edits announce through this port themselves, so no caller has to know
  * which Ingredients an edit touched. Production announces over realtime;
  * tests swap in an in-memory publisher with `publishIngredientChangesTo`.
@@ -61,8 +61,8 @@ export function ingredientChanges(): IngredientChangePublisher {
 
 /**
  * Run many edits as one: what each announces is held back and announced
- * once, together, when they are all done, so a thousand suggestions
- * confirmed at once are one refetch on every client rather than a thousand.
+ * once, together, when they are all done, so a round of AI over a thousand
+ * foods is one refetch on every client rather than a thousand.
  * Other requests meanwhile announce as ever.
  */
 export async function announcingTogether<T>(run: () => Promise<T>): Promise<T> {

@@ -69,7 +69,7 @@ function settledSteps(progress: unknown): ReviewStepDetail[] {
 /**
  * The round as the job's progress tells it. Only the latest attempt counts:
  * a retry starts the walk over, asking again about the foods the first
- * attempt reached, whose suggestions it replaces.
+ * attempt reached.
  */
 export function summarizeReviewRound(
   job: Pick<Job<IngredientReviewJobData>, "id" | "data" | "progress">,
@@ -152,7 +152,7 @@ export async function readReviewReport(
 /**
  * The instance's latest round to have ended, read back as `readReviewReport`
  * reads one, so a page opened after it, or reloaded, still finds what it
- * could not suggest. Nothing once the queue has let every round go.
+ * changed nothing for. Nothing once the queue has let every round go.
  */
 export async function readLatestReviewReport(
   queue: Queue<IngredientReviewJobData>

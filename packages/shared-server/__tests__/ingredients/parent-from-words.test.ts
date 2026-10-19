@@ -4,25 +4,25 @@
  * minted for a text that contains a seeded spelling is filed under it,
  * longest first, and stays flagged for a person to look at (ADR-0037 as
  * amended). A spelling the text ends with is filed quietly; one found
- * elsewhere in the words comes with a suggestion to confirm or dismiss.
+ * elsewhere in the words is an unsure AI Change, to keep or undo.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { SeedEntry } from "@norish/db/repositories/ingredient-seed";
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
+import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import {
   applyIngredientSeed,
   listSeededIngredientIds,
 } from "@norish/db/repositories/ingredient-seed";
-import { listIngredientSuggestions } from "@norish/db/repositories/ingredient-suggestions";
 import { ingredientAliases } from "@norish/db/schema";
+import {
+  keepAIChange,
+  listAIChangesFor,
+  undoAIChange,
+} from "@norish/shared-server/ingredients/ai-changes";
 import { listIngredients, setParent } from "@norish/shared-server/ingredients/catalogue";
 import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
-import {
-  confirmSuggestion,
-  dismissSuggestion,
-  listSuggestions,
-} from "@norish/shared-server/ingredients/suggestions";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import { getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
@@ -129,7 +129,7 @@ describe("a mint's parent from the words of its text", () => {
       parent: { id: seeded.get("en:chicken") },
     });
     // Each was the whole of the words read, so none is a guess to confirm.
-    expect(await listIngredientSuggestions()).toHaveLength(0);
+    expect(await listAIChanges()).toHaveLength(0);
   });
 
   it("never files under a word of recipe language another language spells a food with", async () => {
@@ -152,7 +152,7 @@ describe("a mint's parent from the words of its text", () => {
       parent: { id: seeded.get("en:chicken-thigh") },
     });
     // The singular is the food its words end with: nothing to confirm.
-    expect(await listIngredientSuggestions()).toHaveLength(0);
+    expect(await listAIChanges()).toHaveLength(0);
   });
 
   it("reads a word as written before a plural read as its singular", async () => {
@@ -178,7 +178,7 @@ describe("a mint's parent from the words of its text", () => {
     });
   });
 
-  it("files a mint under a seeded food found inside its words, with a suggestion to confirm", async () => {
+  it("files a mint under a seeded food found inside its words, as an unsure AI Change", async () => {
     const cloves = await mintOne("garlic cloves crushed");
 
     expect(cloves).toMatchObject({
@@ -186,62 +186,59 @@ describe("a mint's parent from the words of its text", () => {
       flagged: true,
       parent: { id: seeded.get("en:garlic") },
     });
-    expect(await listIngredientSuggestions()).toMatchObject([
+    expect(await listAIChanges()).toMatchObject([
       {
-        ingredientId: cloves.id,
-        kind: "parent",
+        ingredient: { id: cloves.id },
         target: { id: seeded.get("en:garlic") },
-        source: "words",
-        considered: [],
+        sure: false,
+        undo: { kind: "parent", formerParentId: null, fromWords: true },
       },
     ]);
     // The one the text ends with is filed without a question.
     await mintOne("ground cumin");
-    expect(await listIngredientSuggestions()).toHaveLength(1);
+    expect(await listAIChanges()).toHaveLength(1);
   });
 
   it("prefers the longest spelling, and of two as long the one the text ends with", async () => {
     expect(await mintOne("kale large stalks removed")).toMatchObject({
       parent: { id: seeded.get("en:kale") },
     });
-    expect((await listSuggestions(actor)).map((it) => it.source)).toEqual(["words"]);
+    expect((await listAIChangesFor(actor)).map((it) => it.fromWords)).toEqual([true]);
   });
 
-  it("confirming keeps the parent as the person's choice, and clears the flag", async () => {
+  it("keeping keeps the parent as the person's choice, and clears the flag", async () => {
     const cloves = await mintOne("garlic cloves crushed");
-    const [suggestion] = await listSuggestions(actor);
+    const [change] = await listAIChanges();
 
-    await confirmSuggestion(actor, suggestion!.id);
+    await keepAIChange(actor, change!.id);
 
     expect((await listIngredients(actor, { id: cloves.id })).items[0]).toMatchObject({
       flagged: false,
       parent: { id: seeded.get("en:garlic") },
     });
-    expect(await listIngredientSuggestions()).toHaveLength(0);
   });
 
-  it("dismissing takes the parent off again, since it was a guess", async () => {
+  it("undoing takes the parent off again, and leaves the flag no AI answered", async () => {
     const cloves = await mintOne("garlic cloves crushed");
-    const [suggestion] = await listSuggestions(actor);
+    const [change] = await listAIChanges();
 
-    await dismissSuggestion(actor, suggestion!.id);
+    await undoAIChange(actor, change!.id);
 
     expect((await listIngredients(actor, { id: cloves.id })).items[0]).toMatchObject({
       flagged: true,
       parent: null,
     });
-    expect(await listIngredientSuggestions()).toHaveLength(0);
+    expect(await listAIChanges()).toHaveLength(0);
   });
 
-  it("dismissing leaves a parent a person chose meanwhile", async () => {
+  it("undoing leaves a parent a person chose meanwhile", async () => {
     const cloves = await mintOne("garlic cloves crushed");
-    const [suggestion] = await listSuggestions(actor);
+    const [change] = await listAIChanges();
 
     await setParent(actor, cloves.id, seeded.get("en:kale")!);
-    // Choosing a parent settles the suggestion; dismissing a stale id changes nothing.
-    await expect(dismissSuggestion(actor, suggestion!.id)).rejects.toMatchObject({
-      refusal: "not-found",
-    });
+    // Choosing a parent keeps the change, which Undo then only remembers.
+    expect(await listAIChanges()).toMatchObject([{ kept: true }]);
+    await undoAIChange(actor, change!.id);
     expect((await listIngredients(actor, { id: cloves.id })).items[0]).toMatchObject({
       parent: { id: seeded.get("en:kale") },
     });

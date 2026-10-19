@@ -1,20 +1,20 @@
 import type { useTranslations } from "next-intl";
+import { showSafeErrorToast } from "@/lib/ui/safe-error-toast";
 
 import type {
   ReviewOutcome,
   ReviewReportEntry,
+  ReviewTrace,
 } from "@norish/shared/contracts/ingredient-catalogue";
+import { isCatalogueRefusal } from "@norish/shared/contracts/ingredient-catalogue";
 import { ingredientDisplayName } from "@norish/shared/lib/ingredient-names";
 
-import type { IngredientSuggestion } from "./use-ingredient-suggestions";
+import type { AIChange } from "./types";
 
 type Translate = ReturnType<typeof useTranslations<"settings.ingredients">>;
 
 /** What AI tried, so the viewer can judge its answer: what it read the name as, and what it compared it with. */
-export function reviewTrace(
-  t: Translate,
-  outcome: Pick<ReviewOutcome, "considered" | "englishName">
-): string {
+export function reviewTrace(t: Translate, outcome: ReviewTrace): string {
   const considered =
     outcome.considered.length > 0
       ? t("aiTrace.compared", { names: outcome.considered.slice(0, 8).join(", ") })
@@ -25,13 +25,15 @@ export function reviewTrace(
     : considered;
 }
 
-/** What to tell the viewer about an AI review, in their words: what it now suggests. */
+/** What asking AI about a food came to, in the viewer's words: the change it made, or why none. */
 export function reviewMessage(t: Translate, name: string, outcome: ReviewOutcome): string {
   switch (outcome.outcome) {
     case "merge":
       return t("aiOutcomes.merge", { name, into: outcome.into });
     case "parent":
       return t("aiOutcomes.parent", { name, of: outcome.of });
+    case "rename":
+      return t("aiOutcomes.rename", { name, to: outcome.to });
     case "distinct":
       return t("aiOutcomes.distinct", { name });
     case "unsure":
@@ -39,51 +41,27 @@ export function reviewMessage(t: Translate, name: string, outcome: ReviewOutcome
       return outcome.reason === "ai-key-rejected"
         ? t("flagReasons.ai-key-rejected")
         : t("aiOutcomes.unsure", { name });
-    case "not-flagged":
-      return t("aiOutcomes.notFlagged", { name });
+    case "skipped":
+      return outcome.reason === "undone"
+        ? t("aiOutcomes.undone", { name })
+        : t("aiOutcomes.decided", { name });
   }
 }
 
-/** What a suggestion proposes, in the viewer's words and language. */
-export function suggestionMessage(
-  t: Translate,
-  suggestion: IngredientSuggestion,
-  locale: string
-): string {
-  const name = ingredientDisplayName(suggestion.ingredient, locale);
-  const target = suggestion.target ? ingredientDisplayName(suggestion.target, locale) : "";
-
-  switch (suggestion.kind) {
+/** What an AI Change did to the food it is listed under, without the food's name. */
+export function changeMessage(t: Translate, change: AIChange, locale: string): string {
+  switch (change.kind) {
     case "merge":
-      return t("suggestion.merge", { name, into: target });
-    case "parent":
-      return suggestion.source === "words"
-        ? t("suggestion.filedFromName", { name, of: target })
-        : t("suggestion.parent", { name, of: target });
-    case "distinct":
-      return t("suggestion.distinct", { name });
-    case "rename":
-      return t("suggestion.rename", { name, to: suggestion.proposedName ?? "" });
-  }
-}
+      return t("changedByAI.merge", { from: change.from ?? "" });
+    case "parent": {
+      const of = change.target ? ingredientDisplayName(change.target, locale) : "";
 
-/** What a suggestion proposes, without the food's name: the proposal column of the table. */
-export function suggestionProposal(
-  t: Translate,
-  suggestion: IngredientSuggestion,
-  locale: string
-): string {
-  const target = suggestion.target ? ingredientDisplayName(suggestion.target, locale) : "";
-
-  switch (suggestion.kind) {
-    case "merge":
-      return t("proposal.merge", { into: target });
-    case "parent":
-      return t("proposal.parent", { of: target });
-    case "distinct":
-      return t("proposal.distinct");
-    case "rename":
-      return t("proposal.rename", { to: suggestion.proposedName ?? "" });
+      return change.fromWords
+        ? t("changedByAI.parentFromName", { of })
+        : t("changedByAI.parent", { of });
+    }
+    case "plain-name":
+      return t("changedByAI.plainName", { from: change.from ?? "" });
   }
 }
 
@@ -95,8 +73,10 @@ export function skippedReason(
   switch (reason) {
     case "settled":
       return t("skippedReasons.settled");
-    case "not-flagged":
-      return t("skippedReasons.notFlagged");
+    case "decided":
+      return t("skippedReasons.decided");
+    case "undone":
+      return t("skippedReasons.undone");
     case "forbidden":
       return t("skippedReasons.forbidden");
     case "not-found":
@@ -104,13 +84,14 @@ export function skippedReason(
   }
 }
 
-/**
- * How a suggestion came about: what AI tried, what it read the name as when
- * asked for its Plain Name, or that the words of the name alone gave it.
- */
-export function suggestionTrace(t: Translate, suggestion: IngredientSuggestion): string {
-  if (suggestion.source === "words") return t("aiTrace.fromWords");
-  if (suggestion.proposedName) return t("aiTrace.readAs", { name: suggestion.proposedName });
+/** Say why the server refused an edit to the catalogue, in the viewer's words. */
+export function showRefusal(t: Translate, error: unknown, context: string): void {
+  const refusal = error instanceof Error ? error.message : null;
 
-  return reviewTrace(t, suggestion);
+  showSafeErrorToast({
+    title: t("errors.title"),
+    description: isCatalogueRefusal(refusal) ? t(`errors.${refusal}`) : t("errors.unknown"),
+    error,
+    context: `ingredients:${context}`,
+  });
 }

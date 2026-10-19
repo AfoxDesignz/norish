@@ -9,10 +9,10 @@ import {
   ingredientNutritionCorrections,
   ingredients,
   ingredientStorePreferences,
-  ingredientSuggestions,
   storeProductLinks,
 } from "@norish/db/schema";
 
+import { recordWordsParent, takeOpenParentChanges, wasParentUndone } from "./ingredient-ai-changes";
 import { ingredientIsNamed } from "./ingredient-catalogue";
 import { findIngredientAncestors, lockTree } from "./ingredient-relocation";
 
@@ -204,14 +204,7 @@ export async function applyIngredientSeed(entries: readonly SeedEntry[]): Promis
           })
           .where(eq(ingredients.id, row.id));
         // Where its words would file it is the seed's to say now.
-        await tx
-          .delete(ingredientSuggestions)
-          .where(
-            and(
-              eq(ingredientSuggestions.ingredientId, row.id),
-              eq(ingredientSuggestions.source, "words")
-            )
-          );
+        await takeOpenParentChanges(tx, row.id);
         outcome.adopted += 1;
       } else {
         outcome.absorbed += 1;
@@ -517,18 +510,20 @@ export async function adoptPlainName(
  * File an undecided mint under the parent its words suggest, leaving it
  * flagged and the parent unchosen: only where it still has no parent, no
  * person decided about it meanwhile, and the parent would close no cycle.
- * With `suggest`, a `words` suggestion is recorded beside it for a person
- * to confirm or dismiss, replacing any older one. Whether it was filed.
+ * With `unsure`, the parent is an unsure AI Change, from the words, for a
+ * person to keep or undo, replacing any older one. Whether it was filed.
  */
 export async function fileUndecidedMint(
   id: string,
   parentId: string,
-  suggest = false
+  unsure = false
 ): Promise<boolean> {
   return await db.transaction(async (tx) => {
     await lockTree(tx);
     if ((await findIngredientAncestors([parentId], tx)).get(parentId)?.includes(id)) return false;
     if (id === parentId) return false;
+    // A person undid this parent once: AI and the words never set it again.
+    if (await wasParentUndone(tx, id, parentId)) return false;
 
     const filed = await tx
       .update(ingredients)
@@ -544,22 +539,9 @@ export async function fileUndecidedMint(
       )
       .returning({ id: ingredients.id });
 
-    if (filed.length > 0 && suggest) {
-      const values = { kind: "parent", targetId: parentId, source: "words" };
-
-      await tx
-        .insert(ingredientSuggestions)
-        .values({ ingredientId: id, ...values })
-        .onConflictDoUpdate({
-          target: ingredientSuggestions.ingredientId,
-          set: {
-            ...values,
-            englishName: null,
-            considered: [],
-            proposedName: null,
-            createdAt: new Date(),
-          },
-        });
+    if (filed.length > 0 && unsure) {
+      await takeOpenParentChanges(tx, id);
+      await recordWordsParent(tx, id, parentId);
     }
 
     return filed.length > 0;

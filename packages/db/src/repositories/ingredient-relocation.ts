@@ -16,6 +16,7 @@ import {
   storeProductLinks,
 } from "@norish/db/schema";
 
+import { moveMergedAIChanges } from "./ingredient-ai-changes";
 import { lockPantryFood } from "./pantry";
 
 /**
@@ -143,46 +144,23 @@ export async function findIngredientAncestors(
 }
 
 /**
- * Set an Ingredient's Parent Ingredient, or clear it (`parentId` null), and
- * clear its flag: looking after a Flagged Ingredient counts as reviewing it.
- * The caller holds the tree lock and has ruled out a cycle.
+ * Set or clear (`null`) a parent. A person's choice also marks it chosen and clears the flag; AI's
+ * (`byAI`) does neither. The caller holds the tree lock and has ruled out a cycle.
  */
 export async function setCatalogueIngredientParent(
   tx: DbTransaction,
   id: string,
-  parentId: string | null
+  parentId: string | null,
+  { byAI = false }: { byAI?: boolean } = {}
 ): Promise<void> {
   await tx
     .update(ingredients)
     .set({
       parentId,
-      parentChosen: true,
-      flagged: false,
-      flagReason: null,
+      ...(byAI ? {} : { parentChosen: true, flagged: false, flagReason: null }),
       version: sql`${ingredients.version} + 1`,
     })
     .where(eq(ingredients.id, id));
-}
-
-/**
- * Take off a parent the resolver gave an Ingredient from the words of its
- * name, where that is still its parent and no person chose one since: what
- * dismissing a `words` suggestion does. Whether anything changed.
- */
-export async function unfileIngredient(id: string, parentId: string): Promise<boolean> {
-  const unfiled = await db
-    .update(ingredients)
-    .set({ parentId: null, version: sql`${ingredients.version} + 1` })
-    .where(
-      and(
-        eq(ingredients.id, id),
-        eq(ingredients.parentId, parentId),
-        eq(ingredients.parentChosen, false)
-      )
-    )
-    .returning({ id: ingredients.id });
-
-  return unfiled.length > 0;
 }
 
 /**
@@ -221,6 +199,7 @@ export async function mergeCatalogueIngredients(
     .update(ingredients)
     .set({ parentId: targetId })
     .where(eq(ingredients.parentId, sourceId));
+  await moveMergedAIChanges(tx, sourceId, targetId);
 
   for (const keyed of KEYED_BY_INGREDIENT) {
     await repointKeyed(tx, keyed, sql`p.ingredient_id = ${sourceId}`, targetId);
@@ -273,7 +252,7 @@ export async function countAliasesOf(tx: DbTransaction, ingredientId: string): P
  */
 export async function insertCatalogueIngredient(
   tx: DbTransaction,
-  values: { name: string; ownerId: string }
+  values: { name: string; ownerId: string | null }
 ): Promise<string> {
   const [row] = await tx.insert(ingredients).values(values).returning({ id: ingredients.id });
 

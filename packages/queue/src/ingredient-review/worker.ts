@@ -1,28 +1,12 @@
 /**
- * Ingredient Review Worker
- *
- * A round of Ask AI over Flagged Ingredients (ADR-0037), one job for however
- * many foods a person asked about, one step per food. Each food is asked the
- * question the Ingredients page's own Ask AI asks, a few at once, and a sure
- * answer is left as a suggestion for a person to confirm. Clean names asks a
- * food for its Plain Name instead, and leaves a rename; one round may ask
- * both, and a flagged food AI calls a food of its own is asked its Plain Name
- * next. The round's count
- * follows over the socket as answers come, and the changes are announced
- * together once every food is answered, so the suggestions arrive as one. The round outlives the tab that started it. A food no
- * longer flagged, or one the asker may not edit, is passed over, and a food
- * whose question or edit broke is recorded as failed on its own step, with
- * the cause; neither ends the round. Only the round's own bookkeeping can fail
- * it, and the retry asks again, replacing the suggestions it left. Its worker
- * wraps the processor so the models each question asks reach the job monitor.
+ * A round of Ask AI over Ingredients: one job, one step per food, each answer made as an AI Change.
+ * A food passed over or whose question broke is recorded on its step; neither ends the round.
  */
 
 import type { Job } from "bullmq";
 
 import type { IngredientReviewJobData } from "@norish/queue/contracts/job-types";
 import type { ModelUse } from "@norish/shared-server/ai/runtime/model-use-ledger";
-import type { PlainNameOutcome } from "@norish/shared-server/ingredients/plain-names";
-import type { ReviewOutcome } from "@norish/shared-server/ingredients/review";
 import { SERVER_CONFIG } from "@norish/config/env-config-server";
 import {
   createModelUseLedger,
@@ -30,8 +14,9 @@ import {
   runWithModelUseLedger,
 } from "@norish/shared-server/ai/runtime/model-use-ledger";
 import { CatalogueEditError } from "@norish/shared-server/ingredients/catalogue";
+import { announcingTogether } from "@norish/shared-server/ingredients/changes";
 import { cleanNameWithAI } from "@norish/shared-server/ingredients/plain-names";
-import { findParentWithAI, reviewFlaggedWithAI } from "@norish/shared-server/ingredients/review";
+import { askAIAbout } from "@norish/shared-server/ingredients/review";
 import { createLogger } from "@norish/shared-server/logger";
 import { ingredients } from "@norish/shared-server/realtime/ingredients";
 
@@ -53,27 +38,6 @@ function describe(error: unknown): string {
 }
 
 /**
- * A flagged food AI called a food of its own is asked its Plain Name next, so
- * one round cleans it too: the rename or merge it comes to, which replaced
- * the "distinct" waiting on it, or null where the "distinct" stays. A name
- * question that broke leaves the review's answer standing.
- */
-async function nameAfterReview(
-  job: Job<IngredientReviewJobData>,
-  ingredientId: string
-): Promise<Extract<PlainNameOutcome, { outcome: "rename" | "merge" }> | null> {
-  try {
-    const named = await cleanNameWithAI(job.data.actor, ingredientId, { afterReview: true });
-
-    return named.outcome === "rename" || named.outcome === "merge" ? named : null;
-  } catch (error) {
-    log.warn({ err: error, jobId: job.id, ingredientId }, "Cleaning a reviewed food's name failed");
-
-    return null;
-  }
-}
-
-/**
  * The question, asked of one food. Nothing here ends the round: a refusal is
  * the food's, and an error — the model, the database — is recorded on the
  * food's step for the monitor and counted, so the other foods still get asked.
@@ -83,21 +47,10 @@ async function ask(
   { id: ingredientId, mode }: IngredientReviewJobData["ingredients"][number]
 ): Promise<ReviewStepDetail> {
   try {
-    if (mode === "name") {
-      return { ingredientId, ...(await cleanNameWithAI(job.data.actor, ingredientId)) };
-    }
-
-    const outcome: ReviewOutcome =
-      mode === "parent"
-        ? await findParentWithAI(job.data.actor, ingredientId)
-        : await reviewFlaggedWithAI(job.data.actor, ingredientId);
-
-    if (outcome.outcome === "not-flagged") {
-      return { ingredientId, outcome: "skipped", reason: "not-flagged" };
-    }
-    if (mode === "review" && outcome.outcome === "distinct") {
-      return { ingredientId, ...((await nameAfterReview(job, ingredientId)) ?? outcome) };
-    }
+    const outcome =
+      mode === "name"
+        ? await cleanNameWithAI(job.data.actor, ingredientId)
+        : await askAIAbout(job.data.actor, ingredientId);
 
     return { ingredientId, ...outcome };
   } catch (error) {
@@ -147,7 +100,6 @@ export async function processIngredientReviewJob(
   signal?: AbortSignal
 ): Promise<void> {
   const { ingredients: foods } = job.data;
-  const changed: string[] = [];
   const writeEvery = Math.max(1, Math.ceil(foods.length / ROUND_WRITES));
   let next = 0;
   let settled = 0;
@@ -174,8 +126,6 @@ export async function processIngredientReviewJob(
       detail: { ingredientId, name: food.name, mode: food.mode, ...outcome },
       models,
     });
-    // A suggestion recorded, or a flag's reason brought up to date, is worth announcing.
-    if (detail.outcome !== "skipped" && detail.outcome !== "failed") changed.push(food.id);
     if (unwritten.length < writeEvery && settled < foods.length) return recording;
 
     const steps = unwritten;
@@ -206,18 +156,13 @@ export async function processIngredientReviewJob(
     }
   };
 
-  await Promise.all(
-    Array.from({ length: Math.min(reviewConcurrency(), foods.length) }, () => askNext())
+  // What the round changed is announced once, together, as it ends.
+  await announcingTogether(() =>
+    Promise.all(
+      Array.from({ length: Math.min(reviewConcurrency(), foods.length) }, () => askNext())
+    )
   );
   await recording;
-
-  if (changed.length > 0) {
-    try {
-      await ingredients.publish("changed", { ingredientIds: changed }, undefined);
-    } catch (error) {
-      log.warn({ err: error, jobId: job.id }, "Could not announce the round's Ingredient changes");
-    }
-  }
   signal?.throwIfAborted();
   await announceRound(job, true);
 }

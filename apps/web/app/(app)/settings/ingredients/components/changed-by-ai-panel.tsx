@@ -1,21 +1,16 @@
 "use client";
 
-import type { IngredientSuggestion } from "@/components/ingredients/use-ingredient-suggestions";
+import type { AIChange } from "@/components/ingredients/types";
 import type { ReactNode } from "react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTRPC } from "@/app/providers/trpc-provider";
+import { AIChangeActions } from "@/components/ingredients/ai-change-actions";
 import { IngredientPanel } from "@/components/ingredients/ingredient-panel";
-import {
-  reviewTrace,
-  skippedReason,
-  suggestionProposal,
-  suggestionTrace,
-} from "@/components/ingredients/review-copy";
-import { useIngredientSuggestions } from "@/components/ingredients/use-ingredient-suggestions";
+import { changeMessage, reviewTrace, skippedReason } from "@/components/ingredients/review-copy";
+import { isOpenChange, useAIChanges } from "@/components/ingredients/use-ai-changes";
 import Panel from "@/components/Panel/Panel";
-import { ActionButton, ActionButtonGroup } from "@/components/shared/action-button";
 import { ChevronDownIcon } from "@heroicons/react/16/solid";
-import { Button, Chip, Label, ProgressBar, Spinner } from "@heroui/react";
+import { Chip, Label, ProgressBar, Spinner } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useLocale, useTranslations } from "next-intl";
@@ -23,43 +18,37 @@ import { twMerge } from "tailwind-merge";
 
 import type { ReviewReportEntry } from "@norish/shared/contracts/ingredient-catalogue";
 import type { ReviewRound } from "@norish/shared/contracts/realtime/ingredients";
+import { UNCHANGED_OUTCOMES } from "@norish/shared/contracts/ingredient-catalogue";
 import { ingredientDisplayName } from "@norish/shared/lib/ingredient-names";
 
-/** The foods a round asked about that got no suggestion, and so are worth a word. */
-export const UNSUGGESTED: ReadonlySet<ReviewReportEntry["outcome"]> = new Set([
-  "unsure",
-  "skipped",
-  "failed",
-]);
-
-const UNSUGGESTED_COLOR: Record<string, "warning" | "default" | "danger"> = {
+const UNCHANGED_COLOR: Record<string, "warning" | "default" | "danger"> = {
   unsure: "warning",
   skipped: "default",
   failed: "danger",
 };
 
-/** One food a round got no suggestion for, as the report lists it. */
-type Unsuggested = Extract<ReviewReportEntry, { outcome: "unsure" | "skipped" | "failed" }>;
+/** One food a round changed nothing for, as the report lists it. */
+type Unchanged = Extract<ReviewReportEntry, { outcome: "unsure" | "skipped" | "failed" }>;
 
 /** One line of the panel: all it shows is one virtualised run of these. */
 type PanelRow =
   | { kind: "round" }
   | { kind: "waiting"; ingredientId: string; name: string }
   | { kind: "empty" }
-  | { kind: "suggestion"; suggestion: IngredientSuggestion }
+  | { kind: "heading"; of: "unsure" | "sure" | "unchanged" }
+  | { kind: "change"; change: AIChange }
   | { kind: "loading"; of: "waiting" | "report" }
-  | { kind: "unsuggested-heading" }
-  | { kind: "unsuggested"; entry: Unsuggested };
+  | { kind: "unchanged"; entry: Unchanged };
 
 /** What each kind of row is likely to measure, until the virtualizer has measured it. */
 const ESTIMATED_HEIGHT: Record<PanelRow["kind"], number> = {
   round: 72,
   waiting: 26,
   empty: 44,
-  suggestion: 96,
+  heading: 40,
+  change: 72,
   loading: 36,
-  "unsuggested-heading": 40,
-  unsuggested: 76,
+  unchanged: 76,
 };
 const ROW_OVERSCAN = 8;
 
@@ -67,12 +56,13 @@ function rowKey(row: PanelRow): string {
   switch (row.kind) {
     case "waiting":
       return `waiting:${row.ingredientId}`;
-    case "suggestion":
-      return `suggestion:${row.suggestion.id}`;
-    case "unsuggested":
-      return `unsuggested:${row.entry.ingredientId}`;
+    case "change":
+      return `change:${row.change.id}`;
+    case "unchanged":
+      return `unchanged:${row.entry.ingredientId}`;
     case "loading":
-      return `loading:${row.of}`;
+    case "heading":
+      return `${row.kind}:${row.of}`;
     default:
       return row.kind;
   }
@@ -80,8 +70,8 @@ function rowKey(row: PanelRow): string {
 
 /**
  * The panel's rows, virtualised against the panel's own scrolling body: a
- * round over the whole catalogue leaves a thousand suggestions, a row each
- * with two buttons, and only the rows in and around view are in the tree.
+ * round over the whole catalogue leaves a thousand changes, a row each with
+ * a button or two, and only the rows in and around view are in the tree.
  * Rows carry their own spacing; the virtualizer measures each one.
  */
 function VirtualRows({
@@ -112,7 +102,7 @@ function VirtualRows({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollElement,
-    estimateSize: (index) => ESTIMATED_HEIGHT[rows[index]?.kind ?? "suggestion"],
+    estimateSize: (index) => ESTIMATED_HEIGHT[rows[index]?.kind ?? "change"],
     getItemKey: (index) => {
       const row = rows[index];
 
@@ -127,7 +117,7 @@ function VirtualRows({
       ref={listRef}
       // The panel's body lays its children out as a column: the list keeps its full height there.
       className="relative w-full shrink-0"
-      data-testid="ingredients-suggestions"
+      data-testid="ingredients-ai-changes"
       style={{ height: `${virtualizer.getTotalSize()}px` }}
     >
       {virtualizer.getVirtualItems().map((item) => {
@@ -152,23 +142,10 @@ function VirtualRows({
 }
 
 /**
- * What AI suggests for the catalogue, waiting on the viewer: one row per food
- * they may edit (the server lists no other), what is proposed and on what
- * basis, each confirmed or dismissed on its own, or all at once; an answered
- * row leaves the list at once. Rows, not a table: the panel is a phone's
- * width on every screen, and four columns scrolled it sideways. The rows are
- * virtualised, since a round over the catalogue leaves a thousand of them.
- * Confirming makes the edit as the viewer's own.
- * Opened on its own when a round of Ask AI the viewer started ends, and from the page while
- * anything is waiting. While a round runs, it leads with how far the round
- * has come and, folded, the foods it has still to ask about. The latest
- * round's foods it got no suggestion for follow, with why: AI was not sure,
- * the food was passed over, or its question broke; one settled since is
- * left out by the server. A food's name
- * opens its own panel over this one, to look at it whole before answering;
- * closing that comes back here.
+ * Changed by AI: the last month's AI Changes, open ones first with Keep and Undo, then a running
+ * round's progress and the foods the latest round changed nothing for. A name opens its panel.
  */
-export function SuggestionsPanel({
+export function ChangedByAIPanel({
   jobId,
   round,
   open,
@@ -189,7 +166,7 @@ export function SuggestionsPanel({
   const t = useTranslations("settings.ingredients");
   const locale = useLocale();
   const trpc = useTRPC();
-  const { suggestions, confirm, dismiss } = useIngredientSuggestions();
+  const { changes, keep, undo } = useAIChanges();
   // The food whose own panel is open over this one.
   const [openId, setOpenId] = useState<string | null>(null);
   // Whether the round's waiting foods are folded out.
@@ -215,41 +192,27 @@ export function SuggestionsPanel({
         for (const food of waiting) out.push({ kind: "waiting", ...food });
       }
     }
-    if (suggestions.length === 0) out.push({ kind: "empty" });
-    for (const suggestion of suggestions) out.push({ kind: "suggestion", suggestion });
+    const unsure = changes.filter(isOpenChange);
+    const rest = changes.filter((change) => !isOpenChange(change));
+
+    if (changes.length === 0) out.push({ kind: "empty" });
+    if (unsure.length > 0) out.push({ kind: "heading", of: "unsure" });
+    for (const change of unsure) out.push({ kind: "change", change });
+    // A heading for the rest only sets them apart from the unsure ones above.
+    if (unsure.length > 0 && rest.length > 0) out.push({ kind: "heading", of: "sure" });
+    for (const change of rest) out.push({ kind: "change", change });
     if (reportLoading) out.push({ kind: "loading", of: "report" });
-    const unsuggested = (reportData?.entries ?? []).filter((entry): entry is Unsuggested =>
-      UNSUGGESTED.has(entry.outcome)
+    const unchanged = (reportData?.entries ?? []).filter((entry): entry is Unchanged =>
+      UNCHANGED_OUTCOMES.has(entry.outcome)
     );
 
-    if (unsuggested.length > 0) {
-      out.push({ kind: "unsuggested-heading" });
-      for (const entry of unsuggested) out.push({ kind: "unsuggested", entry });
+    if (unchanged.length > 0) {
+      out.push({ kind: "heading", of: "unchanged" });
+      for (const entry of unchanged) out.push({ kind: "unchanged", entry });
     }
 
     return out;
-  }, [round, waitingOpen, suggestions, reportData, reportLoading]);
-
-  const actions = (suggestion: IngredientSuggestion) => (
-    <div className="flex shrink-0 gap-2">
-      <Button
-        data-testid="ingredient-suggestion-dismiss"
-        size="sm"
-        variant="danger-soft"
-        onPress={() => void dismiss([suggestion.id])}
-      >
-        {t("dismissSuggestion")}
-      </Button>
-      <Button
-        data-testid="ingredient-suggestion-confirm"
-        size="sm"
-        variant="secondary"
-        onPress={() => void confirm([suggestion.id])}
-      >
-        {t("confirmSuggestion")}
-      </Button>
-    </div>
-  );
+  }, [round, waitingOpen, changes, reportData, reportLoading]);
 
   /** A food's name, opening its panel; one gone since the round is only its name. */
   const foodName = (ingredientId: string, name: string, gone = false) =>
@@ -258,7 +221,7 @@ export function SuggestionsPanel({
     ) : (
       <button
         className="text-accent focus-visible:ring-focus min-w-0 cursor-[var(--cursor-interactive)] rounded text-left text-sm font-medium break-words hover:underline focus-visible:ring-2 focus-visible:outline-none"
-        data-testid="ingredient-suggestion-open"
+        data-testid="ingredient-ai-change-open"
         type="button"
         onClick={() => setOpenId(ingredientId)}
       >
@@ -314,7 +277,7 @@ export function SuggestionsPanel({
       case "empty":
         return (
           <p className={twMerge("text-muted py-3 text-sm", afterWaiting && "pt-6")}>
-            {t("suggestionsEmpty")}
+            {t("changedByAI.empty")}
           </p>
         );
       case "loading":
@@ -323,43 +286,44 @@ export function SuggestionsPanel({
             <Spinner color="accent" size="sm" />
           </div>
         );
-      case "suggestion": {
-        const { suggestion } = row;
+      case "heading":
+        return (
+          <h3
+            className={twMerge(
+              "text-muted pb-1 text-xs font-semibold tracking-wide uppercase",
+              index > 0 && "pt-4"
+            )}
+          >
+            {t(`changedByAI.${row.of}`)}
+          </h3>
+        );
+      case "change": {
+        const { change } = row;
 
         return (
           <div
             className={twMerge(
-              "flex flex-col gap-1 py-3",
+              "flex items-start justify-between gap-3 py-3",
               ruled && "border-border/40 border-t",
               afterWaiting && "pt-6"
             )}
-            data-kind={suggestion.kind}
-            data-source={suggestion.source}
-            data-testid="ingredient-suggestion"
+            data-kind={change.kind}
+            data-sure={change.sure}
+            data-testid="ingredient-ai-change"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-col items-start">
-                {foodName(
-                  suggestion.ingredient.id,
-                  ingredientDisplayName(suggestion.ingredient, locale)
-                )}
-                <span className="text-sm break-words">
-                  {suggestionProposal(t, suggestion, locale)}
-                </span>
-              </div>
-              {actions(suggestion)}
+            <div className="flex min-w-0 flex-col items-start">
+              {foodName(change.ingredient.id, ingredientDisplayName(change.ingredient, locale))}
+              <span className="text-sm break-words">{changeMessage(t, change, locale)}</span>
             </div>
-            <p className="text-muted text-xs break-words">{suggestionTrace(t, suggestion)}</p>
+            <AIChangeActions
+              change={change}
+              onKeep={(it) => void keep(it)}
+              onUndo={(it) => void undo(it)}
+            />
           </div>
         );
       }
-      case "unsuggested-heading":
-        return (
-          <h3 className="text-muted pt-4 pb-1 text-xs font-semibold tracking-wide uppercase">
-            {t("suggestionsNone")}
-          </h3>
-        );
-      case "unsuggested": {
+      case "unchanged": {
         const { entry } = row;
 
         return (
@@ -376,7 +340,7 @@ export function SuggestionsPanel({
               )}
               <Chip
                 className="shrink-0"
-                color={UNSUGGESTED_COLOR[entry.outcome]}
+                color={UNCHANGED_COLOR[entry.outcome]}
                 size="sm"
                 variant="soft"
               >
@@ -401,7 +365,7 @@ export function SuggestionsPanel({
   return (
     <Panel
       open={open}
-      title={t("suggestionsTitle")}
+      title={t("changedByAI.title")}
       onOpenChange={(isOpen) => {
         if (isOpen) return;
         setOpenId(null);
@@ -411,26 +375,6 @@ export function SuggestionsPanel({
       <Panel.Body>
         <VirtualRows render={renderRow} rows={rows} />
       </Panel.Body>
-      {suggestions.length > 0 ? (
-        <Panel.Footer>
-          <ActionButtonGroup>
-            <ActionButton
-              action="dismiss"
-              data-testid="ingredient-suggestions-dismiss-all"
-              onPress={() => void dismiss(suggestions.map((suggestion) => suggestion.id))}
-            >
-              {t("dismissAll")}
-            </ActionButton>
-            <ActionButton
-              action="apply"
-              data-testid="ingredient-suggestions-confirm-all"
-              onPress={() => void confirm(suggestions.map((suggestion) => suggestion.id))}
-            >
-              {t("confirmAll", { count: suggestions.length })}
-            </ActionButton>
-          </ActionButtonGroup>
-        </Panel.Footer>
-      ) : null}
 
       <IngredientPanel
         nested

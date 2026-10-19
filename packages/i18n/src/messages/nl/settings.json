@@ -401,16 +401,14 @@
     "askAI": "Vraag AI",
     "fixCatalogue": "Catalogus verbeteren",
     "askAIRound": {
-      "intro": "AI zoekt uit waar gemarkeerde ingrediënten horen en verbetert inconsistente namen. Er verandert niets tot je een voorstel bevestigt.",
+      "intro": "AI zoekt uit waar gemarkeerde ingrediënten horen, verbetert inconsistente namen en voert elke wijziging zelf door. Je kunt ze ongedaan maken onder Gewijzigd door AI.",
       "scopeLabel": "Wat verbeteren",
       "scopes": {
-        "unsuggested": "Gemarkeerde ingrediënten nakijken",
-        "suggested": "Voorstellen opnieuw nakijken",
+        "flagged": "Gemarkeerde ingrediënten nakijken",
         "name": "Namen opschonen"
       },
       "hints": {
-        "unsuggested": "Zoekt naar dubbelen, subingrediënten of unieke ingrediënten.",
-        "suggested": "Kijkt gemarkeerde ingrediënten opnieuw na.",
+        "flagged": "Zoekt naar dubbelen, subingrediënten of unieke ingrediënten.",
         "name": "Schoont ingrediëntnamen op tot alleen het ingrediënt. Gemarkeerde ingrediënten doen mee als het vakje hierboven is aangevinkt."
       },
       "scopeSize": "{count, plural, =0 {Geen ingrediënten} one {# ingrediënt · ongeveer {tokens} tokens} other {# ingrediënten · ongeveer {tokens} tokens}}",
@@ -425,21 +423,22 @@
     },
     "reviewing": "AI wordt gevraagd…",
     "aiOutcomes": {
-      "parent": "AI stelt voor {name} te plaatsen als een soort {of}.",
-      "distinct": "AI stelt voor dat {name} een eigen ingrediënt is.",
+      "parent": "AI heeft {name} geplaatst onder {of}.",
+      "distinct": "Volgens AI is {name} een eigen ingrediënt.",
       "unsure": "AI weet nog steeds niet zeker wat {name} is.",
-      "notFlagged": "{name} is niet gemarkeerd.",
       "skippedNotFlagged": "{name} was niet meer gemarkeerd.",
       "skippedForbidden": "{name} mag je niet wijzigen.",
       "skippedNotFound": "{name} was al weg toen AI eraan toekwam.",
       "failed": "Vragen naar {name} is mislukt.",
-      "merge": "AI stelt voor {name} samen te voegen met {into}."
+      "merge": "AI heeft {name} samengevoegd met {into}.",
+      "rename": "AI heeft {name} hernoemd naar {to}.",
+      "decided": "Over {name} is al beslist, dus AI laat het staan.",
+      "undone": "Het antwoord van AI over {name} is een wijziging die je ongedaan hebt gemaakt, dus er is niets veranderd."
     },
     "aiTrace": {
       "readAs": "AI las het als “{name}”.",
       "compared": "Vergeleken met: {names}.",
       "comparedNothing": "Er was geen bekend ingrediënt om het mee te vergelijken.",
-      "fromWords": "Op basis van de naam.",
       "noFood": "AI vond geen ingrediënt in deze naam."
     },
     "addAlias": "Vertaling toevoegen",
@@ -588,35 +587,26 @@
     "standaloneOnly": "Zonder ouder of soorten",
     "findParent": "Ouder zoeken met AI",
     "findParentsAll": "Ouders zoeken met AI",
-    "suggestion": {
-      "merge": "{name} samenvoegen met {into}",
-      "parent": "{name} plaatsen onder {of}",
-      "distinct": "{name} houden als eigen ingrediënt",
-      "filedFromName": "{name} geplaatst onder {of}",
-      "rename": "{name} hernoemen naar {to}"
-    },
-    "suggestionsTitle": "Voorstellen",
-    "suggestionsEmpty": "Er wacht niets op je.",
-    "suggestionsNone": "Geen voorstel",
-    "suggestionsOpen": "{count, plural, =0 {Voorstellen} one {# voorstel} other {# voorstellen}}",
-    "suggestionsFailed": "{count, plural, one {# voorstel kon} other {# voorstellen konden}} niet worden toegepast: {reason}",
-    "confirmSuggestion": "Bevestigen",
-    "dismissSuggestion": "Negeren",
-    "confirmAll": "Alles bevestigen ({count})",
-    "dismissAll": "Alles negeren",
-    "suggestedByAI": "Voorgesteld door AI",
-    "suggestedFromName": "Op basis van de naam",
-    "proposal": {
-      "merge": "Samenvoegen met {into}",
-      "parent": "Plaatsen onder {of}",
-      "distinct": "Eigen ingrediënt",
-      "rename": "Hernoemen naar {to}"
+    "changedByAI": {
+      "title": "Gewijzigd door AI",
+      "open": "{count, plural, =0 {Gewijzigd door AI} other {Gewijzigd door AI · # na te kijken}}",
+      "unsure": "Niet zeker",
+      "sure": "Gewijzigd",
+      "unchanged": "Niet gewijzigd",
+      "empty": "AI heeft de afgelopen maand niets gewijzigd.",
+      "keep": "Houden",
+      "undo": "Ongedaan maken",
+      "merge": "{from} hiermee samengevoegd",
+      "parent": "Geplaatst onder {of}",
+      "parentFromName": "Geplaatst onder {of}, op basis van de naam",
+      "plainName": "Hernoemd van {from}"
     },
     "skippedReasons": {
-      "notFlagged": "Niet meer gemarkeerd",
       "forbidden": "Niet van jou om te bewerken",
       "notFound": "Bestaat niet meer",
-      "settled": "Naam staat al vast, of er wacht een suggestie"
+      "settled": "Naam staat al vast",
+      "decided": "Al beslist",
+      "undone": "Eerder ongedaan gemaakt"
     },
     "icon": {
       "change": "Icoon wijzigen",

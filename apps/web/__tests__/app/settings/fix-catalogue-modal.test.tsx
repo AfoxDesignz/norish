@@ -59,7 +59,7 @@ function renderOpen() {
   );
 }
 
-const box = (part: "unsuggested" | "suggested" | "name") =>
+const box = (part: "flagged" | "name") =>
   screen.getByRole("checkbox", { name: `askAIRound.scopes.${part}` });
 
 beforeEach(() => {
@@ -67,8 +67,7 @@ beforeEach(() => {
   onClose.mockClear();
   // 3,553 tokens a flagged food: 1,955 on the language model, 1,598 on the Decision Model.
   summary = {
-    unsuggested: 935,
-    suggested: 402,
+    flagged: 935,
     tokens: {
       basis: "measured",
       foods: 200,
@@ -89,18 +88,15 @@ beforeEach(() => {
 });
 
 describe("FixCatalogueModal", () => {
-  it("picks the flagged ingredients without a suggestion and the names, and prices every part side by side", () => {
+  it("picks the flagged ingredients and the names, and prices both side by side", () => {
     renderOpen();
 
-    expect(box("unsuggested")).toBeChecked();
-    // Asking again replaces what is waiting, so it is never picked for the person.
-    expect(box("suggested")).not.toBeChecked();
+    expect(box("flagged")).toBeChecked();
     expect(box("name")).toBeChecked();
-    // 935 × 3,553 = 3,322,055, 402 × 3,553 = 1,428,306 and 412 × 410 = 168,920.
+    // 935 × 3,553 = 3,322,055 and 412 × 410 = 168,920.
     expect(screen.getByText("askAIRound.scopeSize(count=935,tokens=3.3M)")).toBeInTheDocument();
-    expect(screen.getByText("askAIRound.scopeSize(count=402,tokens=1.4M)")).toBeInTheDocument();
     expect(screen.getByText("askAIRound.scopeSize(count=412,tokens=168.9K)")).toBeInTheDocument();
-    expect(screen.getByText("askAIRound.hints.suggested")).toBeInTheDocument();
+    expect(screen.getByText("askAIRound.hints.flagged")).toBeInTheDocument();
     expect(screen.getByText("askAIRound.hints.name")).toBeInTheDocument();
     expect(screen.getByTestId("ingredients-fix-catalogue-start")).toHaveTextContent("askAI");
   });
@@ -128,18 +124,17 @@ describe("FixCatalogueModal", () => {
   it("starts one round over every part picked", () => {
     renderOpen();
 
-    fireEvent.click(box("suggested"));
     fireEvent.click(screen.getByTestId("ingredients-fix-catalogue-start"));
 
-    expect(onStart).toHaveBeenCalledExactlyOnceWith(["unsuggested", "suggested", "name"]);
+    expect(onStart).toHaveBeenCalledExactlyOnceWith(["flagged", "name"]);
   });
 
   it("leaves out a part with nothing in it", () => {
-    summary = { ...summary!, unsuggested: 0 };
+    summary = { ...summary!, flagged: 0 };
     renderOpen();
 
-    expect(box("unsuggested")).toBeDisabled();
-    expect(box("unsuggested")).not.toBeChecked();
+    expect(box("flagged")).toBeDisabled();
+    expect(box("flagged")).not.toBeChecked();
     fireEvent.click(screen.getByTestId("ingredients-fix-catalogue-start"));
 
     expect(onStart).toHaveBeenCalledExactlyOnceWith(["name"]);
@@ -148,7 +143,7 @@ describe("FixCatalogueModal", () => {
   it("cannot start with nothing picked", () => {
     renderOpen();
 
-    fireEvent.click(box("unsuggested"));
+    fireEvent.click(box("flagged"));
     fireEvent.click(box("name"));
 
     expect(screen.getByTestId("ingredients-fix-catalogue-start")).toBeDisabled();

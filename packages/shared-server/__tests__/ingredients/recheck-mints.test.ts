@@ -13,11 +13,11 @@ import type { SeedEntry } from "@norish/db/repositories/ingredient-seed";
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
 import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
+import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import {
   applyIngredientSeed,
   listSeededIngredientIds,
 } from "@norish/db/repositories/ingredient-seed";
-import { listIngredientSuggestions } from "@norish/db/repositories/ingredient-suggestions";
 import { ingredients, serverConfig } from "@norish/db/schema";
 import { listIngredients, markDistinct } from "@norish/shared-server/ingredients/catalogue";
 import { withResolvedIngredients } from "@norish/shared-server/ingredients/recipe-lines";
@@ -157,7 +157,7 @@ describe("looking at old Flagged Ingredients again", () => {
     ]);
   });
 
-  it("files a legacy mint under a food inside its words, with a suggestion to confirm", async () => {
+  it("files a legacy mint under a food inside its words, as an unsure AI Change", async () => {
     const legacy = await legacyMint("garlic cloves crushed");
 
     await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 0, filed: 1 });
@@ -165,8 +165,8 @@ describe("looking at old Flagged Ingredients again", () => {
       flagged: true,
       parent: { id: seeded.get("en:garlic") },
     });
-    expect(await listIngredientSuggestions()).toMatchObject([
-      { ingredientId: legacy, kind: "parent", source: "words" },
+    expect(await listAIChanges()).toMatchObject([
+      { ingredient: { id: legacy }, sure: false, undo: { kind: "parent", fromWords: true } },
     ]);
   });
 

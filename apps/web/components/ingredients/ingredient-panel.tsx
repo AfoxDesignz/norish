@@ -17,7 +17,6 @@ import { usePermissionsContext } from "@/context/permissions-context";
 import { useSpellingRules } from "@/hooks/config";
 import { useGroceriesQuery } from "@/hooks/groceries";
 import { usePantryMutations, usePantryQuery } from "@/hooks/pantry";
-import { showSafeErrorToast } from "@/lib/ui/safe-error-toast";
 import {
   ArrowUturnLeftIcon,
   ChevronRightIcon,
@@ -29,12 +28,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 
 import type { PantryIngredientDto } from "@norish/shared/contracts";
-import type {
-  CatalogueRefusal,
-  ReviewOutcome,
-} from "@norish/shared/contracts/ingredient-catalogue";
+import type { ReviewOutcome } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LocaleNames } from "@norish/shared/lib/ingredient-names";
-import { isCatalogueRefusal } from "@norish/shared/contracts/ingredient-catalogue";
 import { ingredientDisplayName } from "@norish/shared/lib/ingredient-names";
 import { groceryOnTheList } from "@norish/shared/lib/pantry";
 import { cleanSpelling } from "@norish/shared/lib/spelling-keys";
@@ -43,21 +38,15 @@ import type { IconDraft } from "./ingredient-icon-field";
 import type { IngredientPick } from "./ingredient-picker";
 import type { Relocation } from "./ingredient-relocation";
 import type { IngredientItem, Spelling } from "./types";
+import { AIChangeActions } from "./ai-change-actions";
 import { DeleteIngredientModal } from "./delete-ingredient-modal";
 import { IngredientIconField } from "./ingredient-icon-field";
 import { IngredientNutritionSection } from "./ingredient-nutrition";
 import { IngredientRelocationPanel } from "./ingredient-relocation";
 import { IngredientStatusChip } from "./ingredient-status-chip";
-import { reviewMessage, reviewTrace, suggestionMessage, suggestionTrace } from "./review-copy";
+import { changeMessage, reviewMessage, reviewTrace, showRefusal } from "./review-copy";
+import { isOpenChange, useAIChanges } from "./use-ai-changes";
 import { useIngredientCache } from "./use-ingredient-cache";
-import { useIngredientSuggestions } from "./use-ingredient-suggestions";
-
-/** Why the server refused an edit, as the procedures name it. */
-function refusalOf(error: unknown): CatalogueRefusal | null {
-  const message = error instanceof Error ? error.message : null;
-
-  return isCatalogueRefusal(message) ? message : null;
-}
 
 /** The parent as the draft holds it: the food picked, or none. */
 type DraftParent = { id: string; name: string; localeNames?: LocaleNames } | null;
@@ -71,10 +60,8 @@ type DraftParent = { id: string; name: string; localeNames?: LocaleNames } | nul
  * Ingredient (a merge, a parent, a spelling's move) is picked in a second
  * panel over this one: a parent joins the draft, a merge or a move is an
  * action of its own with its own confirm. A flagged food says why at the
- * top, with the two ways to settle it. What AI suggests waits on the viewer:
- * a parent is filled into the draft, marked as AI's, and lands with Save or
- * is dismissed; a merge or "a food of its own" is a notice at the top to
- * confirm or dismiss. Every other field stays the viewer's to edit. The
+ * top, with the two ways to settle it, under what AI was unsure of, to keep
+ * or undo. The
  * panel follows the item it was opened for through the list, and reads it on
  * its own once the list no longer lists it, so its own edit, a housemate's or
  * AI's shows here too. Every edit shows the moment it is made: the row and
@@ -183,12 +170,11 @@ function IngredientPanelContent({
   const [relocation, setRelocation] = useState<Relocation | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showingUses, setShowingUses] = useState(false);
-  const suggestions = useIngredientSuggestions();
-  const suggestion = suggestions.suggestions.find((it) => it.ingredient.id === item.id) ?? null;
-  // A parent AI proposes is a draft to save; one the words of the name gave
-  // is already in place, and is confirmed or dismissed like a merge.
-  const suggestedParent =
-    suggestion?.kind === "parent" && suggestion.source === "ai" ? suggestion.target : null;
+  const aiChanges = useAIChanges();
+  // What AI changed about this food without being sure: what its flag is for.
+  const unsure = aiChanges.changes.filter(
+    (change) => change.ingredient.id === item.id && isOpenChange(change)
+  );
   const { isAIEnabled } = usePermissionsContext();
 
   // Whether the household keeps the food, and the draft's say on it (null: untouched).
@@ -204,8 +190,7 @@ function IngredientPanelContent({
   const keepDraftRef = useRef(false);
 
   // A change elsewhere (a housemate's, or AI's) shows in the draft where the
-  // viewer has not touched that field; a parent AI suggests fills the draft,
-  // for the viewer to keep with Save or dismiss.
+  // viewer has not touched that field.
   useEffect(() => {
     if (keepDraftRef.current) {
       keepDraftRef.current = false;
@@ -213,8 +198,8 @@ function IngredientPanelContent({
       return;
     }
     setName(item.name);
-    setParent(suggestedParent ?? item.parent);
-  }, [item.name, item.parent, suggestedParent]);
+    setParent(item.parent);
+  }, [item.name, item.parent]);
 
   const saveDraft = useMutation(trpc.ingredients.saveDraft.mutationOptions());
   const markDistinct = useMutation(trpc.ingredients.markDistinct.mutationOptions());
@@ -222,11 +207,10 @@ function IngredientPanelContent({
   const moveAlias = useMutation(trpc.ingredients.moveAlias.mutationOptions());
   const remove = useMutation(trpc.ingredients.remove.mutationOptions());
   const review = useMutation(trpc.ingredients.reviewWithAI.mutationOptions());
-  const findParent = useMutation(trpc.ingredients.findParentWithAI.mutationOptions());
   // AI is asking about this food, from here or in a round: its answer is
   // about the food as it stands, so nothing is edited until it lands. An
   // edit of the viewer's own never waits: it shows at once and lands behind.
-  const asking = review.isPending || findParent.isPending || reviewing;
+  const asking = review.isPending || reviewing;
   const busy = asking;
 
   /**
@@ -240,14 +224,7 @@ function IngredientPanelContent({
       await edit();
     } catch (error) {
       void cache.rollback();
-      const refusal = refusalOf(error);
-
-      showSafeErrorToast({
-        title: t("errors.title"),
-        description: refusal ? t(`errors.${refusal}`) : t("errors.unknown"),
-        error,
-        context: `ingredients:${context}`,
-      });
+      showRefusal(t, error, context);
 
       return false;
     }
@@ -256,11 +233,6 @@ function IngredientPanelContent({
     return true;
   };
 
-  // The draft's parent is AI's suggestion, not yet saved.
-  const parentIsSuggested =
-    suggestedParent !== null &&
-    parent?.id === suggestedParent.id &&
-    item.parent?.id !== suggestedParent.id;
   const nextName = name.trim();
   const nameChanged = nextName !== "" && nextName !== item.name;
   const parentChanged = (parent?.id ?? null) !== (item.parent?.id ?? null);
@@ -390,57 +362,19 @@ function IngredientPanelContent({
     );
   };
 
-  /** Take AI's suggestion, or leave it; a merge takes the food away, as the viewer's own does. */
-  const answerSuggestion = (confirm: boolean) => {
-    if (!suggestion) return;
-    if (!confirm) {
-      // A dismissed parent leaves the draft as the suggestion goes.
-      void suggestions.dismiss([suggestion.id]);
-
-      return;
-    }
-    void suggestions.confirm([suggestion.id]);
-    if (suggestion.kind === "merge") {
-      onClose();
-      if (suggestion.target) {
-        toast(
-          t("mergedToast", {
-            name: displayName,
-            into: ingredientDisplayName(suggestion.target, locale),
-          }),
-          { variant: "success" }
-        );
-      }
-    }
-  };
-
-  /** Ask AI what this food is, and say what it suggests. */
-  const askAI = async () => {
+  /** Ask AI what this food is and say what it changed; a merge takes the food away. */
+  const askAI = async (context: "review" | "find-parent") => {
     await run(
-      "review",
+      context,
       () => undefined,
       async () => {
         const outcome: ReviewOutcome = await review.mutateAsync({ ingredientId: item.id });
 
+        if (outcome.outcome === "merge") onClose();
         toast(reviewMessage(t, displayName, outcome), {
           description: reviewTrace(t, outcome),
-          variant: outcome.outcome === "unsure" ? "warning" : "accent",
-        });
-      }
-    );
-  };
-
-  /** Ask AI what food this is a kind of, and say what it suggests. */
-  const askParent = async () => {
-    await run(
-      "find-parent",
-      () => undefined,
-      async () => {
-        const outcome: ReviewOutcome = await findParent.mutateAsync({ ingredientId: item.id });
-
-        toast(reviewMessage(t, displayName, outcome), {
-          description: reviewTrace(t, outcome),
-          variant: outcome.outcome === "parent" ? "accent" : "warning",
+          variant:
+            outcome.outcome === "unsure" || outcome.outcome === "skipped" ? "warning" : "accent",
         });
       }
     );
@@ -523,39 +457,25 @@ function IngredientPanelContent({
     >
       <Panel.Body>
         <div className="flex flex-col gap-5 pb-2" data-testid="ingredient-details">
-          {suggestion && (suggestion.kind !== "parent" || suggestion.source === "words") ? (
-            <Section
-              title={suggestion.source === "words" ? t("suggestedFromName") : t("suggestedByAI")}
-            >
-              <div
-                className="flex flex-col gap-2"
-                data-source={suggestion.source}
-                data-testid="ingredient-suggestion-notice"
-              >
-                <p className="text-sm font-medium">{suggestionMessage(t, suggestion, locale)}</p>
-                {suggestion.source === "ai" ? (
-                  <p className="text-muted text-sm">{suggestionTrace(t, suggestion)}</p>
-                ) : null}
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    data-testid="ingredient-suggestion-confirm"
-                    isDisabled={busy}
-                    size="sm"
-                    variant="secondary"
-                    onPress={() => answerSuggestion(true)}
+          {unsure.length > 0 ? (
+            <Section title={t("changedByAI.unsure")}>
+              <div className="flex flex-col gap-3" data-testid="ingredient-ai-changes">
+                {unsure.map((change) => (
+                  <div
+                    key={change.id}
+                    className="flex flex-wrap items-center justify-between gap-2"
+                    data-kind={change.kind}
+                    data-testid="ingredient-ai-change"
                   >
-                    {t("confirmSuggestion")}
-                  </Button>
-                  <Button
-                    data-testid="ingredient-suggestion-dismiss"
-                    isDisabled={busy}
-                    size="sm"
-                    variant="danger-soft"
-                    onPress={() => answerSuggestion(false)}
-                  >
-                    {t("dismissSuggestion")}
-                  </Button>
-                </div>
+                    <p className="text-sm font-medium">{changeMessage(t, change, locale)}</p>
+                    <AIChangeActions
+                      change={change}
+                      isDisabled={busy}
+                      onKeep={(it) => void aiChanges.keep(it)}
+                      onUndo={(it) => void aiChanges.undo(it)}
+                    />
+                  </div>
+                ))}
               </div>
             </Section>
           ) : null}
@@ -573,7 +493,7 @@ function IngredientPanelContent({
                       isPending={review.isPending || reviewing}
                       size="sm"
                       variant="secondary"
-                      onPress={() => void askAI()}
+                      onPress={() => void askAI("review")}
                     >
                       {t("askAI")}
                     </AIButton>
@@ -644,34 +564,21 @@ function IngredientPanelContent({
             <div className="flex flex-wrap items-center gap-2" data-testid="ingredient-parent">
               {parent ? (
                 // The same height as the button beside it: the pair reads as one row.
-                <Chip
-                  className="h-9 px-3 text-sm md:h-8"
-                  color={parentIsSuggested ? "accent" : undefined}
-                  data-suggested={parentIsSuggested || undefined}
-                  size="lg"
-                  variant={parentIsSuggested ? "soft" : "secondary"}
-                >
+                <Chip className="h-9 px-3 text-sm md:h-8" size="lg" variant="secondary">
                   {ingredientDisplayName(parent, locale)}
                   {item.canEdit ? (
                     <button
-                      aria-label={parentIsSuggested ? t("dismissSuggestion") : t("clearParent")}
+                      aria-label={t("clearParent")}
                       className="text-muted hover:text-foreground ml-1 cursor-[var(--cursor-interactive)]"
                       data-testid="ingredient-clear-parent"
                       disabled={busy}
                       type="button"
-                      onClick={() =>
-                        parentIsSuggested ? answerSuggestion(false) : setParent(null)
-                      }
+                      onClick={() => setParent(null)}
                     >
                       <XMarkIcon className="size-4" />
                     </button>
                   ) : null}
                 </Chip>
-              ) : null}
-              {parentIsSuggested ? (
-                <span className="text-muted text-xs" data-testid="ingredient-parent-suggested">
-                  {t("suggestedByAI")}
-                </span>
               ) : null}
               {item.canEdit ? (
                 <Button
@@ -689,10 +596,10 @@ function IngredientPanelContent({
                 <AIButton
                   data-testid="ingredient-find-parent"
                   isDisabled={busy}
-                  isPending={findParent.isPending}
+                  isPending={review.isPending}
                   size="sm"
                   variant="secondary"
-                  onPress={() => void askParent()}
+                  onPress={() => void askAI("find-parent")}
                 >
                   {t("findParent")}
                 </AIButton>

@@ -6,7 +6,7 @@ import { SettingsCard } from "@/app/(app)/settings/components/settings-card";
 import { useTRPC } from "@/app/providers/trpc-provider";
 import { IngredientIconsProvider } from "@/components/ingredients/ingredient-icon";
 import { IngredientPanel } from "@/components/ingredients/ingredient-panel";
-import { useIngredientSuggestions } from "@/components/ingredients/use-ingredient-suggestions";
+import { isOpenChange, useAIChanges } from "@/components/ingredients/use-ai-changes";
 import { AIButton } from "@/components/shared/ai-button";
 import { usePermissionsContext } from "@/context/permissions-context";
 import { showSafeErrorToast } from "@/lib/ui/safe-error-toast";
@@ -25,8 +25,10 @@ import { useLocale, useTranslations } from "next-intl";
 import type { FixPart } from "@norish/shared/contracts/ingredient-catalogue";
 import type { ReviewRound } from "@norish/shared/contracts/realtime/ingredients";
 import { useRealtimeSubscription } from "@norish/shared-react/realtime";
+import { UNCHANGED_OUTCOMES } from "@norish/shared/contracts/ingredient-catalogue";
 
 import type { IngredientFilters } from "./ingredient-filters-panel";
+import { ChangedByAIPanel } from "./changed-by-ai-panel";
 import DataSourcesCard from "./data-sources-card";
 import { DrawIconsControl, useIconRound } from "./draw-icons-control";
 import { FixCatalogueModal } from "./fix-catalogue-modal";
@@ -37,7 +39,6 @@ import {
 } from "./ingredient-filters-panel";
 import { IngredientList } from "./ingredient-list";
 import { IngredientSearch } from "./ingredient-search";
-import { SuggestionsPanel, UNSUGGESTED } from "./suggestions-panel";
 import { useIngredientTree } from "./use-ingredient-tree";
 
 /**
@@ -108,7 +109,7 @@ export default function IngredientsSettingsContent() {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: trpc.ingredients.list.pathKey() }),
         queryClient.invalidateQueries({ queryKey: trpc.ingredients.kinds.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.ingredients.suggestions.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.ingredients.aiChanges.pathKey() }),
         queryClient.invalidateQueries({ queryKey: trpc.ingredients.reviewScope.pathKey() }),
         queryClient.invalidateQueries({ queryKey: trpc.ingredients.reviewReport.pathKey() }),
       ]),
@@ -118,8 +119,8 @@ export default function IngredientsSettingsContent() {
   // Asking AI about the flagged foods is one job on the server, a step per
   // food, that outlives this tab. Which foods is asked first, in a dialog: the
   // catalogue's, not the screen's, so a round may be every flagged food there
-  // is. The page watches the round over the socket: each answer lands as a
-  // suggestion waiting on a person, and the round's count follows. A round is
+  // is. The page watches the round over the socket: each answer is a change
+  // AI made, listed on Changed by AI, and the round's count follows. A round is
   // the instance's, so a tab opened mid-round, or a housemate's, shows the
   // same count and is not offered a second round.
   const startRound = useMutation(trpc.ingredients.reviewAllWithAI.mutationOptions());
@@ -129,14 +130,15 @@ export default function IngredientsSettingsContent() {
   const [fixOpen, setFixOpen] = useState(false);
   // The last round this tab saw end; before one ends, the instance's latest, which the server finds.
   const [reportJobId, setReportJobId] = useState<string | null>(null);
-  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
-  const { suggestions } = useIngredientSuggestions();
-  // What that round got no suggestion for, and is still open, rides along with the suggestions.
+  const [changesOpen, setChangesOpen] = useState(false);
+  const { changes } = useAIChanges();
+  const unsure = changes.filter(isOpenChange).length;
+  // What that round changed nothing for, and is still open, rides along with the changes.
   const report = useQuery(
     trpc.ingredients.reviewReport.queryOptions(reportJobId ? { jobId: reportJobId } : {})
   );
-  const hasUnsuggested =
-    report.data?.entries.some((entry) => UNSUGGESTED.has(entry.outcome)) ?? false;
+  const hasUnchanged =
+    report.data?.entries.some((entry) => UNCHANGED_OUTCOMES.has(entry.outcome)) ?? false;
   const running = round?.finished ? null : (round ?? roundQuery.data ?? null);
   // Under the standalone filter, the round asks what each food is a kind of instead.
   const standaloneIds = filters.standaloneOnly
@@ -155,15 +157,15 @@ export default function IngredientsSettingsContent() {
     lagQueryKeys: [trpc.ingredients.reviewRound.queryKey()],
     onEvent: (payload) => {
       setRound(payload);
-      // What the round has written down shows as it goes: its suggestions, the flags it updated.
+      // What the round has written down shows as it goes: its changes, the flags it updated.
       void refresh();
       if (!payload.finished) return;
       void queryClient.invalidateQueries({ queryKey: trpc.ingredients.reviewRound.queryKey() });
       setReportJobId(payload.jobId);
-      // What AI suggests opens for whoever asked; everyone else sees the count in the header.
+      // What AI changed opens for whoever asked; everyone else sees it in the header.
       if (payload.jobId !== startedJobId) return;
       setStartedJobId(null);
-      setSuggestionsOpen(true);
+      setChangesOpen(true);
     },
   });
 
@@ -216,15 +218,15 @@ export default function IngredientsSettingsContent() {
         <SettingsCard
           actions={
             <>
-              {suggestions.length > 0 || hasUnsuggested ? (
+              {changes.length > 0 || hasUnchanged ? (
                 <Button
-                  data-testid="ingredients-suggestions-open"
+                  data-testid="ingredients-ai-changes-open"
                   size="sm"
                   variant="tertiary"
-                  onPress={() => setSuggestionsOpen(true)}
+                  onPress={() => setChangesOpen(true)}
                 >
                   <SparklesIcon className="size-4" />
-                  {t("suggestionsOpen", { count: suggestions.length })}
+                  {t("changedByAI.open", { count: unsure })}
                 </Button>
               ) : null}
               {running ? (
@@ -233,7 +235,7 @@ export default function IngredientsSettingsContent() {
                   data-testid="ingredients-round-progress"
                   size="sm"
                   variant="tertiary"
-                  onPress={() => setSuggestionsOpen(true)}
+                  onPress={() => setChangesOpen(true)}
                 >
                   <Spinner color="current" size="sm" />
                   <span className="tabular-nums">
@@ -341,13 +343,13 @@ export default function IngredientsSettingsContent() {
           onClose={() => setFixOpen(false)}
           onStart={(parts) => void fixCatalogue(parts)}
         />
-        <SuggestionsPanel
+        <ChangedByAIPanel
           jobId={reportJobId}
-          open={suggestionsOpen}
+          open={changesOpen}
           reviewing={reviewing}
           round={running}
           onChanged={refresh}
-          onClose={() => setSuggestionsOpen(false)}
+          onClose={() => setChangesOpen(false)}
         />
       </div>
     </IngredientIconsProvider>

@@ -1,34 +1,28 @@
 // @vitest-environment node
 /**
- * Plain Names against a real database: a round's question leaves a rename
- * or a merge for a person, settles a name already plain, and a person's
- * answer settles the name for good; a new food is renamed at once, its flag
- * kept; and the recheck never renames a settled name from the words. The
- * language model is mocked at `generateStructured`.
+ * Plain Names against a real database: AI renames a food to its plain name
+ * as an AI Change, which settles the name; merges it into the food already
+ * spelling it; settles a name already plain; and the recheck never renames
+ * a settled name from the words. The language model is mocked at
+ * `generateStructured`.
  */
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
+import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import { adoptPlainName } from "@norish/db/repositories/ingredient-seed";
-import {
-  listIngredientSuggestions,
-  upsertIngredientSuggestion,
-} from "@norish/db/repositories/ingredient-suggestions";
 import { ingredients } from "@norish/db/schema";
 import { generateStructured } from "@norish/shared-server/ai/runtime/runtime";
 import { isAIEnabled } from "@norish/shared-server/config/server-config-loader";
-import { renameIngredient } from "@norish/shared-server/ingredients/catalogue";
+import { undoAIChange } from "@norish/shared-server/ingredients/ai-changes";
+import { markDistinct, renameIngredient } from "@norish/shared-server/ingredients/catalogue";
 import {
   cleanNameWithAI,
-  giveNewIngredientItsPlainName,
+  giveItsPlainName,
   listNameableIngredients,
 } from "@norish/shared-server/ingredients/plain-names";
 import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
-import {
-  confirmSuggestion,
-  dismissSuggestion,
-} from "@norish/shared-server/ingredients/suggestions";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import { getSpellingTexts, getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
@@ -91,11 +85,7 @@ describe("Plain Names", () => {
     return found!;
   }
 
-  async function suggestionFor(id: string) {
-    return (await listIngredientSuggestions()).find((it) => it.ingredientId === id) ?? null;
-  }
-
-  it("proposes the plain name, which a person taking renames the food, clears its flag and settles it", async () => {
+  it("renames the food to its plain name, settles it, and lists the rename to undo", async () => {
     const tonijn = await food("Lekkerste Tonijn Uit Blik");
 
     readsAs("tonijn uit blik");
@@ -103,26 +93,23 @@ describe("Plain Names", () => {
       outcome: "rename",
       to: "tonijn uit blik",
     });
-    // Nothing changes until a person answers.
-    expect(await row(tonijn)).toMatchObject({ flagged: true, nameSettled: false });
     // The question saw the food's other spellings too.
     expect(vi.mocked(generateStructured).mock.calls[0]![0].sections).toEqual([
       "Name: Lekkerste Tonijn Uit Blik",
     ]);
-
-    const waiting = (await suggestionFor(tonijn))!;
-
-    expect(waiting).toMatchObject({ kind: "rename", proposedName: "tonijn uit blik" });
-    await confirmSuggestion(actor, waiting.id);
-
+    // A tidier name says nothing about whether the food is a duplicate: the flag stays.
     expect(await row(tonijn)).toEqual({
       name: "tonijn uit blik",
-      flagged: false,
+      flagged: true,
       nameSettled: true,
     });
-    expect(await suggestionFor(tonijn)).toBeNull();
     // The old name stays a spelling, so lines written so still find the food.
-    expect(await getSpellingTexts(tonijn)).toContain("Lekkerste Tonijn Uit Blik");
+    expect(await getSpellingTexts(tonijn)).toEqual(
+      expect.arrayContaining(["Lekkerste Tonijn Uit Blik", "tonijn uit blik"])
+    );
+    expect(await listAIChanges()).toMatchObject([
+      { sure: true, undo: { kind: "plain-name", formerName: "Lekkerste Tonijn Uit Blik" } },
+    ]);
     expect((await listNameableIngredients(actor)).map((it) => it.id)).not.toContain(tonijn);
   });
 
@@ -132,15 +119,14 @@ describe("Plain Names", () => {
     readsAs("tijm");
     await expect(cleanNameWithAI(actor, thyme)).resolves.toEqual({ outcome: "plain" });
     expect(await row(thyme)).toMatchObject({ nameSettled: true, flagged: true });
-    expect(await suggestionFor(thyme)).toBeNull();
-    // Settled since the round began: passed over.
+    expect(await listAIChanges()).toEqual([]);
     await expect(cleanNameWithAI(actor, thyme)).resolves.toEqual({
       outcome: "skipped",
       reason: "settled",
     });
   });
 
-  it("proposes merging into the food that already spells the plain name, never merging itself", async () => {
+  it("merges into the food that already spells the plain name", async () => {
     const onion = await food("onion");
     const messy = await food("Verse Onion Deluxe");
 
@@ -149,56 +135,44 @@ describe("Plain Names", () => {
       outcome: "merge",
       into: "onion",
     });
-    expect(await suggestionFor(messy)).toMatchObject({
-      kind: "merge",
-      target: { id: onion, name: "onion" },
-      proposedName: "onion",
-    });
-    expect(await row(messy)).toMatchObject({ name: "Verse Onion Deluxe" });
+    expect(await getSpellingTexts(onion)).toContain("Verse Onion Deluxe");
+    expect(await listAIChanges()).toMatchObject([
+      {
+        sure: true,
+        ingredient: { id: onion },
+        undo: { kind: "merge", name: "Verse Onion Deluxe" },
+      },
+    ]);
   });
 
-  it("leaves a merge to confirm where another food took the proposed name first", async () => {
+  it("merges the second of two foods AI reads the same into the first", async () => {
     const lekkerste = await food("Lekkerste Tonijn Uit Blik");
     const voordeel = await food("Voordeel Tonijn Uit Blik");
 
-    expect(voordeel).not.toBe(lekkerste);
-    // Asked in the same round: neither name is taken yet, so each is proposed as a rename.
     readsAs("tonijn uit blik");
     readsAs("tonijn uit blik");
     await cleanNameWithAI(actor, lekkerste);
-    await cleanNameWithAI(actor, voordeel);
-    expect(await suggestionFor(voordeel)).toMatchObject({ kind: "rename" });
-    await confirmSuggestion(actor, (await suggestionFor(lekkerste))!.id);
-
-    // The second is refused, and is the same food: a merge into it waits on a person.
-    await expect(
-      confirmSuggestion(actor, (await suggestionFor(voordeel))!.id)
-    ).rejects.toMatchObject({ refusal: "name-taken" });
-    expect(await row(voordeel)).toMatchObject({ name: "Voordeel Tonijn Uit Blik" });
-    expect(await suggestionFor(voordeel)).toMatchObject({
-      kind: "merge",
-      target: { id: lekkerste, name: "tonijn uit blik" },
-      proposedName: "tonijn uit blik",
+    await expect(cleanNameWithAI(actor, voordeel)).resolves.toMatchObject({
+      outcome: "merge",
+      into: "tonijn uit blik",
     });
-
-    await confirmSuggestion(actor, (await suggestionFor(voordeel))!.id);
     expect(await getSpellingTexts(lekkerste)).toEqual(
       expect.arrayContaining(["Lekkerste Tonijn Uit Blik", "Voordeel Tonijn Uit Blik"])
     );
   });
 
-  it("remembers a name a person turned down", async () => {
+  it("gives the old name back on Undo, and AI names the food no more", async () => {
     const knaks = await food("Unox Knaks Original");
 
     readsAs("Unox Knaks");
     await cleanNameWithAI(actor, knaks);
-    await dismissSuggestion(actor, (await suggestionFor(knaks))!.id);
+    await undoAIChange(actor, (await listAIChanges())[0]!.id);
 
     expect(await row(knaks)).toMatchObject({ name: "Unox Knaks Original", nameSettled: true });
     expect((await listNameableIngredients(actor)).map((it) => it.id)).not.toContain(knaks);
   });
 
-  it("proposes nothing for a name AI finds no food in", async () => {
+  it("changes nothing for a name AI finds no food in", async () => {
     const junk = await food("zie stap 3");
 
     readsAs(null);
@@ -206,14 +180,13 @@ describe("Plain Names", () => {
       outcome: "unsure",
       reason: "no-food",
     });
-    expect(await suggestionFor(junk)).toBeNull();
     expect(await row(junk)).toMatchObject({ nameSettled: false });
   });
 
-  it("asks about neither a seeded food, one a suggestion waits on, nor a flagged one", async () => {
+  it("asks about neither a seeded food, a flagged one, nor one a person decided about", async () => {
     const seeded = await food("salt");
     const tonijn = await food("Lekkerste Tonijn");
-    const waiting = await food("Verse Kipfilet");
+    const kept = await food("Verse Kipfilet");
 
     await food("GR UIEN");
     await getTestDb()
@@ -224,77 +197,44 @@ describe("Plain Names", () => {
     await getTestDb()
       .update(ingredients)
       .set({ flagged: false })
-      .where(inArray(ingredients.id, [tonijn, waiting]));
-    readsAs("kipfilet");
-    await cleanNameWithAI(actor, waiting);
+      .where(inArray(ingredients.id, [tonijn]));
+    await markDistinct(actor, kept);
 
     expect((await listNameableIngredients(actor)).map((it) => it.id)).toEqual([tonijn]);
-  });
-
-  it("replaces the review's own 'a food of its own' with the rename, which confirmed clears the flag", async () => {
-    const tonijn = await food("Lekkerste Tonijn Uit Blik");
-
-    await upsertIngredientSuggestion({
-      ingredientId: tonijn,
-      kind: "distinct",
-      targetId: null,
-      englishName: null,
-      considered: [],
-    });
-    // Clean names alone leaves a waiting suggestion be.
-    await expect(cleanNameWithAI(actor, tonijn)).resolves.toEqual({
+    await expect(cleanNameWithAI(actor, kept)).resolves.toEqual({
       outcome: "skipped",
-      reason: "settled",
-    });
-    readsAs("tonijn uit blik");
-    await expect(cleanNameWithAI(actor, tonijn, { afterReview: true })).resolves.toEqual({
-      outcome: "rename",
-      to: "tonijn uit blik",
-    });
-
-    const waiting = (await suggestionFor(tonijn))!;
-
-    expect(waiting).toMatchObject({ kind: "rename", proposedName: "tonijn uit blik" });
-    await confirmSuggestion(actor, waiting.id);
-    expect(await row(tonijn)).toEqual({
-      name: "tonijn uit blik",
-      flagged: false,
-      nameSettled: true,
+      reason: "decided",
     });
   });
 
-  it("gives a new food its plain name at once, keeping its flag and its old name as a spelling", async () => {
+  it("gives a new food its plain name at once, keeping its flag", async () => {
     const tonijn = await food("Lekkerste Tonijn Uit Blik");
 
     readsAs("tonijn uit blik");
-    await giveNewIngredientItsPlainName(tonijn);
+    await giveItsPlainName(tonijn);
 
     expect(await row(tonijn)).toEqual({
       name: "tonijn uit blik",
       flagged: true,
       nameSettled: true,
     });
-    expect(await getSpellingTexts(tonijn)).toEqual(
-      expect.arrayContaining(["Lekkerste Tonijn Uit Blik", "tonijn uit blik"])
-    );
   });
 
-  it("leaves a new food named as it was where another food spells its plain name, proposing the merge", async () => {
+  it("merges a new food into the food that already spells its plain name", async () => {
     const onion = await food("onion");
     const messy = await food("Verse Onion Deluxe");
 
     readsAs("onion");
-    await giveNewIngredientItsPlainName(messy);
+    await giveItsPlainName(messy);
 
-    expect(await row(messy)).toMatchObject({ name: "Verse Onion Deluxe", nameSettled: false });
-    expect(await suggestionFor(messy)).toMatchObject({ kind: "merge", target: { id: onion } });
+    expect(await getSpellingTexts(onion)).toContain("Verse Onion Deluxe");
   });
 
   it("never renames a settled name from the words again", async () => {
     const tonijn = await food("Lekkerste Tonijn Uit Blik");
 
     readsAs("tonijn uit blik");
-    await giveNewIngredientItsPlainName(tonijn);
+    await giveItsPlainName(tonijn);
     await adoptPlainName(tonijn, {
       text: "lekkerste tonijn",
       fold: ingredientAliasFold("lekkerste tonijn"),
@@ -303,14 +243,15 @@ describe("Plain Names", () => {
     expect(await row(tonijn)).toMatchObject({ name: "tonijn uit blik" });
   });
 
-  it("drops a waiting rename once a person names the food themselves", async () => {
+  it("asks no more about a food a person named themselves", async () => {
     const tonijn = await food("Lekkerste Tonijn Uit Blik");
 
-    readsAs("tonijn uit blik");
-    await cleanNameWithAI(actor, tonijn);
     await renameIngredient(actor, tonijn, "tonijn");
 
-    expect(await suggestionFor(tonijn)).toBeNull();
-    expect(await row(tonijn)).toMatchObject({ name: "tonijn", nameSettled: true });
+    await expect(cleanNameWithAI(actor, tonijn)).resolves.toEqual({
+      outcome: "skipped",
+      reason: "settled",
+    });
+    expect(vi.mocked(generateStructured)).not.toHaveBeenCalled();
   });
 });

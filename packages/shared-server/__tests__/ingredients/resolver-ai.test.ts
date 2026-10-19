@@ -12,6 +12,7 @@ import type { SeedEntry } from "@norish/db/repositories/ingredient-seed";
 import type { DecisionQuestions } from "@norish/shared-server/ai/runtime/runtime";
 import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
 import { withTransaction } from "@norish/db/drizzle";
+import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import { deleteCatalogueIngredient } from "@norish/db/repositories/ingredient-catalogue";
 import {
   findIngredientAncestors,
@@ -21,7 +22,6 @@ import {
   applyIngredientSeed,
   listSeededIngredientIds,
 } from "@norish/db/repositories/ingredient-seed";
-import { listIngredientSuggestions } from "@norish/db/repositories/ingredient-suggestions";
 import { ingredientAliases, ingredients } from "@norish/db/schema";
 import {
   RESOLUTION_BUDGET_MS,
@@ -561,7 +561,7 @@ describe("ingredient resolver, rung 3", () => {
         flagged: false,
       });
       expect(await parentOf(cloves.ingredientId)).toBe(seeded.get("en:garlic"));
-      expect(await listIngredientSuggestions()).toHaveLength(0);
+      expect(await listAIChanges()).toHaveLength(0);
     });
 
     it("lets the Decision settle the language model against the words, either way", async () => {
@@ -609,7 +609,9 @@ describe("ingredient resolver, rung 3", () => {
         flagReason: "ai-unsure",
       });
       expect(await parentOf(cloves.ingredientId)).toBe(seeded.get("en:garlic"));
-      expect(await listIngredientSuggestions()).toMatchObject([{ source: "words" }]);
+      expect(await listAIChanges()).toMatchObject([
+        { sure: false, undo: { kind: "parent", fromWords: true } },
+      ]);
     });
   });
 
