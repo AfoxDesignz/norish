@@ -8,7 +8,7 @@ import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
-  addPantryIngredient,
+  addPantryIngredients,
   deletePantryIngredient,
   findPantryIngredientInHousehold,
   getPantryIngredientOwnerId,
@@ -30,13 +30,12 @@ const SALT = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 /** Add what a member typed, resolved first as the procedure does. */
 async function add(id: string, input: { userId: string; userIds: string[]; name: string }) {
   const [resolved] = await resolveIngredients([input.name], { userId: input.userId });
+  const [added] = await addPantryIngredients(
+    [{ id, ingredientAliasId: resolved!.aliasId, ingredientId: resolved!.ingredientId }],
+    input
+  );
 
-  return addPantryIngredient(id, {
-    userId: input.userId,
-    userIds: input.userIds,
-    ingredientAliasId: resolved!.aliasId,
-    ingredientId: resolved!.ingredientId,
-  });
+  return added!;
 }
 
 describe("pantry ingredients", () => {
@@ -149,6 +148,21 @@ describe("pantry ingredients", () => {
     expect([mine.created, theirs.created].sort()).toEqual([false, true]);
     expect(mine.item.id).toBe(theirs.item.id);
     await expect(listPantryIngredientsByUserIds(userIds)).resolves.toHaveLength(1);
+  });
+
+  it("puts several Ingredients in together, or none", async () => {
+    const [olive] = await resolveIngredients(["olive oil"], { userId });
+
+    await expect(
+      addPantryIngredients(
+        [
+          { id: OLIVE, ingredientAliasId: olive!.aliasId, ingredientId: olive!.ingredientId },
+          { id: SALT, ingredientAliasId: null, ingredientId: crypto.randomUUID() },
+        ],
+        { userId, userIds: [userId] }
+      )
+    ).rejects.toThrow();
+    await expect(listPantryIngredientsByUserIds([userId])).resolves.toEqual([]);
   });
 
   it("reads the whole household's Pantry in one query, by name", async () => {

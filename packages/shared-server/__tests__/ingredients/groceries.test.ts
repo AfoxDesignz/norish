@@ -6,7 +6,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createGrocery, createRecipeWithRefs, getRecipeFull } from "@norish/db";
+import { createGroceries, createRecipeWithRefs, getRecipeFull } from "@norish/db";
 import { withTransaction } from "@norish/db/drizzle";
 import { deleteCatalogueIngredient } from "@norish/db/repositories/ingredient-catalogue";
 import { groceries, ingredients } from "@norish/db/schema";
@@ -153,41 +153,62 @@ describe("grocery names through aliases", () => {
     it("stands for a grocery per food it joins, the first of alternatives, and minting nothing", async () => {
       await expect(
         groceryParts([
-          { name: "Zout en peper" },
-          { name: "boter of olie" },
-          { name: "zout en suiker" },
-          { name: ")" },
-          { name: null },
+          { id: "a", name: "Zout en peper" },
+          { id: "b", name: "boter of olie" },
+          { id: "c", name: "zout en suiker" },
+          { id: "d", name: ")" },
+          { id: "e", name: null },
         ])
-      ).resolves.toEqual([["Zout", "peper"], ["boter"], ["zout en suiker"], [")"], [null]]);
+      ).resolves.toEqual([
+        [
+          { id: "a", name: "Zout" },
+          { id: undefined, name: "peper" },
+        ],
+        [{ id: "b", name: "boter" }],
+        [{ id: "c", name: "zout en suiker" }],
+        [{ id: "d", name: ")" }],
+        [{ id: "e", name: null }],
+      ]);
       await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(4);
     });
 
     it("keeps whole a grocery whose joined text an edit leaves alone", async () => {
       const [zout] = await resolveGroceryNames([{ name: "zout" }], { userId });
-      const { created: grocery } = await createGrocery(
-        crypto.randomUUID(),
-        {
-          userId,
-          name: "zout en peper",
-          ingredientAliasId: zout!.aliasId,
-          ingredientId: zout!.ingredientId,
-          unit: null,
-          amount: null,
-          isDone: false,
-          recipeIngredientId: null,
-          recurringGroceryId: null,
-          storeId: null,
-        },
+      const groceryId = crypto.randomUUID();
+
+      await createGroceries(
+        [
+          {
+            id: groceryId,
+            groceries: {
+              userId,
+              name: "zout en peper",
+              ingredientAliasId: zout!.aliasId,
+              ingredientId: zout!.ingredientId,
+              unit: null,
+              amount: null,
+              isDone: false,
+              recipeIngredientId: null,
+              recurringGroceryId: null,
+              storeId: null,
+            },
+          },
+        ],
         [userId]
       );
 
       await expect(
         groceryParts([
-          { name: "Zout en peper", groceryId: grocery.id },
-          { name: "peper en zout", groceryId: grocery.id },
+          { name: "Zout en peper", groceryId: groceryId },
+          { name: "peper en zout", groceryId: groceryId },
         ])
-      ).resolves.toEqual([["Zout en peper"], ["peper", "zout"]]);
+      ).resolves.toEqual([
+        [{ name: "Zout en peper", groceryId: groceryId }],
+        [
+          { name: "peper", groceryId: groceryId },
+          { name: "zout", groceryId: groceryId, id: undefined },
+        ],
+      ]);
     });
   });
 });

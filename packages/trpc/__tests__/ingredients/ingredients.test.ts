@@ -15,6 +15,7 @@ import {
   createMockHousehold,
   createMockUser,
 } from "../calendar/test-utils";
+import { TX } from "../mocks/drizzle";
 import { isAIEnabled } from "../mocks/permissions";
 import { ingredients as ingredientsRealtime } from "../mocks/realtime/ingredients";
 
@@ -89,12 +90,7 @@ const reviewQueue = vi.hoisted(() => ({
   getJob: vi.fn(async (): Promise<unknown> => null),
 }));
 
-// Each edit is one transaction; here it is the mocked repositories' to ignore.
-const TX = vi.hoisted(() => ({ tx: true }));
-
-vi.mock("@norish/db/drizzle", () => ({
-  withTransaction: (run: (tx: unknown) => unknown) => run(TX),
-}));
+vi.mock("@norish/db/drizzle", () => import("../mocks/drizzle"));
 vi.mock("@norish/auth/permissions", () => import("../mocks/permissions"));
 vi.mock("@norish/queue/registry", () => ({
   getQueues: () => ({ ingredientReview: reviewQueue, ingredientIcons: iconQueue }),

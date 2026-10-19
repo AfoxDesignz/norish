@@ -213,6 +213,8 @@ test("a rename, a repeating grocery and a Pantry add joining two foods are a row
       })
     ).ok
   ).toBe(true);
+  // The rename lands in the background; a create before it would move its row to a newer version.
+  await expect.poll(async () => names((await list()).groceries)).toContain("realtime-olie");
   expect(
     (
       await callMutation(pageA, stack.baseURL, "groceries.createRecurring", {
@@ -240,8 +242,10 @@ test("a rename, a repeating grocery and a Pantry add joining two foods are a row
   await expect
     .poll(async () => names((await list()).recurringGroceries))
     .toEqual(expect.arrayContaining(["realtime-ui", "realtime-knoflook"]));
+  const pantry = () => callQuery<Array<{ name: string }>>(pageA, stack.baseURL, "pantry.list");
+
   await expect
-    .poll(async () => names(await callQuery(pageA, stack.baseURL, "pantry.list")))
+    .poll(async () => names(await pantry()))
     .toEqual(expect.arrayContaining(["realtime-kaas", "realtime-ham"]));
 
   const joined = [
@@ -250,7 +254,7 @@ test("a rename, a repeating grocery and a Pantry add joining two foods are a row
     "realtime-kaas en realtime-ham",
   ];
   const { groceries, recurringGroceries } = await list();
-  const stored = [...names(groceries), ...names(recurringGroceries)];
+  const stored = [...names(groceries), ...names(recurringGroceries), ...names(await pantry())];
 
   for (const name of joined) expect(stored).not.toContain(name);
 });

@@ -66,27 +66,27 @@ export async function resolveGroceryNames(
 }
 
 /**
- * The names each grocery's name stands for, as a Grocery names one food (`typedParts`): "zout en
+ * Each grocery once per food its name names, as a Grocery names one food (`typedParts`): "zout en
  * peper" is "zout" and "peper", "boter of olie" is "boter". A kept name (`keptFoods`) stays whole.
  */
-export async function groceryParts<N extends string | null>(
-  items: ReadonlyArray<GroceryName & { name: N }>
-): Promise<Array<[N | string, ...Array<N | string>]>> {
+export async function groceryParts<T extends GroceryName & { id?: string | null }>(
+  items: readonly T[]
+): Promise<Array<[T, ...T[]]>> {
   const [kept, split] = await Promise.all([
     keptFoods(items),
-    typedParts(items.map((item) => item.name ?? "")),
+    typedParts(items, { alternatives: "first" }),
   ]);
 
-  return items.map((item, index) => (!kept[index] && split[index]) || [item.name]);
+  return items.map((item, index) => (!kept[index] && split[index]) || [item]);
 }
 
-/** `groceryParts` for one name. */
-export async function groceryPartsOf<N extends string | null>(
-  item: GroceryName & { name: N }
-): Promise<[N | string, ...Array<N | string>]> {
-  const [parts] = await groceryParts([item]);
+/** `groceryParts` for one grocery. */
+export async function groceryPartsOf<T extends GroceryName & { id?: string | null }>(
+  item: T
+): Promise<[T, ...T[]]> {
+  const [parts = [item]] = await groceryParts([item]);
 
-  return parts!;
+  return parts;
 }
 
 /**
@@ -101,18 +101,4 @@ export interface GroceryIngredientColumns {
 
 export function ingredientColumns(ref: IngredientRef | null | undefined): GroceryIngredientColumns {
   return { ingredientAliasId: ref?.aliasId ?? null, ingredientId: ref?.ingredientId ?? null };
-}
-
-/**
- * One grocery name, typed or renamed, resolved to the columns its row keeps.
- * An edit names the grocery it edits, so one that leaves its text alone keeps
- * its food.
- */
-export async function resolveGroceryName(
-  grocery: GroceryName,
-  actor: ResolveActor
-): Promise<GroceryIngredientColumns> {
-  const [ref] = await resolveGroceryNames([grocery], actor);
-
-  return ingredientColumns(ref);
 }

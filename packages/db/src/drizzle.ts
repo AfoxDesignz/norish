@@ -47,6 +47,11 @@ export async function withTransaction<T>(fn: (tx: DbTransaction) => Promise<T>):
   return await db.transaction(fn);
 }
 
+/** Hold an advisory lock on `key` until the transaction ends; a second holder waits for it. */
+export async function holdLock(tx: DbTransaction, key: string): Promise<void> {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${key}::text))`);
+}
+
 /**
  * Reset the database connection pool
  * This is primarily for testing - allows switching databases at runtime

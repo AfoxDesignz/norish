@@ -16,15 +16,17 @@ export const ingredientColumns = (
   ref: { aliasId: string; ingredientId: string } | null | undefined
 ) => ({ ingredientAliasId: ref?.aliasId ?? null, ingredientId: ref?.ingredientId ?? null });
 
-export const resolveGroceryName = vi.fn(async (grocery: { name: string | null }) =>
-  ingredientColumns((await resolveGroceryNames([grocery]))[0])
-);
+/** "x en y" is a grocery each, as a name whose words join two foods is; the first keeps the id. */
+export const groceryParts = vi.fn(
+  async <T extends { id?: string | null; name: string | null }>(items: readonly T[]) =>
+    items.map((item) => {
+      const [first, ...rest] = item.name?.split(" en ") ?? [item.name];
 
-/** "x en y" stands for a grocery each, as a name whose words join two foods does. */
-export const groceryParts = vi.fn(async (items: ReadonlyArray<{ name: string | null }>) =>
-  items.map((item) => item.name?.split(" en ") ?? [item.name])
+      return [{ ...item, name: first }, ...rest.map((name) => ({ ...item, id: undefined, name }))];
+    })
 );
 
 export const groceryPartsOf = vi.fn(
-  async (item: { name: string | null }) => (await groceryParts([item]))[0]
+  async <T extends { id?: string | null; name: string | null }>(item: T) =>
+    (await groceryParts([item]))[0]
 );

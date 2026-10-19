@@ -12,7 +12,7 @@ import { createRecipeWithRefs, getRecipeFull, updateRecipeWithRefs } from "@nori
 import { withTransaction } from "@norish/db/drizzle";
 import { mintIngredientWithAliases } from "@norish/db/repositories/ingredient-aliases";
 import { mergeCatalogueIngredients } from "@norish/db/repositories/ingredient-relocation";
-import { addPantryIngredient } from "@norish/db/repositories/pantry";
+import { addPantryIngredients } from "@norish/db/repositories/pantry";
 import { setConfig } from "@norish/db/repositories/server-config";
 import { ingredients } from "@norish/db/schema";
 import { onIngredientsMinted } from "@norish/shared-server/ingredients/minted";
@@ -154,7 +154,7 @@ describe("ingredient resolver", () => {
     let resolves = 0;
     let writes = 0;
 
-    const { item } = await writeResolved(
+    const [added] = await writeResolved(
       async () => {
         resolves += 1;
         const resolved = await resolveOne("ui");
@@ -171,17 +171,21 @@ describe("ingredient resolver", () => {
       async (resolved) => {
         writes += 1;
 
-        return await addPantryIngredient(crypto.randomUUID(), {
-          userId,
-          userIds: [userId],
-          ingredientAliasId: resolved.aliasId,
-          ingredientId: resolved.ingredientId,
-        });
+        return await addPantryIngredients(
+          [
+            {
+              id: crypto.randomUUID(),
+              ingredientAliasId: resolved.aliasId,
+              ingredientId: resolved.ingredientId,
+            },
+          ],
+          { userId, userIds: [userId] }
+        );
       }
     );
 
     expect([resolves, writes]).toEqual([2, 2]);
-    expect(item.ingredientId).toBe(onion.ingredientId);
+    expect(added?.item.ingredientId).toBe(onion.ingredientId);
   });
 
   it("does not retry a write refused for any other reason", async () => {

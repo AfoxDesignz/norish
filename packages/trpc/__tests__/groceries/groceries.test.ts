@@ -26,11 +26,13 @@ import {
   getGroceryOwnerIds,
   getRecipeInfoForGroceries,
   listGroceriesByUsers,
+  lockGroceryList,
   reorderGroceriesInStore,
   updateGroceries,
 } from "../mocks/db";
+import { TX } from "../mocks/drizzle";
 import { parseIngredientWithDefaults } from "../mocks/helpers";
-import { resolveGroceryName, resolveGroceryNames } from "../mocks/ingredient-groceries";
+import { resolveGroceryNames } from "../mocks/ingredient-groceries";
 import { assertHouseholdAccess } from "../mocks/permissions";
 import { groceries } from "../mocks/realtime/groceries";
 import { stores } from "../mocks/realtime/stores";
@@ -41,6 +43,7 @@ import {
   createMockGrocery,
   createMockHousehold,
   createMockUser,
+  flushAsync,
 } from "./test-utils";
 
 const storesRepository = vi.hoisted(() => ({
@@ -59,6 +62,7 @@ const storeProductsRepository = vi.hoisted(() => ({
 
 // Setup mocks before any imports that use them
 vi.mock("@norish/db", () => import("../mocks/db"));
+vi.mock("@norish/db/drizzle", () => import("../mocks/drizzle"));
 vi.mock("@norish/db/repositories/stores", () => storesRepository);
 vi.mock("@norish/db/repositories/store-products", () => storeProductsRepository);
 vi.mock("@norish/shared-server/realtime/stores", () => import("../mocks/realtime/stores"));
@@ -254,7 +258,8 @@ describe("groceries openapi procedures", () => {
 
     expect(createGroceries).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ id: clientId })]),
-      expect.anything()
+      expect.anything(),
+      TX
     );
     expect(result.ids).toContain(clientId);
   });
@@ -294,7 +299,11 @@ describe("groceries openapi procedures", () => {
     ]);
 
     expect(createGroceries).not.toHaveBeenCalled();
-    expect(updateGroceries).toHaveBeenCalledWith([{ id: existing.id, amount: 3, storeId }]);
+    expect(updateGroceries).toHaveBeenCalledWith(
+      [{ id: existing.id, amount: 3, storeId }],
+      ctx.userIds,
+      TX
+    );
     expect(result.ids).toEqual([existing.id]);
   });
 
@@ -339,7 +348,11 @@ describe("groceries openapi procedures", () => {
 
     await createGroceriesData(ctx, [{ name: "Milk", unit: null, amount: 1, isDone: false }]);
 
-    expect(updateGroceries).toHaveBeenCalledWith([{ id: existing.id, amount: 2, storeId }]);
+    expect(updateGroceries).toHaveBeenCalledWith(
+      [{ id: existing.id, amount: 2, storeId }],
+      ctx.userIds,
+      TX
+    );
   });
 
   it("marks a grocery done and returns the updated grocery", async () => {
@@ -581,6 +594,7 @@ describe("stale grocery updates", () => {
   beforeEach(() => {
     // Every Store a test files a grocery under is the household's own.
     storesRepository.getStoreOwnerId.mockResolvedValue("user-1");
+    listGroceriesByUsers.mockResolvedValue([]);
     ctx = createMockAuthedContext(mockUser, mockHousehold);
   });
 
@@ -594,8 +608,7 @@ describe("stale grocery updates", () => {
     const caller = groceriesProcedures.createCaller(createMockCallerContext(ctx));
     const result = await caller.update({ groceryId, raw: "Oat milk", version: 4 });
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushAsync();
 
     expect(result).toEqual({ success: true });
     expect(trpcLogger.info).toHaveBeenCalledWith(
@@ -628,10 +641,10 @@ describe("stale grocery updates", () => {
     const caller = groceriesProcedures.createCaller(createMockCallerContext(ctx));
 
     await caller.update({ groceryId, raw: "3 onions, diced", version: 4 });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushAsync();
 
-    expect(resolveGroceryName).toHaveBeenCalledWith(
-      expect.objectContaining({ recipeIngredientId, groceryId }),
+    expect(resolveGroceryNames).toHaveBeenCalledWith(
+      [expect.objectContaining({ recipeIngredientId, groceryId })],
       { userId: ctx.user.id }
     );
   });
@@ -650,7 +663,7 @@ describe("stale grocery updates", () => {
 
     await caller.update({ groceryId, raw: "Oat milk", version: 4, storeId });
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushAsync();
 
     expect(storesRepository.upsertIngredientStorePreference).toHaveBeenCalledWith(
       ctx.user.id,
@@ -687,7 +700,7 @@ describe("stale grocery updates", () => {
       savePreference: true,
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushAsync();
 
     // Dragging a grocery into another Store asks that Store the same question
     // the panel would: what it already knows reaches the list there and then.
@@ -716,9 +729,8 @@ describe("stale grocery updates", () => {
       storeId,
     });
 
-    // Drain microtasks so the .then() chain in the handler runs
-    await Promise.resolve();
-    await Promise.resolve();
+    // Let the .then() chain in the handler run
+    await flushAsync();
 
     expect(result).toEqual({ success: true });
 
@@ -745,8 +757,7 @@ describe("stale grocery updates", () => {
       storeId: null,
     });
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushAsync();
 
     expect(result).toEqual({ success: true });
 
@@ -770,8 +781,7 @@ describe("stale grocery updates", () => {
       version: 4,
     });
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushAsync();
 
     expect(result).toEqual({ success: true });
 
@@ -833,7 +843,8 @@ describe("grocery names through Ingredient Aliases", () => {
           }),
         }),
       ],
-      expect.anything()
+      expect.anything(),
+      TX
     );
   });
 
@@ -848,9 +859,11 @@ describe("grocery names through Ingredient Aliases", () => {
     ]);
 
     expect(createGroceries).not.toHaveBeenCalled();
-    expect(updateGroceries).toHaveBeenCalledWith([
-      expect.objectContaining({ id: "g1", amount: 3 }),
-    ]);
+    expect(updateGroceries).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: "g1", amount: 3 })],
+      ctx.userIds,
+      TX
+    );
   });
 
   it("adds a grocery per food a typed name joins, each announced like any created grocery", async () => {
@@ -880,7 +893,8 @@ describe("grocery names through Ingredient Aliases", () => {
           }),
         },
       ],
-      expect.anything()
+      expect.anything(),
+      TX
     );
     expect(result.ids).toEqual([id, expect.any(String)]);
     expect(groceries.publish).toHaveBeenCalledWith(
@@ -905,12 +919,15 @@ describe("grocery names through Ingredient Aliases", () => {
       { id: crypto.randomUUID(), name: "zout en peper", unit: null, amount: 1, isDone: false },
     ]);
 
-    expect(updateGroceries).toHaveBeenCalledWith([
-      expect.objectContaining({ id: "g1", amount: 2 }),
-    ]);
+    expect(updateGroceries).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: "g1", amount: 2 })],
+      ctx.userIds,
+      TX
+    );
     expect(createGroceries).toHaveBeenCalledWith(
       [expect.objectContaining({ groceries: expect.objectContaining({ name: "peper" }) })],
-      expect.anything()
+      expect.anything(),
+      TX
     );
   });
 
@@ -937,15 +954,24 @@ describe("grocery names through Ingredient Aliases", () => {
         { householdKey: ctx.householdKey }
       )
     );
-    expect(updateGroceries).toHaveBeenCalledWith([
-      expect.objectContaining({
-        id: groceryId,
-        name: "zout",
-        amount: 2,
-        unit: "el",
-        ingredientAliasId: "alias:zout",
-      }),
-    ]);
+    expect(updateGroceries).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          id: groceryId,
+          name: "zout",
+          amount: 2,
+          unit: "el",
+          ingredientAliasId: "alias:zout",
+        }),
+      ],
+      ctx.userIds,
+      TX
+    );
+    // The list is held before the rename locks its row, so a create elsewhere waits, not deadlocks.
+    expect(lockGroceryList).toHaveBeenCalledWith(TX, ctx.userIds);
+    expect(lockGroceryList.mock.invocationCallOrder[0]).toBeLessThan(
+      updateGroceries.mock.invocationCallOrder[0]!
+    );
     // The other food finds its own Store and pack count, as a typed add does.
     expect(createGroceries).toHaveBeenCalledWith(
       [
@@ -960,8 +986,35 @@ describe("grocery names through Ingredient Aliases", () => {
           }),
         }),
       ],
-      expect.anything()
+      expect.anything(),
+      TX
     );
+  });
+
+  it("writes none of a renamed grocery's other foods when the rename was stale", async () => {
+    const groceryId = crypto.randomUUID();
+
+    getGroceryOwnerIds.mockResolvedValue(new Map([[groceryId, ctx.user.id]]));
+    assertHouseholdAccess.mockResolvedValue(undefined);
+    getGroceriesByIds.mockResolvedValue([createMockGrocery({ id: groceryId, name: "zout" })]);
+    parseIngredientWithDefaults.mockReturnValueOnce([
+      { description: "zout en peper", quantity: 1, unitOfMeasure: null },
+    ]);
+    updateGroceries.mockResolvedValue([]);
+
+    await groceriesProcedures
+      .createCaller(createMockCallerContext(ctx))
+      .update({ groceryId, raw: "zout en peper", version: 4 });
+
+    await vi.waitFor(() =>
+      expect(groceries.publish).toHaveBeenCalledWith("stale", expect.anything(), {
+        householdKey: ctx.householdKey,
+      })
+    );
+    expect(createGroceries).not.toHaveBeenCalled();
+    expect(groceries.publish).not.toHaveBeenCalledWith("created", expect.anything(), {
+      householdKey: ctx.householdKey,
+    });
   });
 
   it("resolves a renamed grocery's new name", async () => {
@@ -977,9 +1030,11 @@ describe("grocery names through Ingredient Aliases", () => {
 
     // The line parser is mocked here, and reads every raw line as "Test".
     await vi.waitFor(() =>
-      expect(updateGroceries).toHaveBeenCalledWith([
-        expect.objectContaining({ id: groceryId, name: "Test", ingredientAliasId: "alias:test" }),
-      ])
+      expect(updateGroceries).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: groceryId, name: "Test", ingredientAliasId: "alias:test" })],
+        ctx.userIds,
+        TX
+      )
     );
   });
 });

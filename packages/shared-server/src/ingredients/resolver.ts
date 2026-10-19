@@ -236,23 +236,33 @@ export async function resolveLineFoods(
 }
 
 /**
- * The parts a typed text stands for as rows naming one food, by its words alone, minting nothing:
- * each food a "together" text joins, the first of "alternatives"; null where it stays whole.
+ * Each row once per food its name's words join, minting nothing: "zout en peper" a row each,
+ * alternatives ("boter of olie") the first or each. The first keeps the row's id (ADR-0003).
  */
-export async function typedParts(
-  texts: readonly string[]
-): Promise<Array<[string, ...string[]] | null>> {
+export async function typedParts<T extends { id?: string | null; name: string | null }>(
+  rows: readonly T[],
+  { alternatives }: { alternatives: "first" | "each" }
+): Promise<Array<[T, ...T[]]>> {
   const rules = await currentRules();
-  const spellings = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
-  const { byWords } = await readByWords(spellings, rules, true);
+  const read = rows.map((row) => ({
+    row,
+    spelling: spellingOf(cleanIngredientText(row.name ?? ""), rules),
+  }));
+  const { byWords } = await readByWords(
+    read.map(({ spelling }) => spelling),
+    rules,
+    true
+  );
 
-  return spellings.map((spelling) => {
+  return read.map(({ row, spelling }) => {
     const named = byWords.get(spelling);
     const [first, ...rest] = named?.joined ? named.foods.map((food) => food.text) : [];
 
-    if (first === undefined) return null;
+    if (first === undefined) return [row];
 
-    return named?.joined === "together" ? [first, ...rest] : [first];
+    const others = named?.joined === "together" || alternatives === "each" ? rest : [];
+
+    return [{ ...row, name: first }, ...others.map((name) => ({ ...row, id: undefined, name }))];
   });
 }
 
@@ -660,7 +670,7 @@ export async function findOtherIngredientsFor(
  * write finds its Ingredient or alias gone, both run once more, and the text
  * then names the food the merge left (its alias moved with it) or a fresh
  * mint. `resolve` is the resolution itself — `resolveIngredient`,
- * `resolveGroceryName`, `withResolvedIngredients` — so the second run can
+ * `resolveGroceryNames`, `withResolvedIngredients` — so the second run can
  * never write the first run's stale ids.
  */
 export async function writeResolved<R, T>(

@@ -2,7 +2,7 @@ import type { SQL } from "drizzle-orm";
 import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 
 import type { Db, DbTransaction } from "@norish/db/drizzle";
-import { db } from "@norish/db/drizzle";
+import { db, holdLock } from "@norish/db/drizzle";
 import {
   aisleLinks,
   groceries,
@@ -15,6 +15,8 @@ import {
   recurringGroceries,
   storeProductLinks,
 } from "@norish/db/schema";
+
+import { lockPantryFood } from "./pantry";
 
 /**
  * What moves between Ingredients (ADR-0037): a merge, an alias moved to
@@ -69,7 +71,7 @@ async function repointKeyed(
  * what this left.
  */
 async function keepOnePantryRowPerHousehold(tx: DbTransaction, targetId: string): Promise<void> {
-  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`pantry:${targetId}`}::text))`);
+  await lockPantryFood(tx, targetId);
   await tx.execute(sql`
     delete from ${pantryIngredients} p
     using ${pantryIngredients} q, ${householdUsers} hp, ${householdUsers} hq
@@ -84,7 +86,7 @@ async function keepOnePantryRowPerHousehold(tx: DbTransaction, targetId: string)
  * one before it left it. Released with the transaction.
  */
 export async function lockTree(tx: DbTransaction): Promise<void> {
-  await tx.execute(sql`select pg_advisory_xact_lock(hashtext('ingredient-tree'))`);
+  await holdLock(tx, "ingredient-tree");
 }
 
 /** Lock Ingredients for an edit, in id order so two edits over the same pair never deadlock. */
@@ -106,10 +108,7 @@ const MAX_DEPTH = 64;
  * Every ancestor of each Ingredient, nearest first: its parent, the parent's
  * parent, and so on. An Ingredient with no parent answers an empty list.
  */
-async function ancestorsOf(
-  tx: Db,
-  ids: readonly string[]
-): Promise<Map<string, string[]>> {
+async function ancestorsOf(tx: Db, ids: readonly string[]): Promise<Map<string, string[]>> {
   const wanted = Array.from(new Set(ids));
 
   if (wanted.length === 0) return new Map();
