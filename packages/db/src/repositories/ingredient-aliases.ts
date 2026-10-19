@@ -14,7 +14,7 @@ import { CATALOGUE_LANGUAGES, chooseLocaleNames } from "@norish/shared/lib/ingre
 
 import type { LineResolution } from "./ingredients";
 import { isConstraintViolation } from "./constraint-violation";
-import { recordWordsParent } from "./ingredient-ai-changes";
+import { recordAIChange, recordWordsParent, refreshAIFlag } from "./ingredient-ai-changes";
 
 /**
  * The Ingredient Alias rows the ingredient resolver reads and writes. Nothing
@@ -313,20 +313,42 @@ export async function addIngredientAliases(input: {
   aliases: ReadonlyArray<{ text: string; fold: string }>;
   ownerId: string | null;
   locale: string | null;
+  /**
+   * Joined on an unsure AI answer: an unsure merge of the spellings added, recorded in the same
+   * transaction, which flags the food. Its Undo moves them out to a food named as the first.
+   */
+  unsure?: boolean;
 }): Promise<IngredientAliasRow[] | null> {
   try {
-    await db
-      .insert(ingredientAliases)
-      .values(
-        input.aliases.map((alias) => ({
-          text: alias.text,
-          fold: alias.fold,
-          locale: input.locale,
-          ingredientId: input.ingredientId,
+    await db.transaction(async (tx) => {
+      const added = await tx
+        .insert(ingredientAliases)
+        .values(
+          input.aliases.map((alias) => ({
+            text: alias.text,
+            fold: alias.fold,
+            locale: input.locale,
+            ingredientId: input.ingredientId,
+            ownerId: input.ownerId,
+          }))
+        )
+        .onConflictDoNothing()
+        .returning({ id: ingredientAliases.id });
+
+      if (!input.unsure || added.length === 0) return;
+      await recordAIChange(tx, {
+        ingredientId: input.ingredientId,
+        sure: false,
+        undo: {
+          kind: "merge",
+          name: input.aliases[0]!.text,
           ownerId: input.ownerId,
-        }))
-      )
-      .onConflictDoNothing();
+          parentId: null,
+          aliasIds: added.map((row) => row.id),
+        },
+      });
+      await refreshAIFlag(tx, input.ingredientId, { unsure: true });
+    });
   } catch (error) {
     if (isConstraintViolation(error, "23503")) return null;
     throw error;

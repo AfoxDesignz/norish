@@ -54,8 +54,9 @@ import { announceMinted } from "./minted";
  *   a recipe line neither rung knows whole is then the foods its joining
  *   words split it into, all known ("zout en peper": `resolveLineFoods`);
  *   3. what AI makes of it (`ai/resolution/ingredient-resolution`): a Decision, or the language
- *      model — a known food it is sure the text names takes the text's
- *      clean spelling, so the next occurrence is a rung-1 or rung-2 match;
+ *      model — a known food it says the text names takes the text's clean
+ *      spelling, so the next occurrence is a rung-1 or rung-2 match; an
+ *      unsure answer joins it as an unsure AI Change, which flags the food;
  *   4. a new Ingredient under the food AI said it is a kind of, if any.
  *
  * A mint or a join gives the food only the text's clean spelling, its plain
@@ -368,11 +369,7 @@ async function resolveTexts(
     if (!match) {
       // No answer means AI was not asked: the name is minted flagged.
       const asked = answers.get(sameFoodKey(spelling));
-      // An unsure "same" mints a flagged food of its own rather than joining one.
-      const answer =
-        asked?.answer.kind === "same" && !asked.answer.sure
-          ? flaggedNew("ai-unsure")
-          : (asked?.answer ?? flaggedNew("upgrade"));
+      const answer = asked?.answer ?? flaggedNew("upgrade");
       const wordsParent = async () => (asked ? asked.words : await parentFromWords(spelling));
       // The food AI named may have been merged away since the question was
       // asked; the text is then minted flagged rather than failing its save.
@@ -383,6 +380,7 @@ async function resolveTexts(
               aliases: [cleanAlias(spelling)],
               ownerId: actor.userId,
               locale: actor.locale ?? null,
+              unsure: !answer.sure,
             })
           : null;
       const rows =

@@ -33,6 +33,7 @@ import {
   isAIEnabled,
   isDecisionUseEnabled,
 } from "@norish/shared-server/config/server-config-loader";
+import { undoAIChange } from "@norish/shared-server/ingredients/ai-changes";
 import {
   updateResolvedRecipe,
   withResolvedIngredients,
@@ -407,18 +408,32 @@ describe("ingredient resolver, rung 3", () => {
     });
   });
 
-  it("flags what it mints after an answer that was not sure", async () => {
+  it("joins a text an unsure answer names to that food, as an unsure AI Change Undo takes back", async () => {
     const milk = await known("milk");
 
     decides("Is milk", 0.4);
     answers({ verdict: "same", food: 1, sure: false });
     const oat = await resolveOne("oat milk");
 
-    expect(oat.ingredientId).not.toBe(milk.ingredientId);
+    expect(oat.ingredientId).toBe(milk.ingredientId);
     await expect(ingredientFor(oat.aliasId)).resolves.toMatchObject({
       flagged: true,
       flagReason: "ai-unsure",
     });
+    const [change, ...others] = await listAIChanges();
+
+    expect(others).toEqual([]);
+    expect(change).toMatchObject({
+      sure: false,
+      ingredient: { id: milk.ingredientId },
+      undo: { kind: "merge", name: "oat milk", ownerId: userId, aliasIds: [oat.aliasId] },
+    });
+
+    await undoAIChange({ userId, householdUserIds: null, isServerAdmin: false }, change!.id);
+    const own = await ingredientFor(oat.aliasId);
+
+    expect(own).toMatchObject({ name: "oat milk" });
+    expect(own!.id).not.toBe(milk.ingredientId);
   });
 
   it("asks the language model when the Decision fails", async () => {
