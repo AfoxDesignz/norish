@@ -40,9 +40,9 @@ function rowKey(row: PanelRow): string {
 }
 
 /**
- * The panel's rows, virtualised against the panel's own scrolling body: the
- * first start's pass over the whole catalogue leaves a thousand changes, a row
- * each with a button or two, and only the rows in and around view are in the tree.
+ * The panel's rows, virtualised against the panel's own scrolling body: a month
+ * may hold a thousand changes, a row each with a button or two, and only the
+ * rows in and around view are in the tree.
  * Rows carry their own spacing; the virtualizer measures each one.
  */
 function VirtualRows({

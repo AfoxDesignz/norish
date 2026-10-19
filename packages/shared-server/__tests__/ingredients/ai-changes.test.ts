@@ -21,6 +21,7 @@ import { findIngredientAncestors, lockTree } from "@norish/db/repositories/ingre
 import { ingredientAIChanges, ingredients } from "@norish/db/schema";
 import { isAIEnabled } from "@norish/shared-server/config/server-config-loader";
 import {
+  flagByAnswer,
   keepAIChange,
   listAIChangesFor,
   mergeByAI,
@@ -317,6 +318,49 @@ describe("keeping and undoing AI Changes", () => {
 
     await expect(answer).resolves.toBeUndefined();
     await expect(undoing).resolves.toMatchObject({ refusal: "not-found" });
+  });
+
+  it("changes nothing about a food a person decided about while AI was asking", async () => {
+    const onion = await mint("onion");
+    const uien = await mint("uien");
+
+    // The person marks it distinct after the question went out, before the answer lands.
+    await markDistinct(actor, uien.ingredientId);
+
+    await expect(mergeByAI(uien.ingredientId, onion.ingredientId, true)).resolves.toBe("decided");
+    await expect(parentByAI(uien.ingredientId, onion.ingredientId, false)).resolves.toBe("decided");
+    await expect(renameByAI(uien.ingredientId, "uien", "ui")).resolves.toBe(false);
+    await flagByAnswer(uien.ingredientId, false);
+
+    await expect(ingredientFor(uien.aliasId)).resolves.toMatchObject({
+      id: uien.ingredientId,
+      name: "uien",
+      flagged: false,
+    });
+    await expect(parentOf(uien.ingredientId)).resolves.toBeNull();
+    expect(await listAIChanges()).toEqual([]);
+  });
+
+  it("keeps a food AI could not answer for in the nightly retry when an unsure merge joins it", async () => {
+    const onion = await mint("onion");
+    const uien = await mint("uien");
+
+    await getTestDb()
+      .update(ingredients)
+      .set({ flagReason: "ai-unavailable" })
+      .where(eq(ingredients.id, onion.ingredientId));
+    await mergeByAI(uien.ingredientId, onion.ingredientId, false);
+
+    await expect(ingredientFor(onion.aliasId)).resolves.toMatchObject({
+      flagged: true,
+      flagReason: "ai-unavailable",
+    });
+    await undoAIChange(actor, (await onlyChange()).id);
+    await expect(ingredientFor(onion.aliasId)).resolves.toMatchObject({
+      flagged: true,
+      flagReason: "ai-unavailable",
+    });
+    expect(await listUnansweredIngredientIds()).toEqual([onion.ingredientId]);
   });
 
   it("sweeps the handled changes older than a month, keeping the undone and the open ones", async () => {

@@ -14,7 +14,7 @@ import { CATALOGUE_LANGUAGES, chooseLocaleNames } from "@norish/shared/lib/ingre
 
 import type { LineResolution } from "./ingredients";
 import { isConstraintViolation } from "./constraint-violation";
-import { recordAIChange, recordWordsParent, refreshAIFlag } from "./ingredient-ai-changes";
+import { flagUnderOpenChange, recordAIChange, recordGuessedParent } from "./ingredient-ai-changes";
 
 /**
  * The Ingredient Alias rows the ingredient resolver reads and writes. Nothing
@@ -175,11 +175,8 @@ export interface MintIngredientInput {
   flagReason?: FlagReason | null;
   /** The Parent Ingredient, where the food is a kind of a known one; none where that one is gone. */
   parentId?: string | null;
-  /**
-   * Whether the parent is a guess from the words of the name: an unsure AI Change, recorded in
-   * the mint's transaction.
-   */
-  parentUnsure?: boolean;
+  /** Where the parent is a guess, from the words of the name or AI's unsure answer: an unsure AI Change. */
+  parentUnsure?: "words" | "ai";
 }
 
 /**
@@ -260,7 +257,7 @@ async function mintOnce(input: MintIngredientInput): Promise<IngredientAliasRow[
 
     // Only a parent the mint applied is an AI Change; a name that joined an existing food got none.
     if ((minted || takenOver) && input.parentId && input.parentUnsure) {
-      await recordWordsParent(tx, ingredientId, input.parentId);
+      await recordGuessedParent(tx, ingredientId, input.parentId, input.parentUnsure);
     }
 
     await tx
@@ -314,8 +311,7 @@ export async function addIngredientAliases(input: {
   ownerId: string | null;
   locale: string | null;
   /**
-   * Joined on an unsure AI answer: an unsure merge of the spellings added, recorded in the same
-   * transaction, which flags the food. Its Undo moves them out to a food named as the first.
+   * Joined on an unsure AI answer: an unsure merge of the spellings added, which flags the food.
    */
   unsure?: boolean;
 }): Promise<IngredientAliasRow[] | null> {
@@ -347,7 +343,7 @@ export async function addIngredientAliases(input: {
           aliasIds: added.map((row) => row.id),
         },
       });
-      await refreshAIFlag(tx, input.ingredientId, { unsure: true });
+      await flagUnderOpenChange(tx, input.ingredientId);
     });
   } catch (error) {
     if (isConstraintViolation(error, "23503")) return null;

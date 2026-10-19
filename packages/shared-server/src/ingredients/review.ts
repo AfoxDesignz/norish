@@ -1,7 +1,6 @@
 /**
  * The AI pass over a food already in the catalogue (ADR-0037, amended 2026-10-17): rung 3's
- * thorough question, its answer made as an AI Change (`ai-changes.ts`), sure or not. No person
- * starts it: the ingredient review queue runs it after a mint and nightly.
+ * thorough question, its answer made as an AI Change, sure or not. The review queue runs it.
  */
 import type { FlagReason, ReviewOutcome } from "@norish/shared/contracts/ingredient-catalogue";
 import {
@@ -43,11 +42,15 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
     const into = await findCatalogueIngredient(answer.ingredientId);
     const applied = into ? await mergeByAI(ingredientId, into.id, answer.sure) : "gone";
 
-    if (applied === "undone") return { outcome: "skipped", reason: "undone", ...trace };
+    if (applied === "undone" || applied === "decided") {
+      return { outcome: "skipped", reason: applied, ...trace };
+    }
     if (!into || applied === "gone") return await unanswered(ingredientId, "food-gone", trace);
 
     return { outcome: "merge", into: into.name, sure: answer.sure, ...trace };
   }
+  // AI was switched off meanwhile: the flag keeps saying why the food is still unanswered.
+  if (answer.reason === "ai-off") return { outcome: "unsure", reason: "ai-off", ...trace };
   if (answer.reason !== null && answer.reason !== "ai-unsure") {
     return await unanswered(ingredientId, answer.reason, trace);
   }
@@ -56,6 +59,7 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
   const parent = answer.kindOf ? await findCatalogueIngredient(answer.kindOf) : null;
   const filed = parent ? await parentByAI(ingredientId, parent.id, sure) : null;
 
+  if (filed === "decided") return { outcome: "skipped", reason: "decided", ...trace };
   if (filed !== "applied") await flagByAnswer(ingredientId, sure);
   if (filed === "undone") return { outcome: "skipped", reason: "undone", ...trace };
 

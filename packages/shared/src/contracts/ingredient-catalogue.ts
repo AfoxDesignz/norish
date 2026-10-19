@@ -46,6 +46,9 @@ export const FLAG_REASONS = [
 
 export type FlagReason = (typeof FLAG_REASONS)[number];
 
+/** Why a food is flagged when no AI could answer for it: unreachable, or its key refused. */
+export const UNANSWERED_FLAG_REASONS: readonly FlagReason[] = ["ai-unavailable", "ai-key-rejected"];
+
 export function isFlagReason(value: unknown): value is FlagReason {
   return (FLAG_REASONS as readonly unknown[]).includes(value);
 }

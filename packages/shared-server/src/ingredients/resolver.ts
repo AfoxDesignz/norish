@@ -393,7 +393,7 @@ async function resolveTexts(
           : await mint(spelling, actor, {
               flagReason: answer.reason,
               parent: answer.kindOf
-                ? { id: answer.kindOf, sure: true }
+                ? { id: answer.kindOf, sure: answer.reason === null, byAI: true }
                 : answer.reason !== null
                   ? await wordsParent()
                   : null,
@@ -484,13 +484,16 @@ export async function resolveIngredient(
  * alias, so "onions, diced" first and "onions" or "onions, sliced" later are
  * the one food. Flagged unless a sure AI answer said it is a food of its own;
  * placed under the food AI said it is a kind of, where it said so, else under
- * the one its words suggest, an unsure AI Change where that was a guess
- * from inside the words.
+ * the one its words suggest; an unsure AI Change where AI was unsure or the
+ * words' food sat inside the name.
  */
 async function mint(
   spelling: Spelling,
   actor: ResolveActor,
-  { flagReason, parent }: { flagReason: FlagReason | null; parent: ParentFromWords | null }
+  {
+    flagReason,
+    parent,
+  }: { flagReason: FlagReason | null; parent: (ParentFromWords & { byAI?: true }) | null }
 ): Promise<IngredientAliasRow[]> {
   const alias = cleanAlias(spelling);
 
@@ -502,7 +505,7 @@ async function mint(
     flagged: flagReason !== null,
     flagReason,
     parentId: parent?.id ?? null,
-    parentUnsure: parent !== null && !parent.sure,
+    parentUnsure: parent && !parent.sure ? (parent.byAI ? "ai" : "words") : undefined,
   });
 }
 

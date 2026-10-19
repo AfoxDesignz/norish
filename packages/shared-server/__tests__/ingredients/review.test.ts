@@ -310,6 +310,25 @@ describe("asking AI about an Ingredient", () => {
     expect(await changes()).toMatchObject([{ kind: "parent", sure: false }]);
   });
 
+  it("keeps the flag a food has when AI is switched off while the pass waits", async () => {
+    const red = await flagged("red onion");
+
+    await getTestDb()
+      .update(ingredients)
+      .set({ flagReason: "ai-unavailable" })
+      .where(eq(ingredients.id, red.ingredientId));
+    vi.mocked(isAIEnabled).mockResolvedValue(false);
+
+    await expect(askAIAbout(red.ingredientId)).resolves.toMatchObject({
+      outcome: "unsure",
+      reason: "ai-off",
+    });
+    // Still one the nightly pass asks again once AI is back.
+    await expect(ingredientFor(red.aliasId)).resolves.toMatchObject({
+      flagReason: "ai-unavailable",
+    });
+  });
+
   it("asks AI about a name no known food shares a word with, and follows the food it names", async () => {
     // "ui" shares no letters with "onion": rung 3 asked nothing and minted it flagged.
     const onion = await kept("onion");

@@ -1,9 +1,6 @@
 /**
- * The AI pass over Ingredients (ADR-0037, amended 2026-10-17): one job, one step per food, each
- * answer made as an AI Change. No person starts it: a mint queues it, and so does the nightly task.
- * A food passed over or whose question broke is recorded on its step; neither ends the pass.
- * Once it is over, the foods still there and showing no icon are queued on the icons queue, where
- * "Draw an icon" is on, so nothing is drawn for a food AI merged away.
+ * The AI pass over Ingredients (ADR-0037, amended 2026-10-17): a step per food, each answer an AI
+ * Change, then the foods still there and showing no icon go to the icons queue.
  */
 
 import type { Job } from "bullmq";
@@ -22,6 +19,7 @@ import { announcingTogether } from "@norish/shared-server/ingredients/changes";
 import { listFoodsShowingNoIcon } from "@norish/shared-server/ingredients/icon-rounds";
 import { askAIAbout } from "@norish/shared-server/ingredients/review";
 import { createLogger } from "@norish/shared-server/logger";
+import { UNANSWERED_FLAG_REASONS } from "@norish/shared/contracts/ingredient-catalogue";
 
 import type { JobStepEvent } from "../job-steps";
 import { createWorker } from "../create-worker";
@@ -48,10 +46,7 @@ function describe(error: unknown): string {
   return cause ? `${error.message}: ${cause}` : error.message;
 }
 
-/**
- * The question, asked of one food. Nothing here ends the pass: an error — the model, the
- * database — is recorded on the food's step for the monitor, so the other foods still get asked.
- */
+/** The question, asked of one food; an error is recorded on its step, and the pass goes on. */
 async function ask(job: Job<IngredientReviewJobData>, ingredientId: string) {
   try {
     return { ingredientId, ...(await askAIAbout(ingredientId)) };
@@ -62,21 +57,22 @@ async function ask(job: Job<IngredientReviewJobData>, ingredientId: string) {
   }
 }
 
-/**
- * How many foods are asked about at once (`INGREDIENT_REVIEW_CONCURRENCY`). The questions are
- * independent; a self-hosted model that struggles with parallel requests gets a lower number.
- */
+/** How many foods are asked about at once (`INGREDIENT_REVIEW_CONCURRENCY`). */
 function reviewConcurrency(): number {
   return SERVER_CONFIG.INGREDIENT_REVIEW_CONCURRENCY;
 }
 
-/**
- * How many times a pass writes its answers down. A nightly pass may hold many foods, and the
- * job's progress is one value rewritten whole on each write, so twenty keep it linear.
- */
+/** How many times a pass writes its answers down: progress is rewritten whole on each write. */
 const PASS_WRITES = 20;
 
-/** Queue the pass's foods that are still there and show no icon, where "Draw an icon" is on. */
+/** Whether AI answered for the food: a later pass may still merge one it could not reach. */
+function answered(detail: ReviewStepDetail): boolean {
+  if (detail.outcome === "failed") return false;
+
+  return detail.outcome !== "unsure" || !UNANSWERED_FLAG_REASONS.includes(detail.reason);
+}
+
+/** Queue the answered foods that are still there and show no icon, where "Draw an icon" is on. */
 async function queueIcons(ingredientIds: readonly string[]): Promise<void> {
   if (!(await getAutomaticIngredientsConfig()).icon) return;
   const foods = await listFoodsShowingNoIcon(ingredientIds);
@@ -96,6 +92,8 @@ export async function processIngredientReviewJob(
   const writeEvery = Math.max(1, Math.ceil(foods.length / PASS_WRITES));
   let next = 0;
   let settled = 0;
+  // The foods AI answered for, which may be drawn once the pass is over.
+  const done = new Set<string>();
   // The answers not yet written down, as the steps the job monitor shows.
   let unwritten: (JobStepEvent & { endedAt: number })[] = [];
   // Writes go out one after another, so the timeline keeps the order foods settled in.
@@ -110,6 +108,7 @@ export async function processIngredientReviewJob(
     models: ModelUse[]
   ) => {
     settled += 1;
+    if (answered(detail)) done.add(detail.ingredientId);
     unwritten.push({
       id: `${REVIEW_STEP}:${settled}/${foods.length}`,
       startedAt,
@@ -150,7 +149,7 @@ export async function processIngredientReviewJob(
   );
   await recording;
   signal?.throwIfAborted();
-  await queueIcons(foods.map((food) => food.id));
+  await queueIcons(foods.flatMap((food) => (done.has(food.id) ? [food.id] : [])));
 }
 
 export function startIngredientReviewWorker(): void {

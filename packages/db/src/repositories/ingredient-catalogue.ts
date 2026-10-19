@@ -16,8 +16,7 @@ import {
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-import type { DbTransaction } from "@norish/db/drizzle";
-import type { FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
+import type { Db, DbTransaction } from "@norish/db/drizzle";
 import type { IngredientSearch, IngredientSearchField } from "@norish/shared/lib/ingredient-search";
 import { db } from "@norish/db/drizzle";
 import {
@@ -30,6 +29,7 @@ import {
   recipes,
   recurringGroceries,
 } from "@norish/db/schema";
+import { UNANSWERED_FLAG_REASONS } from "@norish/shared/contracts/ingredient-catalogue";
 import { viewerAndHouseholdIds } from "@norish/shared/lib/household";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
@@ -218,6 +218,16 @@ export const askableByAI = sql<boolean>`(${and(
   eq(ingredients.parentChosen, false)
 )})`;
 
+/** Whether AI may still ask about the food, read through the caller's transaction and lock. */
+export async function isAskableByAI(tx: Db, id: string): Promise<boolean> {
+  const [row] = await tx
+    .select({ askable: askableByAI })
+    .from(ingredients)
+    .where(eq(ingredients.id, id));
+
+  return row?.askable ?? false;
+}
+
 /**
  * One Ingredient as an edit reads it: its name, whether it is flagged, whose
  * it is, its parent, whether its name is settled, and whether AI may ask
@@ -276,16 +286,17 @@ export async function findCatalogueIngredientNames(
   return names;
 }
 
-/** Why a food is flagged when no AI could answer for it: unreachable, or its key refused. */
-const UNANSWERED: FlagReason[] = ["ai-unavailable", "ai-key-rejected"];
-
-/** The foods flagged because no AI could answer for them that AI may still ask about: the nightly retry's. */
+/** The foods flagged as no AI could answer for them, that AI may still ask about: retried nightly. */
 export async function listUnansweredIngredientIds(): Promise<string[]> {
   const rows = await db
     .select({ id: ingredients.id })
     .from(ingredients)
     .where(
-      and(eq(ingredients.flagged, true), inArray(ingredients.flagReason, UNANSWERED), askableByAI)
+      and(
+        eq(ingredients.flagged, true),
+        inArray(ingredients.flagReason, [...UNANSWERED_FLAG_REASONS]),
+        askableByAI
+      )
     );
 
   return rows.map((row) => row.id);

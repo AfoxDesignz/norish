@@ -10,7 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { IngredientIconsJobData } from "@norish/queue/contracts/job-types";
-import { summarizeIconRound } from "@norish/queue/ingredient-icons/progress";
+import { findRunningIconRound, summarizeIconRound } from "@norish/queue/ingredient-icons/progress";
 import {
   handleIngredientIconsFailure,
   processIngredientIconsJob,
@@ -80,10 +80,8 @@ describe("processIngredientIconsJob", () => {
 
     expect(rounds.drawNewIngredientIcon.mock.calls).toEqual([["kohlrabi"], ["red onion"]]);
     expect(rounds.drawRoundIcon).not.toHaveBeenCalled();
-    expect(published("icons").at(-1)).toMatchObject({
-      counts: { drawn: 1, skipped: 1 },
-      finished: true,
-    });
+    // Nobody started it: the page's Draw icons stays a person's, and hears only of the icons.
+    expect(published("icons")).toEqual([]);
   });
 
   it("draws each food in turn as the asker, one step each, and says how it ended", async () => {
@@ -185,5 +183,20 @@ describe("handleIngredientIconsFailure", () => {
     expect(published("icons")).toEqual([
       expect.objectContaining({ jobId: "icons-1", finished: true }),
     ]);
+  });
+});
+
+describe("findRunningIconRound", () => {
+  it("reads a person's round, never one an AI pass queued", async () => {
+    const queued = (asker: IngredientIconsJobData["actor"]) => ({
+      ...fakeJob(["kohlrabi"], 0, asker),
+      id: asker ? "theirs" : "pass",
+    });
+    const queue = { getJobs: vi.fn(async () => [queued(null), queued(actor)]) };
+
+    await expect(findRunningIconRound(queue as never)).resolves.toMatchObject({ jobId: "theirs" });
+
+    queue.getJobs.mockResolvedValueOnce([queued(null)]);
+    await expect(findRunningIconRound(queue as never)).resolves.toBeNull();
   });
 });

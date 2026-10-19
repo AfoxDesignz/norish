@@ -368,7 +368,7 @@ describe("ingredient resolver, rung 3", () => {
     );
   });
 
-  it("places an unsure kind-of answer under the food too, and flags it", async () => {
+  it("places an unsure kind-of answer under the food too, flagged with the change to keep or undo", async () => {
     const onion = await known("onion");
 
     vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
@@ -378,6 +378,22 @@ describe("ingredient resolver, rung 3", () => {
     await expect(ingredientFor(red.aliasId)).resolves.toMatchObject({ flagged: true });
     await expect(findIngredientAncestors([red.ingredientId])).resolves.toEqual(
       new Map([[red.ingredientId, [onion.ingredientId]]])
+    );
+    const [change, ...others] = await listAIChanges();
+
+    expect(others).toEqual([]);
+    // AI's guess, not one from the words of the name.
+    expect(change).toMatchObject({
+      sure: false,
+      ingredient: { id: red.ingredientId },
+      target: { id: onion.ingredientId },
+      undo: { kind: "parent", formerParentId: null },
+    });
+    expect(change!.undo).not.toHaveProperty("fromWords", true);
+
+    await undoAIChange({ userId, householdUserIds: null, isServerAdmin: false }, change!.id);
+    await expect(findIngredientAncestors([red.ingredientId])).resolves.toEqual(
+      new Map([[red.ingredientId, []]])
     );
   });
 

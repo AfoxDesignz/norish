@@ -75,7 +75,9 @@ export function summarizeIconRound(
 export async function findRunningIconRound(
   queue: Queue<IngredientIconsJobData>
 ): Promise<IconRound | null> {
-  const [job] = await queue.getJobs(["active", "waiting", "prioritized", "delayed"], 0, 0, true);
+  const jobs = await queue.getJobs(["active", "waiting", "prioritized", "delayed"], 0, -1, true);
+  // A round the AI pass queued is nobody's: the page's Draw icons stays a person's.
+  const job = jobs.find((queued) => queued.data.actor !== null);
   const round = job ? summarizeIconRound(job, false) : null;
 
   return round && !round.finished ? round : null;

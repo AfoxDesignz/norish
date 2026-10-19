@@ -57,10 +57,7 @@ function describe(error: unknown): string {
   return cause ? `${error.message}: ${cause}` : error.message;
 }
 
-/**
- * Draw one food's icon: a person's round where they may edit it, the AI pass's where it shows
- * none at all. Nothing here ends the round: a failure is recorded on the food's step.
- */
+/** Draw one food's icon, as its asker or for the AI pass; a failure is recorded on its step. */
 async function draw(
   job: Job<IngredientIconsJobData>,
   ingredientId: string
@@ -89,6 +86,8 @@ async function announceRound(
   finished: boolean,
   unwritten: readonly IconStepDetail[] = []
 ): Promise<void> {
+  // A round the AI pass queued is nobody's to watch: its icons land as changes.
+  if (!job.data.actor) return;
   try {
     await ingredients.publish("icons", summarizeIconRound(job, finished, unwritten), undefined);
   } catch (error) {

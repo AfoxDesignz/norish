@@ -13,7 +13,7 @@ import {
 } from "@norish/db/schema";
 
 import {
-  recordWordsParent,
+  recordGuessedParent,
   takeOpenParentChanges,
   vouchForOpenAIChanges,
   wasParentUndone,
@@ -547,7 +547,7 @@ export async function fileUndecidedMint(
 
     if (filed.length > 0 && unsure) {
       await takeOpenParentChanges(tx, id);
-      await recordWordsParent(tx, id, parentId);
+      await recordGuessedParent(tx, id, parentId, "words");
     }
 
     return filed.length > 0;

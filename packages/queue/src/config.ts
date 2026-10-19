@@ -166,16 +166,12 @@ export const QUEUE_SETTINGS: Record<QueueName, QueueSettings> = {
     withoutOperationContext: true,
   },
   [QUEUE_NAMES.INGREDIENT_REVIEW]: {
-    // The AI pass over Ingredients, after a mint and nightly. A food's own
-    // failure is recorded on its step and never fails the pass; a second
-    // attempt covers a crash of the pass itself, and is safe: a change the
-    // first attempt made is not made twice.
+    // The AI pass. A retry after a crash is safe: a change already made is not made twice.
     jobOptions: { attempts: 2, backoff: { type: "exponential", delay: 5_000 } },
     // One pass at a time: a pass already asks its foods a few at once.
     concurrency: 1,
     stalledInterval: 60_000,
-    // The first start's pass asks every undecided food, each within its 30 s
-    // budget: a thousand of them, a few at a time, run for well over an hour.
+    // A thousand foods, each within a 30 s budget, a few at a time, take well over an hour.
     hangingThresholdMs: 4 * 60 * 60_000,
   },
   [QUEUE_NAMES.INGREDIENT_ICONS]: {

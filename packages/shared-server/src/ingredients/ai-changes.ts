@@ -10,6 +10,7 @@ import { withTransaction } from "@norish/db/drizzle";
 import {
   aliasesStillOn,
   clearAIFlagUnlessOpen,
+  flagUnderOpenChange,
   listAIChanges,
   lockAIChange,
   readMergeUndo,
@@ -23,6 +24,7 @@ import {
 } from "@norish/db/repositories/ingredient-ai-changes";
 import { findLocaleNames } from "@norish/db/repositories/ingredient-aliases";
 import {
+  isAskableByAI,
   keepIngredientDistinct,
   settleIngredientName,
 } from "@norish/db/repositories/ingredient-catalogue";
@@ -42,8 +44,11 @@ import type { CatalogueActor, CatalogueEdit } from "./catalogue";
 import { assertMayEdit, inEdit, mayEditIngredientRow, refusedOn } from "./catalogue";
 import { ingredientChanges } from "./changes";
 
-/** What applying AI's answer came to: made, refused as a change a person undid, or a food gone. */
-export type ApplyOutcome = "applied" | "undone" | "gone";
+/**
+ * What applying AI's answer came to: made, refused as a change a person undid, a food a person
+ * decided about while AI was asking, or a food gone.
+ */
+export type ApplyOutcome = "applied" | "undone" | "decided" | "gone";
 
 async function announceIfApplied(
   outcome: ApplyOutcome,
@@ -61,13 +66,14 @@ export async function mergeByAI(sourceId: string, targetId: string, sure: boolea
   const outcome = await withTransaction(async (tx): Promise<ApplyOutcome> => {
     await lockTree(tx);
     if ((await lockIngredients(tx, [sourceId, targetId])) < 2) return "gone";
+    if (!(await isAskableByAI(tx, sourceId))) return "decided";
     const undo = await readMergeUndo(tx, sourceId);
 
     if (!undo) return "gone";
     if (await wasMergeUndone(tx, targetId, undo.aliasIds)) return "undone";
     await mergeCatalogueIngredients(tx, sourceId, targetId, { keepFlag: true });
     await recordAIChange(tx, { ingredientId: targetId, sure, undo });
-    if (!sure) await refreshAIFlag(tx, targetId, { unsure: true });
+    if (!sure) await flagUnderOpenChange(tx, targetId);
 
     return "applied";
   });
@@ -84,6 +90,7 @@ export async function parentByAI(ingredientId: string, parentId: string, sure: b
   const outcome = await withTransaction(async (tx): Promise<ApplyOutcome> => {
     await lockTree(tx);
     if ((await lockIngredients(tx, [ingredientId, parentId])) < 2) return "gone";
+    if (!(await isAskableByAI(tx, ingredientId))) return "decided";
     if (await wasParentUndone(tx, ingredientId, parentId)) return "undone";
 
     const ancestors = await findIngredientAncestors([ingredientId, parentId], tx);
@@ -116,6 +123,8 @@ export async function renameByAI(ingredientId: string, formerName: string, name:
   const renamed = await withTransaction(async (tx) => {
     const plain = { text: name, fold: ingredientAliasFold(name) };
 
+    if ((await lockIngredients(tx, [ingredientId])) < 1) return false;
+    if (!(await isAskableByAI(tx, ingredientId))) return false;
     if (!(await settleIngredientName(ingredientId, plain, tx))) return false;
     await recordAIChange(tx, {
       ingredientId,
@@ -131,10 +140,17 @@ export async function renameByAI(ingredientId: string, formerName: string, name:
   return renamed;
 }
 
-/** Flag a food AI answered about without changing it, unless the answer was sure. */
+/** Flag a food AI answered about without changing it, unless the answer was sure or a person decided meanwhile. */
 export async function flagByAnswer(ingredientId: string, sure: boolean): Promise<void> {
-  await withTransaction((tx) => refreshAIFlag(tx, ingredientId, { unsure: !sure }));
-  await ingredientChanges().changed([ingredientId]);
+  const flagged = await withTransaction(async (tx) => {
+    if ((await lockIngredients(tx, [ingredientId])) < 1) return false;
+    if (!(await isAskableByAI(tx, ingredientId))) return false;
+    await refreshAIFlag(tx, ingredientId, { unsure: !sure });
+
+    return true;
+  });
+
+  if (flagged) await ingredientChanges().changed([ingredientId]);
 }
 
 /** One AI Change as Changed by AI shows it, and whether the viewer may keep or undo it. */

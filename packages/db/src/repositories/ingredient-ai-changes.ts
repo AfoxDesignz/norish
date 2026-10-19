@@ -5,6 +5,7 @@ import type { Db, DbTransaction } from "@norish/db/drizzle";
 import type { AIChangeUndo } from "@norish/db/schema";
 import { db } from "@norish/db/drizzle";
 import { ingredientAIChanges, ingredientAliases, ingredients } from "@norish/db/schema";
+import { UNANSWERED_FLAG_REASONS } from "@norish/shared/contracts/ingredient-catalogue";
 
 import { nameIsFree } from "./ingredient-catalogue";
 
@@ -40,17 +41,22 @@ export async function recordAIChange(
   });
 }
 
-/** Record a parent the words of a new food's name gave it: an unsure change, since it is a guess. */
-export async function recordWordsParent(
+/** Record a parent a new food was given on a guess, from the words of its name or AI's unsure answer. */
+export async function recordGuessedParent(
   tx: Db,
   ingredientId: string,
-  parentId: string
+  parentId: string,
+  from: "words" | "ai"
 ): Promise<void> {
   await recordAIChange(tx, {
     ingredientId,
     targetId: parentId,
     sure: false,
-    undo: { kind: "parent", formerParentId: null, fromWords: true },
+    undo: {
+      kind: "parent",
+      formerParentId: null,
+      ...(from === "words" ? { fromWords: true } : {}),
+    },
   });
 }
 
@@ -284,6 +290,18 @@ export async function refreshAIFlag(
     .set({
       flagged,
       flagReason: sql`case when ${flagged} then 'ai-unsure' end`,
+      version: sql`${ingredients.version} + 1`,
+    })
+    .where(eq(ingredients.id, ingredientId));
+}
+
+/** Flag the food an unsure change joined, keeping a reason that says no AI could answer for it. */
+export async function flagUnderOpenChange(tx: Db, ingredientId: string): Promise<void> {
+  await tx
+    .update(ingredients)
+    .set({
+      flagged: true,
+      flagReason: sql`case when ${inArray(ingredients.flagReason, [...UNANSWERED_FLAG_REASONS])} then ${ingredients.flagReason} else 'ai-unsure' end`,
       version: sql`${ingredients.version} + 1`,
     })
     .where(eq(ingredients.id, ingredientId));

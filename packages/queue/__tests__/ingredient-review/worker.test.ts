@@ -1,10 +1,7 @@
 // @vitest-environment node
 /**
- * The AI pass over Ingredients: one job, a step per food, each step saying what came of it and
- * what AI was asked, what the pass changed announced together as it ends, written down every
- * twentieth of the way. A food whose question broke is recorded as failed with the cause and the
- * pass goes on. Once every food is answered, the ones still showing no icon go to the icons
- * queue, where "Draw an icon" is on.
+ * The AI pass: a step per food, what it changed announced together, a broken question recorded
+ * and passed; then the foods still showing no icon go to the icons queue.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -279,6 +276,20 @@ describe("the icons after a pass", () => {
       actor: null,
     });
     expect(sequence).toEqual(["ask:uien", "ask:kohlrabi", "ask:kipfilet", "icons"]);
+  });
+
+  it("leaves out the foods AI has not answered for yet, which a later pass may merge", async () => {
+    config.getAutomaticIngredientsConfig.mockResolvedValue({ icon: true });
+    reviewer.askAIAbout
+      .mockResolvedValueOnce({ outcome: "distinct", ...trace })
+      .mockResolvedValueOnce({ outcome: "unsure", reason: "ai-unavailable", ...trace })
+      .mockResolvedValueOnce({ outcome: "unsure", reason: "ai-key-rejected", ...trace })
+      .mockRejectedValueOnce(new Error("database away"))
+      .mockResolvedValueOnce({ outcome: "unsure", reason: "ai-unsure", ...trace });
+
+    await processIngredientReviewJob(fakeJob(["kohlrabi", "away", "refused", "broken", "doubt"]));
+
+    expect(icons.listFoodsShowingNoIcon).toHaveBeenCalledExactlyOnceWith(["kohlrabi", "doubt"]);
   });
 
   it("queues no icons with Draw an icon off, or where every food shows one", async () => {

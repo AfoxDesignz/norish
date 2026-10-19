@@ -104,10 +104,8 @@ export async function listFoodsShowingNoIcon(
 }
 
 /**
- * Draw a food an icon of its own where it would show none at all: no icon of its own, none
- * shipped, none to borrow from a Parent Ingredient. A red onion under onion keeps showing the
- * onion. Set with no review, as a Draw icons round sets one, unless a person gave it one
- * meanwhile. For the foods an AI pass leaves showing none; throws whatever drawing throws.
+ * Draw a food an icon where it would show none at all (a red onion keeps its parent's), unless a
+ * person gave it one meanwhile: what an AI pass queues. Throws whatever drawing throws.
  */
 export async function drawNewIngredientIcon(
   ingredientId: string,

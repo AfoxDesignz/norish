@@ -2,7 +2,7 @@
  * Plain Names (CONTEXT.md): AI renames a food to its plain name as an AI Change, or merges it into
  * the food already spelling that name; a settled name is never asked about again.
  */
-import type { ReviewTrace } from "@norish/shared/contracts/ingredient-catalogue";
+import type { ReviewTrace, ReviewVerdict } from "@norish/shared/contracts/ingredient-catalogue";
 import {
   findCatalogueIngredient,
   findIngredientHolding,
@@ -24,7 +24,7 @@ const NO_TRACE: ReviewTrace = { considered: [], englishName: null };
 
 /** What asking for one food's Plain Name came to, or why the food was passed over. */
 export type PlainNameOutcome =
-  | { outcome: "rename"; to: string }
+  | Extract<ReviewVerdict, { outcome: "rename" }>
   | { outcome: "plain" }
   | ({ outcome: "merge"; into: string; sure: true } & ReviewTrace)
   | ({ outcome: "unsure"; reason: "no-food" } & ReviewTrace)
@@ -60,7 +60,10 @@ export async function giveItsPlainName(ingredientId: string): Promise<PlainNameO
       return { outcome: "merge", into: holder.name, sure: true, ...NO_TRACE };
     }
 
-    return { outcome: "skipped", reason: merged === "undone" ? "undone" : "settled" };
+    return {
+      outcome: "skipped",
+      reason: merged === "undone" || merged === "decided" ? merged : "settled",
+    };
   }
 
   return (await renameByAI(ingredientId, row.name, plain))
