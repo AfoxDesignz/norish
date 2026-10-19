@@ -13,10 +13,12 @@ import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue
 import { withTransaction } from "@norish/db/drizzle";
 import {
   listAIChanges,
+  sweepAIChanges,
   takeOpenParentChanges,
 } from "@norish/db/repositories/ingredient-ai-changes";
+import { listUnansweredIngredientIds } from "@norish/db/repositories/ingredient-catalogue";
 import { findIngredientAncestors, lockTree } from "@norish/db/repositories/ingredient-relocation";
-import { ingredients } from "@norish/db/schema";
+import { ingredientAIChanges, ingredients } from "@norish/db/schema";
 import { isAIEnabled } from "@norish/shared-server/config/server-config-loader";
 import {
   keepAIChange,
@@ -315,5 +317,67 @@ describe("keeping and undoing AI Changes", () => {
 
     await expect(answer).resolves.toBeUndefined();
     await expect(undoing).resolves.toMatchObject({ refusal: "not-found" });
+  });
+
+  it("sweeps the handled changes older than a month, keeping the undone and the open ones", async () => {
+    const onion = await mint("onion");
+    const uien = await mint("uien");
+    const red = await mint("red onion");
+    const leek = await mint("leek");
+    const tonijn = await mint("Lekkerste Tonijn");
+    const shallot = await mint("shallot");
+
+    await mergeByAI(uien.ingredientId, onion.ingredientId, true);
+    await parentByAI(red.ingredientId, onion.ingredientId, false);
+    await parentByAI(leek.ingredientId, onion.ingredientId, false);
+    await keepAIChange(
+      actor,
+      (await listAIChangesFor(actor)).find((it) => it.ingredient.id === leek.ingredientId)!.id
+    );
+    await renameByAI(tonijn.ingredientId, "Lekkerste Tonijn", "tonijn");
+    await undoAIChange(
+      actor,
+      (await listAIChangesFor(actor)).find((it) => it.kind === "plain-name")!.id
+    );
+    // A month and a day ago, all but the newest.
+    await getTestDb()
+      .update(ingredientAIChanges)
+      .set({ createdAt: sql`now() - interval '31 days'` });
+    await renameByAI(shallot.ingredientId, "shallot", "sjalot");
+
+    await expect(sweepAIChanges()).resolves.toBe(2);
+
+    const left = await getTestDb()
+      .select({ ingredientId: ingredientAIChanges.ingredientId, kind: ingredientAIChanges.kind })
+      .from(ingredientAIChanges);
+
+    // The open parent, the undone name AI remembers, and this month's name.
+    expect(left).toEqual(
+      expect.arrayContaining([
+        { ingredientId: red.ingredientId, kind: "parent" },
+        { ingredientId: tonijn.ingredientId, kind: "plain-name" },
+        { ingredientId: shallot.ingredientId, kind: "plain-name" },
+      ])
+    );
+    expect(left).toHaveLength(3);
+  });
+
+  it("lists for the nightly pass the foods no AI could answer for, that AI may still ask about", async () => {
+    const away = await mint("uien");
+    const refused = await mint("knaks");
+    const unsure = await mint("tonijn");
+    const kept = await mint("prei");
+    const flag = (id: string, flagReason: string) =>
+      getTestDb().update(ingredients).set({ flagReason }).where(eq(ingredients.id, id));
+
+    await flag(away.ingredientId, "ai-unavailable");
+    await flag(refused.ingredientId, "ai-key-rejected");
+    await flag(unsure.ingredientId, "ai-unsure");
+    await flag(kept.ingredientId, "ai-unavailable");
+    await markDistinct(actor, kept.ingredientId);
+
+    expect((await listUnansweredIngredientIds()).sort()).toEqual(
+      [away.ingredientId, refused.ingredientId].sort()
+    );
   });
 });

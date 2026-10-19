@@ -17,6 +17,7 @@ import {
 import { alias } from "drizzle-orm/pg-core";
 
 import type { DbTransaction } from "@norish/db/drizzle";
+import type { FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import type { IngredientSearch, IngredientSearchField } from "@norish/shared/lib/ingredient-search";
 import { db } from "@norish/db/drizzle";
 import {
@@ -273,6 +274,21 @@ export async function findCatalogueIngredientNames(
   }
 
   return names;
+}
+
+/** Why a food is flagged when no AI could answer for it: unreachable, or its key refused. */
+const UNANSWERED: FlagReason[] = ["ai-unavailable", "ai-key-rejected"];
+
+/** The foods flagged because no AI could answer for them that AI may still ask about: the nightly retry's. */
+export async function listUnansweredIngredientIds(): Promise<string[]> {
+  const rows = await db
+    .select({ id: ingredients.id })
+    .from(ingredients)
+    .where(
+      and(eq(ingredients.flagged, true), inArray(ingredients.flagReason, UNANSWERED), askableByAI)
+    );
+
+  return rows.map((row) => row.id);
 }
 
 /** Say anew why a Flagged Ingredient is one: AI was asked again and is still not sure. */

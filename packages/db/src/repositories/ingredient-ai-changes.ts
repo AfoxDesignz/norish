@@ -56,6 +56,9 @@ export async function recordWordsParent(
 
 const targets = alias(ingredients, "ai_change_targets");
 
+/** How long Changed by AI lists a change a person has no more to do about. */
+const LISTED_FOR = sql`interval '30 days'`;
+
 /** Unsure, and neither kept nor undone: what flags its food. */
 const open = and(
   eq(ingredientAIChanges.sure, false),
@@ -110,7 +113,7 @@ export async function listAIChanges(): Promise<StoredAIChange[]> {
     .where(
       and(
         isNull(ingredientAIChanges.undoneAt),
-        sql`(${open} or ${ingredientAIChanges.createdAt} > now() - interval '30 days')`
+        sql`(${open} or ${ingredientAIChanges.createdAt} > now() - ${LISTED_FOR})`
       )
     )
     .orderBy(
@@ -121,6 +124,25 @@ export async function listAIChanges(): Promise<StoredAIChange[]> {
     );
 
   return rows.map(toStoredChange);
+}
+
+/**
+ * Delete the changes Changed by AI no longer lists: sure or kept, and older than a month. An
+ * undone one stays, as the memory AI checks, and an open one until a person handles it.
+ */
+export async function sweepAIChanges(): Promise<number> {
+  const swept = await db
+    .delete(ingredientAIChanges)
+    .where(
+      and(
+        isNull(ingredientAIChanges.undoneAt),
+        sql`not ${open}`,
+        sql`${ingredientAIChanges.createdAt} <= now() - ${LISTED_FOR}`
+      )
+    )
+    .returning({ id: ingredientAIChanges.id });
+
+  return swept.length;
 }
 
 /** One change, locked for a Keep or an Undo; null where it is gone or already undone. */
