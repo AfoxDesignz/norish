@@ -585,8 +585,8 @@
     "asTree": "Йерархичен изглед",
     "showOnly": "Покажи само",
     "standaloneOnly": "Без родител или видове",
-    "findParent": "Намери родител с ИИ",
-    "findParentsAll": "Намери родители с ИИ",
+    "checkWithAI": "Провери с ИИ",
+    "checkAllWithAI": "Провери тези с ИИ",
     "changedByAI": {
       "title": "Променено от ИИ",
       "open": "{count, plural, =0 {Променено от ИИ} other {Променено от ИИ · # за проверка}}",

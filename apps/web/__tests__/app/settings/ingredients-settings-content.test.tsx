@@ -973,11 +973,11 @@ describe("IngredientsSettingsContent", () => {
     expect(within(row("onion")).queryByTestId("ingredient-kinds-toggle")).toBeNull();
   });
 
-  it("lists the foods with neither parent nor kinds on request, and offers to find their parents", async () => {
+  it("lists the foods with neither parent nor kinds on request, and offers to check them with AI", async () => {
     items = [{ ...onion, flagged: false, kinds: 0 }, salt];
     render(<IngredientsSettingsContent />);
 
-    expect(screen.queryByTestId("ingredients-find-parents-all")).toBeNull();
+    expect(screen.queryByTestId("ingredients-check-all-with-ai")).toBeNull();
     fireEvent.click(screen.getByTestId("ingredients-filters"));
     const filters = screen.getByRole("dialog", { name: "title" });
 
@@ -991,7 +991,7 @@ describe("IngredientsSettingsContent", () => {
 
     // Only onion is the viewer's to file; salt has a parent already. No dialog: the foods are on screen.
     await act(async () => {
-      fireEvent.click(screen.getByTestId("ingredients-find-parents-all"));
+      fireEvent.click(screen.getByTestId("ingredients-check-all-with-ai"));
     });
 
     expect(mutations.reviewAllWithAI).toHaveBeenCalledExactlyOnceWith({
@@ -1003,13 +1003,13 @@ describe("IngredientsSettingsContent", () => {
     expect(within(row("onion")).getByTestId("ingredient-reviewing")).toBeInTheDocument();
   });
 
-  it("asks AI what one food is a kind of, from its panel, where it has no parent", async () => {
+  it("checks one food with AI from its panel, where it has no parent and no flag", async () => {
     items = [{ ...onion, flagged: false }, salt];
     render(<IngredientsSettingsContent />);
     const opened = await open("onion");
 
     await act(async () => {
-      fireEvent.click(within(opened).getByTestId("ingredient-find-parent"));
+      fireEvent.click(within(opened).getByTestId("ingredient-check-with-ai"));
     });
 
     expect(mutations.reviewWithAI).toHaveBeenCalledWith({ ingredientId: "onion" });
@@ -1022,7 +1022,7 @@ describe("IngredientsSettingsContent", () => {
     // A food with a parent, or one the viewer may not edit, is not offered it.
     const theirs = await open("salt");
 
-    expect(within(theirs).queryByTestId("ingredient-find-parent")).toBeNull();
+    expect(within(theirs).queryByTestId("ingredient-check-with-ai")).toBeNull();
   });
 
   it("lists flat under a search, where a match may sit at any depth", () => {
@@ -1391,7 +1391,7 @@ describe("IngredientsSettingsContent", () => {
 
       expect(within(opened).getByTestId("ingredient-flag-notice")).toBeInTheDocument();
       expect(within(opened).queryByTestId("ingredient-ask-ai")).toBeNull();
-      expect(within(opened).queryByTestId("ingredient-find-parent")).toBeNull();
+      expect(within(opened).queryByTestId("ingredient-check-with-ai")).toBeNull();
       expect(within(opened).getByTestId("ingredient-mark-distinct")).toBeInTheDocument();
     } finally {
       permissions.isAIEnabled = true;
@@ -1583,7 +1583,9 @@ describe("IngredientsSettingsContent", () => {
     const opened = await open("onion");
 
     expect(within(opened).getByTestId("ingredient-flag-notice")).toBeInTheDocument();
-    expect(within(opened).getByTestId("ingredient-find-parent")).toBeInTheDocument();
+    // A flagged food is checked from its flag's Ask AI, so the parent section offers no second one.
+    expect(within(opened).getByTestId("ingredient-ask-ai")).toBeInTheDocument();
+    expect(within(opened).queryByTestId("ingredient-check-with-ai")).toBeNull();
     expect(within(opened).getByTestId("ingredient-flagged")).toHaveTextContent("flagged");
 
     // Given a parent under the flagged filter, the row goes and the flag with it:
@@ -1595,7 +1597,7 @@ describe("IngredientsSettingsContent", () => {
     const current = screen.getByRole("dialog", { name: "onion" });
 
     expect(within(current).queryByTestId("ingredient-flag-notice")).toBeNull();
-    expect(within(current).queryByTestId("ingredient-find-parent")).toBeNull();
+    expect(within(current).queryByTestId("ingredient-check-with-ai")).toBeNull();
     expect(within(current).getByTestId("ingredient-parent")).toHaveTextContent("vegetable");
   });
 

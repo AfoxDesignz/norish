@@ -261,10 +261,10 @@ test("the filters can show only the foods with neither parent nor kinds", async 
   await expect(ingredientRow("shallot")).toBeVisible();
   await expect(ingredientRow("onion")).toHaveCount(0);
   await expect(ingredientRow("red onion")).toHaveCount(0);
-  // The header offers to find their parents with AI, and a food's panel to find its own.
-  await expect(page.getByTestId("ingredients-find-parents-all")).toBeVisible();
+  // The header offers to check them with AI, and a food's panel to check it alone.
+  await expect(page.getByTestId("ingredients-check-all-with-ai")).toBeVisible();
   await ingredientRow("shallot").getByTestId("ingredient-toggle").click();
-  await expect(ingredientPanel("shallot").getByTestId("ingredient-find-parent")).toBeVisible();
+  await expect(ingredientPanel("shallot").getByTestId("ingredient-check-with-ai")).toBeVisible();
   await ingredientPanel("shallot").getByRole("button", { name: "Close panel" }).click();
 });
 

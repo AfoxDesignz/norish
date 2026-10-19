@@ -585,8 +585,8 @@
     "asTree": "Hierarkisk visning",
     "showOnly": "Vis bare",
     "standaloneOnly": "Uten forelder eller typer",
-    "findParent": "Finn forelder med AI",
-    "findParentsAll": "Finn foreldre med AI",
+    "checkWithAI": "Sjekk med AI",
+    "checkAllWithAI": "Sjekk disse med AI",
     "changedByAI": {
       "title": "Endret av AI",
       "open": "{count, plural, =0 {Endret av AI} other {Endret av AI · # å sjekke}}",

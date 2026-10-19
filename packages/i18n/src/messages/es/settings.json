@@ -585,8 +585,8 @@
     "asTree": "Vista jerárquica",
     "showOnly": "Mostrar solo",
     "standaloneOnly": "Sin padre ni tipos",
-    "findParent": "Buscar padre con IA",
-    "findParentsAll": "Buscar padres con IA",
+    "checkWithAI": "Revisar con IA",
+    "checkAllWithAI": "Revisar estos con IA",
     "changedByAI": {
       "title": "Cambiado por la IA",
       "open": "{count, plural, =0 {Cambiado por la IA} other {Cambiado por la IA · # por revisar}}",

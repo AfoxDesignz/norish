@@ -585,8 +585,8 @@
     "asTree": "Hierarchische Ansicht",
     "showOnly": "Nur anzeigen",
     "standaloneOnly": "Ohne übergeordnete Zutat oder Sorten",
-    "findParent": "Übergeordnete Zutat mit KI finden",
-    "findParentsAll": "Übergeordnete Zutaten mit KI finden",
+    "checkWithAI": "Mit KI prüfen",
+    "checkAllWithAI": "Diese mit KI prüfen",
     "changedByAI": {
       "title": "Von KI geändert",
       "open": "{count, plural, =0 {Von KI geändert} other {Von KI geändert · # zu prüfen}}",

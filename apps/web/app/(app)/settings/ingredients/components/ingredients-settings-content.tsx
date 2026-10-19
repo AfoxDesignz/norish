@@ -245,7 +245,7 @@ export default function IngredientsSettingsContent() {
               ) : null}
               {isAIEnabled && standaloneIds.length > 0 && !running ? (
                 <AIButton
-                  data-testid="ingredients-find-parents-all"
+                  data-testid="ingredients-check-all-with-ai"
                   isDisabled={startRound.isPending}
                   size="sm"
                   variant="tertiary"
@@ -253,7 +253,7 @@ export default function IngredientsSettingsContent() {
                     void startAndWatch({ mode: "parent", ingredientIds: standaloneIds })
                   }
                 >
-                  {t("findParentsAll")}
+                  {t("checkAllWithAI")}
                 </AIButton>
               ) : null}
               <DrawIconsControl round={iconRound} />

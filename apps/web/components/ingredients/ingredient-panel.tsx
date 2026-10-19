@@ -363,7 +363,7 @@ function IngredientPanelContent({
   };
 
   /** Ask AI what this food is and say what it changed; a merge takes the food away. */
-  const askAI = async (context: "review" | "find-parent") => {
+  const askAI = async (context: "review" | "check") => {
     await run(
       context,
       () => undefined,
@@ -592,16 +592,17 @@ function IngredientPanelContent({
                   {parent ? t("changeParent") : t("setParent")}
                 </Button>
               ) : null}
-              {isAIEnabled && item.canEdit && !item.parent ? (
+              {/* A flagged food offers the same question as Ask AI, above. */}
+              {isAIEnabled && item.canEdit && !item.parent && !item.flagged ? (
                 <AIButton
-                  data-testid="ingredient-find-parent"
+                  data-testid="ingredient-check-with-ai"
                   isDisabled={busy}
                   isPending={review.isPending}
                   size="sm"
                   variant="secondary"
-                  onPress={() => void askAI("find-parent")}
+                  onPress={() => void askAI("check")}
                 >
-                  {t("findParent")}
+                  {t("checkWithAI")}
                 </AIButton>
               ) : null}
             </div>
