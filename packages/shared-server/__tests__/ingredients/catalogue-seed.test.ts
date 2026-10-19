@@ -12,9 +12,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
+import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import { findIngredientAncestors } from "@norish/db/repositories/ingredient-relocation";
 import { listPantryIngredientsByUserIds } from "@norish/db/repositories/pantry";
 import { groceries, ingredients, serverConfig } from "@norish/db/schema";
+import { mergeByAI } from "@norish/shared-server/ingredients/ai-changes";
 import {
   addAlias,
   listIngredients,
@@ -195,6 +197,22 @@ describe("the ingredient catalogue seed", () => {
         ownerId: actor.userId,
         flagged: false,
       });
+    });
+
+    it("keeps an adopted Ingredient flagged while an unsure AI merge into it waits", async () => {
+      const mine = await resolve("Onion");
+      const rings = await resolve("uienringen");
+
+      await mergeByAI(rings.ingredientId, mine.ingredientId, false);
+      await applySeedFile(excerpt);
+
+      // The seed vouches for the food, not for the spelling AI was unsure belongs to it.
+      await expect(ingredientFor(rings.aliasId)).resolves.toMatchObject({
+        id: mine.ingredientId,
+        flagged: true,
+        flagReason: "ai-unsure",
+      });
+      expect(await listAIChanges()).toMatchObject([{ sure: false, kept: false }]);
     });
 
     it("keeps an adopted Ingredient's own name where another Ingredient holds the entry's", async () => {

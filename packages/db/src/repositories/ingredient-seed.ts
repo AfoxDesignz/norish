@@ -12,7 +12,12 @@ import {
   storeProductLinks,
 } from "@norish/db/schema";
 
-import { recordWordsParent, takeOpenParentChanges, wasParentUndone } from "./ingredient-ai-changes";
+import {
+  recordWordsParent,
+  refreshAIFlag,
+  takeOpenParentChanges,
+  wasParentUndone,
+} from "./ingredient-ai-changes";
 import { ingredientIsNamed } from "./ingredient-catalogue";
 import { findIngredientAncestors, lockTree } from "./ingredient-relocation";
 
@@ -203,8 +208,9 @@ export async function applyIngredientSeed(entries: readonly SeedEntry[]): Promis
             version: sql`${ingredients.version} + 1`,
           })
           .where(eq(ingredients.id, row.id));
-        // Where its words would file it is the seed's to say now.
+        // Where its words would file it is the seed's to say now; an unsure merge into it still waits.
         await takeOpenParentChanges(tx, row.id);
+        await refreshAIFlag(tx, row.id, { unsure: false });
         outcome.adopted += 1;
       } else {
         outcome.absorbed += 1;
