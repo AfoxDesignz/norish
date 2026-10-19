@@ -251,8 +251,11 @@ describe("Ingredient Icons", () => {
 
     await getTestDb().update(ingredients).set({ parentId: onion }).where(eq(ingredients.id, red));
 
-    // A red onion keeps showing the onion: it is not listed, and nothing is drawn.
-    await expect(listFoodsShowingNoIcon([red, kohlrabi, onion], SET)).resolves.toEqual([
+    // A red onion keeps showing the onion, and a food merged away is gone: neither is listed.
+    const merged = await food("koolrabi");
+
+    await getTestDb().delete(ingredients).where(eq(ingredients.id, merged));
+    await expect(listFoodsShowingNoIcon([red, kohlrabi, onion, merged], SET)).resolves.toEqual([
       { id: kohlrabi, name: "kohlrabi" },
     ]);
     await expect(drawNewIngredientIcon(red, SET)).resolves.toEqual({

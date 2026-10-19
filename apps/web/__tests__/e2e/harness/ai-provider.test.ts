@@ -206,6 +206,43 @@ describe("cleanup", () => {
   });
 });
 
+describe("the ingredient lane", () => {
+  /** An ingredient question, under the system message the runtime sends with it. */
+  function askAboutIngredient(maxRetries = 0) {
+    return generateText({
+      model: harnessModel(),
+      output: Output.object({ schema }),
+      system:
+        "You keep a catalogue of foods and say whether a name is a food already in it, a kind of one, or a food of its own.",
+      prompt: "Name: uien",
+      maxRetries,
+    });
+  }
+
+  it("answers ingredient questions from their own queue, never the chat lane's, and counts them apart", async () => {
+    const chat = { originCountryCode: "IT", cuisines: [], note: "chat." };
+    const ingredient = { originCountryCode: null, cuisines: [], note: "ingredient." };
+
+    provider.control.enqueue({ kind: "success", content: JSON.stringify(chat) });
+    provider.control.enqueueIngredients({ kind: "success", content: JSON.stringify(ingredient) });
+
+    expect((await askAboutIngredient()).output).toEqual(ingredient);
+    expect((await generate()).output).toEqual(chat);
+    expect(provider.control.requestCount).toBe(1);
+    expect(provider.control.ingredientRequests).toHaveLength(1);
+  });
+
+  it("refuses an unanswered ingredient question at once, whatever the chat lane's default", async () => {
+    provider.control.succeedWith({ originCountryCode: "FR", cuisines: [], note: "d." });
+
+    const error = await askAboutIngredient(2).catch((caught: unknown) => caught);
+
+    expect(APICallError.isInstance(error)).toBe(true);
+    expect((error as APICallError).statusCode).toBe(400);
+    expect(provider.control.ingredientRequests).toHaveLength(1);
+  });
+});
+
 describe("the image-generation route", () => {
   // The exact client the production image factory builds for generic-openai.
   function harnessImageModel() {

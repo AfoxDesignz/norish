@@ -259,7 +259,7 @@ test("AI merges a food a recipe mints by itself, Changed by AI lists the merge, 
   ai,
   aiStack,
 }) => {
-  ai.control.enqueue(
+  ai.control.enqueueIngredients(
     // The recipe's save asks what the line is, and is not sure it is garlic: a food of its own, flagged.
     {
       kind: "success",

@@ -20,7 +20,10 @@
  * the Decision block reaches through its `endpoint` (ADR-0035).
  *
  * Responses are selected at runtime through {@link AIProviderControl}: a
- * persistent default plus an optional FIFO queue of one-shot responses. Tests
+ * persistent default plus an optional FIFO queue of one-shot responses. The
+ * ingredient questions (rung 3 and the AI pass a mint queues in the
+ * background) have a lane of their own, apart from the counts and captures,
+ * so a pass from an earlier scenario never takes another scenario's answer. Tests
  * run the provider in-process and drive the control directly, while the server
  * under test reaches it over the loopback interface.
  */
@@ -117,6 +120,11 @@ export interface AIProviderControl {
   failDecisionPermanently(message?: string): void;
   /** Decision route: persistent retryable failure (HTTP 503). */
   failDecisionRetryably(message?: string): void;
+  /**
+   * Ingredient questions: queue one-shot answers, consumed FIFO. With none left, a question is
+   * refused at once (HTTP 400), so a pass nobody answers fails without retrying.
+   */
+  enqueueIngredients(...directives: Directive[]): void;
   /** Clear every queue, every default, and captured requests. */
   reset(): void;
   /**
@@ -135,6 +143,8 @@ export interface AIProviderControl {
   readonly decisionRequestCount: number;
   /** Captured requests on either route, in arrival order. */
   readonly requests: readonly CapturedRequest[];
+  /** Captured ingredient questions, in arrival order; in neither count nor `requests`. */
+  readonly ingredientRequests: readonly CapturedRequest[];
 }
 
 export interface FakeAIProvider {
@@ -185,7 +195,9 @@ class Controller implements AIProviderControl {
   private imageDefaultDirective: Directive | null = null;
   private decisionQueue: Directive[] = [];
   private decisionDefaultDirective: Directive | null = null;
+  private ingredientQueue: Directive[] = [];
   private captured: CapturedRequest[] = [];
+  private ingredientCaptured: CapturedRequest[] = [];
   private gate: Promise<void> | null = null;
   private openGate: (() => void) | null = null;
 
@@ -261,6 +273,10 @@ class Controller implements AIProviderControl {
     this.setDecisionDefault({ kind: "error", status: 503, body: { message } });
   }
 
+  enqueueIngredients(...directives: Directive[]): void {
+    this.ingredientQueue.push(...directives);
+  }
+
   reset(): void {
     this.queue = [];
     this.defaultDirective = null;
@@ -268,7 +284,9 @@ class Controller implements AIProviderControl {
     this.imageDefaultDirective = null;
     this.decisionQueue = [];
     this.decisionDefaultDirective = null;
+    this.ingredientQueue = [];
     this.captured = [];
+    this.ingredientCaptured = [];
     this.release();
   }
 
@@ -307,8 +325,26 @@ class Controller implements AIProviderControl {
     return this.captured;
   }
 
+  get ingredientRequests(): readonly CapturedRequest[] {
+    return this.ingredientCaptured;
+  }
+
   /** Record a request and resolve the response for it from its route's lane. */
   resolve(request: CapturedRequest, lane: Lane = "chat"): Directive {
+    if (lane === "ingredients") {
+      this.ingredientCaptured.push(request);
+
+      return (
+        this.ingredientQueue.shift() ?? {
+          kind: "error",
+          status: 400,
+          body: errorBody(
+            "no ingredient answer configured for the harness",
+            "invalid_request_error"
+          ),
+        }
+      );
+    }
     this.captured.push(request);
 
     const [queue, fallback] =
@@ -329,7 +365,21 @@ class Controller implements AIProviderControl {
   }
 }
 
-type Lane = "chat" | "image" | "decision";
+type Lane = "chat" | "image" | "decision" | "ingredients";
+
+/**
+ * Whether a chat request asks an ingredient question: the runtime's system message for the
+ * `ingredient-resolution` and `ingredient-plain-name` prompts opens so.
+ */
+function asksAboutIngredients(body: unknown): boolean {
+  const messages =
+    body && typeof body === "object" && "messages" in body
+      ? (body as { messages?: Array<{ content?: unknown }> }).messages
+      : undefined;
+  const system = messages?.[0]?.content;
+
+  return typeof system === "string" && system.startsWith("You keep a catalogue of foods");
+}
 
 /**
  * The directive's answers for the question ids the request asked. A body
@@ -408,7 +458,10 @@ async function handleRequest(
     parsed = raw;
   }
 
-  const directive = controller.resolve({ path, body: parsed }, lane);
+  const directive = controller.resolve(
+    { path, body: parsed },
+    lane === "chat" && asksAboutIngredients(parsed) ? "ingredients" : lane
+  );
 
   // The request is recorded above; withhold the response while holding so a
   // scenario can observe the queued worker's job as active/pending.
