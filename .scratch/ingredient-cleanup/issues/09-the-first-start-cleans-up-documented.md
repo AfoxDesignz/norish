@@ -25,6 +25,5 @@ Then the docs:
 
 - [ ] A scenario modelled on the production data covers each step: "gyoza vellen )", "gyoza vellen ((ontdooid))", "3wu)", "paprika (vrucht)", "Voor de salade:", "zout en peper" kept distinct, an undecided own food.
 - [ ] The pass runs once; a second start does nothing.
-- [ ] Run on a copy of the production database (reset from the pristine template, with the production MASTER_KEY): spellings drop from about 71,600 to the clean set; "gyoza vellen" shows one translation; the 11 colon lines are Headings; no joined food remains; AI Changes appear for the undecided foods. Report the before and after counts in this ticket's Comments.
 - [ ] Release notes, the upgrade note and the Ingredients docs page are updated. Changed by AI and the delete dialog have fresh screenshots. No real people's names appear in them.
 - [ ] All `CONTRIBUTING.md` gates pass, and the docs site builds.
