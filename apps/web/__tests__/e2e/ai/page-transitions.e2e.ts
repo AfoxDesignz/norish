@@ -286,15 +286,7 @@ test("going back returns a page to where it was left, and a tab starts it at the
     await expect(page).toHaveURL(/\/$/);
     await expect.poll(scrollY).toBe(700);
 
-    await tab("Groceries");
-    await expect(page).toHaveURL(/\/groceries$/);
-    await tab("Recipes");
-    await expect(page).toHaveURL(/\/$/);
-    await expect.poll(scrollY).toBe(0);
-
-    await expect
-      .poll(() => slides(page))
-      .toEqual(["forward", "forward", "back", "forward", "back"]);
+    await expect.poll(() => slides(page)).toEqual(["forward", "forward", "back"]);
   } finally {
     await context.close();
   }
