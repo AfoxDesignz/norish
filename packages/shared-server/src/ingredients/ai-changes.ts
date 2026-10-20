@@ -178,8 +178,8 @@ export async function splitByAI(
 }
 
 /**
- * Delete a food AI is sure names no food, with its Junk Lines for nothing; a Pantry Ingredient
- * naming it keeps it, flagged, as does a person's Undo of the same deletion.
+ * Delete a food AI says is a tool, or is sure names nothing, with its Junk Lines for nothing; a
+ * Pantry Ingredient naming it keeps it, flagged, as does a person's Undo of the same deletion.
  */
 export async function deleteByAI(
   ingredientId: string,

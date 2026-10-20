@@ -841,7 +841,7 @@ describe("ingredient resolver, rung 3", () => {
       expect(again.lines).toMatchObject([{ ingredientName: "melted", ingredientId: null }]);
     });
 
-    it("mints a food AI is not sure is a tool or names nothing, flagged with that doubt", async () => {
+    it("gives a line AI is not sure is a tool no food, and mints one it is not sure names nothing flagged", async () => {
       await known("deeg");
       // A food sharing the start of its word, so the import asks AI about it.
       await known("meltblokjes");
@@ -851,22 +851,18 @@ describe("ingredient resolver, rung 3", () => {
       });
       const { lines } = await saved("Taart", ["deegroller", "melted"]);
 
+      expect(lines).toMatchObject([{ ingredientName: "deegroller", ingredientId: null }, {}]);
       expect(
-        await Promise.all(
-          lines.map(
-            async (line) =>
-              (
-                await getTestDb()
-                  .select()
-                  .from(ingredients)
-                  .where(eq(ingredients.id, line.ingredientId!))
-              )[0]
-          )
-        )
-      ).toMatchObject([
-        { name: "deegroller", flagged: true, flagReason: "ai-junk" },
-        { name: "melted", flagged: true, flagReason: "ai-junk" },
-      ]);
+        (
+          await getTestDb()
+            .select()
+            .from(ingredients)
+            .where(eq(ingredients.id, lines[1]!.ingredientId!))
+        )[0]
+      ).toMatchObject({ name: "melted", flagged: true, flagReason: "ai-junk" });
+      expect(
+        await getTestDb().select().from(ingredients).where(eq(ingredients.name, "deegroller"))
+      ).toEqual([]);
     });
 
     it("gives a typed text AI splits only its first food, minting none of the others", async () => {

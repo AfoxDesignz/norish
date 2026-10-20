@@ -109,13 +109,14 @@ async function split(
   return { outcome: "split", into: parts.map((part) => part.text), ...trace };
 }
 
-/** A tool or nothing: the food goes, and with nothing its lines go too as Junk Lines. */
+/** A tool, sure or not, or a sure nothing: the food goes, and with nothing its lines go too. */
 async function deleted(
   ingredientId: string,
   answer: Extract<AIResolution, { kind: NoFoodAnswer }>,
   trace: AskTrace
 ): Promise<ReviewOutcome> {
-  if (!answer.sure) return await doubted(ingredientId, "ai-junk", trace);
+  if (answer.kind === "nothing" && !answer.sure)
+    return await doubted(ingredientId, "ai-junk", trace);
 
   const { outcome, lines } = await deleteByAI(ingredientId, answer.kind);
 

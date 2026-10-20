@@ -59,8 +59,8 @@ import { announceMinted } from "./minted";
  *      model — a known food it says the text names takes the text's clean
  *      spelling, so the next occurrence is a rung-1 or rung-2 match; an
  *      unsure answer joins it as an unsure AI Change, which flags the food.
- *      Sure, several foods each resolve as a text, a tool names no food and nothing is a Junk
- *      Line (`AIResolution`); unsure, each is minted flagged;
+ *      A tool names no food, sure or not; sure, several foods each resolve as a text and nothing
+ *      is a Junk Line (`AIResolution`); unsure, those two are minted flagged;
  *   4. a new Ingredient under the food AI said it is a kind of, if any.
  *
  * A mint or a join gives the food only the text's clean spelling, its plain
@@ -422,7 +422,7 @@ async function resolveTexts(
       });
       continue;
     }
-    // Sure, as `settledAnswer` leaves them: a tool names no food, nothing is a Junk Line.
+    // As `settledAnswer` leaves them: a tool names no food, a sure nothing is a Junk Line.
     if (answer.kind === "nothing") {
       resolved.set(spelling, {
         text: spelling.text,
@@ -494,14 +494,13 @@ interface Asked {
 }
 
 /**
- * The answer acted on: an unsure split, tool or nothing is a food minted flagged with that doubt,
- * as is a split where `splits` is off.
+ * The answer acted on: an unsure split or nothing is a food minted flagged with that doubt, as is a
+ * split where `splits` is off; a tool names no food, sure or not.
  */
 function settledAnswer(answer: AIResolution, splits: boolean): AIResolution {
   switch (answer.kind) {
     case "several":
       return answer.sure && splits ? answer : flaggedNew("ai-unsure");
-    case "tool":
     case "nothing":
       return answer.sure ? answer : flaggedNew("ai-junk");
     default:

@@ -765,16 +765,16 @@ describe("asking AI about an Ingredient", () => {
       });
     });
 
-    it("flags a food AI is not sure is a tool or names nothing as junk, deleting nothing", async () => {
+    it("deletes a food AI is not sure is a tool, and flags one it is not sure names nothing as junk", async () => {
       const roller = await flagged("deegroller");
       const melted = await flagged("melted");
 
       reads({ englishName: null, generalFood: null, sure: false });
       compares("tool", null, false);
-      await expect(askAIAbout(roller.ingredientId)).resolves.toMatchObject({
-        outcome: "unsure",
-        reason: "ai-junk",
-      });
+      await expect(askAIAbout(roller.ingredientId)).resolves.toMatchObject({ outcome: "tool" });
+      expect(await exists(roller.ingredientId)).toBe(false);
+      expect(await listAIChanges()).toMatchObject([{ undo: { kind: "tool" } }]);
+
       reads({ englishName: null, generalFood: null, sure: false });
       compares("nothing", null, false);
       await expect(askAIAbout(melted.ingredientId)).resolves.toMatchObject({
@@ -782,15 +782,11 @@ describe("asking AI about an Ingredient", () => {
         reason: "ai-junk",
       });
 
-      await expect(ingredientFor(roller.aliasId)).resolves.toMatchObject({
-        flagged: true,
-        flagReason: "ai-junk",
-      });
       await expect(ingredientFor(melted.aliasId)).resolves.toMatchObject({
         flagged: true,
         flagReason: "ai-junk",
       });
-      expect(await changes()).toEqual([]);
+      expect(await listAIChanges()).toHaveLength(1);
     });
 
     it("keeps a food a Pantry Ingredient names, flagged, however sure AI is that it names nothing", async () => {
