@@ -1,5 +1,4 @@
-import { and, asc, between, eq, inArray, isNotNull, like, ne, or, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { and, asc, between, eq, inArray, isNotNull, like, or, sql } from "drizzle-orm";
 
 import type { FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LocaleNames } from "@norish/shared/lib/ingredient-names";
@@ -364,118 +363,18 @@ export interface IngredientCandidate {
   aliases: string[];
 }
 
-/** How many alias rows one candidate search reads per word start. */
-const ROWS_PER_START = 100;
-
-/**
- * The Ingredients with an alias that has a word beginning with one of the
- * given word starts: those sharing the most starts first, then taking turns
- * across the starts, so a common word ("red" in "red onions") filling the
- * catalogue cannot crowd out the one the name is about ("onio"). Each start
- * reads its shortest spellings first, so the plain food leads its variants.
- * The starts are the first letters of a name's words, so "onions" finds
- * "onion" and "tomatoes" finds "tomato"; which of them the name really is, is
- * not decided here.
- */
-export async function findIngredientCandidates(
-  wordStarts: readonly string[],
-  limit: number,
-  /** An Ingredient never offered as a candidate: the one the question is about. */
-  excludeId: string | null = null
+/** These Ingredients as candidates for a question, each with its shortest other names. */
+export async function findIngredientCandidatesByIds(
+  ids: readonly string[]
 ): Promise<IngredientCandidate[]> {
-  const starts = Array.from(new Set(wordStarts.filter((start) => start.length > 0)));
+  if (ids.length === 0) return [];
 
-  if (starts.length === 0) return [];
-
-  const perStart = await Promise.all(
-    starts.map((start) =>
-      db
-        .select({
-          id: ingredients.id,
-          name: ingredients.name,
-          text: ingredientAliases.text,
-          fold: ingredientAliases.fold,
-        })
-        .from(ingredientAliases)
-        .innerJoin(ingredients, eq(ingredients.id, ingredientAliases.ingredientId))
-        .where(
-          and(
-            sql`(' ' || ${ingredientAliases.fold}) like ${`% ${start}%`}`,
-            excludeId ? ne(ingredients.id, excludeId) : undefined
-          )
-        )
-        .orderBy(asc(sql`length(${ingredientAliases.fold})`), asc(ingredientAliases.id))
-        .limit(ROWS_PER_START)
-    )
+  return await candidatesFor(
+    await db
+      .select({ id: ingredients.id, name: ingredients.name })
+      .from(ingredients)
+      .where(inArray(ingredients.id, [...ids]))
   );
-
-  const candidates = new Map<string, IngredientCandidate>();
-  const shared = new Map<string, Set<number>>();
-  const turns: string[][] = perStart.map(() => []);
-
-  perStart.forEach((rows, startIndex) => {
-    for (const row of rows) {
-      const candidate = candidates.get(row.id) ?? { id: row.id, name: row.name, aliases: [] };
-
-      if (row.text !== row.name && !candidate.aliases.includes(row.text)) {
-        candidate.aliases.push(row.text);
-      }
-      candidates.set(row.id, candidate);
-
-      const starts = shared.get(row.id) ?? new Set<number>();
-
-      if (!starts.has(startIndex)) turns[startIndex]!.push(row.id);
-      starts.add(startIndex);
-      shared.set(row.id, starts);
-    }
-  });
-
-  // Round-robin across the starts, each in its own order.
-  const order: string[] = [];
-
-  for (let turn = 0; order.length < candidates.size; turn += 1) {
-    for (const ids of turns) {
-      const id = ids[turn];
-
-      if (id && !order.includes(id)) order.push(id);
-    }
-  }
-
-  const picked = order
-    .map((id, position) => ({ id, position, shares: shared.get(id)!.size }))
-    .sort((a, b) => b.shares - a.shares || a.position - b.position)
-    .slice(0, limit)
-    .map(({ id }) => candidates.get(id)!);
-
-  return await withParents(picked, excludeId);
-}
-
-/**
- * The candidates with every candidate's Parent Ingredient after them, so a
- * question can be answered "a kind of X" for the X the tree already knows:
- * "dark chocolate" offered brings "chocolate" along.
- */
-async function withParents(
-  picked: IngredientCandidate[],
-  excludeId: string | null
-): Promise<IngredientCandidate[]> {
-  if (picked.length === 0) return picked;
-
-  const have = new Set(picked.map((candidate) => candidate.id));
-  const children = alias(ingredients, "child");
-  const parents = await db
-    .select({ id: ingredients.id, name: ingredients.name })
-    .from(children)
-    .innerJoin(ingredients, eq(ingredients.id, children.parentId))
-    .where(inArray(children.id, [...have]));
-  const missing = parents.filter(
-    (parent, index) =>
-      !have.has(parent.id) &&
-      parent.id !== excludeId &&
-      parents.findIndex((other) => other.id === parent.id) === index
-  );
-
-  return [...picked, ...(await candidatesFor(missing))];
 }
 
 /** Candidate rows for known Ingredients: each with its shortest other names. */
@@ -509,33 +408,6 @@ async function candidatesFor(
   }
 
   return [...byId.values()];
-}
-
-/**
- * The Ingredients named exactly by any of `folds` — as a name or a spelling —
- * with their parents: what the language model's own reading of a name looks
- * up ("onion" for "uien").
- */
-export async function findIngredientsNamed(
-  folds: readonly string[],
-  excludeId: string | null = null
-): Promise<IngredientCandidate[]> {
-  const unique = Array.from(new Set(folds.filter((fold) => fold.length > 0)));
-
-  if (unique.length === 0) return [];
-
-  const rows = await db
-    .selectDistinct({ id: ingredients.id, name: ingredients.name })
-    .from(ingredientAliases)
-    .innerJoin(ingredients, eq(ingredients.id, ingredientAliases.ingredientId))
-    .where(
-      and(
-        inArray(ingredientAliases.fold, unique),
-        excludeId ? ne(ingredients.id, excludeId) : undefined
-      )
-    );
-
-  return await withParents(await candidatesFor(rows), excludeId);
 }
 
 /** A stored recipe line as it was resolved: its text, amount and unit, and its foods in order. */

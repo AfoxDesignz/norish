@@ -20,7 +20,7 @@ import { cleanIngredientText } from "./resolver";
 const log = createLogger("ingredients");
 
 /** No foods compared, nothing read as English: what a Plain Name question records beside a merge or a doubt. */
-const NO_TRACE: ReviewTrace = { considered: [], englishName: null };
+const NO_TRACE: ReviewTrace = { englishName: null, parts: null, considered: [] };
 
 /** What asking for one food's Plain Name came to, or why the food was passed over. */
 export type PlainNameOutcome =

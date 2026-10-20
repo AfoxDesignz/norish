@@ -88,10 +88,12 @@ export type ReviewVerdict =
   | { outcome: "skipped"; reason: "decided" | "undone" | "not-found" };
 
 export interface ReviewTrace {
-  /** The names of the foods AI was asked to compare the name with, in order. */
-  considered: string[];
   /** The plain English food AI read the name as, when it said. */
   englishName: string | null;
+  /** The foods AI read the name as several of, when it did. */
+  parts: string[] | null;
+  /** The foods AI's reading named, when it named several, which it was then asked to choose between. */
+  considered: string[];
 }
 
 /**

@@ -1,13 +1,13 @@
 /**
- * The AI pass over a food in the catalogue (ADR-0037): rung 3's thorough question, its answer made
- * as an AI Change; a split only when sure, not a food sure or not. The review queue runs it.
+ * The AI pass over a food in the catalogue (ADR-0037): AI reads the name once, the code looks the
+ * reading up, and the answer is made as an AI Change; a split only when sure, not a food sure or
+ * not. The review queue runs it.
  */
 import type { FlagReason, ReviewOutcome } from "@norish/shared/contracts/ingredient-catalogue";
 import {
   findCatalogueIngredient,
   setIngredientFlagReason,
 } from "@norish/db/repositories/ingredient-catalogue";
-import { stripPreparation } from "@norish/shared/lib/spelling-keys";
 
 import type { AIResolution, AskTrace } from "../ai/resolution/ingredient-resolution";
 import { askWhatFoodThisIs } from "../ai/resolution/ingredient-resolution";
@@ -16,7 +16,7 @@ import { ingredientChanges } from "./changes";
 import { nameAfterAnswer } from "./plain-names";
 import { resolveParts } from "./resolver";
 
-/** How long one food's question may take: the language model may be asked twice, and nobody waits on it. */
+/** How long one food's question may take: AI may be asked twice, and nobody waits on it. */
 export const REVIEW_BUDGET_MS = 30_000;
 
 export type { ReviewOutcome };
@@ -24,12 +24,12 @@ export type { ReviewOutcome };
 /** Ask AI what a food is and make the answer; a food not merged away then gets its Plain Name. */
 export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
   const row = await findCatalogueIngredient(ingredientId);
-  const trace: AskTrace = { considered: [], englishName: null };
+  const trace: AskTrace = { englishName: null, parts: null, considered: [] };
 
   if (!row) return { outcome: "skipped", reason: "not-found", ...trace };
   if (!row.askable) return { outcome: "skipped", reason: "decided", ...trace };
 
-  const answer = await askWhatFoodThisIs(row.name, stripPreparation(row.name), {
+  const answer = await askWhatFoodThisIs(row.name, {
     excludeId: ingredientId,
     budgetMs: REVIEW_BUDGET_MS,
     trace,

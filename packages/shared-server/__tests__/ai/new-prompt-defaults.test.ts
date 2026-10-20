@@ -44,12 +44,12 @@ describe("the shipped allergy-detection prompt", () => {
 });
 
 describe("the shipped ingredient-resolution prompt", () => {
-  it("asks for a verdict about the numbered foods, and for doubt to be said", () => {
+  it("asks what a name is, which numbered food when several are found, and for doubt to be said", () => {
     const prompt = shipped("ingredient-resolution");
 
-    expect(prompt).toMatch(/same/);
-    expect(prompt).toMatch(/kind-of/);
-    expect(prompt).toMatch(/new/);
+    for (const verdict of ["food", "several", "not-a-food"])
+      expect(prompt).toContain(`"${verdict}"`);
+    expect(prompt).toMatch(/numbered list/);
     expect(prompt).toMatch(/sure/i);
     // The name and the known foods are appended by the resolver.
     expect(prompt).not.toMatch(/\{\{/);

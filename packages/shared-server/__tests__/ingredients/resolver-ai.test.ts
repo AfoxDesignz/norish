@@ -8,7 +8,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { DecisionQuestions } from "@norish/shared-server/ai/runtime/runtime";
 import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
 import { withTransaction } from "@norish/db/drizzle";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
@@ -42,35 +41,6 @@ vi.mock("@norish/shared-server/config/server-config-loader", async (importOrigin
   isAIEnabled: vi.fn(),
   isDecisionUseEnabled: vi.fn(),
 }));
-
-/** A Decision that picks the option reading `pick` with probability `p`. */
-function decides(pick: string, p: number) {
-  vi.mocked(decide).mockImplementationOnce((async ({
-    questions,
-  }: {
-    questions: DecisionQuestions;
-  }) => {
-    const [id, question] = Object.entries(questions)[0]!;
-
-    if (question.type !== "choice") throw new Error("expected a choice");
-    const labels = Object.keys(question.criteria);
-    const choice = labels.find((label) => question.criteria[label] === pick)!;
-    const rest = (1 - p) / Math.max(labels.length - 1, 1);
-
-    return {
-      model: "jev-test",
-      answers: {
-        [id]: {
-          type: "choice",
-          choice,
-          probabilities: Object.fromEntries(
-            labels.map((label) => [label, label === choice ? p : rest])
-          ),
-        },
-      },
-    };
-  }) as never);
-}
 
 /** The language model's answers, in order; a Plain Name nobody queued is none. */
 let modelAnswers: unknown[] = [];
@@ -175,12 +145,14 @@ describe("ingredient resolver with AI on", () => {
       const red = lines[1]!.ingredientId!;
 
       modelAnswers.push({
+        verdict: "food",
         englishName: "red onion",
         generalFood: "onion",
         otherNames: null,
+        parts: null,
+        joined: null,
         sure: true,
       });
-      decides("Is a kind of onion", 0.95);
       await expect(askAIAbout(red)).resolves.toMatchObject({ outcome: "parent", of: "onion" });
       await expect(findIngredientAncestors([red])).resolves.toEqual(
         new Map([[red, [onion.ingredientId]]])
@@ -195,17 +167,15 @@ describe("ingredient resolver with AI on", () => {
     const melted = lines[0]!.foods![0]!;
 
     expectNoAIRequest();
-    modelAnswers.push(
-      { englishName: null, generalFood: null, otherNames: null, sure: true },
-      {
-        verdict: "not-a-food",
-        food: null,
-        sure: true,
-        parts: null,
-        joined: null,
-        englishName: null,
-      }
-    );
+    modelAnswers.push({
+      verdict: "not-a-food",
+      englishName: null,
+      generalFood: null,
+      otherNames: null,
+      parts: null,
+      joined: null,
+      sure: true,
+    });
     await expect(askAIAbout(melted.ingredientId)).resolves.toMatchObject({ outcome: "not-a-food" });
     await expect(getRecipeFull(recipeId)).resolves.toMatchObject({
       recipeIngredients: [{ ingredientName: "melted", ingredientId: null }],

@@ -1,56 +1,44 @@
 You keep one catalogue of foods for a household's recipes, groceries and pantry.
-Every food in it is known by many names: spellings, plurals, translations and
-names that carry a preparation ("onions, diced"). You are given one new name and
-a numbered list of foods already in the catalogue, each with the names it is
-known by. Say which of these the new name is:
+You are given one name from a recipe, a grocery list or a pantry, and say what
+it is. The catalogue is searched for your answer afterwards, so name foods the
+way a shopper would look for them.
 
-- "same": the new name is one of the listed foods, only spelled, pluralised,
-  translated or prepared differently. "onions" is the same food as "onion";
-  "uien" is the same food as "onion"; "tomatoes, chopped" is the same food as
-  "tomato". Give that food's number.
-- "kind-of": the new name is a more specific food than one of the listed ones,
-  which a shopper would buy separately. "red onion" is a kind of "onion";
-  "cherry tomatoes" are a kind of "tomato". Give the number of the more general
-  food.
-- "new": the new name is none of the listed foods and no kind of one. Foods that
-  merely share a word are different foods: "onion powder" is not "onion",
-  "salted butter" is not "salt", "coconut milk" is not "milk". Give no number.
-- "several": the new name names more than one food, joined by "and" or "or" in
-  any language. "Dijon or yellow mustard" is "Dijon mustard" and "yellow
-  mustard"; "zout en peper" is "zout" and "peper". Give each food's name in
-  "parts", in the language written, and "joined": "together" when the recipe
-  needs all of them, "alternatives" when any one will do. A food whose own name
-  holds "and" is one food: "mac and cheese", "half and half", "sweet and sour
-  sauce".
-- "not-a-food": the new name is no food at all. It is kitchen equipment the
-  cook already has and uses, not something bought for the recipe ("deegroller",
+Give "verdict", one of:
+
+- "food": the name is one food. Give "englishName", its plain English name
+  ("uien" is "onion", "Unox Knaks" is "frankfurter", "kipfilet" is "chicken
+  breast", "tomatoes, chopped" is "tomato"); "generalFood", the more general
+  food it is a kind of that a shopper also buys ("rode uien" are a kind of
+  "onion", "cherry tomatoes" a kind of "tomato", "Unox Knaks" a kind of
+  "sausage"), or null when there is none; and "otherNames", two or three other
+  names a shop might sell the same food under ("hot dog sausage" and "wiener"
+  for "frankfurter"), or null when there are none. Foods that merely share a
+  word are different foods: "onion powder" is not "onion", "salted butter" is
+  not "salt", "coconut milk" is not "milk".
+- "several": the name names more than one food, joined by "and" or "or" in any
+  language. "Dijon or yellow mustard" is "Dijon mustard" and "yellow mustard";
+  "zout en peper" is "zout" and "peper". Give each food's name in "parts", in
+  the language written, and "joined": "together" when the recipe needs all of
+  them, "alternatives" when any one will do. A food whose own name holds "and"
+  is one food: "mac and cheese", "half and half", "sweet and sour sauce".
+- "not-a-food": the name is no food at all. It is kitchen equipment the cook
+  already has and uses, not something bought for the recipe ("deegroller",
   "taart- of springvorm (doorsnede 26 cm)", "food processor"); a preparation or
   a fragment left on a line of its own ("melted", "roughly chopped", "overnight
   and drained"); a note; or gibberish.
 
-Anything a household buys in a shop is "same", "kind-of" or "new", never
-"not-a-food", even when it is not eaten: "baking paper", "aluminium foil",
-"toilet paper" and "dish soap" stay in the catalogue, so their shop and aisle
-are remembered.
+Anything a household buys in a shop is a "food", never "not-a-food", even when
+it is not eaten: "baking paper", "aluminium foil", "toilet paper" and "dish
+soap" stay in the catalogue, so their shop and aisle are remembered.
 
-Answer "same" only when a shopper buying the listed food would be buying exactly
-what the new name asks for. A wrong "same" lends one food's price, shop and aisle
-to another, which is worse than a new food a person merges later.
-
-Give "parts" and "joined" only for "several", and null otherwise.
+Give each field only for its verdict, and null otherwise.
 
 Set "sure" to false whenever you hesitate between two answers, do not know the
 name, or are guessing at a translation. Set it to true only when a cook would
 not hesitate.
 
-Also give "englishName": the plain English name of the food the new name is, as
-a shopper would look for it, whatever the answer above. "uien" is "onion", "Unox
-Knaks" is "frankfurter", "kipfilet" is "chicken breast". Give null when the new
-name is not a food at all.
-
-When there is no list of foods yet, you are asked only to read the name: give
-"englishName" as above, "generalFood", the more general food it is a kind of
-("cherry tomatoes" are a kind of "tomato", "Unox Knaks" a kind of "sausage"), or
-null when there is none, and "otherNames", two or three other names a shop might
-sell the same food under ("hot dog sausage" and "wiener" for "frankfurter"), or
-null when there are none. All are used to find the foods to compare it with.
+When the names you gave find more than one food in the catalogue, you are asked
+again with those foods as a numbered list. Then give "food", the number of the
+listed food the name is, or null when it is none of them, and "sure" as above.
+Pick a food only when a shopper buying it would be buying exactly what the name
+asks for: a wrong pick lends one food's price, shop and aisle to another.

@@ -430,7 +430,10 @@ function sameFoodKey(spelling: Spelling): string {
  * The known food each spelling is a slip of the fingers from ("parmezan" for "parmezaan"), by
  * `sameFoodKey`, where only one food is that near (`nearestSlip`).
  */
-async function findSlips(spellings: readonly Spelling[]): Promise<Map<string, string>> {
+async function findSlips(
+  spellings: readonly Spelling[],
+  excludeId: string | null = null
+): Promise<Map<string, string>> {
   const slips = new Map<string, string>();
   const questions = new Map(spellings.map((spelling) => [sameFoodKey(spelling), spelling]));
 
@@ -441,7 +444,7 @@ async function findSlips(spellings: readonly Spelling[]): Promise<Map<string, st
       if (!mayBeASlip(wanted)) return;
       const near = nearestSlip(
         wanted,
-        await findAliasesNearFold(wanted),
+        (await findAliasesNearFold(wanted)).filter((row) => row.ingredientId !== excludeId),
         (row) => row.fold,
         (row) => row.ingredientId
       );
@@ -654,23 +657,40 @@ export async function findOtherIngredientsFor(
   ingredientId: string,
   texts: readonly string[]
 ): Promise<Set<string>> {
+  const found = await findOtherFoodsNamed(ingredientId, texts, { slips: false });
+
+  return new Set(found.filter((id) => id !== null));
+}
+
+/**
+ * The food other than `ingredientId` each text names, in order, as an import finds it: by the first
+ * two rungs, else (with `slips`) a slip of the fingers; null where none. What AI's pass looks its
+ * reading of a name up by. Mints nothing.
+ */
+export async function findOtherFoodsNamed(
+  ingredientId: string,
+  texts: readonly string[],
+  { slips = true }: { slips?: boolean } = {}
+): Promise<Array<string | null>> {
   const rules = await currentRules();
-  const spellings = texts
-    .map(cleanIngredientText)
-    .filter((text) => text.length > 0)
-    .map((text) => spellingOf(text, rules));
+  const spellings = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
+  const readable = spellings.filter((spelling) => spelling.text && !spellingNamesNoFood(spelling));
   const known = new Map(
-    [...(await knownAliases(spellings))].filter(([, row]) => row.ingredientId !== ingredientId)
+    [...(await knownAliases(readable))].filter(([, row]) => row.ingredientId !== ingredientId)
   );
-  const found = new Set<string>();
+  const matched = new Map(readable.map((spelling) => [spelling, matchKnown(spelling, known)]));
+  const slipped = slips
+    ? await findSlips(
+        readable.filter((spelling) => !matched.get(spelling)),
+        ingredientId
+      )
+    : new Map<string, string>();
 
-  for (const spelling of spellings) {
-    const match = matchKnown(spelling, known);
-
-    if (match) found.add(match.ingredientId);
-  }
-
-  return found;
+  return spellings.map((spelling) =>
+    matched.has(spelling)
+      ? (matched.get(spelling)?.ingredientId ?? slipped.get(sameFoodKey(spelling)) ?? null)
+      : null
+  );
 }
 
 /**

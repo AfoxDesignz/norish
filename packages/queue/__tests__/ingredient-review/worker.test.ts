@@ -71,7 +71,7 @@ function changed() {
     .map(([, payload]) => payload as Record<string, unknown>);
 }
 
-const trace = { considered: ["onion", "shallot"], englishName: "onion" };
+const trace = { englishName: "onion", parts: null, considered: ["onion", "shallot"] };
 
 /** What the pass came to for each food in turn, announcing the food as its edits do. */
 function answers(...outcomes: Array<Record<string, unknown>>) {
@@ -98,7 +98,7 @@ describe("processIngredientReviewJob", () => {
     answers(
       { outcome: "merge", into: "onion", sure: true, ...trace },
       { outcome: "unsure", reason: "ai-unsure", ...trace },
-      { outcome: "skipped", reason: "decided", considered: [], englishName: null }
+      { outcome: "skipped", reason: "decided", englishName: null, parts: null, considered: [] }
     );
     const job = fakeJob(["uien", "knaks", "settled"]);
 
@@ -129,8 +129,9 @@ describe("processIngredientReviewJob", () => {
           name: "settled!",
           outcome: "skipped",
           reason: "decided",
-          considered: [],
           englishName: null,
+          parts: null,
+          considered: [],
         },
       ])
     );

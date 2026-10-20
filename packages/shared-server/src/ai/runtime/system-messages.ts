@@ -26,7 +26,7 @@ export const SYSTEM_MESSAGES = {
   "ingredient-linking":
     "You are a careful recipe reader who says which ingredient lines each step uses, and only what the text supports.",
   "ingredient-resolution":
-    "You keep a catalogue of foods and say whether a name is a food already in it, a kind of one, or a food of its own.",
+    "You keep a catalogue of foods and say what food a name is, which foods it names, or that it is no food.",
   "ingredient-plain-name":
     "You keep a catalogue of foods tidy, and give a name back with only the food left in it, in its own language.",
   // English by instruction, not by system message alone: the brief is a model

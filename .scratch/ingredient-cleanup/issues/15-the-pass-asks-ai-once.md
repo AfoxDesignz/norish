@@ -20,13 +20,27 @@
 
 **Blocked by:** 14, which leaves the pass as the only place rung 3 runs.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] "Unox Knaks" with frankfurter in the catalogue: one AI request, merged into frankfurter.
-- [ ] "rode uien" with onion but no red onion: one request, a food of its own under onion.
-- [ ] "Dijon or yellow mustard", sure: one request, split into the two mustards it names. Unsure: one food, flagged.
-- [ ] "melted": one request, deleted.
-- [ ] A name whose reading matches two foods: two requests, and the second answer decides.
-- [ ] The job monitor's step shows what AI read the name as, and for several foods the parts.
-- [ ] Pass tests mock AI at `generateStructured` and `decide`, against a real database.
-- [ ] All `CONTRIBUTING.md` gates pass.
+- [x] "Unox Knaks" with frankfurter in the catalogue: one AI request, merged into frankfurter.
+- [x] "rode uien" with onion but no red onion: one request, a food of its own under onion.
+- [x] "Dijon or yellow mustard", sure: one request, split into the two mustards it names. Unsure: one food, flagged.
+- [x] "melted": one request, deleted.
+- [x] A name whose reading matches two foods: two requests, and the second answer decides.
+- [x] The job monitor's step shows what AI read the name as, and for several foods the parts.
+- [x] Pass tests mock AI at `generateStructured` and `decide`, against a real database.
+- [x] All `CONTRIBUTING.md` gates pass.
+
+## Comments
+
+2026-10-20, implemented:
+
+- One `generateStructured` request under `ingredient-resolution` reads the name: `food` (englishName, generalFood, otherNames), `several` (parts, joined) or `not-a-food`, with `sure`. No catalogue is sent.
+- `findOtherFoodsNamed` in the resolver looks the names up as an import does (rungs 1–2, then a slip), never finding the food itself; `findOtherIngredientsFor` (the startup recheck) is the same lookup without slips. A spelling folds to one alias, so a single name finds at most one food: ambiguity only arises across the English name and the other names.
+- More than one food found: the second question offers just those foods plus "none of these" (Decision at `RESOLUTION_THRESHOLD`, else the language model, `{ food, sure }`). A merge is sure only when the reading and the pick both are. "None" falls through to the general food.
+- The Plain Name step still follows a parent or a food of its own, as before; the "one request" counts above are `ingredient-resolution` requests.
+- The job monitor step's trace is `{ englishName, parts, considered }`: `parts` for several foods, sure or not; `considered` only when a second question was asked.
+- Gone: the word-start candidate search (`findIngredientCandidates`, `findIngredientsNamed`, `withParents`, `MAX_CANDIDATES`), the comparing verdicts (same/kind-of/new) and the Decision's several/not-a-food options. A candidate's parent is no longer offered: "knakworst" read as frankfurter now merges into frankfurter.
+- Test trap fixed on the way: `review.test.ts`'s `flagged()` queues `isAIEnabled` once; a text that mints nothing left it unread and the next test saw AI off. The mock is now reset per test.
+- Release notes: an upgrade note for an edited prompt. ADR-0037 amended; CONTEXT.md's Ingredient Alias no longer says the import asks AI.
+
