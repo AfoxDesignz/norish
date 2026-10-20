@@ -34,3 +34,11 @@
 ## Comments
 
 The word lists come from the same set they were measured on (ticket 16): 53 of 273 unsure parents filed quietly, none wrong. Expect a few misses on other catalogues.
+
+2026-10-20, the note half measured both ways on ticket 16's set (Mike: "your proposal is also good"):
+
+- Ticket 16's form (the parent starts the name, a note word follows) files 25 names quietly, all right. Reading up to a note word, as this ticket does, files all 25 the same, and more:
+  - 6 more right ones: "active sourdough starter for the wraps", "flaky sea salt to finish", "gepofte zoete aardappel per persoon", "evt vers fruit voor het decoreren", "croissant deeg voor", "zalmfilets op de huid" (salmon fillet, no parent before);
+  - about 15 names whose parent is sure and wrong today get the right one: "… for the coating" under coating, "yoghurt voor de saus" under sauce, "oil for frying" under frying, "full fat yogurt for the meat" under meat; and the three "te" lines are no longer filed under tea;
+  - 2 new wrong ones, both "or" lines: "fresh greens like lettuce or arugula for extra crunch" under rocket, "beetje olie of boter om de cakevorm in te vetten" under butter. The joining words split the second before a mint when both parts are known; the first is minted and AI's pass looks at it.
+- Ticket 16's form is in this ticket too: it is the cuts-and-forms half (28 of the 53).
