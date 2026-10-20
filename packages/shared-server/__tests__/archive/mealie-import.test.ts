@@ -179,11 +179,11 @@ describe("Mealie import", () => {
 
       expect(dtos[0].recipeIngredients).toMatchObject([
         { ingredientName: "# Per la crema", amount: null, order: 0 },
-        { ingredientName: "mascarpone, cold", amount: 500, unit: "gram", foodText: "mascarpone" },
+        { ingredientName: "mascarpone, cold", amount: 500, unit: "gram", foodTexts: ["mascarpone"] },
         // The pre-3.1 text row is read from its text; its quantity of 1 says nothing.
         { ingredientName: "eggs", amount: 3, order: 2 },
       ]);
-      expect(dtos[0].recipeIngredients[2].foodText).toBeUndefined();
+      expect(dtos[0].recipeIngredients[2].foodTexts).toBeUndefined();
     });
 
     it("turns step references into Step Ingredients that count the inserted Heading", async () => {
@@ -243,7 +243,7 @@ describe("Mealie import", () => {
         notes: "Make ahead\nRest overnight.",
         recipeIngredients: [
           { ingredientName: "# Per la crema" },
-          { ingredientName: "mascarpone, cold", amount: 500, foodText: "mascarpone" },
+          { ingredientName: "mascarpone, cold", amount: 500, foodTexts: ["mascarpone"] },
         ],
         steps: [{ step: "Whisk.", stepIngredients: [{ ingredientOrder: 1, share: 1 }] }],
       });

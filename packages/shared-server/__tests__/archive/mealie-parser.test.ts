@@ -398,7 +398,7 @@ describe("Mealie Parser", () => {
         amount: 3,
         unit: "cup",
         // The food Mealie named is what the line resolves from.
-        foodText: "margarine",
+        foodTexts: ["margarine"],
       });
     });
 

@@ -296,6 +296,7 @@ export async function parseNorishRecipeToDTO(
     image: wireImage,
     images: wireImages,
     videos: wireVideos,
+    recipeIngredients: wireLines,
     ...rest
   } = parsed.data;
 
@@ -376,6 +377,10 @@ export async function parseNorishRecipeToDTO(
 
   const dto: FullRecipeInsertDTO = {
     ...rest,
+    // A line's foods travel as their spellings, which the resolver reads before its text.
+    recipeIngredients: wireLines.map(({ foods, ...line }) =>
+      foods?.length ? { ...line, foodTexts: foods } : line
+    ),
     id: recipeId,
     cuisines: cuisineIds,
     images,

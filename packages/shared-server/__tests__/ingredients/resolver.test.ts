@@ -444,7 +444,7 @@ describe("ingredient resolver", () => {
           {
             name: "Soup",
             systemUsed: "metric",
-            recipeIngredients: [{ ...line("red ones, from the garden", 0), foodText: "onions" }],
+            recipeIngredients: [{ ...line("red ones, from the garden", 0), foodTexts: ["onions"] }],
           },
           { userId }
         )

@@ -26,6 +26,7 @@ import { db } from "@norish/db/drizzle";
 import { dbLogger } from "@norish/db/logger";
 import { stripHtmlTags } from "@norish/shared/lib/helpers";
 import { viewerAndHouseholdIds } from "@norish/shared/lib/household";
+import { joinOf } from "@norish/shared/lib/line-foods";
 import { normalizeOriginCountry } from "@norish/shared/lib/recipe-enrichment";
 import { normalizeUnit } from "@norish/shared/lib/unit-localization";
 
@@ -1055,7 +1056,7 @@ export async function getImageGenerationSweepCounts(): Promise<{
   };
 }
 
-/** How a stored line's foods go together, and each with its spelling, where it names several. */
+/** A stored line's foods, each with its spelling, and how they go together where it names several. */
 function lineFoodsOf(line: {
   joined: LineJoin | null;
   foods?: Array<{ alias: { ingredientId: string; text: string } }>;
@@ -1065,7 +1066,7 @@ function lineFoodsOf(line: {
     name: alias.text,
   }));
 
-  return line.joined && foods.length > 1 ? { joined: line.joined, foods } : { joined: null };
+  return { joined: joinOf(foods, line.joined), foods };
 }
 
 export async function getRecipeFull(id: string): Promise<FullRecipeDTO | null> {

@@ -29,7 +29,7 @@ export const RecipeIngredientsWithIdSchema = RecipeIngredientsSelectBaseSchema.o
     ingredientName: z.string(),
     /** The line's first food, which it shows. */
     ingredientId: z.string().nullable(),
-    /** Each food with its spelling, where the line names several and `joined` says how. */
+    /** Each food with its spelling, in order; where there are several, `joined` says how. */
     foods: z.array(z.object({ ingredientId: z.string(), name: z.string() })).optional(),
     amount: z.number().nullable(),
     order: z.coerce.number(),

@@ -149,8 +149,8 @@ export function collectRecipeMediaRefs(recipe: FullRecipeDTO): NorishArchiveMedi
  * Map a full recipe record to the `recipe.json` wire shape.
  *
  * Instance-local identifiers never travel: cuisine ids flatten to names,
- * ingredient ids are nulled in favour of names, and row ids/versions on
- * nested records are dropped entirely. Local media references become
+ * ingredient ids are nulled in favour of names and their foods' spellings,
+ * and row ids/versions on nested records are dropped entirely. Local media references become
  * relative paths into the recipe's archive folder; external URLs travel
  * unchanged; media that did not make it into the archive is dropped rather
  * than exported as a dead reference.
@@ -200,6 +200,8 @@ function buildArchiveRecipe(record: NorishArchiveRecord): NorishArchiveRecipe {
     recipeIngredients: recipe.recipeIngredients.map((ingredient) => ({
       ingredientId: null,
       ingredientName: ingredient.ingredientName,
+      foods: ingredient.foods?.map((food) => food.name) ?? [],
+      joined: ingredient.joined ?? null,
       amount: ingredient.amount,
       unit: ingredient.unit,
       systemUsed: ingredient.systemUsed,

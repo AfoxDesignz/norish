@@ -230,7 +230,7 @@ describe("ingredient resolver, rung 3", () => {
       {
         ingredientId: null,
         ingredientName: "onion bulbs, chopped",
-        foodText: "shallot",
+        foodTexts: ["shallot"],
         amount: 2,
         unit: null,
         order: 0,
@@ -239,7 +239,7 @@ describe("ingredient resolver, rung 3", () => {
       {
         ingredientId: null,
         ingredientName: "GR CHERRYTOMATEN",
-        foodText: "tomato",
+        foodTexts: ["tomato"],
         amount: 150,
         unit: null,
         order: 2,

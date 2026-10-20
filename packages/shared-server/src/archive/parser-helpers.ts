@@ -79,7 +79,7 @@ export function parseNutritionValue(value: string | null | undefined): number | 
 
 /**
  * Hand each line the food it resolves from, past the insert schema, which
- * knows nothing of it: the resolver reads it (`foodText` in
+ * knows nothing of it: the resolver reads it (`foodTexts` in
  * `withResolvedIngredients`) and it is never stored.
  */
 export function withLineFoodTexts(
@@ -88,10 +88,11 @@ export function withLineFoodTexts(
 ): FullRecipeInsertDTO {
   return {
     ...dto,
-    recipeIngredients: dto.recipeIngredients?.map((line, i) => ({
-      ...line,
-      foodText: foodTexts[i],
-    })),
+    recipeIngredients: dto.recipeIngredients?.map((line, i) => {
+      const text = foodTexts[i];
+
+      return text ? { ...line, foodTexts: [text] } : line;
+    }),
   };
 }
 

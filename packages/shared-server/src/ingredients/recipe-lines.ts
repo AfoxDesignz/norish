@@ -6,6 +6,7 @@ import type {
   WithIngredientResolutions,
 } from "@norish/db/repositories/recipes";
 import type { FullRecipeInsertDTO, FullRecipeUpdateDTO } from "@norish/shared/contracts";
+import type { LineJoin } from "@norish/shared/lib/line-foods";
 import {
   findIngredientNamesByIds,
   findRecipeLineAliases,
@@ -13,9 +14,10 @@ import {
 import { createRecipeWithRefs, updateRecipeWithRefs } from "@norish/db/repositories/recipes";
 import { getUnits } from "@norish/shared-server/config/server-config-loader";
 import { lineFoodText, lineNamesNoFood } from "@norish/shared/lib/ingredient-text";
+import { joinOf } from "@norish/shared/lib/line-foods";
 
 import type { ResolveActor } from "./resolver";
-import { cleanIngredientText, resolveLineFoods, writeResolved } from "./resolver";
+import { cleanIngredientText, resolveLineFoods, resolveParts, writeResolved } from "./resolver";
 
 interface RecipeLineInput {
   /** The stored line this one saves over, if any. */
@@ -25,11 +27,14 @@ interface RecipeLineInput {
   amount?: unknown;
   unit?: string | null;
   /**
-   * The text the line's food is resolved from, when an import already knows
-   * which food the line is (Mealie's and Tandoor's own food names). The line
-   * keeps its own text; this is read here and never stored.
+   * The texts the line's foods are resolved from, in order, when an import
+   * already knows which foods the line is (Mealie's and Tandoor's own food
+   * names, a Recipe Archive's spellings). The line keeps its own text; these
+   * are read here and never stored.
    */
-  foodText?: string;
+  foodTexts?: readonly string[];
+  /** How several `foodTexts` go together. */
+  joined?: LineJoin | null;
 }
 
 /**
@@ -39,11 +44,11 @@ interface RecipeLineInput {
  * given that Ingredient's name as its text. A line left with no text is
  * dropped, as the recipe write always skipped it, and one that names no
  * food (a heading, a text with no letter or digit, a colon line with no
- * amount) is written as it is. A line's food is resolved from the `foodText`
- * it names, else from `lineFoodText`; a text written twice is read the first
- * way. A line saved over one of `recipeId` keeps that line's food, or its
- * having none (its food deleted), while its `lineFoodText` is unchanged, so
- * only edited and new lines are resolved.
+ * amount) is written as it is. A line's food is resolved from its `foodTexts`,
+ * else from `lineFoodText`; a text written twice is read the first way. A
+ * line saved over one of `recipeId` keeps that line's food, or its having
+ * none (its food deleted), while its `lineFoodText` is unchanged, so only
+ * edited and new lines are resolved.
  */
 export async function withResolvedIngredients<
   L extends RecipeLineInput,
@@ -90,16 +95,24 @@ export async function withResolvedIngredients<
   }
   for (const line of written) {
     const text = line.ingredientName;
+    const named = (line.foodTexts ?? []).map(cleanIngredientText).filter(Boolean);
 
     if (
-      !lineNamesNoFood({ text, amount: line.amount }) &&
-      !resolved.has(text) &&
-      !foodTexts.has(text)
+      lineNamesNoFood({ text, amount: line.amount }) ||
+      resolved.has(text) ||
+      foodTexts.has(text)
     ) {
+      continue;
+    }
+    // Several texts name a food each; without a join only the first is read, as a line shows it.
+    if (named.length > 1 && line.joined) {
+      const foods = await resolveParts(named, actor);
+
+      resolved.set(text, { foods, joined: joinOf(foods, line.joined) });
+    } else {
       foodTexts.set(
         text,
-        cleanIngredientText(line.foodText ?? "") ||
-          lineFoodText({ text, amount: line.amount, unit: line.unit }, units)
+        named[0] ?? lineFoodText({ text, amount: line.amount, unit: line.unit }, units)
       );
     }
   }

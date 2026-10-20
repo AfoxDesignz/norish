@@ -132,7 +132,7 @@ describe("norish archive writer", () => {
     expect("dishColor" in recipeJson).toBe(false);
   });
 
-  it("nulls instance-local ingredient ids and travels ingredients by name", async () => {
+  it("nulls instance-local ingredient ids and travels ingredients by name, their foods by spelling", async () => {
     const zip = await writeArchive({
       records: [{ recipe: buildFullRecipe() }],
       exporter,
@@ -145,6 +145,8 @@ describe("norish archive writer", () => {
       {
         ingredientId: null,
         ingredientName: "spaghetti",
+        foods: ["spaghetti"],
+        joined: null,
         amount: 400,
         unit: "g",
         systemUsed: "metric",
@@ -153,6 +155,8 @@ describe("norish archive writer", () => {
       {
         ingredientId: null,
         ingredientName: "clams",
+        foods: [],
+        joined: null,
         amount: 1,
         unit: "kg",
         systemUsed: "metric",
