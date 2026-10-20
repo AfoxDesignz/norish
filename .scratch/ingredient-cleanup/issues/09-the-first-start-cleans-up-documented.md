@@ -5,9 +5,8 @@
 1. Seeded spellings lose their stray marks ("3wu)", "|चौलाई}}"). Balanced brackets stay.
 2. A dirty translation whose fold is already clean ("gyoza vellen )", "baking soda )") gets its clean text.
 3. Every non-seeded translation that is not its own clean name ("gyoza vellen ((ontdooid))") is removed. The rows behind it are re-resolved from their own text with AI off. Old hand-typed translations can't be told apart from minted ones, so they are treated alike.
-4. Open, for Mike: colon lines with no amount ("Voor de salade:") become Headings. That rewrites the line's text to a `#` line, which keeping the catalogue otherwise never does (2026-10-20); the line already names no food.
-5. Joined names on recipe lines, Pantry Ingredients and recurring groceries are split by the words, and the joined food is removed, even one a person kept distinct.
-6. The AI pass is queued for every own food no person has decided about.
+4. Joined names on recipe lines, Pantry Ingredients and recurring groceries are split by the words, and the joined food is removed, even one a person kept distinct.
+5. The AI pass is queued for every own food no person has decided about.
 
 Then the docs:
 - the target version's release notes, with an upgrade note saying this runs by itself;
@@ -19,11 +18,13 @@ Then the docs:
 - the Ingredients page in the docs, rewritten for applied changes, Changed by AI and delete;
 - screenshots shot as whole panel windows off a running instance.
 
+Colon lines are not turned into Headings (Mike, 2026-10-20: "Lets not ship that"): that would rewrite recipe text, and they already name no food (ticket 01).
+
 **Blocked by:** 01, 02, 05, 07, 08, 13
 
 **Status:** ready-for-agent
 
-- [ ] A scenario modelled on the production data covers each step: "gyoza vellen )", "gyoza vellen ((ontdooid))", "3wu)", "paprika (vrucht)", "Voor de salade:", "zout en peper" kept distinct, an undecided own food.
+- [ ] A scenario modelled on the production data covers each step: "gyoza vellen )", "gyoza vellen ((ontdooid))", "3wu)", "paprika (vrucht)", "zout en peper" kept distinct, an undecided own food.
 - [ ] The pass runs once; a second start does nothing.
 - [ ] Release notes, the upgrade note and the Ingredients docs page are updated. Changed by AI and the delete dialog have fresh screenshots. No real people's names appear in them.
 - [ ] All `CONTRIBUTING.md` gates pass, and the docs site builds.

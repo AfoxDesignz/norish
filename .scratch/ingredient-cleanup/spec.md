@@ -46,7 +46,7 @@ The household's catalogue fills up with things that are not foods and with foods
 3. **Spellings are clean names.** A text with preparation, brackets or an amount points at the clean spelling it reduces to, and is never added as a translation of its own. Double brackets are stripped whole. Before a text is read, stray punctuation, prices and notes are stripped. The seed's spellings keep their brackets, because there a bracket tells two foods apart ("paprika (vrucht)" is bell pepper); the seed loses only its stray marks. A translation a person types in the panel is stored clean, as a recipe text is read, so a recipe can match it.
 4. **Junk leaves the catalogue, never the recipe.**
    - A line that still names nothing once cleaned and read stays in its recipe as written and points at no food. A food it minted is deleted by AI, sure or not, with Undo. The cook fixes the line, if at all.
-   - A colon line with no amount names no food. Whether it also becomes a Heading is open (see Further Notes).
+   - A colon line with no amount names no food, and keeps its text: old ones are not turned into Headings (Mike, 2026-10-20).
    - A line naming a tool is the same: AI answers "not a food" for both (Mike, 2026-10-20).
    - A Grocery or Pantry Ingredient a person typed is never deleted; it points at no food when it names none.
 5. **Delete always works, and unused foods leave.**
@@ -57,7 +57,6 @@ The household's catalogue fills up with things that are not foods and with foods
    - seeded stray marks are cleaned;
    - variant translations are removed, and the lines behind them are resolved again from their own text;
    - "gyoza vellen )"-style translations get their clean text;
-   - (open, see Further Notes) colon lines become Headings;
    - joined names are split, and each joined food is removed, even one a person kept distinct;
    - the AI pass is queued for every food no person has decided about.
 
@@ -111,7 +110,7 @@ The household's catalogue fills up with things that are not foods and with foods
 46. As a shopper, I want a recurring grocery to keep its food alive, so that the dishwasher salt keeps its aisle between trips.
 47. As a shopper, I want to set a grocery to recur yearly ("yearly", "jaarlijks"), so that a yearly purchase keeps its food and aisle.
 48. As an administrator, I want the cleanup to run once by itself when the release first starts, so that an upgrade needs no manual step.
-49. As an administrator on a server with AI off, I want the words-only rules (cleaning, and/or splits, colon headings, clean translations, delete, cleanup) to work, so that a server without AI still gets most of the fix.
+49. As an administrator on a server with AI off, I want the words-only rules (cleaning, and/or splits, colon lines naming no food, clean translations, delete, cleanup) to work, so that a server without AI still gets most of the fix.
 50. As an administrator on a server with AI off, I want foods flagged when nothing could answer for them, so that I can still find them.
 
 ## Implementation Decisions
@@ -184,9 +183,8 @@ A recipe save keeps the foods of every line whose text, amount and unit are unch
   1. clean stray marks in seeded spellings;
   2. give dirty spellings with a clean fold ("gyoza vellen )") their clean text;
   3. remove every non-seeded spelling that is not its own clean name, re-resolving the rows behind it from their own text with AI off;
-  4. (open, see Further Notes) turn colon lines with no amount into Headings;
-  5. split joined names (lines, pantry, recurring groceries) by the words, and remove the joined food;
-  6. enqueue the AI pass for every own food no person has decided about.
+  4. split joined names (lines, pantry, recurring groceries) by the words, and remove the joined food;
+  5. enqueue the AI pass for every own food no person has decided about.
 
   Old translations can't be told apart as hand-typed or minted, so step 3 treats them alike.
 - **The seed** applies the same stray-mark cleaning to new data; balanced brackets in seeded spellings stay.
@@ -253,6 +251,5 @@ A good test drives the system through the same door a household does: hand texts
   - the "Clean the name" option is dropped;
   - unsure AI Changes outlive the month until handled;
   - old hand-typed variant translations are collapsed with the rest, since they can't be told apart.
-- Open, for Mike (2026-10-20): turning a colon line into a Heading (cleanup step 4, ticket 09) rewrites its text to a `#` line, which the catalogue work otherwise never does. The line already names no food (ticket 01), so it no longer poses as lettuce without it.
 - Measured on the production copy (`norish` on :5432): 432 own Ingredients, 129 kept distinct, 4 still flagged. About 585 lines contain a joining word of some language. 11 colon lines, and 4 fragment lines in one recipe. 58 seeded spellings with brackets, of which 3 are junk.
 - The `ai` E2E project shares a database with other specs. Seed scenario foods under unique names.
