@@ -13,11 +13,16 @@ A parent whose spelling ends the name keeps any length: "olive oil" stays under 
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The four names above get no parent from their words; "olive oil" is still under oil.
-- [ ] All `CONTRIBUTING.md` gates pass.
+- [x] The four names above get no parent from their words; "olive oil" is still under oil.
+- [x] All `CONTRIBUTING.md` gates pass.
 
 ## Comments
 
 Measured on ticket 16's hand-marked set: 22 unsure parents come from a spelling under four letters, 12 wrong and 10 right. The rule drops all 22. The right ones lost are "kip filet" (chicken), "romaine sla krop" (lettuce), "egg yolk" (egg), "sap van" (juice), "smoked cod loins" (cod), "bay leaf" and four "oil for …" lines. Those four become sure under ticket 20 anyway. The others lose a guess, not a flag: a mint without a parent is flagged too, and AI's pass decides. A three-letter minimum would drop only the six "te" and "zo" parents, all wrong, and none right.
+
+2026-10-20, implemented:
+
+- `parentFromWords` reads a window that does not end the name only when its spelling has four letters or more (spaces not counted). "olie om te bakken" is now filed under oil ("olie", four letters) instead of tea. `RUNG_VERSION` is 8.
+- The recheck used to skip every mint with a parent, so the version bump alone moved nothing. It now reads again a mint whose parent is still its words' open guess, and moves the guess or takes it off (`fileUndecidedMint`'s `expectedParentId`). A parent AI gave, or took away, is left to AI.
