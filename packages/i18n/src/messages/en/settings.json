@@ -377,9 +377,10 @@
     "flagReasons": {
       "unknown": "Norish was not sure this is a food of its own.",
       "ai-off": "AI is off, so nothing checked whether this is a food Norish already knows.",
+      "ai-queued": "New to Norish. AI looks at it shortly.",
       "unknown-food": "No known food shares a word with this name, so AI was not asked.",
       "ai-unsure": "AI was asked whether this is a known food and was not sure.",
-      "ai-unavailable": "AI did not answer in time when this name was added.",
+      "ai-unavailable": "AI did not answer in time.",
       "ai-key-rejected": "The AI provider rejected the API key, so AI could not check this name.",
       "food-gone": "AI matched this to a food that was merged away before the name could join it.",
       "upgrade": "No known food could be matched.",

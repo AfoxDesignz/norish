@@ -377,9 +377,10 @@
     "flagReasons": {
       "unknown": "Norish var ikke sikker på, at dette er en ingrediens for sig.",
       "ai-off": "AI er slået fra, så intet tjekkede, om Norish allerede kender den.",
+      "ai-queued": "Ny i Norish. AI kigger på den om lidt.",
       "unknown-food": "Ingen kendt ingrediens deler et ord med dette navn, så AI blev ikke spurgt.",
       "ai-unsure": "AI blev spurgt, om det er en kendt ingrediens, og var ikke sikker.",
-      "ai-unavailable": "AI svarede ikke i tide, da dette navn blev tilføjet.",
+      "ai-unavailable": "AI svarede ikke i tide.",
       "ai-key-rejected": "AI-udbyderen afviste API-nøglen, så AI kunne ikke tjekke dette navn.",
       "food-gone": "AI knyttede det til en ingrediens, der blev flettet, før navnet kunne komme med.",
       "upgrade": "Der blev ikke fundet nogen kendt ingrediens, der passer.",

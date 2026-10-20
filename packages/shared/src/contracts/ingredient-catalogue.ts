@@ -28,7 +28,9 @@ export function isCatalogueRefusal(value: unknown): value is CatalogueRefusal {
 export const FLAG_REASONS = [
   /** AI is switched off, so nothing vouched for the name. */
   "ai-off",
-  /** No known food shares a word with the name, so AI was not asked. */
+  /** Minted by an import or a save; AI's pass looks at it in the background. */
+  "ai-queued",
+  /** No known food shared a word with the name, so AI was not asked. No longer set; old rows keep it. */
   "unknown-food",
   /** AI was asked and was not sure. */
   "ai-unsure",
@@ -36,7 +38,7 @@ export const FLAG_REASONS = [
   "ai-unavailable",
   /** The AI provider rejected the configured API key. */
   "ai-key-rejected",
-  /** AI named a food that was merged away before the name could join it. */
+  /** AI or a slip named a food that was merged away before the name could join it. */
   "food-gone",
   /** Minted by the upgrade to the catalogue, which asks no AI. */
   "upgrade",
@@ -50,6 +52,12 @@ export type FlagReason = (typeof FLAG_REASONS)[number];
 
 /** Why a food is flagged when no AI could answer for it: unreachable, or its key refused. */
 export const UNANSWERED_FLAG_REASONS: readonly FlagReason[] = ["ai-unavailable", "ai-key-rejected"];
+
+/** Why a food is asked about again nightly: no AI answered for it, or its pass never came. */
+export const RETRIED_FLAG_REASONS: readonly FlagReason[] = [
+  ...UNANSWERED_FLAG_REASONS,
+  "ai-queued",
+];
 
 export function isFlagReason(value: unknown): value is FlagReason {
   return (FLAG_REASONS as readonly unknown[]).includes(value);

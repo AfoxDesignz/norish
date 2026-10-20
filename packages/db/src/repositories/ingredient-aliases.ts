@@ -15,7 +15,7 @@ import { slipLengths } from "@norish/shared/lib/name-slips";
 
 import type { LineResolution } from "./ingredients";
 import { isConstraintViolation } from "./constraint-violation";
-import { flagUnderOpenChange, recordAIChange, recordGuessedParent } from "./ingredient-ai-changes";
+import { recordGuessedParent } from "./ingredient-ai-changes";
 
 /**
  * The Ingredient Alias rows the ingredient resolver reads and writes. Nothing
@@ -199,8 +199,8 @@ export interface MintIngredientInput {
   flagReason?: FlagReason | null;
   /** The Parent Ingredient, where the food is a kind of a known one; none where that one is gone. */
   parentId?: string | null;
-  /** Where the parent is a guess, from the words of the name or AI's unsure answer: an unsure AI Change. */
-  parentUnsure?: "words" | "ai";
+  /** Where the parent is a guess from the words of the name: an unsure AI Change. */
+  parentUnsure?: boolean;
 }
 
 /**
@@ -282,7 +282,7 @@ async function mintOnce(input: MintIngredientInput): Promise<IngredientAliasRow[
 
     // Only a parent the mint applied is an AI Change; a name that joined an existing food got none.
     if ((minted || takenOver) && input.parentId && input.parentUnsure) {
-      await recordGuessedParent(tx, ingredientId, input.parentId, input.parentUnsure);
+      await recordGuessedParent(tx, ingredientId, input.parentId);
     }
 
     await tx
@@ -335,41 +335,20 @@ export async function addIngredientAliases(input: {
   aliases: ReadonlyArray<{ text: string; fold: string }>;
   ownerId: string | null;
   locale: string | null;
-  /**
-   * Joined on an unsure AI answer: an unsure merge of the spellings added, which flags the food.
-   */
-  unsure?: boolean;
 }): Promise<IngredientAliasRow[] | null> {
   try {
-    await db.transaction(async (tx) => {
-      const added = await tx
-        .insert(ingredientAliases)
-        .values(
-          input.aliases.map((alias) => ({
-            text: alias.text,
-            fold: alias.fold,
-            locale: input.locale,
-            ingredientId: input.ingredientId,
-            ownerId: input.ownerId,
-          }))
-        )
-        .onConflictDoNothing()
-        .returning({ id: ingredientAliases.id });
-
-      if (!input.unsure || added.length === 0) return;
-      await recordAIChange(tx, {
-        ingredientId: input.ingredientId,
-        sure: false,
-        undo: {
-          kind: "merge",
-          name: input.aliases[0]!.text,
+    await db
+      .insert(ingredientAliases)
+      .values(
+        input.aliases.map((alias) => ({
+          text: alias.text,
+          fold: alias.fold,
+          locale: input.locale,
+          ingredientId: input.ingredientId,
           ownerId: input.ownerId,
-          parentId: null,
-          aliasIds: added.map((row) => row.id),
-        },
-      });
-      await flagUnderOpenChange(tx, input.ingredientId);
-    });
+        }))
+      )
+      .onConflictDoNothing();
   } catch (error) {
     if (isConstraintViolation(error, "23503")) return null;
     throw error;
@@ -497,22 +476,6 @@ async function withParents(
   );
 
   return [...picked, ...(await candidatesFor(missing))];
-}
-
-/**
- * These Ingredients as candidates, where they still exist: the food a name's
- * own words point at, put to the question beside what the word starts found.
- */
-export async function findIngredientCandidatesById(
-  ids: readonly string[]
-): Promise<IngredientCandidate[]> {
-  if (ids.length === 0) return [];
-  const rows = await db
-    .select({ id: ingredients.id, name: ingredients.name })
-    .from(ingredients)
-    .where(inArray(ingredients.id, [...ids]));
-
-  return await candidatesFor(rows);
 }
 
 /** Candidate rows for known Ingredients: each with its shortest other names. */

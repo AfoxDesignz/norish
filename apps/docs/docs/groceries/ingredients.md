@@ -23,11 +23,11 @@ ingredients list and refreshes it every night.
 
 A new name from a recipe, grocery or pantry is matched to an existing
 ingredient, ignoring plurals, amounts, units, preparation and stray marks.
-"finely chopped onions" matches "onion", "4 el bosui" matches "bosui", and
-"gyoza vellen ((ontdooid))" matches "gyoza vellen". A name that joins foods
-names each of them: "zout en peper" is salt and pepper, and "boter of olie" is
-butter or oil. A name nothing matches becomes a new ingredient, under its clean
-name.
+"finely chopped onions" matches "onion", "4 el bosui" matches "bosui",
+"gyoza vellen ((ontdooid))" matches "gyoza vellen", and the slip "barmezaan"
+matches "parmezaan". A name that joins foods names each of them: "zout en
+peper" is salt and pepper, and "boter of olie" is butter or oil. A name nothing
+matches becomes a new ingredient, under its clean name.
 
 ![The Ingredients page, with a flagged ingredient](/img/screenshots/ingredients-page.png)
 

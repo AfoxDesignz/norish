@@ -377,9 +377,10 @@
     "flagReasons": {
       "unknown": "O Norish não tinha certeza de que este é um ingrediente próprio.",
       "ai-off": "A IA está desligada, então nada verificou se o Norish já o conhece.",
+      "ai-queued": "Novo no Norish. A IA vai analisá-lo em breve.",
       "unknown-food": "Nenhum ingrediente conhecido compartilha uma palavra com este nome, então a IA não foi consultada.",
       "ai-unsure": "A IA foi consultada se é um ingrediente conhecido e não tinha certeza.",
-      "ai-unavailable": "A IA não respondeu a tempo quando este nome foi adicionado.",
+      "ai-unavailable": "A IA não respondeu a tempo.",
       "ai-key-rejected": "O provedor de IA rejeitou a chave de API, então a IA não conseguiu verificar este nome.",
       "food-gone": "A IA o associou a um ingrediente mesclado antes que o nome pudesse se juntar a ele.",
       "upgrade": "Nenhum ingrediente conhecido correspondente foi encontrado.",

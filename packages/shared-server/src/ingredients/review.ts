@@ -16,10 +16,7 @@ import { ingredientChanges } from "./changes";
 import { nameAfterAnswer } from "./plain-names";
 import { resolveParts } from "./resolver";
 
-/**
- * How long one food's question may take. Longer than an import's budget: the
- * language model may be asked twice, and nobody is waiting on the answer.
- */
+/** How long one food's question may take: the language model may be asked twice, and nobody waits on it. */
 export const REVIEW_BUDGET_MS = 30_000;
 
 export type { ReviewOutcome };
@@ -34,7 +31,6 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
 
   const answer = await askWhatFoodThisIs(row.name, stripPreparation(row.name), {
     excludeId: ingredientId,
-    thorough: true,
     budgetMs: REVIEW_BUDGET_MS,
     trace,
   });
@@ -52,8 +48,12 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
   }
   if (answer.kind === "several") return await split(row, answer, trace);
   if (answer.kind === "not-a-food") return await deleted(ingredientId, trace);
-  // AI was switched off meanwhile: the flag keeps saying why the food is still unanswered.
-  if (answer.reason === "ai-off") return { outcome: "unsure", reason: "ai-off", ...trace };
+  // AI was switched off meanwhile: a food waiting on this pass says so; another keeps its reason.
+  if (answer.reason === "ai-off") {
+    if (row.flagReason === "ai-queued") await setIngredientFlagReason(ingredientId, "ai-off");
+
+    return { outcome: "unsure", reason: "ai-off", ...trace };
+  }
   if (answer.reason !== null && answer.reason !== "ai-unsure") {
     return await unanswered(ingredientId, answer.reason, trace);
   }
@@ -77,7 +77,7 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
 }
 
 /**
- * Several foods: the parts resolve as import resolves them, and the food's rows name them instead.
+ * Several foods: the parts resolve as an import resolves them, and the food's rows name them instead.
  * A part that is the food itself leaves it as it was.
  */
 async function split(

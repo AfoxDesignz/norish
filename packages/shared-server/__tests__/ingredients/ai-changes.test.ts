@@ -432,6 +432,8 @@ describe("keeping and undoing AI Changes", () => {
   it("lists for the nightly pass the foods no AI could answer for, that AI may still ask about", async () => {
     const away = await mint("uien");
     const refused = await mint("knaks");
+    // Its pass never came: the job was lost, or AI was off when it ran.
+    const waiting = await mint("bosui");
     const unsure = await mint("tonijn");
     const kept = await mint("prei");
     const flag = (id: string, flagReason: string) =>
@@ -439,12 +441,13 @@ describe("keeping and undoing AI Changes", () => {
 
     await flag(away.ingredientId, "ai-unavailable");
     await flag(refused.ingredientId, "ai-key-rejected");
+    await flag(waiting.ingredientId, "ai-queued");
     await flag(unsure.ingredientId, "ai-unsure");
     await flag(kept.ingredientId, "ai-unavailable");
     await markDistinct(actor, kept.ingredientId);
 
     expect((await listUnansweredIngredientIds()).sort()).toEqual(
-      [away.ingredientId, refused.ingredientId].sort()
+      [away.ingredientId, refused.ingredientId, waiting.ingredientId].sort()
     );
   });
 });

@@ -16,9 +16,12 @@ import {
   findSeededFoodSpellingsByFolds,
   mintIngredientWithAliases,
 } from "@norish/db/repositories/ingredient-aliases";
-import { getIngredientWords, getUnits } from "@norish/shared-server/config/server-config-loader";
+import {
+  getIngredientWords,
+  getUnits,
+  isAIEnabled,
+} from "@norish/shared-server/config/server-config-loader";
 import { dbLogger } from "@norish/shared-server/logger";
-import { UNANSWERED_FLAG_REASONS } from "@norish/shared/contracts/ingredient-catalogue";
 import { stripHtmlTags } from "@norish/shared/lib/helpers";
 import { catalogueLanguagesFor } from "@norish/shared/lib/ingredient-names";
 import { namesNoFood } from "@norish/shared/lib/ingredient-text";
@@ -31,8 +34,6 @@ import {
   spellingRules,
 } from "@norish/shared/lib/spelling-keys";
 
-import type { AIResolution } from "../ai/resolution/ingredient-resolution";
-import { askWhatFoodThisIs, flaggedNew } from "../ai/resolution/ingredient-resolution";
 import { announceMinted } from "./minted";
 
 /**
@@ -57,27 +58,20 @@ import { announceMinted } from "./minted";
  *   match unresolved text on too);
  *   a recipe line neither rung knows whole is then the foods its joining
  *   words split it into, all known ("zout en peper": `resolveLineFoods`);
- *   3. what AI makes of it (`ai/resolution/ingredient-resolution`): a Decision, or the language
- *      model — a known food it says the text names takes the text's clean
- *      spelling, so the next occurrence is a rung-1 or rung-2 match; an
- *      unsure answer joins it as an unsure AI Change, which flags the food.
- *      Not a food names no food, sure or not; several foods each resolve as a text when sure, and
- *      are minted flagged when not (`AIResolution`). A known food the
- *      text is a slip of the fingers from ("barmezaan" for "parmezaan") is put to AI too, and is
- *      taken where AI gives no answer (`findSlips`);
- *   4. a new Ingredient under the food AI said it is a kind of, if any.
+ *   3. a known food the text is a slip of the fingers from ("barmezaan" for
+ *      "parmezaan"), which takes the text's clean spelling (`findSlips`);
+ *   4. a new Ingredient, flagged. No AI is asked here: AI's pass follows the
+ *      mint in the background (`announceMinted`).
  *
  * A mint or a join gives the food only the text's clean spelling, its plain
  * name else its bare one, never the text as written (ADR-0037).
  *
- * A mint that no sure AI answer vouched for is flagged, so a person can merge
- * it or mark it distinct. One AI placed nowhere is filed under the longest
- * seeded spelling its words contain, as whole words, and stays flagged: a
- * guess from words may set a parent, never merge (ADR-0037 as amended by
- * ADR-0039). The spelling its text ends with ("ground cumin" under cumin) is
- * filed quietly; one found anywhere else in the words ("garlic cloves" under
- * garlic, "kale large stalks removed" under kale) is an unsure AI Change,
- * for a person to keep or undo.
+ * A mint is filed under the longest seeded spelling its words contain, as
+ * whole words: a guess from words may set a parent, never merge (ADR-0037 as
+ * amended by ADR-0039). The spelling its text ends with ("ground cumin" under
+ * cumin) is filed quietly; one found anywhere else in the words ("garlic
+ * cloves" under garlic, "kale large stalks removed" under kale) is an unsure
+ * AI Change, for a person to keep or undo.
  */
 
 /**
@@ -100,12 +94,9 @@ export interface ResolveActor {
 }
 
 export interface ResolveOptions {
-  /** Whether rung 3 may be asked; off, a name nothing else knows is minted flagged. */
+  /** Whether AI's pass follows a mint; off, a mint is flagged as the upgrade's (the startup passes). */
   ai?: boolean;
 }
-
-/** How many names one call asks AI about at once. */
-const AI_CONCURRENCY = 4;
 
 /** One text as written, and the alias and Ingredient it resolved to. */
 export interface ResolvedIngredient extends IngredientRef {
@@ -222,10 +213,7 @@ export async function resolveIngredients(
   actor: ResolveActor,
   options: ResolveOptions = {}
 ): Promise<Array<ResolvedIngredient | null>> {
-  const resolved = await resolveTexts(texts, actor, options, {
-    splitJoined: false,
-    split: "first",
-  });
+  const resolved = await resolveTexts(texts, actor, options, false);
 
   return resolved.map((one) => (one?.foods[0] ? { text: one.text, ...one.foods[0] } : null));
 }
@@ -235,11 +223,9 @@ export async function resolveParts(
   parts: readonly string[],
   actor: ResolveActor
 ): Promise<ResolvedIngredient[]> {
-  const resolved = await resolveTexts(parts, actor, {}, { splitJoined: false, split: "none" });
+  const resolved = await resolveIngredients(parts, actor);
 
-  return distinctFoods(
-    resolved.flatMap((one) => (one?.foods[0] ? [{ text: one.text, ...one.foods[0] }] : []))
-  );
+  return distinctFoods(resolved.filter((one) => one !== null));
 }
 
 /** One text as written, and the foods it names in order, with how several go together. */
@@ -247,16 +233,13 @@ export interface ResolvedFoods extends LineResolution {
   text: string;
 }
 
-/**
- * Resolve recipe lines' texts as `resolveIngredients` does, except that a text its words or AI split
- * names each food.
- */
+/** Resolve recipe lines' texts as `resolveIngredients` does, except that a text its words split names each food. */
 export async function resolveLineFoods(
   texts: readonly string[],
   actor: ResolveActor,
   options: ResolveOptions = {}
 ): Promise<Array<ResolvedFoods | null>> {
-  return await resolveTexts(texts, actor, options, { splitJoined: true, split: "all" });
+  return await resolveTexts(texts, actor, options, true);
 }
 
 /**
@@ -362,15 +345,12 @@ async function readByWords(
   return { spellings, known, byWords };
 }
 
-/**
- * `splitJoined` reads a text not known whole by its joining words before AI. AI's sure several foods
- * name every part (`all`), the first, which is all a Grocery names (`first`), or none (`none`, a part).
- */
+/** `splitJoined` reads a text not known whole by its joining words before anything is minted. */
 async function resolveTexts(
   texts: readonly string[],
   actor: ResolveActor,
   options: ResolveOptions,
-  { splitJoined, split }: { splitJoined: boolean; split: "all" | "first" | "none" }
+  splitJoined: boolean
 ): Promise<Array<ResolvedFoods | null>> {
   const rules = await currentRules();
   const asWritten = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
@@ -379,7 +359,7 @@ async function resolveTexts(
     (spelling) => !matchKnown(spelling, known) && !byWords.has(spelling)
   );
   const slips = await findSlips(unknown);
-  const answers = await askAboutUnknown(unknown, options, slips);
+  let flagReason: Promise<FlagReason> | undefined;
   const resolved = new Map<Spelling, ResolvedFoods>();
   const minted = new Set<string>();
 
@@ -397,64 +377,23 @@ async function resolveTexts(
 
     const match = matchKnown(spelling, known);
 
-    const asked = match ? undefined : answers.get(sameFoodKey(spelling));
-    const slip = match ? undefined : slips.get(sameFoodKey(spelling));
-
-    // No answer means AI was not asked: the name is a slip of a known food, else minted flagged.
-    const answer: AIResolution =
-      slip && gaveNoAnswer(asked)
-        ? { kind: "same", ingredientId: slip, sure: true }
-        : asked
-          ? settledAnswer(asked.answer, split !== "none")
-          : flaggedNew("upgrade");
-
-    if (answer.kind === "several") {
-      const parts = await resolveTexts(
-        split === "first" ? answer.parts.slice(0, 1) : answer.parts,
-        actor,
-        options,
-        { splitJoined: false, split: "none" }
-      );
-      const foods = distinctFoods(parts.flatMap((part) => part?.foods ?? []));
-
-      resolved.set(spelling, {
-        text: spelling.text,
-        foods,
-        joined: joinOf(foods, answer.joined),
-      });
-      continue;
-    }
-    // Not a food names no food: the line is stored as written, pointing at none.
-    if (answer.kind === "not-a-food") continue;
     if (!match) {
-      const wordsParent = async () => (asked ? asked.words : await parentFromWords(spelling));
-      // The food AI named may have been merged away since the question was
-      // asked; the text is then minted flagged rather than failing its save.
-      const joined =
-        answer.kind === "same"
-          ? await addIngredientAliases({
-              ingredientId: answer.ingredientId,
-              aliases: [cleanAlias(spelling)],
-              ownerId: actor.userId,
-              locale: actor.locale ?? null,
-              unsure: !answer.sure,
-            })
-          : null;
+      const slip = slips.get(sameFoodKey(spelling));
+      // The food a slip names may have been merged away since it was found; the text is then minted.
+      const joined = slip
+        ? await addIngredientAliases({
+            ingredientId: slip,
+            aliases: [cleanAlias(spelling)],
+            ownerId: actor.userId,
+            locale: actor.locale ?? null,
+          })
+        : null;
       const rows =
         joined ??
-        (answer.kind === "same"
-          ? await mint(spelling, actor, {
-              flagReason: "food-gone",
-              parent: await wordsParent(),
-            })
-          : await mint(spelling, actor, {
-              flagReason: answer.reason,
-              parent: answer.kindOf
-                ? { id: answer.kindOf, sure: answer.reason === null, byAI: true }
-                : answer.reason !== null
-                  ? await wordsParent()
-                  : null,
-            }));
+        (await mint(spelling, actor, {
+          flagReason: slip ? "food-gone" : await (flagReason ??= mintFlag(options)),
+          parent: await parentFromWords(spelling),
+        }));
 
       for (const row of rows) known.set(row.fold, row);
       if (!joined) for (const row of rows) minted.add(row.ingredientId);
@@ -475,34 +414,16 @@ async function resolveTexts(
   return asWritten.map((spelling) => resolved.get(spelling) ?? null);
 }
 
-/** Spellings the first two rungs resolve alike: "onions, diced" and "onions (2)" are one question (`foodKey`). */
+/** Why a mint is flagged: AI's pass is about to look at it, unless AI or the pass is off. */
+async function mintFlag(options: ResolveOptions): Promise<FlagReason> {
+  if (options.ai === false) return "upgrade";
+
+  return (await isAIEnabled()) ? "ai-queued" : "ai-off";
+}
+
+/** Spellings the first two rungs resolve alike: "onions, diced" and "onions (2)" are one slip (`foodKey`). */
 function sameFoodKey(spelling: Spelling): string {
   return spelling.bareFold || spelling.fold;
-}
-
-/** What rung 3 made of one spelling, with the food its words pointed at, which the question was told. */
-interface Asked {
-  answer: AIResolution;
-  words: ParentFromWords | null;
-}
-
-/**
- * The answer acted on: an unsure split is a food minted flagged with that doubt, as is a split where
- * `splits` is off; not a food names no food, sure or not.
- */
-function settledAnswer(answer: AIResolution, splits: boolean): AIResolution {
-  return answer.kind === "several" && !(answer.sure && splits) ? flaggedNew("ai-unsure") : answer;
-}
-
-/** The flags a mint gets where AI was asked and gave no answer. */
-const NO_ANSWER: ReadonlySet<FlagReason> = new Set(["ai-off", ...UNANSWERED_FLAG_REASONS]);
-
-function gaveNoAnswer(asked: Asked | undefined): boolean {
-  if (!asked) return true;
-
-  return asked.answer.kind === "new" && asked.answer.reason !== null
-    ? NO_ANSWER.has(asked.answer.reason)
-    : false;
 }
 
 /**
@@ -533,44 +454,6 @@ async function findSlips(spellings: readonly Spelling[]): Promise<Map<string, st
 }
 
 /**
- * Rung 3 for every spelling the first two rungs did not know, asked once per
- * food the spellings name and a few at a time, by the key `sameFoodKey` gives.
- * Each question is told the food the spelling's words point at, so AI and
- * the words are weighed together (`settleWithWords`).
- */
-async function askAboutUnknown(
-  unknown: readonly Spelling[],
-  options: ResolveOptions,
-  slips: ReadonlyMap<string, string>
-): Promise<Map<string, Asked>> {
-  const questions = new Map(unknown.map((spelling) => [sameFoodKey(spelling), spelling]));
-  const answers = new Map<string, Asked>();
-
-  if (options.ai === false) return answers;
-
-  const pending = [...questions.entries()];
-
-  while (pending.length > 0) {
-    const batch = pending.splice(0, AI_CONCURRENCY);
-    const answered = await Promise.all(
-      batch.map(async ([key, spelling]) => {
-        const words = await parentFromWords(spelling);
-        const answer = await askWhatFoodThisIs(spelling.clean, spelling.bare, {
-          wordsParent: words,
-          slipOf: slips.get(key) ?? null,
-        });
-
-        return { answer, words };
-      })
-    );
-
-    batch.forEach(([key], index) => answers.set(key, answered[index]!));
-  }
-
-  return answers;
-}
-
-/**
  * Resolve one text as written, or answer null where it names no food. For
  * the callers that take a single name from a person.
  */
@@ -584,21 +467,11 @@ export async function resolveIngredient(
   return resolved ?? null;
 }
 
-/**
- * Rung 4. The Ingredient is named for its clean spelling, which is its one
- * alias, so "onions, diced" first and "onions" or "onions, sliced" later are
- * the one food. Flagged unless a sure AI answer said it is a food of its own;
- * placed under the food AI said it is a kind of, where it said so, else under
- * the one its words suggest; an unsure AI Change where AI was unsure or the
- * words' food sat inside the name.
- */
+/** Rung 4: a flagged Ingredient named for the text's clean spelling, under the food its words suggest. */
 async function mint(
   spelling: Spelling,
   actor: ResolveActor,
-  {
-    flagReason,
-    parent,
-  }: { flagReason: FlagReason | null; parent: (ParentFromWords & { byAI?: true }) | null }
+  { flagReason, parent }: { flagReason: FlagReason; parent: ParentFromWords | null }
 ): Promise<IngredientAliasRow[]> {
   const alias = cleanAlias(spelling);
 
@@ -607,10 +480,10 @@ async function mint(
     aliases: [alias],
     ownerId: actor.userId,
     locale: actor.locale ?? null,
-    flagged: flagReason !== null,
+    flagged: true,
     flagReason,
     parentId: parent?.id ?? null,
-    parentUnsure: parent && !parent.sure ? (parent.byAI ? "ai" : "words") : undefined,
+    parentUnsure: parent ? !parent.sure : undefined,
   });
 }
 

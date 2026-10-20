@@ -377,9 +377,10 @@
     "flagReasons": {
       "unknown": "Norish nie był pewien, czy to osobny składnik.",
       "ai-off": "AI jest wyłączone, więc nic nie sprawdziło, czy Norish już go zna.",
+      "ai-queued": "Nowy w Norish. AI wkrótce go sprawdzi.",
       "unknown-food": "Żaden znany składnik nie ma wspólnego słowa z tą nazwą, więc AI nie zapytano.",
       "ai-unsure": "Zapytano AI, czy to znany składnik, i nie było pewne.",
-      "ai-unavailable": "AI nie odpowiedziało na czas, gdy dodano tę nazwę.",
+      "ai-unavailable": "AI nie odpowiedziało na czas.",
       "ai-key-rejected": "Dostawca AI odrzucił klucz API, więc AI nie mogło sprawdzić tej nazwy.",
       "food-gone": "AI dopasowało to do składnika scalonego, zanim nazwa zdążyła do niego dołączyć.",
       "upgrade": "Nie udało się dopasować żadnego znanego składnika.",

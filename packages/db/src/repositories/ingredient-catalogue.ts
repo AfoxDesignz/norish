@@ -29,7 +29,7 @@ import {
   recipes,
   recurringGroceries,
 } from "@norish/db/schema";
-import { UNANSWERED_FLAG_REASONS } from "@norish/shared/contracts/ingredient-catalogue";
+import { RETRIED_FLAG_REASONS } from "@norish/shared/contracts/ingredient-catalogue";
 import { viewerAndHouseholdIds } from "@norish/shared/lib/household";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
@@ -238,6 +238,7 @@ export async function findCatalogueIngredient(id: string): Promise<
       id: string;
       name: string;
       flagged: boolean;
+      flagReason: string | null;
       parentId: string | null;
       nameSettled: boolean;
       askable: boolean;
@@ -249,6 +250,7 @@ export async function findCatalogueIngredient(id: string): Promise<
       id: ingredients.id,
       name: ingredients.name,
       flagged: ingredients.flagged,
+      flagReason: ingredients.flagReason,
       ownerId: ingredients.ownerId,
       parentId: ingredients.parentId,
       nameSettled: ingredients.nameSettled,
@@ -286,7 +288,7 @@ export async function findCatalogueIngredientNames(
   return names;
 }
 
-/** The foods flagged as no AI could answer for them, that AI may still ask about: retried nightly. */
+/** The foods no AI answered for, or whose pass never came, that AI may still ask about: retried nightly. */
 export async function listUnansweredIngredientIds(): Promise<string[]> {
   const rows = await db
     .select({ id: ingredients.id })
@@ -294,7 +296,7 @@ export async function listUnansweredIngredientIds(): Promise<string[]> {
     .where(
       and(
         eq(ingredients.flagged, true),
-        inArray(ingredients.flagReason, [...UNANSWERED_FLAG_REASONS]),
+        inArray(ingredients.flagReason, [...RETRIED_FLAG_REASONS]),
         askableByAI
       )
     );

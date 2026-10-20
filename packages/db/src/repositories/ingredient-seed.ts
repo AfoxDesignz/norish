@@ -566,7 +566,7 @@ export async function fileUndecidedMint(
 
     if (filed.length > 0 && unsure) {
       await takeOpenParentChanges(tx, id);
-      await recordGuessedParent(tx, id, parentId, "words");
+      await recordGuessedParent(tx, id, parentId);
     }
 
     return filed.length > 0;

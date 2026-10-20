@@ -266,19 +266,8 @@ test("AI merges a food a recipe mints by itself, Changed by AI lists the merge, 
 }) => {
   await waitForAIPasses(aiStack);
   ai.control.enqueueIngredients(
-    // The recipe's save asks what the line is, and is not sure it is garlic: a food of its own, flagged.
-    {
-      kind: "success",
-      content: JSON.stringify({
-        verdict: "new",
-        food: null,
-        sure: false,
-        parts: null,
-        joined: null,
-        englishName: null,
-      }),
-    },
-    // Then AI's pass, with nobody asking: it reads the name, and compares it with garlic.
+    // The recipe's save asks nothing and mints the line flagged. AI's pass, with nobody asking,
+    // reads the name and compares it with garlic.
     {
       kind: "success",
       content: JSON.stringify({
@@ -335,9 +324,9 @@ test("AI gives a food a recipe mints its plain name by itself, listed on Changed
   aiStack,
 }) => {
   await waitForAIPasses(aiStack);
-  // Nothing known shares a word with the name, nor with the English name the reading gives (whose
-  // words the pass searches too), so only the pass asks: it reads the name as a food of its own,
-  // then asks its plain name.
+  // The save asks nothing. Nothing known shares a word with the name, nor with the English name the
+  // reading gives (whose words the pass searches too), so the pass reads the name as a food of its
+  // own, then asks its plain name.
   ai.control.enqueueIngredients(
     {
       kind: "success",
@@ -376,8 +365,8 @@ test("AI removes a food that names nothing; its line stays in the recipe with no
   aiStack,
 }) => {
   await waitForAIPasses(aiStack);
-  // "gesmolten" shares no word with a known food, so only the pass asks: it reads the name as no
-  // food, then answers that it is not a food.
+  // The save mints "gesmolten" flagged, asking nothing. The pass reads the name as no food, then
+  // answers that it is not a food.
   ai.control.enqueueIngredients(
     {
       kind: "success",

@@ -59,22 +59,17 @@ export async function recordAIChange(
   });
 }
 
-/** Record a parent a new food was given on a guess, from the words of its name or AI's unsure answer. */
+/** Record a parent a new food was given on a guess from the words of its name. */
 export async function recordGuessedParent(
   tx: Db,
   ingredientId: string,
-  parentId: string,
-  from: "words" | "ai"
+  parentId: string
 ): Promise<void> {
   await recordAIChange(tx, {
     ingredientId,
     targetId: parentId,
     sure: false,
-    undo: {
-      kind: "parent",
-      formerParentId: null,
-      ...(from === "words" ? { fromWords: true } : {}),
-    },
+    undo: { kind: "parent", formerParentId: null, fromWords: true },
   });
 }
 

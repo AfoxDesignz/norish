@@ -377,9 +377,10 @@
     "flagReasons": {
       "unknown": "Norish ei ollut varma, onko tämä oma ainesosansa.",
       "ai-off": "Tekoäly on pois päältä, joten mikään ei tarkistanut, tunteeko Norish tämän jo.",
+      "ai-queued": "Uusi Norishissa. Tekoäly katsoo sen pian.",
       "unknown-food": "Mikään tunnettu ainesosa ei jaa sanaa tämän nimen kanssa, joten tekoälyltä ei kysytty.",
       "ai-unsure": "Tekoälyltä kysyttiin, onko tämä tunnettu ainesosa, eikä se ollut varma.",
-      "ai-unavailable": "Tekoäly ei vastannut ajoissa, kun tämä nimi lisättiin.",
+      "ai-unavailable": "Tekoäly ei vastannut ajoissa.",
       "ai-key-rejected": "Tekoälypalvelu hylkäsi API-avaimen, joten tekoäly ei voinut tarkistaa tätä nimeä.",
       "food-gone": "Tekoäly yhdisti tämän ainesosaan, joka yhdistettiin ennen kuin nimi ehti mukaan.",
       "upgrade": "Vastaavaa tunnettua ainesosaa ei löytynyt.",

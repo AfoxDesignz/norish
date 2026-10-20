@@ -377,9 +377,10 @@
     "flagReasons": {
       "unknown": "Norish war nicht sicher, ob dies eine eigene Zutat ist.",
       "ai-off": "KI ist aus, daher hat nichts geprüft, ob Norish diese Zutat schon kennt.",
+      "ai-queued": "Neu in Norish. KI sieht sich das gleich an.",
       "unknown-food": "Keine bekannte Zutat teilt ein Wort mit diesem Namen, daher wurde KI nicht gefragt.",
       "ai-unsure": "KI wurde gefragt, ob dies eine bekannte Zutat ist, und war nicht sicher.",
-      "ai-unavailable": "KI hat nicht rechtzeitig geantwortet, als dieser Name hinzugefügt wurde.",
+      "ai-unavailable": "KI hat nicht rechtzeitig geantwortet.",
       "ai-key-rejected": "Der KI-Anbieter hat den API-Schlüssel abgelehnt, daher konnte die KI diesen Namen nicht prüfen.",
       "food-gone": "KI ordnete dies einer Zutat zu, die zusammengeführt wurde, bevor der Name dazukommen konnte.",
       "upgrade": "Es konnte keine bekannte Zutat zugeordnet werden.",
