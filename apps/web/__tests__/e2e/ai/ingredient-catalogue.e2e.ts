@@ -332,13 +332,14 @@ test("AI gives a food a recipe mints its plain name by itself, listed on Changed
   aiStack,
 }) => {
   await waitForAIPasses(aiStack);
-  // Nothing known shares a word with the name, so only the pass asks: it reads the name as a
-  // food of its own, then asks its plain name.
+  // Nothing known shares a word with the name, nor with the English name the reading gives (whose
+  // words the pass searches too), so only the pass asks: it reads the name as a food of its own,
+  // then asks its plain name.
   ai.control.enqueueIngredients(
     {
       kind: "success",
       content: JSON.stringify({
-        englishName: "salmon fillet",
+        englishName: "zalmmoot",
         generalFood: null,
         otherNames: null,
         sure: true,

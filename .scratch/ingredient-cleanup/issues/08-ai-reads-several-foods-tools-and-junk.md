@@ -51,6 +51,7 @@ See `CONTEXT.md` (Junk Line, AI Change) and ADR-0037's 2026-10-17 amendments.
 - An unsure tool is deleted like a sure one ("unsure tool deleting is also fine"). Non-food purchases stay Ingredients, as the prompt already says.
 - The pass compares a name with the foods sharing a word with AI's English name for it, after the name's own word matches, and looks up the other names AI says a shop sells it under (`otherNames` in the reading). Sending the whole catalogue instead was ruled out on size and on wrong "same" answers.
 - A slip of the fingers ("barmezaan" for "parmezaan") finds its food without AI, by the grocery product rule (`@norish/shared/lib/name-slips`, shared with `chooseUnmistakable`). With AI on it only puts that food before AI; with AI off or failing it is taken. ADR-0037 amended.
+- The catalogue E2E spec passed 12/12 (its plain-name stub reads an English name no other spec's foods share, since the pass now searches its words). In `--repeat-each=3` one red, in "a food's name, parent and translations land together with Save": Apply was clicked while the picker's list was open, and the click only closed it. Seven more runs of that scenario passed, with the Mac at 8.5 of 9.2 GB swap; not reproduced, so not fixed.
 
 Open, for Mike:
 
