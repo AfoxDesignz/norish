@@ -76,7 +76,7 @@ An Ingredient AI changed without being sure: merged a spelling into it, gave it 
 _Avoid_: Unverified, Pending (it is fully usable)
 
 **AI Change**:
-One thing AI did to the catalogue by itself: merged a spelling into a food, gave a food a parent or its Plain Name, minted a food, or deleted a food that is a tool or names nothing. Each is kept for a month on one list beside the Ingredients, with an Undo that reverses it and is remembered, so AI never makes it again; an unsure one also flags its food.
+One thing AI did to the catalogue by itself: merged a spelling into a food, gave a food a parent or its Plain Name, minted a food, or deleted a food that is not a food (a tool, or a name that names nothing). Each is kept for a month on one list beside the Ingredients, with an Undo that reverses it and is remembered, so AI never makes it again; an unsure one also flags its food.
 _Avoid_: Suggestion (AI no longer proposes and waits; it acts and can be undone), Review
 
 **Ingredient Icon**:
@@ -95,7 +95,7 @@ A row among a recipe's ingredients or steps that names the part of the recipe be
 _Avoid_: Section (names the lines under the heading, not the row), Group header (an ingredient parser's word)
 
 **Junk Line**:
-A recipe line that names nothing the recipe is made or cooked with: a fragment a wrapped source left on a line of its own ("melted", "overnight and drained"), punctuation alone, gibberish. A line is cleaned of stray punctuation, prices and notes and read first, so only what still names nothing is junk ("gyoza vellen )" was dirty, never junk). It stays in the recipe as written and points at no food, so the cook can fix it; only a food it minted leaves the catalogue, deleted by AI where it is sure and otherwise flagged for a person. Keeping the catalogue never changes a recipe's lines (Mike, 2026-10-20). A line naming a tool the cook needs ("taart- of springvorm (doorsnede 26 cm)") is not junk: it stays in the recipe, names no food and never goes on the list. A Grocery or a Pantry Ingredient is never junk: what a person typed on a list is kept, and points at no food when it names none.
+A recipe line that names nothing the recipe is made or cooked with: a fragment a wrapped source left on a line of its own ("melted", "overnight and drained"), punctuation alone, gibberish. A line is cleaned of stray punctuation, prices and notes and read first, so only what still names nothing is junk ("gyoza vellen )" was dirty, never junk). It stays in the recipe as written and points at no food, so the cook can fix it; only a food it minted leaves the catalogue, deleted by AI, sure or not, with Undo. Keeping the catalogue never changes a recipe's lines (Mike, 2026-10-20). A line naming a tool the cook needs ("taart- of springvorm (doorsnede 26 cm)") is not junk, but it is not a food either: AI gives both one answer, and it too stays in the recipe, names no food and never goes on the list. A Grocery or a Pantry Ingredient is never junk: what a person typed on a list is kept, and points at no food when it names none.
 _Avoid_: Garbage line, Invalid ingredient (it was never an ingredient)
 
 **Image Generation**:

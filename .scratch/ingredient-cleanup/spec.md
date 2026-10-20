@@ -24,8 +24,7 @@ The household's catalogue fills up with things that are not foods and with foods
    - **parent**;
    - **Plain Name**;
    - **a food of its own**;
-   - **a tool** (its lines keep their text and point at no food);
-   - **names nothing** (the food is deleted; its lines keep their text and point at no food, as a tool's do).
+   - **not a food**: kitchen equipment the cook has, a preparation or fragment, a note (the food is deleted; its lines keep their text and point at no food).
 
    A sure answer raises no flag. An unsure answer is applied too, and flags its food. Each one is an **AI Change** on a new **Changed by AI** list beside the Ingredients:
    - it is listed for a month (an unsure one stays until a person keeps or undoes it);
@@ -46,9 +45,9 @@ The household's catalogue fills up with things that are not foods and with foods
    - **Display:** the line shows its first food's icon.
 3. **Spellings are clean names.** A text with preparation, brackets or an amount points at the clean spelling it reduces to, and is never added as a translation of its own. Double brackets are stripped whole. Before a text is read, stray punctuation, prices and notes are stripped. The seed's spellings keep their brackets, because there a bracket tells two foods apart ("paprika (vrucht)" is bell pepper); the seed loses only its stray marks. A translation a person types in the panel is stored clean, as a recipe text is read, so a recipe can match it.
 4. **Junk leaves the catalogue, never the recipe.**
-   - A line that still names nothing once cleaned and read stays in its recipe as written and points at no food. A food it minted is deleted by AI when AI is sure; otherwise the food is flagged for a person's Delete. The cook fixes the line, if at all.
+   - A line that still names nothing once cleaned and read stays in its recipe as written and points at no food. A food it minted is deleted by AI, sure or not, with Undo. The cook fixes the line, if at all.
    - A colon line with no amount names no food. Whether it also becomes a Heading is open (see Further Notes).
-   - A line naming a tool stays and names no food.
+   - A line naming a tool is the same: AI answers "not a food" for both (Mike, 2026-10-20).
    - A Grocery or Pantry Ingredient a person typed is never deleted; it points at no food when it names none.
 5. **Delete always works, and unused foods leave.**
    - Deleting a food or a translation is no longer refused. A deleted food's recipe lines and Groceries keep their text and point at no food, and its Pantry Ingredients go. What a removed translation wrote keeps its food, under another of the food's spellings.
@@ -100,7 +99,7 @@ The household's catalogue fills up with things that are not foods and with foods
 34. As the person keeping the catalogue, I want a food AI deleted listed on Changed by AI with Undo, so that a food AI deleted wrongly comes back with its lines.
 35. As a cook, I want "Voor de salade:" to name no food, so that it stops posing as lettuce.
 36. As a cook, I want "taart- of springvorm (doorsnede 26 cm)" kept in the recipe but never on the grocery list, so that I still know which tin I need.
-37. As the person keeping the catalogue, I want an unsure "names nothing" answer to flag the food, so that I decide with Delete when AI isn't sure.
+37. As the person keeping the catalogue, I want AI to delete a food it thinks is not a food even when unsure, so that the catalogue clears itself and Undo still brings the food back.
 38. As a shopper, I want a grocery I typed never deleted by AI, so that the list holds what I wrote even when it isn't a food.
 39. As a shopper, I want a typed grocery that names nothing to stay on the list without a food, so that it doesn't add junk to the catalogue.
 40. As the person keeping the catalogue, I want to delete a food a recipe still uses, so that a non-food leaves the catalogue without a merge.
@@ -123,7 +122,7 @@ The household's catalogue fills up with things that are not foods and with foods
   - Chosen over keeping the column as the first food: there is one shape, and deleting the first food needs no promotion step.
 - Groceries, recurring groceries and Pantry Ingredients keep their single alias and Ingredient columns.
 - A new **AI Change** table. Each row has:
-  - the kind: merge, parent, plain name, mint, tool or not-a-food;
+  - the kind: merge, parent, plain name, mint or not-a-food;
   - the food it is listed under;
   - whether AI was sure;
   - what Undo needs, as JSON: the moved alias ids and their former food, the former parent, the former name, or a deleted food's name and spellings with the rows that pointed at them;
@@ -132,7 +131,7 @@ The household's catalogue fills up with things that are not foods and with foods
   A row that was undone is never swept away: it is the memory AI checks before acting. A sure change is swept after a month. An unsure one stays until it is kept or undone.
 - `ingredients.flagged` and `flag_reason` stay. A food is flagged while it has an unsure change that is neither kept nor undone, or while no AI could answer for it.
   - Keep clears the flag and counts as a person's decision, like keeping a food distinct, so AI no longer asks about it.
-  - New flag reason: an unsure "names nothing" answer (`ai-junk`). An unsure tool is acted on like a sure one (Mike, 2026-10-20).
+  - New flag reason `ai-junk`: a food AI says is not a food, kept because a Pantry Ingredient names it.
 - `ingredients.unused_since` (a timestamp) is set and cleared by the nightly sweep. Nothing on the write paths has to touch it.
 - The suggestions table is dropped. `name_settled` and `kept_distinct` stay.
 
@@ -144,10 +143,10 @@ The resolver stays the one door. For every text it answers one of: no food; one 
 2. **No food.** A text that names no food by the existing rules (a heading, an amount alone, no letter or digit) stops here. So does a colon line with no amount.
 3. **Rungs 1 and 2,** unchanged, on the whole text. A name known whole is never split.
 4. **The words' split.** Split at the joining words, which are a new kind of Ingredient Word (and, en, und, &, or, of, oder, ou, en/of, and/or, and the rest per language). Accept the split only when every part matches by rungs 1–2. "of" is accepted only when not every part is an English spelling; that reads the alias locale, as a hint.
-5. **Rung 3** (Decision, then the language model) asks the existing question, with three more possible answers: several foods (with their join, acted on only when sure); a tool; and names nothing.
-   - Sure answers act at once: join, mint, split, or no food for a tool or nothing.
+5. **Rung 3** (Decision, then the language model) asks the existing question, with two more possible answers: several foods (with their join, acted on only when sure); and not a food.
+   - Sure answers act at once: join, mint, split, or no food for not a food.
    - An unsure "same" now joins the food and records an unsure AI Change, where today it mints a flagged duplicate.
-   - An unsure tool names no food too. An unsure "nothing" mints the food, flagged `ai-junk`.
+   - "Not a food" names no food, sure or not, and mints nothing.
 6. **Mint.** A new food gets only its clean spelling (plain or bare), never the text as written. A join with a known food likewise adds only the clean spelling.
 
 **Recipe save**
@@ -159,7 +158,7 @@ A recipe save keeps the foods of every line whose text, amount and unit are unch
 - It reuses the ingredient review queue, no longer started by a person, together with its step reporting, model ledger and job monitor. It takes a list of food ids. For each food it asks the thorough question (read, then compare), skips a food a person decided about, checks the undone AI Changes so it never repeats one, applies the answer and records an AI Change.
   - The Plain Name step runs after a "food of its own" answer, as the round does today.
   - "Several foods" on an existing food splits every line, grocery, recurring grocery and pantry entry pointing at it, then removes the joined food.
-  - "Tool" and "names nothing" delete the food. Its recipe lines, groceries and recurring groceries keep their text and point at no food. A Pantry Ingredient keeps the food, flagged (ticket 08's open items).
+  - "Not a food" deletes the food, sure or not. Its recipe lines, groceries and recurring groceries keep their text and point at no food. A Pantry Ingredient keeps the food, flagged (ticket 08's open items).
 - **Who triggers it:**
   - the minted-food port (which today feeds the new-ingredients queue);
   - the one-time cleanup at first start;
@@ -172,7 +171,7 @@ A recipe save keeps the foods of every line whose text, amount and unit are unch
   - merge: the moved spellings go back out to a food of their own, carrying their lines;
   - parent: the former parent comes back;
   - plain name: the former name comes back, and the name is settled;
-  - tool or not-a-food: the food is re-minted with its spellings, and its rows point at it again.
+  - not-a-food: the food is re-minted with its spellings, and its rows point at it again.
 
   Undo follows the existing edit policy for the food.
 
@@ -225,7 +224,7 @@ A recipe save keeps the foods of every line whose text, amount and unit are unch
 
 A good test drives the system through the same door a household does: hand texts to the resolver, run the pass on a food, call a catalogue edit or tRPC procedure, or click in the browser. It then asserts on what a household sees: which foods a line names, what the list holds, what Changed by AI shows. It never asserts on internal calls. AI is always mocked at the AI runtime's `decide` and `generateStructured`, never deeper.
 
-- **The resolver**, against a real database (prior art: `resolver.test.ts`, `resolver-ai.test.ts`). Cleaning and double brackets: "gyoza vellen ((ontdooid))" and "12 gyoza vellen" name one translation, "gyoza vellen". Mints add only the clean spelling. The and/or/of split, with "mac and cheese", "juice of a lemon", "boter of olie" and "water of kokosmelk" as cases from the real set. AI split only when sure. Junk and tool answers, each storing the line as written with no food. Unsure "same" joins and records an AI Change. A colon line is no food. A recipe save keeps unchanged lines' foods.
+- **The resolver**, against a real database (prior art: `resolver.test.ts`, `resolver-ai.test.ts`). Cleaning and double brackets: "gyoza vellen ((ontdooid))" and "12 gyoza vellen" name one translation, "gyoza vellen". Mints add only the clean spelling. The and/or/of split, with "mac and cheese", "juice of a lemon", "boter of olie" and "water of kokosmelk" as cases from the real set. AI split only when sure. "Not a food", sure or not, storing the line as written with no food. Unsure "same" joins and records an AI Change. A colon line is no food. A recipe save keeps unchanged lines' foods.
 - **The background pass**, against a real database (prior art: `review.test.ts`, `plain-names.test.ts`, which it replaces, and the ingredient review worker test). Every answer kind applies and records its AI Change. Unsure answers flag. Keep and Undo per kind, including a deleted food's lines pointing at it again. An undone change is never made again. Decided and seeded foods are skipped. The icon job is enqueued only for foods that survive without an icon.
 - **Catalogue edits** (prior art: `catalogue.test.ts`, `recheck-mints.test.ts`, `catalogue-seed.test.ts`). Deleting in use unlinks lines and groceries and removes pantry rows. The unused-food sweep across 90 days, with recurring groceries keeping a food alive and seeded foods never deleted. The one-time cleanup, step by step, on a scenario modelled on the real data. The seed's stray-mark cleaning keeps "paprika (vrucht)".
 - **Pure readers** in `@norish/shared`, in their existing unit tests: spelling-key cleaning, pantry coverage for alternatives, nutrition first and each, recurrence "yearly".

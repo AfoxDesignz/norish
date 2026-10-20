@@ -55,6 +55,8 @@ See `CONTEXT.md` (Junk Line, AI Change) and ADR-0037's 2026-10-17 amendments.
 
 2026-10-20, reversed: Mike ruled that keeping the catalogue never changes a recipe. A line naming nothing stays as written and points at no food; only its food is deleted. Ticket 13 takes the Junk Line deletion out of the code, which still deletes lines until then.
 
+Also 2026-10-20: "tool" and "nothing" become one answer, "not a food", acted on sure or not (Mike: "one not a food"). Ticket 13 does that too.
+
 Open, for Mike:
 
 - AI never deletes a food a Pantry Ingredient names, against the spec's "leaves groceries and pantry rows pointing at no food": a Pantry Ingredient has no text of its own, so with no food it would name nothing. The food stays, flagged.
