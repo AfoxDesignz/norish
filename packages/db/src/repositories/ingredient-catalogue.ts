@@ -302,6 +302,13 @@ export async function listUnansweredIngredientIds(): Promise<string[]> {
   return rows.map((row) => row.id);
 }
 
+/** Every food AI may ask about: what the first start after the upgrade asks about. */
+export async function listAskableIngredientIds(): Promise<string[]> {
+  const rows = await db.select({ id: ingredients.id }).from(ingredients).where(askableByAI);
+
+  return rows.map((row) => row.id);
+}
+
 /** Say anew why a Flagged Ingredient is one: AI was asked again and is still not sure. */
 export async function setIngredientFlagReason(id: string, flagReason: string): Promise<void> {
   await db

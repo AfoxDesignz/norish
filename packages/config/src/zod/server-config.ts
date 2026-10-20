@@ -846,6 +846,8 @@ export const IngredientSeedStateSchema = z.object({
   rungVersion: z.number().int().default(0),
   /** The version of Ingredient Nutrition's source table last applied (ADR-0039). */
   nutritionVersion: z.string().nullable().default(null),
+  /** The first-start cleanup's `CLEANUP_VERSION` last run (ADR-0037). */
+  cleanupVersion: z.number().int().default(0),
 });
 
 export type IngredientSeedState = z.infer<typeof IngredientSeedStateSchema>;

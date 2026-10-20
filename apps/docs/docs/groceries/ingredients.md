@@ -22,27 +22,56 @@ Norish starts from the [Open Food Facts](https://world.openfoodfacts.org)
 ingredients list and refreshes it every night.
 
 A new name from a recipe, grocery or pantry is matched to an existing
-ingredient, ignoring plurals, amounts, units and preparation. "finely chopped
-onions" matches "onion", and "4 el bosui" matches "bosui". When nothing
-matches and AI is set up, AI decides where the name belongs, and the ingredient
-is **flagged** for review.
+ingredient, ignoring plurals, amounts, units, preparation and stray marks.
+"finely chopped onions" matches "onion", "4 el bosui" matches "bosui", and
+"gyoza vellen ((ontdooid))" matches "gyoza vellen". A name that joins foods
+names each of them: "zout en peper" is salt and pepper, and "boter of olie" is
+butter or oil. A name nothing matches becomes a new ingredient, under its clean
+name.
 
 ![The Ingredients page, with a flagged ingredient](/img/screenshots/ingredients-page.png)
 
 An ingredient filed under a parent uses the parent's aisle, nutrition and icon
 until it has its own.
 
-## Cleaning names
+## AI keeps the catalogue
 
-Names from recipes and shops can carry words that aren't the food, like "GR OF CANNED TUNA".
-**Fix catalogue** at the top of the page has AI suggest a
-clean name, "Canned Tuna", keeping the language and the brand.
-Suggestions wait under **Suggestions** until you accept or dismiss them.
+When AI is set up, it looks at every new ingredient by itself, moments after a
+recipe, grocery or pantry item adds it. It then does one of these:
 
-![Fix catalogue](/img/screenshots/ingredients-clean-names.png)
+- merges it into the food it is ("uien" into "onion")
+- files it under a parent ("cherry tomatoes" under "tomato")
+- gives it a clean name ("GR OF CANNED TUNA" becomes "Canned Tuna")
+- splits a name that is several foods ("Dijon or yellow mustard")
+- deletes it when it is not a food, like a tool ("deegroller") or a fragment
+  of a line ("melted"). Recipe lines and groceries keep their text.
 
-Administrators can have new ingredients cleaned automatically, see
-[New ingredients](../configuration/ai-provider.md#new-ingredients).
+AI leaves alone an ingredient you marked distinct, renamed or gave a parent,
+and every ingredient from the catalogue source. Ingredients AI could not reach
+are tried again every night.
+
+### Changed by AI
+
+**Changed by AI** at the top of the page lists everything AI did in the last
+month. Changes AI was not sure of come first, with **Keep** and **Undo**, and
+flag their ingredient until you choose. **Undo** puts back what the change took,
+deleted ingredients and their lines included, and AI never makes that change
+again.
+
+![Changed by AI](/img/screenshots/ingredients-changed-by-ai.png)
+
+## Deleting
+
+**Delete** in an ingredient's panel always works. The dialog says how many
+recipe lines and groceries keep their text without it, and how many pantry
+items go with it. Removing a translation moves what used it to another of the
+ingredient's names.
+
+![Deleting an ingredient](/img/screenshots/ingredients-delete.png)
+
+An ingredient someone added that nothing has used for three months is deleted
+by itself. A recurring grocery counts as a use, so a grocery set to repeat
+yearly keeps its ingredient.
 
 ## Data sources
 

@@ -70,15 +70,15 @@ leaves alone is listed under
 
 ### New ingredients
 
-**Automatic for new ingredients** runs on every ingredient a recipe, grocery or
-pantry item adds to the catalogue. Both options are off by default.
+AI looks at every ingredient a recipe, grocery or pantry item adds to the
+catalogue by itself, whenever AI is set up: see
+[AI keeps the catalogue](../groceries/ingredients.md#ai-keeps-the-catalogue).
 
-![Automatic for new ingredients](/img/screenshots/admin-automatic-ingredients.png)
+**Draw icons for new ingredients** also draws an icon for a new ingredient when
+neither it nor its parent has one. It is off by default and needs an
+[image provider](#image-generation).
 
-| Option             | What it does                                                                                                   |
-| ------------------ | -------------------------------------------------------------------------------------------------------------- |
-| **Clean the name** | [Cleans the name](../groceries/ingredients.md#cleaning-names) right away                                       |
-| **Draw an icon**   | Draws an icon when neither the ingredient nor its parent has one. Needs an [image provider](#image-generation) |
+![Draw icons for new ingredients](/img/screenshots/admin-automatic-ingredients.png)
 
 ### Tag strategy
 

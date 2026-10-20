@@ -706,6 +706,37 @@ export async function plainNameOf(text: string): Promise<{ text: string; fold: s
     : null;
 }
 
+/** The clean spelling a text reduces to, as a mint or a join adds it, for the first-start cleanup. */
+export async function cleanSpellingOf(text: string): Promise<{ text: string; fold: string }> {
+  return cleanAlias(spellingOf(cleanIngredientText(text), await currentRules()));
+}
+
+/**
+ * The foods the first of a food's names that its joining words split into foods known apart from
+ * the food itself names, for the first-start cleanup; null where none does.
+ */
+export async function partsByWordsOf(
+  ingredientId: string,
+  names: readonly string[]
+): Promise<{ parts: ResolvedIngredient[]; joined: LineJoin } | null> {
+  const rules = await currentRules();
+
+  for (const name of names) {
+    const found = joinedParts(spellingOf(cleanIngredientText(name), rules).clean, rules);
+
+    if (!found) continue;
+    const spellings = found.parts.map((part) => spellingOf(part, rules));
+    const known = new Map(
+      [...(await knownAliases(spellings))].filter(([, row]) => row.ingredientId !== ingredientId)
+    );
+    const named = foodsByWords({ ...found, spellings }, known);
+
+    if (named?.joined) return { parts: named.foods, joined: named.joined };
+  }
+
+  return null;
+}
+
 /** The one alias a spelling gives its food: its plain name, else its bare one, else its words ("(salt)" is "salt"). */
 function cleanAlias({ clean, fold, bare, bareFold, plain, plainFold }: Spelling) {
   if (plainFold) return { text: plain, fold: plainFold };

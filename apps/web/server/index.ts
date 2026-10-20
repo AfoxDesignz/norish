@@ -1,6 +1,7 @@
 import { initCaldavSync } from "@norish/api/caldav/event-listener";
 import { initRecipeEnrichmentListener } from "@norish/api/recipes/enrichment-listener";
 import { applyNutritionSourcesOnBoot } from "@norish/api/startup/apply-nutrition-sources";
+import { cleanUpCatalogueOnBoot } from "@norish/api/startup/clean-up-catalogue";
 import { createServer } from "@norish/api/startup/http-server";
 import { runStartupMaintenanceCleanup } from "@norish/api/startup/maintenance-cleanup";
 import { runMigrations } from "@norish/api/startup/migrations";
@@ -43,6 +44,10 @@ async function main() {
 
   // Old flagged mints, looked at again whenever the resolver's rules change.
   await recheckUndecidedMintsOnBoot();
+  log.info("-".repeat(50));
+
+  // What earlier versions left in the catalogue, cleaned once per release that changes the cleanup.
+  await cleanUpCatalogueOnBoot();
   log.info("-".repeat(50));
 
   // Ingredient Nutrition's source numbers, when this release carries new ones.

@@ -22,10 +22,23 @@ Colon lines are not turned into Headings (Mike, 2026-10-20: "Lets not ship that"
 
 **Blocked by:** 01, 02, 05, 07, 08, 13
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A scenario modelled on the production data covers each step: "gyoza vellen )", "gyoza vellen ((ontdooid))", "3wu)", "paprika (vrucht)", "zout en peper" kept distinct, an undecided own food.
-- [ ] After step 2, "gyoza vellen )" is the one spelling "gyoza vellen", on the same food: no second spelling and no second food appear (Mike, 2026-10-20).
-- [ ] The pass runs once; a second start does nothing.
-- [ ] Release notes, the upgrade note and the Ingredients docs page are updated. Changed by AI and the delete dialog have fresh screenshots. No real people's names appear in them.
-- [ ] All `CONTRIBUTING.md` gates pass, and the docs site builds.
+- [x] A scenario modelled on the production data covers each step: "gyoza vellen )", "gyoza vellen ((ontdooid))", "3wu)", "paprika (vrucht)", "zout en peper" kept distinct, an undecided own food.
+- [x] After step 2, "gyoza vellen )" is the one spelling "gyoza vellen", on the same food: no second spelling and no second food appear (Mike, 2026-10-20).
+- [x] The pass runs once; a second start does nothing.
+- [x] Release notes, the upgrade note and the Ingredients docs page are updated. Changed by AI and the delete dialog have fresh screenshots. No real people's names appear in them.
+- [x] All `CONTRIBUTING.md` gates pass, and the docs site builds.
+
+## Comments
+
+2026-10-20, implemented (after ticket 13, Mike: "Do 13 first, then 09"):
+
+- `cleanUpCatalogueOnFirstStart` (`shared-server/ingredients/seed/first-start-cleanup.ts`) runs at boot right after the recheck, once per `CLEANUP_VERSION` (1), recorded as `cleanupVersion` in the ingredient seed state only once the whole pass is through. Its repository side is `db/repositories/ingredient-cleanup.ts`; the resolver gained `cleanSpellingOf` and `partsByWordsOf`.
+- "Its own clean name" is the spelling a mint adds today (`cleanAlias`: plain, else bare). Step 2 rewrites the text of a spelling whose fold already is that name.
+- Step 3 deviation, the non-destructive reading: where no spelling holds the clean name yet, the variant takes it in place, so its food keeps its rows instead of a re-resolve minting a second food. Otherwise the variant goes and its lines, groceries and recurring groceries are resolved again from their own text, with AI off, minting for the row's owner. A Pantry Ingredient has no text, so it stays with the spelling the removal moves it to. A food left with no spelling joins the food holding its clean name ("zout naar smaak" into zout), or is deleted where the name names nothing (")"); a kept-distinct food is treated alike, as the spec says of old translations.
+- Step 4 splits own foods only (a seeded food is never deleted), by the words alone, through `splitCatalogueIngredient`, as AI's sure split does.
+- Step 5 queues one pass over every askable own food. The boot wrapper (`api/startup/clean-up-catalogue.ts`) starts the queues early for it; with AI off nothing is queued, and the nightly retry only covers unanswered flags.
+- Speed: 1,800 removed spellings with a line each took 4 s on this Mac, so the production copy's ~71k would hold the first boot ~2.5 min. Each round of 200 commits, so a boot cut short resumes. Marked `ponytail:` for ticket 12 to measure.
+- Docs: release notes (three features, four fixes, five upgrade notes), the Ingredients page rewritten (AI keeps the catalogue, Changed by AI, Deleting), the New ingredients section of the AI provider page. Screenshots `ingredients-changed-by-ai.png`, `ingredients-delete.png` (whole 1100x820 windows at 1.5x) and `admin-automatic-ingredients.png` (the row, as before) from the `ai` harness with staged rows; the owner is "AI E2E Owner". The old `ingredients-clean-names.png` and `ingredients-ask-ai.png` stay, as the 0.25 versioned docs show them.
+- The `ai` catalogue spec had one red on its first run: "a food nothing uses can be deleted" saw the panel stay mounted after Delete, during a 15 s stall in which every Redis socket timed out (swap at 8.8 of 10 GB). It then passed 24/24 with `--repeat-each=2`; not reproduced, so not fixed.
