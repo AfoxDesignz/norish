@@ -278,7 +278,12 @@ test("AI merges a food a recipe mints by itself, Changed by AI lists the merge, 
     // Then AI's pass, with nobody asking: it reads the name, and compares it with garlic.
     {
       kind: "success",
-      content: JSON.stringify({ englishName: "garlic", generalFood: null, sure: true }),
+      content: JSON.stringify({
+        englishName: "garlic",
+        generalFood: null,
+        otherNames: null,
+        sure: true,
+      }),
     },
     {
       kind: "success",
@@ -332,7 +337,12 @@ test("AI gives a food a recipe mints its plain name by itself, listed on Changed
   ai.control.enqueueIngredients(
     {
       kind: "success",
-      content: JSON.stringify({ englishName: "salmon fillet", generalFood: null, sure: true }),
+      content: JSON.stringify({
+        englishName: "salmon fillet",
+        generalFood: null,
+        otherNames: null,
+        sure: true,
+      }),
     },
     { kind: "success", content: JSON.stringify({ plainName: "zalmmoot" }) }
   );
@@ -365,7 +375,12 @@ test("AI deletes a line a recipe mints that names nothing, and Undo on Changed b
   ai.control.enqueueIngredients(
     {
       kind: "success",
-      content: JSON.stringify({ englishName: null, generalFood: null, sure: true }),
+      content: JSON.stringify({
+        englishName: null,
+        generalFood: null,
+        otherNames: null,
+        sure: true,
+      }),
     },
     {
       kind: "success",

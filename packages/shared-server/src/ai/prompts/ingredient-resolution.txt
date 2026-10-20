@@ -50,6 +50,8 @@ Knaks" is "frankfurter", "kipfilet" is "chicken breast". Give null when the new
 name is not a food at all.
 
 When there is no list of foods yet, you are asked only to read the name: give
-"englishName" as above and "generalFood", the more general food it is a kind of
+"englishName" as above, "generalFood", the more general food it is a kind of
 ("cherry tomatoes" are a kind of "tomato", "Unox Knaks" a kind of "sausage"), or
-null when there is none. Both are used to find the foods to compare it with.
+null when there is none, and "otherNames", two or three other names a shop might
+sell the same food under ("hot dog sausage" and "wiener" for "frankfurter"), or
+null when there are none. All are used to find the foods to compare it with.

@@ -114,6 +114,7 @@ export interface AskOptions {
 interface Reading {
   englishName: string | null;
   generalFood: string | null;
+  otherNames: string[];
   sure: boolean;
 }
 
@@ -181,9 +182,9 @@ export async function askWhatFoodThisIs(
 
 /**
  * Read first, then compare. The language model says what plain food the
- * name is and what it is a kind of; those two are looked up exactly, with
- * their parents, and joined to what the name's own words found. One question
- * is then asked over all of them. With nothing to compare even then, the
+ * name is, what it is a kind of and what else a shop calls it; those are
+ * looked up exactly, with their parents, before what the name's own words
+ * and the English name's words found. One question is then asked over all. With nothing to compare even then, the
  * reading stands: a food of its own, flagged unless the model was sure.
  */
 async function readThenCompare(
@@ -203,14 +204,19 @@ async function readThenCompare(
   trace.englishName = reading?.englishName ?? null;
 
   const named = await findIngredientsNamed(
-    [reading?.englishName, reading?.generalFood].map((name) => foldName(name ?? "")),
+    [reading?.englishName, reading?.generalFood, ...(reading?.otherNames ?? [])].map((name) =>
+      foldName(name ?? "")
+    ),
     excludeId
   );
-  const have = new Set(named.map((candidate) => candidate.id));
-  const candidates = [...named, ...found.filter((candidate) => !have.has(candidate.id))].slice(
-    0,
-    MAX_CANDIDATES
-  );
+  const byEnglishWords = reading?.englishName
+    ? await findIngredientCandidates(wordStarts(reading.englishName), MAX_CANDIDATES, excludeId)
+    : [];
+  const candidates = [...named, ...found, ...byEnglishWords]
+    .filter(
+      (candidate, index, all) => all.findIndex((other) => other.id === candidate.id) === index
+    )
+    .slice(0, MAX_CANDIDATES);
 
   trace.considered.push(...candidates.map((candidate) => candidate.name));
   if (!reading) {
@@ -343,6 +349,10 @@ const readingSchema = z
       .describe(
         "The more general food it is a kind of, in plain English, or null when it is not a kind of anything more general."
       ),
+    otherNames: z
+      .array(z.string())
+      .nullable()
+      .describe("Two or three other names a shop might sell this food under; null when none."),
     sure: z.boolean(),
   })
   .strict();
@@ -351,7 +361,7 @@ const readingSchema = z
 function readingSections(text: string): string[] {
   return [
     `New name: ${text}`,
-    "There is no list of foods yet. Say what plain food this name is (englishName), and what more general food it is a kind of (generalFood), so the catalogue can be searched for them.",
+    "There is no list of foods yet. Say what plain food this name is (englishName), what more general food it is a kind of (generalFood), and what else a shop might call it (otherNames), so the catalogue can be searched for them.",
   ];
 }
 
@@ -368,6 +378,7 @@ async function readName(text: string): Promise<Reading> {
   return {
     englishName: reading.englishName?.trim() || null,
     generalFood: reading.generalFood?.trim() || null,
+    otherNames: (reading.otherNames ?? []).map((name) => name.trim()).filter(Boolean),
     sure: reading.sure,
   };
 }

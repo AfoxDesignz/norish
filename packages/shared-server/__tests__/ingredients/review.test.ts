@@ -101,8 +101,13 @@ function answers(prompt: "ingredient-resolution" | "ingredient-plain-name", answ
 }
 
 /** What the language model reads a name as, before any comparing. */
-function reads(reading: { englishName: string | null; generalFood: string | null; sure: boolean }) {
-  answers("ingredient-resolution", reading);
+function reads(reading: {
+  englishName: string | null;
+  generalFood: string | null;
+  otherNames?: string[];
+  sure: boolean;
+}) {
+  answers("ingredient-resolution", { otherNames: null, ...reading });
 }
 
 /** The language model's comparison: a verdict on the `food`th candidate. */
@@ -223,6 +228,39 @@ describe("asking AI about an Ingredient", () => {
     expect(await changes()).toEqual([
       { kind: "merge", food: "onion", target: null, sure: true, kept: false },
     ]);
+  });
+
+  it("compares a name with the foods sharing a word with AI's English name for it", async () => {
+    await kept("chicken breast fillets");
+    const borst = await flagged("kippenborst");
+
+    reads({ englishName: "chicken breast", generalFood: null, sure: true });
+    compares("same", 1, true);
+
+    await expect(askAIAbout(borst.ingredientId)).resolves.toMatchObject({
+      outcome: "merge",
+      into: "chicken breast fillets",
+      considered: ["chicken breast fillets"],
+    });
+  });
+
+  it("looks up the other names AI says a shop sells the food under", async () => {
+    await kept("hot dog sausage");
+    const frank = await flagged("frankfurter");
+
+    reads({
+      englishName: "frankfurter",
+      generalFood: null,
+      otherNames: ["hot dog sausage", "wiener"],
+      sure: true,
+    });
+    compares("same", 1, true);
+
+    await expect(askAIAbout(frank.ingredientId)).resolves.toMatchObject({
+      outcome: "merge",
+      into: "hot dog sausage",
+      considered: ["hot dog sausage"],
+    });
   });
 
   it("merges a food AI is unsure is a known one too, and flags the food it joined", async () => {
