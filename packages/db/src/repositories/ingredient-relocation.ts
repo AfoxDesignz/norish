@@ -19,7 +19,7 @@ import {
   recurringGroceries,
   storeProductLinks,
 } from "@norish/db/schema";
-import { distinctFoods } from "@norish/shared/lib/line-foods";
+import { distinctFoods, joinOf } from "@norish/shared/lib/line-foods";
 
 import { moveMergedAIChanges } from "./ingredient-ai-changes";
 import { rowsNaming } from "./ingredient-catalogue";
@@ -350,7 +350,7 @@ export async function splitCatalogueIngredient(
     await tx
       .update(recipeIngredients)
       .set({
-        joined: line.foods.length > 1 ? (line.joined ?? joined) : null,
+        joined: joinOf(line.foods, line.joined ?? joined),
         version: sql`${recipeIngredients.version} + 1`,
       })
       .where(eq(recipeIngredients.id, id));

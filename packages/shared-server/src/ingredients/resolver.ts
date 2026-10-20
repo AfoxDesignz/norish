@@ -22,7 +22,7 @@ import { UNANSWERED_FLAG_REASONS } from "@norish/shared/contracts/ingredient-cat
 import { stripHtmlTags } from "@norish/shared/lib/helpers";
 import { catalogueLanguagesFor } from "@norish/shared/lib/ingredient-names";
 import { namesNoFood } from "@norish/shared/lib/ingredient-text";
-import { distinctFoods } from "@norish/shared/lib/line-foods";
+import { distinctFoods, joinOf } from "@norish/shared/lib/line-foods";
 import { mayBeASlip, nearestSlip } from "@norish/shared/lib/name-slips";
 import {
   inflectedReadings,
@@ -327,7 +327,7 @@ function foodsByWords(
     }))
   );
 
-  return { foods, joined: foods.length > 1 ? parts.joined : null };
+  return { foods, joined: joinOf(foods, parts.joined) };
 }
 
 /**
@@ -420,7 +420,7 @@ async function resolveTexts(
       resolved.set(spelling, {
         text: spelling.text,
         foods,
-        joined: foods.length > 1 ? answer.joined : null,
+        joined: joinOf(foods, answer.joined),
       });
       continue;
     }
