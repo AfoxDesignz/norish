@@ -295,6 +295,12 @@ interface SpelledParts extends JoinedParts {
   spellings: Spelling[];
 }
 
+function spelledParts(clean: string, rules: SpellingRules): SpelledParts | null {
+  const found = joinedParts(clean, rules);
+
+  return found && { ...found, spellings: found.parts.map((part) => spellingOf(part, rules)) };
+}
+
 /**
  * The foods a text's joining words split it into, each with the part naming it, where the first two
  * rungs know every part; parts that are one food name it alone. Undefined where they name no foods.
@@ -336,11 +342,7 @@ async function readByWords(
   const spellings = asWritten.filter((spelling) => !spellingNamesNoFood(spelling));
   const splits = new Map(
     (splitJoined ? spellings : []).flatMap((spelling) => {
-      const found = joinedParts(spelling.clean, rules);
-      const spelled = found && {
-        ...found,
-        spellings: found.parts.map((p) => spellingOf(p, rules)),
-      };
+      const spelled = spelledParts(spelling.clean, rules);
 
       return spelled ? [[spelling, spelled] as const] : [];
     })
@@ -720,14 +722,15 @@ export async function partsByWordsOf(
   name: string
 ): Promise<{ parts: ResolvedIngredient[]; joined: LineJoin } | null> {
   const rules = await currentRules();
-  const found = joinedParts(spellingOf(cleanIngredientText(name), rules).clean, rules);
+  const spelled = spelledParts(spellingOf(cleanIngredientText(name), rules).clean, rules);
 
-  if (!found) return null;
-  const spellings = found.parts.map((part) => spellingOf(part, rules));
+  if (!spelled) return null;
   const known = new Map(
-    [...(await knownAliases(spellings))].filter(([, row]) => row.ingredientId !== ingredientId)
+    [...(await knownAliases(spelled.spellings))].filter(
+      ([, row]) => row.ingredientId !== ingredientId
+    )
   );
-  const named = foodsByWords({ ...found, spellings }, known);
+  const named = foodsByWords(spelled, known);
 
   return named?.joined ? { parts: named.foods, joined: named.joined } : null;
 }
