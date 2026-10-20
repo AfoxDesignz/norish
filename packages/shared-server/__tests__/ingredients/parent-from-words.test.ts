@@ -8,7 +8,6 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import type { SeedEntry } from "@norish/db/repositories/ingredient-seed";
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import {
@@ -23,21 +22,10 @@ import {
 } from "@norish/shared-server/ingredients/ai-changes";
 import { listIngredients, setParent } from "@norish/shared-server/ingredients/catalogue";
 import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
-import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import { getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
-
-function entry(offId: string, ...names: string[]): SeedEntry {
-  return {
-    offId,
-    name: names[0]!,
-    nameFold: ingredientAliasFold(names[0]!),
-    parentOffId: null,
-    nutrition: null,
-    aliases: names.map((text) => ({ text, fold: ingredientAliasFold(text), locale: null })),
-  };
-}
+import { seedEntry } from "../helpers/seed-entries";
 
 describe("a mint's parent from the words of its text", () => {
   const testBase = new RepositoryTestBase("test_parent_from_words");
@@ -54,25 +42,25 @@ describe("a mint's parent from the words of its text", () => {
 
     actor = { userId: user.id, householdUserIds: null, isServerAdmin: true };
     await applyIngredientSeed([
-      entry("en:cumin", "cumin", "komijn"),
-      entry("en:parsley", "parsley", "peterselie"),
-      entry("en:paprika", "paprika"),
-      entry("en:sweet-paprika", "sweet paprika"),
-      entry("en:noodle", "noodles"),
-      entry("en:garlic", "garlic", "knoflook"),
-      entry("en:kale", "kale"),
-      entry("en:olive-oil", "olive oil", "olijfolie"),
-      entry("en:sardine", "sardines"),
-      entry("en:chicken", "chicken", "kip"),
-      entry("en:rice", "rice", "rijst"),
-      entry("en:tomato", "tomato"),
-      entry("en:cherry", "cherry"),
-      entry("en:onion", "onion", "ui"),
-      entry("en:avocado", "avocado"),
-      entry("en:red-bell-pepper", "red bell pepper"),
-      entry("en:pepper", "pepper"),
-      entry("en:guajillo-chili", "guajillo"),
-      entry("en:chicken-thigh", "chicken thigh"),
+      seedEntry("en:cumin", "cumin", "komijn"),
+      seedEntry("en:parsley", "parsley", "peterselie"),
+      seedEntry("en:paprika", "paprika"),
+      seedEntry("en:sweet-paprika", "sweet paprika"),
+      seedEntry("en:noodle", "noodles"),
+      seedEntry("en:garlic", "garlic", "knoflook"),
+      seedEntry("en:kale", "kale"),
+      seedEntry("en:olive-oil", "olive oil", "olijfolie"),
+      seedEntry("en:sardine", "sardines"),
+      seedEntry("en:chicken", "chicken", "kip"),
+      seedEntry("en:rice", "rice", "rijst"),
+      seedEntry("en:tomato", "tomato"),
+      seedEntry("en:cherry", "cherry"),
+      seedEntry("en:onion", "onion", "ui"),
+      seedEntry("en:avocado", "avocado"),
+      seedEntry("en:red-bell-pepper", "red bell pepper"),
+      seedEntry("en:pepper", "pepper"),
+      seedEntry("en:guajillo-chili", "guajillo"),
+      seedEntry("en:chicken-thigh", "chicken thigh"),
     ]);
     seeded = await listSeededIngredientIds();
   });
@@ -133,7 +121,10 @@ describe("a mint's parent from the words of its text", () => {
   });
 
   it("never files under a word of recipe language another language spells a food with", async () => {
-    await applyIngredientSeed([entry("en:duck", "duck", "and"), entry("en:carrot", "carrots")]);
+    await applyIngredientSeed([
+      seedEntry("en:duck", "duck", "and"),
+      seedEntry("en:carrot", "carrots"),
+    ]);
     seeded = await listSeededIngredientIds();
 
     expect(await mintOne("frozen peas and carrots")).toMatchObject({
@@ -208,12 +199,12 @@ describe("a mint's parent from the words of its text", () => {
 
   it("files under a spelling inside a name only from four letters, under one ending it at any", async () => {
     await applyIngredientSeed([
-      entry("en:tea", "tea", "te"),
-      entry("en:apple", "apple", "raw"),
-      entry("en:honey", "honey", "mil"),
-      entry("en:bone", "bone", "zo"),
-      entry("en:oil", "oil", "olie"),
-      entry("en:onion", "onion", "ui"),
+      seedEntry("en:tea", "tea", "te"),
+      seedEntry("en:apple", "apple", "raw"),
+      seedEntry("en:honey", "honey", "mil"),
+      seedEntry("en:bone", "bone", "zo"),
+      seedEntry("en:oil", "oil", "olie"),
+      seedEntry("en:onion", "onion", "ui"),
     ]);
     seeded = await listSeededIngredientIds();
 

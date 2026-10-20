@@ -8,7 +8,6 @@
 import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { SeedEntry } from "@norish/db/repositories/ingredient-seed";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
 import { mintIngredientWithAliases } from "@norish/db/repositories/ingredient-aliases";
 import {
@@ -35,17 +34,7 @@ import {
   insertTestRecipeLine,
 } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
-
-function entry(offId: string, ...names: string[]): SeedEntry {
-  return {
-    offId,
-    name: names[0]!,
-    nameFold: ingredientAliasFold(names[0]!),
-    parentOffId: null,
-    nutrition: null,
-    aliases: names.map((text) => ({ text, fold: ingredientAliasFold(text), locale: null })),
-  };
-}
+import { seedEntry } from "../helpers/seed-entries";
 
 describe("the first-start cleanup", () => {
   const testBase = new RepositoryTestBase("test_first_start_cleanup");
@@ -67,10 +56,10 @@ describe("the first-start cleanup", () => {
       .delete(serverConfig)
       .where(eq(serverConfig.key, ServerConfigKeys.INGREDIENT_SEED_STATE));
     await applyIngredientSeed([
-      entry("en:honey", "honey", "3wu)"),
-      entry("en:bell-pepper", "bell pepper", "paprika (vrucht)"),
-      entry("en:salt", "salt", "zout", "Salz"),
-      entry("en:pepper", "pepper", "peper", "Pfeffer"),
+      seedEntry("en:honey", "honey", "3wu)"),
+      seedEntry("en:bell-pepper", "bell pepper", "paprika (vrucht)"),
+      seedEntry("en:salt", "salt", "zout", "Salz"),
+      seedEntry("en:pepper", "pepper", "peper", "Pfeffer"),
     ]);
     seeded = await listSeededIngredientIds();
   });

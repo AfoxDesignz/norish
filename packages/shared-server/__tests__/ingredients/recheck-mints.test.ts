@@ -9,7 +9,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import type { SeedEntry } from "@norish/db/repositories/ingredient-seed";
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
 import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
@@ -24,21 +23,10 @@ import { withResolvedIngredients } from "@norish/shared-server/ingredients/recip
 import { RUNG_VERSION } from "@norish/shared-server/ingredients/resolver";
 import { readIngredientSeedState } from "@norish/shared-server/ingredients/seed/catalogue-seed";
 import { recheckUndecidedMintsOnRungChange } from "@norish/shared-server/ingredients/seed/recheck-mints";
-import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import { getTestDb, mintTestFood } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
-
-function entry(offId: string, ...names: string[]): SeedEntry {
-  return {
-    offId,
-    name: names[0]!,
-    nameFold: ingredientAliasFold(names[0]!),
-    parentOffId: null,
-    nutrition: null,
-    aliases: names.map((text) => ({ text, fold: ingredientAliasFold(text), locale: null })),
-  };
-}
+import { seedEntry } from "../helpers/seed-entries";
 
 describe("looking at old Flagged Ingredients again", () => {
   const testBase = new RepositoryTestBase("test_recheck_mints");
@@ -58,11 +46,11 @@ describe("looking at old Flagged Ingredients again", () => {
       .delete(serverConfig)
       .where(eq(serverConfig.key, ServerConfigKeys.INGREDIENT_SEED_STATE));
     await applyIngredientSeed([
-      entry("en:salt", "salt", "zout"),
-      entry("en:parsley", "parsley", "peterselie"),
-      entry("en:cumin", "cumin"),
-      entry("en:garlic", "garlic"),
-      entry("en:chickpea", "chickpeas"),
+      seedEntry("en:salt", "salt", "zout"),
+      seedEntry("en:parsley", "parsley", "peterselie"),
+      seedEntry("en:cumin", "cumin"),
+      seedEntry("en:garlic", "garlic"),
+      seedEntry("en:chickpea", "chickpeas"),
     ]);
     seeded = await listSeededIngredientIds();
   });
