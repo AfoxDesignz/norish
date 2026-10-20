@@ -133,7 +133,8 @@ export async function startEmbeddedParser(
 
   const child = spawn(pythonExecutable, args, {
     cwd: parserAppDir,
-    env: globalThis.process.env,
+    // The parser stops itself once this process is gone, however it died (app/main.py).
+    env: { ...globalThis.process.env, PARSER_API_PARENT_PID: String(process.pid) },
     stdio: ["ignore", "pipe", "pipe"],
     detached: process.platform !== "win32",
   });
