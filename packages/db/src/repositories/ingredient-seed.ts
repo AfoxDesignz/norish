@@ -1,3 +1,4 @@
+import type { SQL } from "drizzle-orm";
 import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
 import type { DbTransaction } from "@norish/db/drizzle";
@@ -13,6 +14,7 @@ import {
 } from "@norish/db/schema";
 
 import {
+  clearAIFlagUnlessOpen,
   recordGuessedParent,
   takeOpenParentChanges,
   vouchForOpenAIChanges,
@@ -424,10 +426,7 @@ export async function insertSeededIngredient(
   });
 }
 
-/**
- * Move a seeded spelling the seed now gives another entry, with the rows behind it, where the first
- * entry's food still holds it. Whether it moved.
- */
+/** Move a seeded spelling, with its rows, from one seeded food to another that the seed now gives it. */
 export async function moveSeededSpelling(
   fold: string,
   fromId: string,
@@ -464,41 +463,19 @@ export async function listUnchosenOwnChildren(
     );
 }
 
-/**
- * Re-file an own food from one parent to another, where it is still under the first, no person
- * filed it meanwhile, and no person undid the second. With `unsure`, an open parent change moves
- * with it. Whether it moved.
- */
+/** Re-file an own food the words filed under `fromId` under `toId` (`fileUnder`). Whether it moved. */
 export async function refileOwnFood(
   id: string,
   fromId: string,
   toId: string,
   unsure: boolean
 ): Promise<boolean> {
-  return await db.transaction(async (tx) => {
-    await lockTree(tx);
-    if ((await findIngredientAncestors([toId], tx)).get(toId)?.includes(id)) return false;
-    if (await wasParentUndone(tx, id, toId)) return false;
-
-    const moved = await tx
-      .update(ingredients)
-      .set({ parentId: toId, version: sql`${ingredients.version} + 1` })
-      .where(
-        and(
-          eq(ingredients.id, id),
-          eq(ingredients.parentId, fromId),
-          isNull(ingredients.offId),
-          eq(ingredients.parentChosen, false)
-        )
-      )
-      .returning({ id: ingredients.id });
-
-    if (moved.length > 0 && unsure && (await takeOpenParentChanges(tx, id))) {
-      await recordGuessedParent(tx, id, toId);
-    }
-
-    return moved.length > 0;
-  });
+  return await fileUnder(
+    id,
+    toId,
+    and(eq(ingredients.parentId, fromId), isNull(ingredients.offId)),
+    unsure
+  );
 }
 
 /** Every seeded Ingredient, by the taxonomy entry it stands for. */
@@ -625,6 +602,24 @@ export async function fileUndecidedMint(
   parentId: string,
   unsure = false
 ): Promise<boolean> {
+  return await fileUnder(
+    id,
+    parentId,
+    and(isNull(ingredients.parentId), eq(ingredients.flagged, true)),
+    unsure
+  );
+}
+
+/**
+ * File the words' parent where `where` still holds, no person decided (kept distinct, kept a
+ * change or chose a parent), no cycle closes and no person undid it. Whether it was filed.
+ */
+async function fileUnder(
+  id: string,
+  parentId: string,
+  where: SQL | undefined,
+  unsure: boolean
+): Promise<boolean> {
   return await db.transaction(async (tx) => {
     await lockTree(tx);
     if ((await findIngredientAncestors([parentId], tx)).get(parentId)?.includes(id)) return false;
@@ -638,20 +633,21 @@ export async function fileUndecidedMint(
       .where(
         and(
           eq(ingredients.id, id),
-          isNull(ingredients.parentId),
-          eq(ingredients.flagged, true),
+          where,
           eq(ingredients.keptDistinct, false),
           eq(ingredients.parentChosen, false)
         )
       )
       .returning({ id: ingredients.id });
 
-    if (filed.length > 0 && unsure) {
-      await takeOpenParentChanges(tx, id);
-      await recordGuessedParent(tx, id, parentId);
-    }
+    if (filed.length === 0) return false;
+    // An older guess goes with the old parent; a sure one leaves no doubt behind.
+    const replaced = await takeOpenParentChanges(tx, id);
 
-    return filed.length > 0;
+    if (unsure) await recordGuessedParent(tx, id, parentId);
+    else if (replaced) await clearAIFlagUnlessOpen(tx, id);
+
+    return true;
   });
 }
 

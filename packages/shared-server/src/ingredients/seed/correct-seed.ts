@@ -22,13 +22,20 @@ import {
 
 const log = createLogger("ingredient-seed");
 
+export interface CorrectionOutcome {
+  /** Seeded spellings moved to the food the seed now gives them. */
+  moved: number;
+  /** Own foods the words filed under the old food, now under the new one. */
+  refiled: number;
+}
+
 /** Make the corrections where this version of them has not been made; null where it has. */
-export async function correctSeedOnce(): Promise<{ moved: number; refiled: number } | null> {
+export async function correctSeedOnce(): Promise<CorrectionOutcome | null> {
   if ((await readIngredientSeedState()).correctionsVersion === SEED_CORRECTIONS_VERSION)
     return null;
 
   const seeded = await listSeededIngredientIds();
-  const outcome = { moved: 0, refiled: 0 };
+  const outcome: CorrectionOutcome = { moved: 0, refiled: 0 };
 
   for (const move of SPELLING_MOVES) {
     const fromId = seeded.get(move.from);

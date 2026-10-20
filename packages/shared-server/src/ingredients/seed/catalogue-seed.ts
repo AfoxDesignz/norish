@@ -49,9 +49,8 @@ function seedText(text: string): string {
 }
 
 /**
- * Spellings Open Food Facts gives the wrong entry, moved to the right one as the file is read, so
- * the nightly fetch keeps them there. Raise `SEED_CORRECTIONS_VERSION` with every new one, so an
- * instance seeded before moves its own copy once (`correctSeedOnce`).
+ * Spellings Open Food Facts gives the wrong entry, moved to the right one as each file is read.
+ * Raise `SEED_CORRECTIONS_VERSION` with each, so a seeded instance moves its copy (`correctSeedOnce`).
  */
 export const SPELLING_MOVES: ReadonlyArray<{ from: string; to: string; spellings: string[] }> = [
   // Its coating also holds seasoning's names; a seasoning is a spice mix (ingredient-cleanup 21).
@@ -64,23 +63,31 @@ export const SPELLING_MOVES: ReadonlyArray<{ from: string; to: string; spellings
 
 export const SEED_CORRECTIONS_VERSION = 1;
 
-/** The entries with `SPELLING_MOVES` made, where the file has both foods. */
-function corrected(entries: SeedEntry[]): SeedEntry[] {
-  const byOffId = new Map(entries.map((entry) => [entry.offId, entry]));
+/** The entries with each move made where the file has its food: no other entry keeps the spelling. */
+function corrected(entries: readonly SeedEntry[]): SeedEntry[] {
+  const offIds = new Set(entries.map((entry) => entry.offId));
+  const owner = new Map<string, string>();
 
   for (const move of SPELLING_MOVES) {
-    const from = byOffId.get(move.from);
-    const to = byOffId.get(move.to);
-
-    if (!from || !to) continue;
-    const folds = new Set(move.spellings.map(ingredientAliasFold));
-    const moved = from.aliases.filter((alias) => folds.has(alias.fold));
-
-    from.aliases = from.aliases.filter((alias) => !folds.has(alias.fold));
-    to.aliases = [...to.aliases, ...moved];
+    if (!offIds.has(move.to)) continue;
+    for (const spelling of move.spellings) owner.set(ingredientAliasFold(spelling), move.to);
   }
 
-  return entries;
+  const moved = entries.flatMap((entry) => entry.aliases.filter((alias) => owner.has(alias.fold)));
+
+  return entries.map((entry) => {
+    const kept = entry.aliases.filter(
+      (alias) => (owner.get(alias.fold) ?? entry.offId) === entry.offId
+    );
+    const gained = moved.filter(
+      (alias, index) =>
+        owner.get(alias.fold) === entry.offId &&
+        !kept.some((own) => own.fold === alias.fold) &&
+        moved.findIndex((other) => other.fold === alias.fold) === index
+    );
+
+    return { ...entry, aliases: [...kept, ...gained] };
+  });
 }
 
 /** A taxonomy file, read and folded into the entries the seed applies. */

@@ -2,16 +2,14 @@ import { initCaldavSync } from "@norish/api/caldav/event-listener";
 import { initRecipeEnrichmentListener } from "@norish/api/recipes/enrichment-listener";
 import { applyNutritionSourcesOnBoot } from "@norish/api/startup/apply-nutrition-sources";
 import { cleanUpCatalogueOnBoot } from "@norish/api/startup/clean-up-catalogue";
+import { correctSeedOnBoot } from "@norish/api/startup/correct-seed";
 import { createServer } from "@norish/api/startup/http-server";
 import { runStartupMaintenanceCleanup } from "@norish/api/startup/maintenance-cleanup";
 import { runMigrations } from "@norish/api/startup/migrations";
 import { recheckUndecidedMintsOnBoot } from "@norish/api/startup/recheck-undecided-mints";
 import { registerApiHandlersForQueue } from "@norish/api/startup/register-queue-api-handlers";
 import { seedServerConfig } from "@norish/api/startup/seed-config";
-import {
-  correctSeedOnBoot,
-  seedIngredientCatalogueOnFirstBoot,
-} from "@norish/api/startup/seed-ingredient-catalogue";
+import { seedIngredientCatalogueOnFirstBoot } from "@norish/api/startup/seed-ingredient-catalogue";
 import { registerShutdownHandlers } from "@norish/api/startup/shutdown";
 import { initializeVideoProcessing } from "@norish/api/startup/video-processing";
 import { initializeServerConfig, SERVER_CONFIG } from "@norish/config/env-config-server";

@@ -26,3 +26,10 @@ Measured on ticket 16's set: 18 names were filed quietly under coating, 10 of th
 - Not the first-start cleanup: raising `CLEANUP_VERSION` would rerun every step, including the AI pass over every undecided food.
 - Checked on the production copy's data: `en:coating` holds "seasoning" and `en:mixed-spices` exists, with garam masala, ras el hanout and shawarma spices under it. Not run end to end on the copy, which is not on this release's schema.
 
+
+2026-10-20, review fixes:
+
+- A parent a person kept from an unsure change is no longer re-filed: the re-file and `fileUndecidedMint` share one guard (`fileUnder`), which leaves a food kept distinct alone.
+- A sure re-file takes an open parent change naming the old food and clears the doubt it flagged. An unsure one records the guess under the new parent.
+- A moved spelling is taken from every other entry in the file, so an entry listed before mixed spices that also says "seasoning" cannot claim it.
+- The boot step is its own startup module, as the others are; the outcome is a named type.
