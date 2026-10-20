@@ -206,6 +206,31 @@ describe("a mint's parent from the words of its text", () => {
     expect((await listAIChangesFor(actor)).map((it) => it.fromWords)).toEqual([true]);
   });
 
+  it("files under a spelling inside a name only from four letters, under one ending it at any", async () => {
+    await applyIngredientSeed([
+      entry("en:tea", "tea", "te"),
+      entry("en:apple", "apple", "raw"),
+      entry("en:honey", "honey", "mil"),
+      entry("en:bone", "bone", "zo"),
+      entry("en:oil", "oil", "olie"),
+      entry("en:onion", "onion", "ui"),
+    ]);
+    seeded = await listSeededIngredientIds();
+
+    for (const [text, offId] of [
+      ["olie om te bakken", "en:tea"],
+      ["raw king prawns", "en:apple"],
+      ["mil liquid sweetener", "en:honey"],
+      ["zo n bakje", "en:bone"],
+    ] as const) {
+      expect((await mintOne(text)).parent?.id).not.toBe(seeded.get(offId));
+    }
+    expect(await mintOne("olie om te bakken")).toMatchObject({
+      parent: { id: seeded.get("en:oil") },
+    });
+    expect(await mintOne("rode ui")).toMatchObject({ parent: { id: seeded.get("en:onion") } });
+  });
+
   it("keeping keeps the parent as the person's choice, and clears the flag", async () => {
     const cloves = await mintOne("garlic cloves crushed");
     const [change] = await listAIChanges();

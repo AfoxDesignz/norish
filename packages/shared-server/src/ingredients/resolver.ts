@@ -71,7 +71,7 @@ import { announceMinted } from "./minted";
  * amended by ADR-0039). The spelling its text ends with ("ground cumin" under
  * cumin) is filed quietly; one found anywhere else in the words ("garlic
  * cloves" under garlic, "kale large stalks removed" under kale) is an unsure
- * AI Change, for a person to keep or undo.
+ * AI Change, for a person to keep or undo, and needs four letters or more.
  */
 
 /**
@@ -83,8 +83,9 @@ import { announceMinted } from "./minted";
  * 5: a weight or a volume at a name's start, with or without its number.
  * 6: a joining word left at a name's start ("di farina"). 7: stray marks,
  * doubled brackets, prices and notes are no part of a name ("baking soda )").
+ * 8: a parent found inside a name needs a spelling of four letters or more.
  */
-export const RUNG_VERSION = 7;
+export const RUNG_VERSION = 8;
 
 /** Who the resolution is for: the owner of anything it mints. */
 export interface ResolveActor {
@@ -507,12 +508,13 @@ export interface ParentFromWords {
  * contains as whole words and is longer than ("verse peterselie" under
  * peterselie, "smoked sweet paprika" under sweet paprika, "garlic cloves"
  * under garlic), or none. Of two the same length, the one the text ends
- * with. Only the words before an "in", "met" or "with" are read, and those
- * may name the parent whole ("sardines in water" under sardine); a word of
- * recipe language alone ("and", "more") names none. Where the words end in
- * a plural, its singular is read too, the whole text included ("carrots"
- * under carrot, "red bell peppers" under red bell pepper): the plural stays
- * a food of its own, for AI or a person to merge.
+ * with. A spelling the text does not end with needs four letters ("olie om
+ * te bakken" is no tea). Only the words before an "in", "met" or "with" are
+ * read, and those may name the parent whole ("sardines in water" under
+ * sardine); a word of recipe language alone ("and", "more") names none.
+ * Where the words end in a plural, its singular is read too, the whole text
+ * included ("carrots" under carrot, "red bell peppers" under red bell
+ * pepper): the plural stays a food of its own, for AI or a person to merge.
  */
 async function parentFromWords(spelling: Spelling): Promise<ParentFromWords | null> {
   const { rules } = spelling;
@@ -533,12 +535,11 @@ async function parentFromWords(spelling: Spelling): Promise<ParentFromWords | nu
 
     if (length < words.length || cut > 0) {
       for (let start = tail; start >= 0; start -= 1) {
-        if (readable(start)) {
-          windows.push({
-            fold: words.slice(start, start + length).join(" "),
-            sure: start === tail,
-          });
-        }
+        const fold = words.slice(start, start + length).join(" ");
+        // Inside a name a short spelling is mostly another word ("te" in "olie om te bakken").
+        const longEnough = start === tail || fold.replaceAll(" ", "").length >= 4;
+
+        if (readable(start) && longEnough) windows.push({ fold, sure: start === tail });
       }
     }
     if (readable(tail)) {
