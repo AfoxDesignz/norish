@@ -173,6 +173,7 @@ describe("the first-start cleanup", () => {
       cleaned: 1,
       removed: 1,
       split: 1,
+      renamed: 1,
       asked: 2,
     });
 
@@ -183,8 +184,14 @@ describe("the first-start cleanup", () => {
       "paprika (vrucht)",
     ]);
 
-    // 2 and 3. One spelling, on the same food; its line and grocery point at it.
+    // 2 and 3. One spelling, on the same food, named for it; its line and grocery point at it.
     expect(await getSpellingTexts(gyoza.ingredientId)).toEqual(["gyoza vellen"]);
+    await expect(
+      db
+        .select({ name: ingredients.name })
+        .from(ingredients)
+        .where(eq(ingredients.id, gyoza.ingredientId))
+    ).resolves.toEqual([{ name: "gyoza vellen" }]);
     expect(await lineSpellings(gyozaLine.id)).toEqual(["gyoza vellen"]);
     await expect(
       db
@@ -236,6 +243,23 @@ describe("the first-start cleanup", () => {
       .where(eq(ingredientAliases.fold, ingredientAliasFold("cooked pasta of choice )")));
 
     expect(left).toEqual({ text: "cooked pasta of choice )" });
+  });
+
+  it("keeps the name a person gave a food, cleaning only its spelling", async () => {
+    const named = await oldMint("Gyoza (ontdooid)", ["Gyoza (ontdooid) )"]);
+
+    await getTestDb()
+      .update(ingredients)
+      .set({ nameChosen: true })
+      .where(eq(ingredients.id, named.ingredientId));
+
+    await expect(cleanUpCatalogueOnFirstStart(askAI)).resolves.toMatchObject({ renamed: 0 });
+    await expect(
+      getTestDb()
+        .select({ name: ingredients.name })
+        .from(ingredients)
+        .where(eq(ingredients.id, named.ingredientId))
+    ).resolves.toEqual([{ name: "Gyoza (ontdooid)" }]);
   });
 
   it("joins a food whose one spelling's clean name another food has, and its rows follow", async () => {

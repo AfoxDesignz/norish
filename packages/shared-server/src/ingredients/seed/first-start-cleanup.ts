@@ -1,15 +1,6 @@
 /**
- * The cleanup the first start of this release runs over what earlier versions left (ADR-0037),
- * once per `CLEANUP_VERSION`, after the seed and the recheck, with AI off:
- *
- * 1. seeded spellings lose their stray marks ("3wu)", "|चौलाई}}"); balanced brackets stay;
- * 2. a spelling whose fold is already clean ("gyoza vellen )") gets its clean text;
- * 3. every other own spelling that is not its own clean name ("gyoza vellen ((ontdooid))") is
- *    removed, and the rows it named are resolved again from their own text. Where no spelling has
- *    its clean name yet, it takes the clean name in place, so its food keeps its rows;
- * 4. an own food whose name the joining words split into known foods ("zout en peper") is split
- *    into them and removed, even one a person kept distinct;
- * 5. the AI pass is asked about every own food no person decided about.
+ * The first start's cleanup of what earlier versions left (ADR-0037; ingredient-cleanup ticket 09),
+ * once per `CLEANUP_VERSION`: each step's function says what it does.
  */
 import type { CleanupSpelling, NamingRow } from "@norish/db/repositories/ingredient-cleanup";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
@@ -24,6 +15,7 @@ import {
   foodSpelled,
   listOwnFoodsWithSpellings,
   listSpellingsForCleanup,
+  renameFood,
   repointGroceries,
   repointLines,
   rewriteSpelling,
@@ -50,12 +42,8 @@ const log = createLogger("ingredient-cleanup");
 /** Raised when a release needs the cleanup to run again. */
 export const CLEANUP_VERSION = 1;
 
-/**
- * How many spellings one round of step 3 removes before resolving their rows again. Each round
- * commits, so a boot cut short resumes where it stopped.
- * ponytail: ~9 statements per spelling, ~2 ms each with its row; a set-based removal if ticket 12
- * measures the 71k on the production copy as too slow a first boot.
- */
+/** How many variants one round removes; each round commits, so a boot cut short resumes. */
+// ponytail: ~2 ms a variant, ~2.5 min for production's 71k; set-based if ticket 12 finds it slow.
 const REMOVED_PER_ROUND = 200;
 
 export interface CleanupOutcome {
@@ -67,6 +55,8 @@ export interface CleanupOutcome {
   removed: number;
   /** Joined foods split and removed (4). */
   split: number;
+  /** Own foods given the clean name their name reduces to (4). */
+  renamed: number;
   /** Foods the AI pass was asked about (5). */
   asked: number;
 }
@@ -89,7 +79,7 @@ export async function cleanUpCatalogueOnFirstStart(
   log.info({ ...outcome, cleanupVersion: CLEANUP_VERSION }, "Catalogue cleaned up");
 
   // Removed spellings, splits and merges change which food rows mean: open clients refetch.
-  if (outcome.seeded + outcome.cleaned + outcome.removed + outcome.split > 0) {
+  if (outcome.seeded + outcome.cleaned + outcome.removed + outcome.split + outcome.renamed > 0) {
     await ingredientsRealtime.publish("changed", { ingredientIds: [] }, undefined);
   }
 
@@ -99,7 +89,15 @@ export async function cleanUpCatalogueOnFirstStart(
 async function cleanUpCatalogue(
   askAI: (ingredientIds: string[]) => Promise<void>
 ): Promise<CleanupOutcome> {
-  const outcome: CleanupOutcome = { seeded: 0, cleaned: 0, removed: 0, split: 0, asked: 0 };
+  // 1. Seeded spellings lose their stray marks ("3wu)"); balanced brackets stay ("paprika (vrucht)").
+  const outcome: CleanupOutcome = {
+    seeded: 0,
+    cleaned: 0,
+    removed: 0,
+    split: 0,
+    renamed: 0,
+    asked: 0,
+  };
   const spellings = await listSpellingsForCleanup();
   const variants: Variant[] = [];
 
@@ -122,7 +120,8 @@ async function cleanUpCatalogue(
     }
   }
 
-  // Step 2 before 3, so a dirty spelling holds its clean name before a variant asks for it.
+  // 2 and 3. An own spelling that is not its own clean name takes it where it is free, the dirty
+  // ones first ("gyoza vellen )"); the rest go, and their rows are resolved again (`removeVariants`).
   const removing: Variant[] = [];
 
   for (const variant of [...variants].sort(
@@ -138,12 +137,23 @@ async function cleanUpCatalogue(
     outcome.removed += await removeVariants(removing.slice(start, start + REMOVED_PER_ROUND));
   }
 
+  // 4. A joined own food ("zout en peper") is split into its foods, even one kept distinct; any
+  // other takes the clean name its name reduces to, unless a person named it.
   for (const food of await listOwnFoodsWithSpellings()) {
     const split = await partsByWordsOf(food.id, [food.name, ...food.aliases]);
 
-    if (split && (await splitFood(food.id, split.parts, split.joined))) outcome.split += 1;
+    if (split) {
+      if (await splitFood(food.id, split.parts, split.joined)) outcome.split += 1;
+      continue;
+    }
+    const clean = await cleanSpellingOf(food.name);
+
+    if (clean.fold && clean.text !== food.name && (await renameFood(food.id, clean.text))) {
+      outcome.renamed += 1;
+    }
   }
 
+  // 5. The AI pass, over every own food no person decided about.
   const askable = await listAskableIngredientIds();
 
   await askAI(askable);
@@ -153,9 +163,8 @@ async function cleanUpCatalogue(
 }
 
 /**
- * Remove these spellings, then resolve the rows they named again from their own text, with AI
- * off. A food left with no spelling joins the food its clean name names, or goes where that
- * names none (")"), as its rows would. Answers how many went.
+ * Remove these spellings and resolve their rows again, AI off; a food left with none joins the food
+ * holding its clean name, or goes where that names nothing (")"). Answers how many went.
  */
 async function removeVariants(variants: readonly Variant[]): Promise<number> {
   let removed = 0;

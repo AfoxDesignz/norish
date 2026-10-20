@@ -13,6 +13,7 @@ import {
   recurringGroceries,
 } from "@norish/db/schema";
 
+import { findGroceryRows, nameIsFree } from "./ingredient-catalogue";
 import { writeRecipeLineFoodsTx } from "./ingredients";
 
 /**
@@ -127,13 +128,12 @@ export async function findRowsNamingSpellings(
     )
     .innerJoin(recipes, eq(recipes.id, recipeIngredients.recipeId))
     .where(inArray(recipeIngredientFoods.ingredientAliasId, [...aliasIds]));
-  const rowsOf = (table: typeof groceries | typeof recurringGroceries) =>
-    tx
-      .select({ id: table.id, name: table.name, ownerId: table.userId })
-      .from(table)
-      .where(inArray(table.ingredientAliasId, [...aliasIds]));
+  const named = await findGroceryRows(tx, {
+    groceries: inArray(groceries.ingredientAliasId, [...aliasIds]),
+    recurring: inArray(recurringGroceries.ingredientAliasId, [...aliasIds]),
+  });
 
-  return { lines, groceries: await rowsOf(groceries), recurring: await rowsOf(recurringGroceries) };
+  return { lines, ...named };
 }
 
 /** Point recipe lines at the foods their text resolved to, over the ones they had. */
@@ -190,4 +190,15 @@ export async function listOwnFoodsWithSpellings(): Promise<
   }
 
   return [...byId.values()];
+}
+
+/** Rename an own food to the clean name its name reduces to, unless a person named it or the name is taken. */
+export async function renameFood(id: string, name: string): Promise<boolean> {
+  const renamed = await db
+    .update(ingredients)
+    .set({ name, version: sql`${ingredients.version} + 1` })
+    .where(and(eq(ingredients.id, id), eq(ingredients.nameChosen, false), nameIsFree(id, name)))
+    .returning({ id: ingredients.id });
+
+  return renamed.length > 0;
 }
