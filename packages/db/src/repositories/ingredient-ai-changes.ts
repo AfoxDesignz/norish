@@ -19,14 +19,12 @@ import {
 } from "@norish/db/schema";
 import { UNANSWERED_FLAG_REASONS } from "@norish/shared/contracts/ingredient-catalogue";
 
-import { nameIsFree, rowsNaming } from "./ingredient-catalogue";
+import { findGroceryRows, nameIsFree, rowsNaming } from "./ingredient-catalogue";
 
 /**
  * AI Changes (ADR-0037, amended 2026-10-17): written in the transaction that made them, kept or
  * undone by a person. The edit policy is checked in `@norish/shared-server/ingredients`.
  */
-
-export type { AIChangeUndo, DeletedFood };
 
 /**
  * One AI Change as Changed by AI lists it: the food it is listed under and the one it names. A
@@ -462,8 +460,12 @@ export async function readDeletedFood(
     .from(ingredientAliases)
     .where(eq(ingredientAliases.ingredientId, ingredientId));
   const naming = rowsNaming(ingredientId);
-  const rowsOf = (table: typeof groceries | typeof recurringGroceries, where: SQL | undefined) =>
-    tx.select({ id: table.id, aliasId: table.ingredientAliasId }).from(table).where(where);
+  const named = await findGroceryRows(tx, {
+    groceries: naming.groceries,
+    recurring: naming.recurringGroceries,
+  });
+  const pointers = (rows: typeof named.groceries) =>
+    rows.map(({ id, aliasId }) => ({ id, aliasId }));
 
   return {
     ingredientId,
@@ -477,8 +479,8 @@ export async function readDeletedFood(
       })
       .from(recipeIngredientFoods)
       .where(naming.lineFoods),
-    groceries: await rowsOf(groceries, naming.groceries),
-    recurring: await rowsOf(recurringGroceries, naming.recurringGroceries),
+    groceries: pointers(named.groceries),
+    recurring: pointers(named.recurring),
   };
 }
 

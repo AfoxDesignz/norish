@@ -500,6 +500,28 @@ export function rowsNaming(food: string | SQL) {
   };
 }
 
+/** The Groceries and recurring groceries each condition picks, with their spelling, text and owner. */
+export async function findGroceryRows(
+  tx: Db,
+  where: { groceries: SQL | undefined; recurring: SQL | undefined }
+) {
+  const read = (table: typeof groceries | typeof recurringGroceries, picked: SQL | undefined) =>
+    tx
+      .select({
+        id: table.id,
+        aliasId: table.ingredientAliasId,
+        name: table.name,
+        ownerId: table.userId,
+      })
+      .from(table)
+      .where(picked);
+
+  return {
+    groceries: await read(groceries, where.groceries),
+    recurring: await read(recurringGroceries, where.recurring),
+  };
+}
+
 /**
  * What names an Ingredient, listed for a viewer: recipes under the recipe
  * view policy, groceries and the Pantry for their household, and how many

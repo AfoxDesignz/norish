@@ -712,8 +712,8 @@ export async function cleanSpellingOf(text: string): Promise<{ text: string; fol
 }
 
 /**
- * The foods the first of a food's names that its joining words split into foods known apart from
- * the food itself names, for the first-start cleanup; null where none does.
+ * Where a food's name or spelling is joined ("zout en peper") and every part is another known food,
+ * those foods and the join, for the first-start cleanup; else null.
  */
 export async function partsByWordsOf(
   ingredientId: string,

@@ -4,9 +4,8 @@ import { cleanUpCatalogueOnFirstStart } from "@norish/shared-server/ingredients/
 import { dbLogger as log } from "@norish/shared-server/logger";
 
 /**
- * Clean up what earlier versions left in the catalogue, once per release that changes the cleanup
- * (ADR-0037), after the seed and the recheck, before traffic. The AI pass it queues needs the
- * queues, so they start early. A failure never stops the server; the next boot tries again.
+ * The first start's catalogue cleanup, before traffic; the AI pass it queues starts the queues early.
+ * A failure never stops the server: the next boot tries again.
  */
 export async function cleanUpCatalogueOnBoot(): Promise<void> {
   try {
