@@ -14,7 +14,7 @@ import type {
   RecipeIngredientsDto,
 } from "@norish/shared/contracts/dto/recipe-ingredient";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
-import defaultUnits from "@norish/config/units.default.json";
+import defaultUnits from "@norish/config/units.default.json" with { type: "json" };
 import { ServerConfigKeys, UnitsConfigSchema } from "@norish/config/zod/server-config";
 import { db } from "@norish/db/drizzle";
 import { dbLogger } from "@norish/db/logger";

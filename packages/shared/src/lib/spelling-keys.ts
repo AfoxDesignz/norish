@@ -1,6 +1,6 @@
 import type { IngredientWordsMap, UnitsMap } from "@norish/config/zod/server-config";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
-import defaultIngredientWords from "@norish/config/ingredient-words.default.json";
+import defaultIngredientWords from "@norish/config/ingredient-words.default.json" with { type: "json" };
 import { foldName } from "@norish/shared/lib/fold-name";
 import { stripBracketed } from "@norish/shared/lib/helpers";
 import { catalogueLanguagesFor } from "@norish/shared/lib/ingredient-names";

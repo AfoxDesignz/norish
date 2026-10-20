@@ -7,12 +7,12 @@ import type {
   TimerKeywordsConfig,
 } from "@norish/db/zodSchemas/server-config";
 import { setAuthProviderCache } from "@norish/auth/provider-cache";
-import defaultContentIndicators from "@norish/config/content-indicators.default.json";
+import defaultContentIndicators from "@norish/config/content-indicators.default.json" with { type: "json" };
 import { SERVER_CONFIG } from "@norish/config/env-config-server";
-import defaultIngredientWords from "@norish/config/ingredient-words.default.json";
-import defaultRecurrenceConfig from "@norish/config/recurrence-config.default.json";
-import defaultTimerKeywords from "@norish/config/timer-keywords.default.json";
-import defaultUnits from "@norish/config/units.default.json";
+import defaultIngredientWords from "@norish/config/ingredient-words.default.json" with { type: "json" };
+import defaultRecurrenceConfig from "@norish/config/recurrence-config.default.json" with { type: "json" };
+import defaultTimerKeywords from "@norish/config/timer-keywords.default.json" with { type: "json" };
+import defaultUnits from "@norish/config/units.default.json" with { type: "json" };
 import {
   configExists,
   deleteConfig,
