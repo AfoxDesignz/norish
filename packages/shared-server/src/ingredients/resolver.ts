@@ -712,29 +712,24 @@ export async function cleanSpellingOf(text: string): Promise<{ text: string; fol
 }
 
 /**
- * Where a food's name or spelling is joined ("zout en peper") and every part is another known food,
- * those foods and the join, for the first-start cleanup; else null.
+ * Where a food's name is joined ("zout en peper") and every part is another known food, those
+ * foods and the join, for the first-start cleanup; else null.
  */
 export async function partsByWordsOf(
   ingredientId: string,
-  names: readonly string[]
+  name: string
 ): Promise<{ parts: ResolvedIngredient[]; joined: LineJoin } | null> {
   const rules = await currentRules();
+  const found = joinedParts(spellingOf(cleanIngredientText(name), rules).clean, rules);
 
-  for (const name of names) {
-    const found = joinedParts(spellingOf(cleanIngredientText(name), rules).clean, rules);
+  if (!found) return null;
+  const spellings = found.parts.map((part) => spellingOf(part, rules));
+  const known = new Map(
+    [...(await knownAliases(spellings))].filter(([, row]) => row.ingredientId !== ingredientId)
+  );
+  const named = foodsByWords({ ...found, spellings }, known);
 
-    if (!found) continue;
-    const spellings = found.parts.map((part) => spellingOf(part, rules));
-    const known = new Map(
-      [...(await knownAliases(spellings))].filter(([, row]) => row.ingredientId !== ingredientId)
-    );
-    const named = foodsByWords({ ...found, spellings }, known);
-
-    if (named?.joined) return { parts: named.foods, joined: named.joined };
-  }
-
-  return null;
+  return named?.joined ? { parts: named.foods, joined: named.joined } : null;
 }
 
 /** The one alias a spelling gives its food: its plain name, else its bare one, else its words ("(salt)" is "salt"). */

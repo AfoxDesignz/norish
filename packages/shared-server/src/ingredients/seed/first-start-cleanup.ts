@@ -13,7 +13,7 @@ import {
 import {
   findRowsNamingSpellings,
   foodSpelled,
-  listOwnFoodsWithSpellings,
+  listOwnFoods,
   listSpellingsForCleanup,
   renameFood,
   repointGroceries,
@@ -137,10 +137,10 @@ async function cleanUpCatalogue(
     outcome.removed += await removeVariants(removing.slice(start, start + REMOVED_PER_ROUND));
   }
 
-  // 4. A joined own food ("zout en peper") is split into its foods, even one kept distinct; any
-  // other takes the clean name its name reduces to, unless a person named it.
-  for (const food of await listOwnFoodsWithSpellings()) {
-    const split = await partsByWordsOf(food.id, [food.name, ...food.aliases]);
+  // 4. An own food whose name is joined ("zout en peper") is split, even one kept distinct; a mix
+  // holding a joined spelling stays. Any other takes the clean name its name reduces to.
+  for (const food of await listOwnFoods()) {
+    const split = await partsByWordsOf(food.id, food.name);
 
     if (split) {
       if (await splitFood(food.id, split.parts, split.joined)) outcome.split += 1;

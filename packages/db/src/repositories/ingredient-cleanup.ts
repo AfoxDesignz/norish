@@ -170,26 +170,13 @@ export async function repointGroceries(
   }
 }
 
-/** Every own Ingredient (no taxonomy entry) with its name and spellings, oldest first. */
-export async function listOwnFoodsWithSpellings(): Promise<
-  Array<{ id: string; name: string; aliases: string[] }>
-> {
-  const rows = await db
-    .select({ id: ingredients.id, name: ingredients.name, alias: ingredientAliases.text })
+/** Every own Ingredient (no taxonomy entry) with its name, oldest first. */
+export async function listOwnFoods(): Promise<Array<{ id: string; name: string }>> {
+  return await db
+    .select({ id: ingredients.id, name: ingredients.name })
     .from(ingredients)
-    .innerJoin(ingredientAliases, eq(ingredientAliases.ingredientId, ingredients.id))
     .where(isNull(ingredients.offId))
-    .orderBy(asc(ingredients.createdAt), asc(ingredients.id), asc(ingredientAliases.createdAt));
-  const byId = new Map<string, { id: string; name: string; aliases: string[] }>();
-
-  for (const { id, name, alias } of rows) {
-    const food = byId.get(id) ?? { id, name, aliases: [] };
-
-    food.aliases.push(alias);
-    byId.set(id, food);
-  }
-
-  return [...byId.values()];
+    .orderBy(asc(ingredients.createdAt), asc(ingredients.id));
 }
 
 /** Rename an own food to the clean name its name reduces to, unless a person named it or the name is taken. */

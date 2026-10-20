@@ -57,7 +57,7 @@ The household's catalogue fills up with things that are not foods and with foods
    - seeded stray marks are cleaned;
    - variant translations are removed, and the lines behind them are resolved again from their own text;
    - "gyoza vellen )"-style translations get their clean text;
-   - joined names are split, and each joined food is removed, even one a person kept distinct;
+   - foods whose name is joined are split and removed, even one a person kept distinct; a food holding a joined spelling a person merged in ("kruidenmix") stays;
    - the AI pass is queued for every food no person has decided about.
 
 ## User Stories
@@ -183,7 +183,7 @@ A recipe save keeps the foods of every line whose text, amount and unit are unch
   1. clean stray marks in seeded spellings;
   2. give dirty spellings with a clean fold ("gyoza vellen )") their clean text;
   3. remove every non-seeded spelling that is not its own clean name, re-resolving the rows behind it from their own text with AI off;
-  4. split joined names (lines, pantry, recurring groceries) by the words, and remove the joined food;
+  4. split foods whose name is joined (lines, pantry, recurring groceries) by the words, and remove the joined food; a food's other spellings are not read;
   5. enqueue the AI pass for every own food no person has decided about.
 
   Old translations can't be told apart as hand-typed or minted, so step 3 treats them alike.

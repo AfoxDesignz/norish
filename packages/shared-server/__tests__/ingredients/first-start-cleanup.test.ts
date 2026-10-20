@@ -69,8 +69,8 @@ describe("the first-start cleanup", () => {
     await applyIngredientSeed([
       entry("en:honey", "honey", "3wu)"),
       entry("en:bell-pepper", "bell pepper", "paprika (vrucht)"),
-      entry("en:salt", "salt", "zout"),
-      entry("en:pepper", "pepper", "peper"),
+      entry("en:salt", "salt", "zout", "Salz"),
+      entry("en:pepper", "pepper", "peper", "Pfeffer"),
     ]);
     seeded = await listSeededIngredientIds();
   });
@@ -227,6 +227,27 @@ describe("the first-start cleanup", () => {
     expect(askAI.mock.calls[0]![0].sort()).toEqual(
       [gyoza.ingredientId, undecided.ingredientId].sort()
     );
+  });
+
+  it.each([
+    ["kruidenmix", "zout en peper"],
+    ["seasoning", "salt and pepper"],
+    ["Gewürzmischung", "Salz und Pfeffer"],
+  ])("keeps %s, a food a person merged %s into: only a joined name splits", async (mix, joinedText) => {
+    const food = await oldMint(mix, [mix, joinedText]);
+    const recipe = await createTestRecipe(userId);
+    const mixLine = await insertTestRecipeLine({ recipeId: recipe.id, name: mix, order: "0" }, [
+      food.aliasIds[0]!,
+    ]);
+    const joinedLine = await insertTestRecipeLine(
+      { recipeId: recipe.id, name: joinedText, order: "1" },
+      [food.aliasIds[1]!]
+    );
+
+    await expect(cleanUpCatalogueOnFirstStart(askAI)).resolves.toMatchObject({ split: 0 });
+    expect(await exists(food.ingredientId)).toBe(true);
+    expect(await lineSpellings(mixLine.id)).toEqual([mix]);
+    expect(await lineSpellings(joinedLine.id)).toEqual([joinedText]);
   });
 
   it("runs once: a second start does nothing", async () => {
