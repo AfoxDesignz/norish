@@ -76,7 +76,7 @@ An Ingredient AI changed without being sure: merged a spelling into it, gave it 
 _Avoid_: Unverified, Pending (it is fully usable)
 
 **AI Change**:
-One thing AI did to the catalogue by itself: merged a spelling into a food, gave a food a parent or its Plain Name, minted a food, or deleted a food that is not a food (a tool, or a name that names nothing). Each is kept for a month on one list beside the Ingredients, with an Undo that reverses it and is remembered, so AI never makes it again; an unsure one also flags its food.
+One thing AI did to the catalogue by itself: merged a spelling into a food, gave a food a parent or its Plain Name, took away a parent its words gave it, minted a food, or deleted a food that is not a food (a tool, or a name that names nothing). Each is kept for a month on one list beside the Ingredients, with an Undo that reverses it and is remembered, so AI never makes it again; an unsure one also flags its food.
 _Avoid_: Suggestion (AI no longer proposes and waits; it acts and can be undone), Review
 
 **Ingredient Icon**:

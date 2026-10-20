@@ -40,7 +40,8 @@ When AI is set up, it looks at every new ingredient by itself, moments after a
 recipe, grocery or pantry item adds it. It then does one of these:
 
 - merges it into the food it is ("uien" into "onion")
-- files it under a parent ("cherry tomatoes" under "tomato")
+- files it under a parent ("cherry tomatoes" under "tomato"), or takes away
+  one its name gave it that it is no kind of ("peanut butter" under "butter")
 - gives it a clean name ("GR OF CANNED TUNA" becomes "Canned Tuna")
 - splits a name that is several foods ("Dijon or yellow mustard")
 - deletes it when it is not a food, like a tool ("deegroller") or a fragment
