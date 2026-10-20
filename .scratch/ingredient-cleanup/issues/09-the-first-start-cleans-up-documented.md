@@ -25,6 +25,7 @@ Colon lines are not turned into Headings (Mike, 2026-10-20: "Lets not ship that"
 **Status:** ready-for-agent
 
 - [ ] A scenario modelled on the production data covers each step: "gyoza vellen )", "gyoza vellen ((ontdooid))", "3wu)", "paprika (vrucht)", "zout en peper" kept distinct, an undecided own food.
+- [ ] After step 2, "gyoza vellen )" is the one spelling "gyoza vellen", on the same food: no second spelling and no second food appear (Mike, 2026-10-20).
 - [ ] The pass runs once; a second start does nothing.
 - [ ] Release notes, the upgrade note and the Ingredients docs page are updated. Changed by AI and the delete dialog have fresh screenshots. No real people's names appear in them.
 - [ ] All `CONTRIBUTING.md` gates pass, and the docs site builds.
