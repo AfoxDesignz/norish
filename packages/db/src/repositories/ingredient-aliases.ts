@@ -252,7 +252,8 @@ async function mintOnce(input: MintIngredientInput): Promise<IngredientAliasRow[
       : await tx
           .select({
             id: ingredients.id,
-            spelled: sql<boolean>`exists (select 1 from ${ingredientAliases} a where a.ingredient_id = ${ingredients.id})`,
+            // Qualified by hand: a bare column here would bind to the subquery's own `id`.
+            spelled: sql<boolean>`exists (select 1 from ${ingredientAliases} a where a.ingredient_id = ${ingredients}.id)`,
           })
           .from(ingredients)
           .where(eq(sql`lower(${ingredients.name})`, sql`lower(${input.name})`))
