@@ -11,7 +11,7 @@
 
 - Ingredients: own and seeded; flagged, by reason; kept distinct; with a parent.
 - Spellings: all, and own.
-- Recipe lines: naming one food, several (together or alternatives), or none; Headings; lines deleted as Junk Lines.
+- Recipe lines: naming one food, several (together or alternatives), or none; Headings. No line is deleted (2026-10-20).
 - Groceries, recurring groceries and Pantry Ingredients that point at no food.
 - Joined names still a food of their own.
 - Run B only: AI Changes by kind, sure and unsure; the pass's requests and tokens, from the job monitor.

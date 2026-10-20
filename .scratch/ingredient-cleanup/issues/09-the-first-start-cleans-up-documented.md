@@ -5,12 +5,12 @@
 1. Seeded spellings lose their stray marks ("3wu)", "|चौलाई}}"). Balanced brackets stay.
 2. A dirty translation whose fold is already clean ("gyoza vellen )", "baking soda )") gets its clean text.
 3. Every non-seeded translation that is not its own clean name ("gyoza vellen ((ontdooid))") is removed. The rows behind it are re-resolved from their own text with AI off. Old hand-typed translations can't be told apart from minted ones, so they are treated alike.
-4. Colon lines with no amount ("Voor de salade:") become Headings.
+4. Open, for Mike: colon lines with no amount ("Voor de salade:") become Headings. That rewrites the line's text to a `#` line, which keeping the catalogue otherwise never does (2026-10-20); the line already names no food.
 5. Joined names on recipe lines, Pantry Ingredients and recurring groceries are split by the words, and the joined food is removed, even one a person kept distinct.
 6. The AI pass is queued for every own food no person has decided about.
 
 Then the docs:
-- the target version's release notes, with an upgrade note saying this runs by itself and deletes junk lines;
+- the target version's release notes, with an upgrade note saying this runs by itself;
 - the release notes also name ticket 02's changes: delete always works (the dialog's counts), own foods unused for 90 days are deleted nightly, and groceries can repeat yearly;
 - an upgrade note that recurrence words an administrator edited before this release are replaced once by the shipped ones, which now carry years and seven more languages; words edited after it stay;
 - the release notes also name ticket 05's change: a typed grocery, recurring grocery or Pantry entry naming several foods ("zout en peper") becomes one per food, and one offering alternatives ("boter of olie") its first on the list and each in the Pantry; and an upgrade note that `POST /api/v1/groceries` now answers with a list, a grocery per food the name names;
@@ -19,7 +19,7 @@ Then the docs:
 - the Ingredients page in the docs, rewritten for applied changes, Changed by AI and delete;
 - screenshots shot as whole panel windows off a running instance.
 
-**Blocked by:** 01, 02, 05, 07, 08
+**Blocked by:** 01, 02, 05, 07, 08, 13
 
 **Status:** ready-for-agent
 

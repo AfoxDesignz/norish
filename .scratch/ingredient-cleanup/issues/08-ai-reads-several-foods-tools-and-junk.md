@@ -53,6 +53,8 @@ See `CONTEXT.md` (Junk Line, AI Change) and ADR-0037's 2026-10-17 amendments.
 - A slip of the fingers ("barmezaan" for "parmezaan") finds its food without AI, by the grocery product rule (`@norish/shared/lib/name-slips`, shared with `chooseUnmistakable`). With AI on it only puts that food before AI; with AI off or failing it is taken. ADR-0037 amended.
 - The catalogue E2E spec passed 12/12 (its plain-name stub reads an English name no other spec's foods share, since the pass now searches its words). In `--repeat-each=3` one red, in "a food's name, parent and translations land together with Save": Apply was clicked while the picker's list was open, and the click only closed it. Seven more runs of that scenario passed, with the Mac at 8.5 of 9.2 GB swap; not reproduced, so not fixed.
 
+2026-10-20, reversed: Mike ruled that keeping the catalogue never changes a recipe. A line naming nothing stays as written and points at no food; only its food is deleted. Ticket 13 takes the Junk Line deletion out of the code, which still deletes lines until then.
+
 Open, for Mike:
 
 - AI never deletes a food a Pantry Ingredient names, against the spec's "leaves groceries and pantry rows pointing at no food": a Pantry Ingredient has no text of its own, so with no food it would name nothing. The food stays, flagged.
