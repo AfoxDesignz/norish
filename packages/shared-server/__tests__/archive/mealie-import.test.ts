@@ -179,7 +179,12 @@ describe("Mealie import", () => {
 
       expect(dtos[0].recipeIngredients).toMatchObject([
         { ingredientName: "# Per la crema", amount: null, order: 0 },
-        { ingredientName: "mascarpone, cold", amount: 500, unit: "gram", foodTexts: ["mascarpone"] },
+        {
+          ingredientName: "mascarpone, cold",
+          amount: 500,
+          unit: "gram",
+          foodTexts: ["mascarpone"],
+        },
         // The pre-3.1 text row is read from its text; its quantity of 1 says nothing.
         { ingredientName: "eggs", amount: 3, order: 2 },
       ]);
