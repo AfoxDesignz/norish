@@ -366,13 +366,13 @@ test("AI gives a food a recipe mints its plain name by itself, listed on Changed
   await expect(ingredientRow("zalmmoot")).toBeVisible();
 });
 
-test("AI deletes a line a recipe mints that names nothing, and Undo on Changed by AI puts it back", async ({
+test("AI removes a food that names nothing; its line stays in the recipe with no food, and Undo brings the food back", async ({
   ai,
   aiStack,
 }) => {
   await waitForAIPasses(aiStack);
   // "gesmolten" shares no word with a known food, so only the pass asks: it reads the name as no
-  // food, then answers that it names nothing at all.
+  // food, then answers that it is not a food.
   ai.control.enqueueIngredients(
     {
       kind: "success",
@@ -386,7 +386,7 @@ test("AI deletes a line a recipe mints that names nothing, and Undo on Changed b
     {
       kind: "success",
       content: JSON.stringify({
-        verdict: "nothing",
+        verdict: "not-a-food",
         food: null,
         sure: true,
         parts: null,
@@ -398,30 +398,34 @@ test("AI deletes a line a recipe mints that names nothing, and Undo on Changed b
   const id = await createRecipe(aiStack, "Snickers ijstaart", ["garlic", "gesmolten"]);
   // The create answers before the recipe is written, and a recipe not written yet is not found.
   const lines = () =>
-    queryTrpc<{ recipeIngredients: Array<{ ingredientName: string }> }>(
-      aiStack.baseURL,
-      aiStack.ownerCookies,
-      "recipes.get",
-      { id }
-    ).then(
-      (recipe) => recipe.recipeIngredients.map((line) => line.ingredientName),
+    queryTrpc<{
+      recipeIngredients: Array<{ ingredientName: string; ingredientId: string | null }>;
+    }>(aiStack.baseURL, aiStack.ownerCookies, "recipes.get", { id }).then(
+      (recipe) =>
+        recipe.recipeIngredients.map((line) => [line.ingredientName, line.ingredientId !== null]),
       () => undefined
     );
 
-  await expect.poll(lines, { timeout: 30_000 }).toEqual(["garlic"]);
+  await expect.poll(lines, { timeout: 30_000 }).toEqual([
+    ["garlic", true],
+    ["gesmolten", false],
+  ]);
 
   await page.goto("/settings?tab=ingredients");
   await page.getByTestId("ingredients-ai-changes-open").click();
   const panel = page.getByRole("dialog", { name: "Changed by AI" });
-  const junk = panel
+  const deleted = panel
     .getByTestId("ingredient-ai-change")
-    .filter({ hasText: "Removed the line gesmolten" });
+    .filter({ hasText: "gesmolten" })
+    .filter({ hasText: "Deleted as not a food" });
 
-  await expect(junk).toHaveAttribute("data-kind", "junk-line");
-  await expect(junk.getByTestId("ingredient-ai-change-recipe")).toHaveText("Snickers ijstaart");
-  await junk.getByTestId("ingredient-ai-change-undo").click();
-  await expect(junk).toHaveCount(0);
-  await expect.poll(lines).toEqual(["garlic", "gesmolten"]);
+  await expect(deleted).toHaveAttribute("data-kind", "not-a-food");
+  await deleted.getByTestId("ingredient-ai-change-undo").click();
+  await expect(deleted).toHaveCount(0);
+  await expect.poll(lines).toEqual([
+    ["garlic", true],
+    ["gesmolten", true],
+  ]);
 });
 
 /** The panel a row opens: a dialog named after the food. */

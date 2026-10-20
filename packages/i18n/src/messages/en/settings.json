@@ -384,7 +384,7 @@
       "food-gone": "AI matched this to a food that was merged away before the name could join it.",
       "upgrade": "No known food could be matched.",
       "seed-ambiguous": "The catalogue lists several foods this could be.",
-      "ai-junk": "AI thought this is not a food, like a kitchen tool or a fragment of a recipe line, and was not sure."
+      "ai-junk": "AI thought this is not a food, like a kitchen tool or a fragment of a recipe line."
     },
     "empty": "No ingredients found",
     "emptyFlagged": "Nothing is flagged",
@@ -392,14 +392,10 @@
     "delete": "Delete",
     "deleteTitle": "Delete {name}?",
     "deleteConfirm": "Its translations go with it, and what your household taught Norish about it.",
-    "deleteAsJunk": "Delete as junk",
-    "deleteAsJunkTitle": "Delete {name} as junk?",
-    "deleteAsJunkConfirm": "The recipe lines that name only it are removed too. Each can be put back from Changed by AI.",
     "deleteTouches": {
       "recipeLines": "{count, plural, one {# recipe line keeps its text without it} other {# recipe lines keep their text without it}}",
       "groceries": "{count, plural, one {# grocery keeps its text without it} other {# groceries keep their text without it}}",
-      "pantry": "{count, plural, one {# pantry item is removed} other {# pantry items are removed}}",
-      "junkLines": "{count, plural, one {# recipe line is removed} other {# recipe lines are removed}}"
+      "pantry": "{count, plural, one {# pantry item is removed} other {# pantry items are removed}}"
     },
     "markDistinct": "Mark distinct",
     "summary": "{spellings, plural, one {# translation} other {# translations}}{kinds, plural, =0 {} one {, # kind} other {, # kinds}}{parent, select, none {} other {, parent: {parent}}}",
@@ -551,9 +547,7 @@
       "parent": "Filed under {of}",
       "parentFromName": "Filed under {of}, from its name",
       "plainName": "Renamed from {from}",
-      "tool": "Deleted as a tool. Its recipe lines stay, naming no food.",
-      "notAFood": "Deleted, as it names no food. Its groceries keep their text.",
-      "junkLine": "Removed the line {from}"
+      "notAFood": "Deleted as not a food. Its recipe lines and groceries keep their text."
     },
     "icon": {
       "change": "Change the icon",

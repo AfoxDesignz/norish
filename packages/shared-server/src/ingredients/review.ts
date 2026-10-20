@@ -1,6 +1,6 @@
 /**
  * The AI pass over a food in the catalogue (ADR-0037): rung 3's thorough question, its answer made
- * as an AI Change; a split, tool or nothing only when sure. The review queue runs it.
+ * as an AI Change; a split only when sure, not a food sure or not. The review queue runs it.
  */
 import type { FlagReason, ReviewOutcome } from "@norish/shared/contracts/ingredient-catalogue";
 import {
@@ -9,7 +9,7 @@ import {
 } from "@norish/db/repositories/ingredient-catalogue";
 import { stripPreparation } from "@norish/shared/lib/spelling-keys";
 
-import type { AIResolution, AskTrace, NoFoodAnswer } from "../ai/resolution/ingredient-resolution";
+import type { AIResolution, AskTrace } from "../ai/resolution/ingredient-resolution";
 import { askWhatFoodThisIs } from "../ai/resolution/ingredient-resolution";
 import { deleteByAI, flagByAnswer, mergeByAI, parentByAI, splitByAI } from "./ai-changes";
 import { ingredientChanges } from "./changes";
@@ -51,9 +51,7 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
     return { outcome: "merge", into: into.name, sure: answer.sure, ...trace };
   }
   if (answer.kind === "several") return await split(row, answer, trace);
-  if (answer.kind === "tool" || answer.kind === "nothing") {
-    return await deleted(ingredientId, answer, trace);
-  }
+  if (answer.kind === "not-a-food") return await deleted(ingredientId, trace);
   // AI was switched off meanwhile: the flag keeps saying why the food is still unanswered.
   if (answer.reason === "ai-off") return { outcome: "unsure", reason: "ai-off", ...trace };
   if (answer.reason !== null && answer.reason !== "ai-unsure") {
@@ -109,16 +107,9 @@ async function split(
   return { outcome: "split", into: parts.map((part) => part.text), ...trace };
 }
 
-/** A tool, sure or not, or a sure nothing: the food goes, and with nothing its lines go too. */
-async function deleted(
-  ingredientId: string,
-  answer: Extract<AIResolution, { kind: NoFoodAnswer }>,
-  trace: AskTrace
-): Promise<ReviewOutcome> {
-  if (answer.kind === "nothing" && !answer.sure)
-    return await doubted(ingredientId, "ai-junk", trace);
-
-  const { outcome, lines } = await deleteByAI(ingredientId, answer.kind);
+/** Not a food, sure or not: the food goes, and its rows keep their text. */
+async function deleted(ingredientId: string, trace: AskTrace): Promise<ReviewOutcome> {
+  const outcome = await deleteByAI(ingredientId);
 
   switch (outcome) {
     case "kept":
@@ -129,9 +120,7 @@ async function deleted(
     case "undone":
       return { outcome: "skipped", reason: outcome, ...trace };
     case "applied":
-      return answer.kind === "tool"
-        ? { outcome: "tool", ...trace }
-        : { outcome: "junk", lines, ...trace };
+      return { outcome: "not-a-food", ...trace };
   }
 }
 

@@ -22,12 +22,8 @@ export function changeMessage(t: Translate, change: AIChange, locale: string): s
     }
     case "plain-name":
       return t("changedByAI.plainName", { from: change.from ?? "" });
-    case "tool":
-      return t("changedByAI.tool");
     case "not-a-food":
       return t("changedByAI.notAFood");
-    case "junk-line":
-      return t("changedByAI.junkLine", { from: change.from ?? "" });
   }
 }
 

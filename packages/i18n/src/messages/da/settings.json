@@ -384,7 +384,7 @@
       "food-gone": "AI knyttede det til en ingrediens, der blev flettet, før navnet kunne komme med.",
       "upgrade": "Der blev ikke fundet nogen kendt ingrediens, der passer.",
       "seed-ambiguous": "Kataloget kender flere ingredienser, dette kunne være.",
-      "ai-junk": "AI troede, at dette ikke er en ingrediens, som et køkkenredskab eller et stykke af en opskriftslinje, og var ikke sikker."
+      "ai-junk": "AI troede, at dette ikke er en ingrediens, som et køkkenredskab eller et stykke af en opskriftslinje."
     },
     "empty": "Ingen ingredienser fundet",
     "emptyFlagged": "Intet er markeret",
@@ -392,14 +392,10 @@
     "delete": "Slet",
     "deleteTitle": "Slet {name}?",
     "deleteConfirm": "Dens oversættelser følger med, og det din husstand har lært Norish om den.",
-    "deleteAsJunk": "Slet som affald",
-    "deleteAsJunkTitle": "Slet {name} som affald?",
-    "deleteAsJunkConfirm": "Opskriftslinjer, der kun nævner dette, fjernes også. Hver kan hentes tilbage fra Ændret af AI.",
     "deleteTouches": {
       "recipeLines": "{count, plural, one {# opskriftslinje beholder sin tekst, uden ingrediensen} other {# opskriftslinjer beholder deres tekst, uden ingrediensen}}",
       "groceries": "{count, plural, one {# indkøbsvare beholder sin tekst, uden ingrediensen} other {# indkøbsvarer beholder deres tekst, uden ingrediensen}}",
-      "pantry": "{count, plural, one {# vare i spisekammeret fjernes} other {# varer i spisekammeret fjernes}}",
-      "junkLines": "{count, plural, one {# opskriftslinje fjernes} other {# opskriftslinjer fjernes}}"
+      "pantry": "{count, plural, one {# vare i spisekammeret fjernes} other {# varer i spisekammeret fjernes}}"
     },
     "markDistinct": "Marker som selvstændig",
     "summary": "{spellings, plural, one {# oversættelse} other {# oversættelser}}{kinds, plural, =0 {} one {, # slags} other {, # slags}}{parent, select, none {} other {, overordnet: {parent}}}",
@@ -551,9 +547,7 @@
       "parent": "Placeret under {of}",
       "parentFromName": "Placeret under {of}, ud fra navnet",
       "plainName": "Omdøbt fra {from}",
-      "tool": "Slettet som køkkenredskab. Opskriftslinjerne bliver, uden ingrediens.",
-      "notAFood": "Slettet, da det ikke nævner nogen ingrediens. Indkøbene beholder deres tekst.",
-      "junkLine": "Linjen {from} fjernet"
+      "notAFood": "Slettet, da det ikke er en ingrediens. Opskriftslinjerne og indkøbene beholder deres tekst."
     },
     "icon": {
       "change": "Skift ikonet",

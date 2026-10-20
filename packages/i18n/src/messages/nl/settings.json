@@ -384,7 +384,7 @@
       "food-gone": "AI koppelde dit aan een ingrediënt dat werd samengevoegd voordat de naam erbij kon.",
       "upgrade": "Er kon geen bekend ingrediënt aan worden gekoppeld.",
       "seed-ambiguous": "De catalogus kent meerdere ingrediënten die dit kunnen zijn.",
-      "ai-junk": "AI dacht dat dit geen ingrediënt is, zoals keukengerei of een stukje van een receptregel, en wist het niet zeker."
+      "ai-junk": "AI dacht dat dit geen ingrediënt is, zoals keukengerei of een stukje van een receptregel."
     },
     "empty": "Geen ingrediënten gevonden",
     "emptyFlagged": "Niets is gemarkeerd",
@@ -392,14 +392,10 @@
     "delete": "Verwijderen",
     "deleteTitle": "{name} verwijderen?",
     "deleteConfirm": "De vertalingen gaan mee, en wat je huishouden Norish erover leerde.",
-    "deleteAsJunk": "Verwijderen als rommel",
-    "deleteAsJunkTitle": "{name} verwijderen als rommel?",
-    "deleteAsJunkConfirm": "De receptregels die alleen dit noemen gaan ook weg. Elke regel kan terug via Gewijzigd door AI.",
     "deleteTouches": {
       "recipeLines": "{count, plural, one {# receptregel houdt zijn tekst, zonder dit ingrediënt} other {# receptregels houden hun tekst, zonder dit ingrediënt}}",
       "groceries": "{count, plural, one {# boodschap houdt zijn tekst, zonder dit ingrediënt} other {# boodschappen houden hun tekst, zonder dit ingrediënt}}",
-      "pantry": "{count, plural, one {# voorraaditem gaat weg} other {# voorraaditems gaan weg}}",
-      "junkLines": "{count, plural, one {# receptregel gaat weg} other {# receptregels gaan weg}}"
+      "pantry": "{count, plural, one {# voorraaditem gaat weg} other {# voorraaditems gaan weg}}"
     },
     "markDistinct": "Markeer als apart",
     "summary": "{spellings, plural, one {# vertaling} other {# vertalingen}}{kinds, plural, =0 {} one {, # soort} other {, # soorten}}{parent, select, none {} other {, hoofdingrediënt: {parent}}}",
@@ -551,9 +547,7 @@
       "parent": "Geplaatst onder {of}",
       "parentFromName": "Geplaatst onder {of}, op basis van de naam",
       "plainName": "Hernoemd van {from}",
-      "tool": "Verwijderd als keukengerei. De receptregels blijven, zonder ingrediënt.",
-      "notAFood": "Verwijderd, want het noemt geen ingrediënt. De boodschappen houden hun tekst.",
-      "junkLine": "Regel {from} verwijderd"
+      "notAFood": "Verwijderd, want het is geen ingrediënt. De receptregels en boodschappen houden hun tekst."
     },
     "icon": {
       "change": "Icoon wijzigen",

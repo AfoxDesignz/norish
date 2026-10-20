@@ -3,7 +3,6 @@
 import type { AIChange } from "@/components/ingredients/types";
 import type { ReactNode } from "react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { AIChangeActions } from "@/components/ingredients/ai-change-actions";
 import { IngredientPanel } from "@/components/ingredients/ingredient-panel";
 import { changeMessage } from "@/components/ingredients/review-copy";
@@ -161,21 +160,10 @@ export function ChangedByAIPanel({
     </button>
   );
 
-  /** What a change is listed under: its food, the recipe a Junk Line left, or a deleted food's name. */
+  /** What a change is listed under: its food, or a deleted food's name. */
   const subjectName = (change: AIChange): ReactNode => {
     if (change.ingredient) {
       return foodName(change.ingredient.id, ingredientDisplayName(change.ingredient, locale));
-    }
-    if (change.recipe) {
-      return (
-        <Link
-          className="text-accent min-w-0 text-sm font-medium break-words hover:underline"
-          data-testid="ingredient-ai-change-recipe"
-          href={`/recipes/${change.recipe.id}`}
-        >
-          {change.recipe.name}
-        </Link>
-      );
     }
 
     return <span className="min-w-0 text-sm font-medium break-words">{change.from}</span>;

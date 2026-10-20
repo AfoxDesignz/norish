@@ -3,7 +3,6 @@ import { and, asc, desc, eq, ilike, inArray, isNull, lte, notInArray, or, sql } 
 import z from "zod";
 
 import type { RecipePermissionPolicy } from "@norish/config/zod/server-config";
-import type { DeletedLine } from "@norish/db/schema";
 import type {
   FullRecipeDTO,
   FullRecipeInsertDTO,
@@ -58,8 +57,6 @@ import {
   attachIngredientsToRecipeByInputTx,
   getUnitsForNormalization,
   insertRecipeLinesTx,
-  junkLine,
-  recordJunkLinesTx,
   resolvedRecipeLineValues,
   writeRecipeLineFoodsTx,
 } from "./ingredients";
@@ -1382,7 +1379,6 @@ async function syncRecipeIngredientsTx(
   const retainedIds = new Set<string>();
   const kept: LineFoods[] = [];
   const added: NewRecipeLine[] = [];
-  const junk: Array<{ recipeId: string; line: DeletedLine }> = [];
 
   for (const [index, ingredient] of inputs.entries()) {
     const line = resolvedRecipeLineValues(ingredient, resolutions);
@@ -1398,11 +1394,6 @@ async function syncRecipeIngredientsTx(
       systemUsed,
     };
 
-    if (line.junk !== null) {
-      junk.push(junkLine({ recipeId, ...values }, line.junk, ingredient.id ?? undefined));
-      continue;
-    }
-
     if (ingredient.id && existingById.has(ingredient.id)) {
       retainedIds.add(ingredient.id);
       kept.push({ id: ingredient.id, aliasIds: line.aliasIds });
@@ -1417,7 +1408,6 @@ async function syncRecipeIngredientsTx(
   }
   await writeRecipeLineFoodsTx(tx, kept);
   await insertRecipeLinesTx(tx, added);
-  await recordJunkLinesTx(tx, junk);
 
   const idsToDelete = existing
     .map((row: { id: string }) => row.id)

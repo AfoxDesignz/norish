@@ -9,12 +9,8 @@ import { useTranslations } from "next-intl";
 
 const DELETE_TOUCHES = ["recipeLines", "groceries", "pantry"] as const;
 
-/**
- * Asks before an Ingredient goes, saying how many lines, groceries and pantry items it touches;
- * `asJunk` deletes the lines too, as Delete as junk does.
- */
+/** Asks before an Ingredient goes, saying how many lines, groceries and pantry items it touches. */
 export function DeleteIngredientModal({
-  asJunk = false,
   ingredientId,
   isOpen,
   name,
@@ -22,7 +18,6 @@ export function DeleteIngredientModal({
   onConfirm,
   onShowUses,
 }: {
-  asJunk?: boolean;
   ingredientId: string;
   isOpen: boolean;
   name: string;
@@ -45,10 +40,10 @@ export function DeleteIngredientModal({
         <Modal.Dialog data-testid="ingredient-delete-dialog">
           <Modal.Header className="flex items-center gap-2">
             <ExclamationTriangleIcon className="text-danger h-5 w-5" />
-            {t(asJunk ? "deleteAsJunkTitle" : "deleteTitle", { name })}
+            {t("deleteTitle", { name })}
           </Modal.Header>
           <Modal.Body className="flex flex-col gap-3">
-            <p>{t(asJunk ? "deleteAsJunkConfirm" : "deleteConfirm")}</p>
+            <p>{t("deleteConfirm")}</p>
             {data && touched.length > 0 ? (
               <div className="flex flex-col items-start gap-2">
                 <ul
@@ -56,11 +51,7 @@ export function DeleteIngredientModal({
                   data-testid="ingredient-delete-touches"
                 >
                   {touched.map((key) => (
-                    <li key={key}>
-                      {t(`deleteTouches.${asJunk && key === "recipeLines" ? "junkLines" : key}`, {
-                        count: data.counts[key],
-                      })}
-                    </li>
+                    <li key={key}>{t(`deleteTouches.${key}`, { count: data.counts[key] })}</li>
                   ))}
                 </ul>
                 <Button size="sm" variant="tertiary" onPress={onShowUses}>

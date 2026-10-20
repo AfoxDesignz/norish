@@ -363,7 +363,7 @@ function panel(name: string) {
 /** What AI changed about the food `name`, sure or not, as Changed by AI lists it. */
 function change(
   id: string,
-  kind: "merge" | "parent" | "plain-name" | "tool" | "not-a-food" | "junk-line",
+  kind: "merge" | "parent" | "plain-name" | "not-a-food",
   name: string,
   {
     sure = true,
@@ -387,7 +387,6 @@ function change(
     createdAt: new Date(0),
     ingredient: { id: ingredientId, name, localeNames: {} },
     target: target ? { id: target, name: target, localeNames: {} } : null,
-    recipe: null as { id: string; name: string } | null,
     from,
     fromWords,
     canAct: true,
@@ -628,7 +627,7 @@ describe("IngredientsSettingsContent", () => {
       fireEvent.click(screen.getByTestId("ingredient-delete-confirm"));
     });
 
-    expect(mutations.remove).toHaveBeenCalledWith({ ingredientId: "onion", asJunk: false });
+    expect(mutations.remove).toHaveBeenCalledWith({ ingredientId: "onion" });
     expect(invalidateQueries).toHaveBeenCalled();
     // The row is gone the moment the viewer confirms, not when the server answers.
     expect(items.map((item) => item.id)).toEqual(["salt"]);
@@ -695,76 +694,53 @@ describe("IngredientsSettingsContent", () => {
     expect(where).toHaveTextContent("elsewhere");
   });
 
-  it("offers Delete as junk instead of Delete on a food AI thought names nothing", async () => {
+  it("offers the plain Delete on a food AI says is not a food, its lines keeping their text", async () => {
     uses = {
       recipes: [],
       groceries: [],
-      pantry: false,
+      pantry: true,
       elsewhere: 0,
-      counts: { recipeLines: 2, groceries: 0, pantry: 0 },
+      counts: { recipeLines: 2, groceries: 0, pantry: 1 },
     };
     items = [{ ...onion, name: "melted", flagReason: "ai-junk" }, salt];
     render(<IngredientsSettingsContent />);
     const opened = await open("melted");
 
-    expect(within(opened).queryByTestId("ingredient-delete")).toBeNull();
+    expect(within(opened).getByTestId("ingredient-flag-notice")).toHaveTextContent(
+      "flagReasons.ai-junk"
+    );
     await act(async () => {
-      fireEvent.click(within(opened).getByTestId("ingredient-delete-as-junk"));
+      fireEvent.click(within(opened).getByTestId("ingredient-delete"));
     });
 
-    expect(screen.getByTestId("ingredient-delete-dialog")).toHaveTextContent("deleteAsJunkTitle");
+    expect(screen.getByTestId("ingredient-delete-dialog")).toHaveTextContent("deleteTitle");
     expect(screen.getByTestId("ingredient-delete-touches")).toHaveTextContent(
-      "deleteTouches.junkLines"
+      "deleteTouches.recipeLines"
     );
     await act(async () => {
       fireEvent.click(screen.getByTestId("ingredient-delete-confirm"));
     });
 
-    expect(mutations.remove).toHaveBeenCalledWith({ ingredientId: "onion", asJunk: true });
+    expect(mutations.remove).toHaveBeenCalledWith({ ingredientId: "onion" });
   });
 
-  it("offers Delete as junk on no other flag", async () => {
-    items = [{ ...onion, flagReason: "ai-unsure" }, salt];
-    render(<IngredientsSettingsContent />);
-    const opened = await open("onion");
-
-    expect(within(opened).getByTestId("ingredient-flag-notice")).toHaveTextContent(
-      "flagReasons.ai-unsure"
-    );
-    expect(within(opened).queryByTestId("ingredient-delete-as-junk")).toBeNull();
-    expect(within(opened).getByTestId("ingredient-delete")).toBeInTheDocument();
-  });
-
-  it("lists a deleted food by its name and a Junk Line under its recipe on Changed by AI, each with Undo", async () => {
-    changes = [
-      { ...change("c1", "tool", "deegroller"), ingredient: null, from: "deegroller" },
-      {
-        ...change("c2", "junk-line", "melted"),
-        ingredient: null,
-        recipe: { id: "r1", name: "snickers ice cream bars" },
-        from: "melted",
-      },
-    ];
+  it("lists a food AI deleted as not a food by its name on Changed by AI, with Undo", async () => {
+    changes = [{ ...change("c1", "not-a-food", "melted"), ingredient: null, from: "melted" }];
     render(<IngredientsSettingsContent />);
     await act(async () => {
       fireEvent.click(screen.getByTestId("ingredients-ai-changes-open"));
     });
-    const [tool, line] = within(
+    const [deleted] = within(
       screen.getByRole("dialog", { name: "changedByAI.title" })
     ).getAllByTestId("ingredient-ai-change");
 
-    expect(tool).toHaveTextContent("deegroller");
-    expect(tool).toHaveTextContent("changedByAI.tool");
-    expect(within(tool!).queryByTestId("ingredient-ai-change-open")).toBeNull();
-    expect(within(line!).getByTestId("ingredient-ai-change-recipe")).toHaveAttribute(
-      "href",
-      "/recipes/r1"
-    );
-    expect(line).toHaveTextContent("changedByAI.junkLine");
+    expect(deleted).toHaveTextContent("melted");
+    expect(deleted).toHaveTextContent("changedByAI.notAFood");
+    expect(within(deleted!).queryByTestId("ingredient-ai-change-open")).toBeNull();
     await act(async () => {
-      fireEvent.click(within(line!).getByTestId("ingredient-ai-change-undo"));
+      fireEvent.click(within(deleted!).getByTestId("ingredient-ai-change-undo"));
     });
-    expect(mutations.undoAIChange).toHaveBeenCalledWith({ changeId: "c2" });
+    expect(mutations.undoAIChange).toHaveBeenCalledWith({ changeId: "c1" });
   });
 
   it("holds Delete until it has read what the delete touches", async () => {

@@ -384,7 +384,7 @@
       "food-gone": "La IA lo asoció a un ingrediente que se fusionó antes de que el nombre pudiera unirse.",
       "upgrade": "No se encontró ningún ingrediente conocido que coincida.",
       "seed-ambiguous": "El catálogo conoce varios ingredientes que podrían ser este.",
-      "ai-junk": "La IA pensó que esto no es un alimento, como un utensilio de cocina o un fragmento de una línea de receta, y no estaba segura."
+      "ai-junk": "La IA pensó que esto no es un alimento, como un utensilio de cocina o un fragmento de una línea de receta."
     },
     "empty": "No se encontraron ingredientes",
     "emptyFlagged": "No hay nada marcado",
@@ -392,14 +392,10 @@
     "delete": "Eliminar",
     "deleteTitle": "¿Eliminar {name}?",
     "deleteConfirm": "Sus traducciones se van con él, y lo que tu hogar le enseñó a Norish sobre él.",
-    "deleteAsJunk": "Eliminar como basura",
-    "deleteAsJunkTitle": "¿Eliminar {name} como basura?",
-    "deleteAsJunkConfirm": "Las líneas de receta que solo lo nombran a él también se eliminan. Cada una se puede recuperar desde Cambiado por la IA.",
     "deleteTouches": {
       "recipeLines": "{count, plural, one {# línea de receta conserva su texto, sin este ingrediente} other {# líneas de receta conservan su texto, sin este ingrediente}}",
       "groceries": "{count, plural, one {# compra conserva su texto, sin este ingrediente} other {# compras conservan su texto, sin este ingrediente}}",
-      "pantry": "{count, plural, one {# artículo de la despensa se elimina} other {# artículos de la despensa se eliminan}}",
-      "junkLines": "{count, plural, one {# línea de receta se elimina} other {# líneas de receta se eliminan}}"
+      "pantry": "{count, plural, one {# artículo de la despensa se elimina} other {# artículos de la despensa se eliminan}}"
     },
     "markDistinct": "Marcar como distinto",
     "summary": "{spellings, plural, one {# traducción} other {# traducciones}}{kinds, plural, =0 {} one {, # tipo} other {, # tipos}}{parent, select, none {} other {, padre: {parent}}}",
@@ -551,9 +547,7 @@
       "parent": "Clasificado bajo {of}",
       "parentFromName": "Clasificado bajo {of}, por su nombre",
       "plainName": "Renombrado desde {from}",
-      "tool": "Eliminado como utensilio. Sus líneas de receta se quedan, sin alimento.",
-      "notAFood": "Eliminado, porque no nombra ningún alimento. Sus compras conservan su texto.",
-      "junkLine": "Línea {from} eliminada"
+      "notAFood": "Eliminado, porque no es un alimento. Sus líneas de receta y compras conservan su texto."
     },
     "icon": {
       "change": "Cambiar el icono",

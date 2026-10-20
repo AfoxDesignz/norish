@@ -2564,12 +2564,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "recipe_id": {
-          "name": "recipe_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "sure": {
           "name": "sure",
           "type": "boolean",
@@ -2618,21 +2612,6 @@
           "method": "btree",
           "with": {}
         },
-        "idx_ingredient_ai_changes_recipe_id": {
-          "name": "idx_ingredient_ai_changes_recipe_id",
-          "columns": [
-            {
-              "expression": "recipe_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "idx_ingredient_ai_changes_created_at": {
           "name": "idx_ingredient_ai_changes_created_at",
           "columns": [
@@ -2669,19 +2648,6 @@
           "tableTo": "ingredients",
           "columnsFrom": [
             "target_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "ingredient_ai_changes_recipe_id_recipes_id_fk": {
-          "name": "ingredient_ai_changes_recipe_id_recipes_id_fk",
-          "tableFrom": "ingredient_ai_changes",
-          "tableTo": "recipes",
-          "columnsFrom": [
-            "recipe_id"
           ],
           "columnsTo": [
             "id"

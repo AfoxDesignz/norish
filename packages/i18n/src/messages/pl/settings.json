@@ -384,7 +384,7 @@
       "food-gone": "AI dopasowało to do składnika scalonego, zanim nazwa zdążyła do niego dołączyć.",
       "upgrade": "Nie udało się dopasować żadnego znanego składnika.",
       "seed-ambiguous": "Katalog zna kilka składników, którymi to może być.",
-      "ai-junk": "AI uznała, że to nie jest składnik, tylko np. przybór kuchenny lub fragment wiersza przepisu, i nie była pewna."
+      "ai-junk": "AI uznała, że to nie jest składnik, tylko np. przybór kuchenny lub fragment wiersza przepisu."
     },
     "empty": "Nie znaleziono składników",
     "emptyFlagged": "Nic nie jest oznaczone",
@@ -392,14 +392,10 @@
     "delete": "Usuń",
     "deleteTitle": "Usunąć {name}?",
     "deleteConfirm": "Jego tłumaczenia odchodzą razem z nim, a także to, czego Twoje gospodarstwo nauczyło Norish o nim.",
-    "deleteAsJunk": "Usuń jako śmieć",
-    "deleteAsJunkTitle": "Usunąć {name} jako śmieć?",
-    "deleteAsJunkConfirm": "Wiersze przepisów, które nazywają tylko to, też zostaną usunięte. Każdy można przywrócić w Zmienione przez AI.",
     "deleteTouches": {
       "recipeLines": "{count, plural, one {# wiersz przepisu zachowa swój tekst, bez tego składnika} few {# wiersze przepisów zachowają swój tekst, bez tego składnika} many {# wierszy przepisów zachowa swój tekst, bez tego składnika} other {# wiersza przepisów zachowa swój tekst, bez tego składnika}}",
       "groceries": "{count, plural, one {# zakup zachowa swój tekst, bez tego składnika} few {# zakupy zachowają swój tekst, bez tego składnika} many {# zakupów zachowa swój tekst, bez tego składnika} other {# zakupu zachowa swój tekst, bez tego składnika}}",
-      "pantry": "{count, plural, one {# pozycja spiżarni zostanie usunięta} few {# pozycje spiżarni zostaną usunięte} many {# pozycji spiżarni zostanie usuniętych} other {# pozycji spiżarni zostanie usunięte}}",
-      "junkLines": "{count, plural, one {# wiersz przepisu zostanie usunięty} few {# wiersze przepisu zostaną usunięte} many {# wierszy przepisu zostanie usuniętych} other {# wiersza przepisu zostanie usunięte}}"
+      "pantry": "{count, plural, one {# pozycja spiżarni zostanie usunięta} few {# pozycje spiżarni zostaną usunięte} many {# pozycji spiżarni zostanie usuniętych} other {# pozycji spiżarni zostanie usunięte}}"
     },
     "markDistinct": "Oznacz jako odrębny",
     "summary": "{spellings, plural, one {# tłumaczenie} few {# tłumaczenia} other {# tłumaczeń}}{kinds, plural, =0 {} one {, # rodzaj} few {, # rodzaje} many {, # rodzajów} other {, # rodzaju}}{parent, select, none {} other {, nadrzędny: {parent}}}",
@@ -551,9 +547,7 @@
       "parent": "Umieszczono pod {of}",
       "parentFromName": "Umieszczono pod {of} na podstawie nazwy",
       "plainName": "Zmieniono nazwę z {from}",
-      "tool": "Usunięto jako przybór kuchenny. Wiersze przepisu zostają, bez składnika.",
-      "notAFood": "Usunięto, bo nie nazywa żadnego składnika. Zakupy zachowują swój tekst.",
-      "junkLine": "Usunięto wiersz {from}"
+      "notAFood": "Usunięto, bo to nie jest składnik. Wiersze przepisu i zakupy zachowują swój tekst."
     },
     "icon": {
       "change": "Zmień ikonę",

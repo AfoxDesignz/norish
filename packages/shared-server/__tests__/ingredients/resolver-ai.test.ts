@@ -715,7 +715,7 @@ describe("ingredient resolver, rung 3", () => {
     expect(vi.mocked(decide)).toHaveBeenCalledTimes(1);
   });
 
-  describe("several foods, a tool and nothing", () => {
+  describe("several foods, and not a food", () => {
     const actor = () => ({ userId, householdUserIds: null, isServerAdmin: false });
 
     beforeEach(() => {
@@ -730,7 +730,7 @@ describe("ingredient resolver, rung 3", () => {
       byName: Record<
         string,
         {
-          verdict: "same" | "kind-of" | "new" | "several" | "tool" | "nothing";
+          verdict: "same" | "kind-of" | "new" | "several" | "not-a-food";
           about?: string;
           sure: boolean;
           parts?: string[];
@@ -847,72 +847,29 @@ describe("ingredient resolver, rung 3", () => {
       ]);
     });
 
-    it("keeps a line AI is sure names a tool in its recipe with no food, minting nothing", async () => {
+    it("keeps a line AI says is not a food in its recipe as written with no food, sure or not, minting nothing", async () => {
       await known("deeg");
-      answering({ deegroller: { verdict: "tool", sure: true } });
-      const { lines } = await saved("Taart", ["deegroller"]);
-
-      // No food: the add-to-groceries panel passes it over, as any line naming none.
-      expect(lines).toMatchObject([{ ingredientName: "deegroller", ingredientId: null }]);
-      await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(1);
-    });
-
-    it("leaves a line AI is sure names nothing out of its recipe, and Undo puts it back where it was", async () => {
       await known("snickers bars");
-      await known("heavy cream");
-      // A food sharing the start of its word, so the import asks AI about it.
-      await known("meltblokjes");
-      answering({ melted: { verdict: "nothing", sure: true } });
-      const { recipeId, lines } = await saved("snickers ice cream bars", [
-        "snickers bars",
-        "melted",
-        "heavy cream",
-      ]);
-
-      expect(lines.map((line) => line.ingredientName)).toEqual(["snickers bars", "heavy cream"]);
-      const [change, ...others] = await listAIChanges();
-
-      expect(others).toEqual([]);
-      expect(change).toMatchObject({
-        sure: true,
-        ingredient: null,
-        recipe: { id: recipeId, name: "snickers ice cream bars" },
-        undo: { kind: "junk-line", line: { name: "melted", fold: "melted" } },
-      });
-
-      await undoAIChange(actor(), change!.id);
-      expect(
-        (await getRecipeFull(recipeId))!.recipeIngredients.map((line) => line.ingredientName)
-      ).toEqual(["snickers bars", "melted", "heavy cream"]);
-
-      // Asked again, AI's same answer deletes it no more: the line stays, naming no food.
-      const again = await saved("snickers ice cream bars, again", ["melted"]);
-
-      expect(again.lines).toMatchObject([{ ingredientName: "melted", ingredientId: null }]);
-    });
-
-    it("gives a line AI is not sure is a tool no food, and mints one it is not sure names nothing flagged", async () => {
-      await known("deeg");
       // A food sharing the start of its word, so the import asks AI about it.
       await known("meltblokjes");
       answering({
-        deegroller: { verdict: "tool", sure: false },
-        melted: { verdict: "nothing", sure: false },
+        deegroller: { verdict: "not-a-food", sure: true },
+        melted: { verdict: "not-a-food", sure: false },
       });
-      const { lines } = await saved("Taart", ["deegroller", "melted"]);
+      const { lines } = await saved("snickers ice cream bars", [
+        "snickers bars",
+        "melted",
+        "deegroller",
+      ]);
 
-      expect(lines).toMatchObject([{ ingredientName: "deegroller", ingredientId: null }, {}]);
-      expect(
-        (
-          await getTestDb()
-            .select()
-            .from(ingredients)
-            .where(eq(ingredients.id, lines[1]!.ingredientId!))
-        )[0]
-      ).toMatchObject({ name: "melted", flagged: true, flagReason: "ai-junk" });
-      expect(
-        await getTestDb().select().from(ingredients).where(eq(ingredients.name, "deegroller"))
-      ).toEqual([]);
+      // No food: the add-to-groceries panel passes them over, as any line naming none.
+      expect(lines).toMatchObject([
+        { ingredientName: "snickers bars" },
+        { ingredientName: "melted", ingredientId: null },
+        { ingredientName: "deegroller", ingredientId: null },
+      ]);
+      await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(3);
+      await expect(listAIChanges()).resolves.toEqual([]);
     });
 
     it("gives a typed text AI splits only its first food, minting none of the others", async () => {
@@ -937,23 +894,26 @@ describe("ingredient resolver, rung 3", () => {
       ).toEqual(expect.not.arrayContaining(["yellow mustard"]));
     });
 
-    it("keeps a typed grocery AI says names nothing on the list with no food, minting nothing", async () => {
+    it("keeps a typed grocery AI says is not a food on the list with no food, minting nothing", async () => {
       // A food sharing the start of its word, so the import asks AI about it.
       await known("meltblokjes");
-      answering({ melted: { verdict: "nothing", sure: true } });
+      answering({ melted: { verdict: "not-a-food", sure: true } });
 
       await expect(resolveGroceryNames([{ name: "melted" }], { userId })).resolves.toEqual([null]);
       await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(1);
       await expect(listAIChanges()).resolves.toEqual([]);
     });
 
-    it("takes a Decision's sure tool, and asks the language model for the parts of several", async () => {
+    it("takes a Decision's sure not a food, and asks the language model for the parts of several", async () => {
       await known("deeg");
       const dijon = await known("Dijon mustard");
       const yellow = await known("yellow mustard");
 
       vi.mocked(isDecisionUseEnabled).mockResolvedValue(true);
-      decides("Is kitchen equipment the cook already has, such as a tin or a rolling pin", 0.95);
+      decides(
+        "Is not a food: kitchen equipment the cook already has, a preparation, a fragment or a note",
+        0.95
+      );
       await expect(resolveIngredient("deegroller", { userId })).resolves.toBeNull();
 
       decides("Names several foods at once, joined by and or or", 0.95);

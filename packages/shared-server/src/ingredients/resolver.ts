@@ -8,7 +8,6 @@ import type { FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
 import type { JoinedParts, SpellingKeys, SpellingRules } from "@norish/shared/lib/spelling-keys";
 import { isStaleIngredientReference } from "@norish/db/repositories/constraint-violation";
-import { findFoldsKeptAsNotJunk } from "@norish/db/repositories/ingredient-ai-changes";
 import {
   addIngredientAliases,
   findAliasesNearFold,
@@ -62,8 +61,8 @@ import { announceMinted } from "./minted";
  *      model — a known food it says the text names takes the text's clean
  *      spelling, so the next occurrence is a rung-1 or rung-2 match; an
  *      unsure answer joins it as an unsure AI Change, which flags the food.
- *      A tool names no food, sure or not; sure, several foods each resolve as a text and nothing
- *      is a Junk Line (`AIResolution`); unsure, those two are minted flagged. A known food the
+ *      Not a food names no food, sure or not; several foods each resolve as a text when sure, and
+ *      are minted flagged when not (`AIResolution`). A known food the
  *      text is a slip of the fingers from ("barmezaan" for "parmezaan") is put to AI too, and is
  *      taken where AI gives no answer (`findSlips`);
  *   4. a new Ingredient under the food AI said it is a kind of, if any.
@@ -250,7 +249,7 @@ export interface ResolvedFoods extends LineResolution {
 
 /**
  * Resolve recipe lines' texts as `resolveIngredients` does, except that a text its words or AI split
- * names each food, and one AI is sure names nothing is `junk`: the line is not stored.
+ * names each food.
  */
 export async function resolveLineFoods(
   texts: readonly string[],
@@ -381,14 +380,6 @@ async function resolveTexts(
   const answers = await askAboutUnknown(unknown, options, slips);
   const resolved = new Map<Spelling, ResolvedFoods>();
   const minted = new Set<string>();
-  // The texts AI says name nothing that a person once put back as no Junk Line, by clean spelling.
-  const notJunk = await findFoldsKeptAsNotJunk(
-    spellings.flatMap((spelling) =>
-      answers.get(sameFoodKey(spelling))?.answer.kind === "nothing"
-        ? [cleanAlias(spelling).fold]
-        : []
-    )
-  );
 
   for (const spelling of spellings) {
     const named = byWords.get(spelling);
@@ -406,9 +397,6 @@ async function resolveTexts(
 
     const asked = match ? undefined : answers.get(sameFoodKey(spelling));
     const slip = match ? undefined : slips.get(sameFoodKey(spelling));
-
-    // A text a person put back as no Junk Line names no food, whatever AI says of it now.
-    if (asked?.answer.kind === "nothing" && notJunk.has(cleanAlias(spelling).fold)) continue;
 
     // No answer means AI was not asked: the name is a slip of a known food, else minted flagged.
     const answer: AIResolution =
@@ -434,17 +422,8 @@ async function resolveTexts(
       });
       continue;
     }
-    // As `settledAnswer` leaves them: a tool names no food, a sure nothing is a Junk Line.
-    if (answer.kind === "nothing") {
-      resolved.set(spelling, {
-        text: spelling.text,
-        foods: [],
-        joined: null,
-        junk: { fold: cleanAlias(spelling).fold },
-      });
-      continue;
-    }
-    if (answer.kind === "tool") continue;
+    // Not a food names no food: the line is stored as written, pointing at none.
+    if (answer.kind === "not-a-food") continue;
     if (!match) {
       const wordsParent = async () => (asked ? asked.words : await parentFromWords(spelling));
       // The food AI named may have been merged away since the question was
@@ -506,18 +485,11 @@ interface Asked {
 }
 
 /**
- * The answer acted on: an unsure split or nothing is a food minted flagged with that doubt, as is a
- * split where `splits` is off; a tool names no food, sure or not.
+ * The answer acted on: an unsure split is a food minted flagged with that doubt, as is a split where
+ * `splits` is off; not a food names no food, sure or not.
  */
 function settledAnswer(answer: AIResolution, splits: boolean): AIResolution {
-  switch (answer.kind) {
-    case "several":
-      return answer.sure && splits ? answer : flaggedNew("ai-unsure");
-    case "nothing":
-      return answer.sure ? answer : flaggedNew("ai-junk");
-    default:
-      return answer;
-  }
+  return answer.kind === "several" && !(answer.sure && splits) ? flaggedNew("ai-unsure") : answer;
 }
 
 /** The flags a mint gets where AI was asked and gave no answer. */

@@ -22,15 +22,14 @@ known by. Say which of these the new name is:
   needs all of them, "alternatives" when any one will do. A food whose own name
   holds "and" is one food: "mac and cheese", "half and half", "sweet and sour
   sauce".
-- "tool": the new name is kitchen equipment the cook already has and uses,
-  not something bought for the recipe: "deegroller", "taart- of springvorm
-  (doorsnede 26 cm)", "food processor".
-- "nothing": the new name names nothing to buy or use: a preparation or a
-  fragment left on a line of its own ("melted", "roughly chopped", "overnight
-  and drained"), a note, or gibberish.
+- "not-a-food": the new name is no food at all. It is kitchen equipment the
+  cook already has and uses, not something bought for the recipe ("deegroller",
+  "taart- of springvorm (doorsnede 26 cm)", "food processor"); a preparation or
+  a fragment left on a line of its own ("melted", "roughly chopped", "overnight
+  and drained"); a note; or gibberish.
 
-Anything a household buys in a shop is "same", "kind-of" or "new", never "tool"
-or "nothing", even when it is not eaten: "baking paper", "aluminium foil",
+Anything a household buys in a shop is "same", "kind-of" or "new", never
+"not-a-food", even when it is not eaten: "baking paper", "aluminium foil",
 "toilet paper" and "dish soap" stay in the catalogue, so their shop and aisle
 are remembered.
 

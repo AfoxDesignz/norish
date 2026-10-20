@@ -34,10 +34,7 @@ import type {
 } from "@norish/shared/lib/ingredient-search";
 import { withTransaction } from "@norish/db/drizzle";
 import { isConstraintViolation } from "@norish/db/repositories/constraint-violation";
-import {
-  deleteJunkLines,
-  keepOpenAIChangesOf,
-} from "@norish/db/repositories/ingredient-ai-changes";
+import { keepOpenAIChangesOf } from "@norish/db/repositories/ingredient-ai-changes";
 import { findLocaleNames } from "@norish/db/repositories/ingredient-aliases";
 import {
   deleteCatalogueAlias,
@@ -474,13 +471,12 @@ async function setParentIn(
 }
 
 /**
- * Delete an Ingredient; follows `edit`. Lines and Groceries keep their text, Pantry Ingredients go;
- * `asJunk` deletes its Junk Lines in the recipes the actor may edit, for Changed by AI to put back.
+ * Delete an Ingredient and its spellings; follows `edit`. Its lines and Groceries keep their
+ * text and name no food, and its Pantry Ingredients go, since the Pantry holds only foods.
  */
 export async function deleteIngredient(
   actor: CatalogueActor,
-  ingredientId: string,
-  { asJunk = false }: { asJunk?: boolean } = {}
+  ingredientId: string
 ): Promise<CatalogueEdit> {
   return await inEdit(async (tx) => {
     await assertMayEditIngredient(tx, actor, ingredientId);
@@ -488,7 +484,6 @@ export async function deleteIngredient(
     // a merge into this Ingredient must not land while it goes.
     await lockTree(tx);
     if ((await lockIngredients(tx, [ingredientId])) < 1) throw new CatalogueEditError("not-found");
-    if (asJunk) await deleteJunkLines(tx, ingredientId, { editableBy: actor });
     await deleteCatalogueIngredient(tx, ingredientId);
 
     return { changed: [ingredientId] };

@@ -158,9 +158,7 @@ function IngredientPanelContent({
   const spellingCount = item.aliases.length + hiddenSpellings + added.length - removed.size;
   const [alias, setAlias] = useState("");
   const [relocation, setRelocation] = useState<Relocation | null>(null);
-  // Delete asks first; "junk" deletes the food's lines too.
-  const [deleting, setDeleting] = useState<false | "food" | "junk">(false);
-  const isJunk = item.flagged && item.flagReason === "ai-junk";
+  const [deleting, setDeleting] = useState(false);
   const [showingUses, setShowingUses] = useState(false);
   const aiChanges = useAIChanges();
   // What AI changed about this food without being sure: what its flag is for.
@@ -338,14 +336,12 @@ function IngredientPanelContent({
   };
 
   const confirmDelete = () => {
-    const asJunk = deleting === "junk";
-
     setDeleting(false);
     onClose();
     void run(
       "delete",
       () => cache.dropRow(item.id),
-      () => remove.mutateAsync({ ingredientId: item.id, asJunk })
+      () => remove.mutateAsync({ ingredientId: item.id })
     );
   };
 
@@ -566,13 +562,12 @@ function IngredientPanelContent({
         <ActionButtonGroup
           start={
             item.canEdit ? (
-              // A food AI thought names nothing goes with its lines: Delete as junk.
               <ActionButton
                 action="delete"
-                data-testid={isJunk ? "ingredient-delete-as-junk" : "ingredient-delete"}
-                onPress={() => setDeleting(isJunk ? "junk" : "food")}
+                data-testid="ingredient-delete"
+                onPress={() => setDeleting(true)}
               >
-                {t(isJunk ? "deleteAsJunk" : "delete")}
+                {t("delete")}
               </ActionButton>
             ) : null
           }
@@ -677,9 +672,8 @@ function IngredientPanelContent({
       />
 
       <DeleteIngredientModal
-        asJunk={deleting === "junk"}
         ingredientId={item.id}
-        isOpen={deleting !== false}
+        isOpen={deleting}
         name={displayName}
         onClose={() => setDeleting(false)}
         onConfirm={confirmDelete}

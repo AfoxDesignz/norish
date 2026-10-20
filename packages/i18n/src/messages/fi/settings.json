@@ -384,7 +384,7 @@
       "food-gone": "Tekoäly yhdisti tämän ainesosaan, joka yhdistettiin ennen kuin nimi ehti mukaan.",
       "upgrade": "Vastaavaa tunnettua ainesosaa ei löytynyt.",
       "seed-ambiguous": "Luettelo tuntee useita ainesosia, joita tämä voisi olla.",
-      "ai-junk": "Tekoäly arveli, ettei tämä ole ainesosa, vaan esimerkiksi keittiöväline tai reseptirivin katkelma, eikä ollut varma."
+      "ai-junk": "Tekoäly arveli, ettei tämä ole ainesosa, vaan esimerkiksi keittiöväline tai reseptirivin katkelma."
     },
     "empty": "Ainesosia ei löytynyt",
     "emptyFlagged": "Mitään ei ole merkitty",
@@ -392,14 +392,10 @@
     "delete": "Poista",
     "deleteTitle": "Poistetaanko {name}?",
     "deleteConfirm": "Sen käännökset lähtevät mukana, samoin se mitä kotitaloutesi on opettanut Norishille siitä.",
-    "deleteAsJunk": "Poista roskana",
-    "deleteAsJunkTitle": "Poistetaanko {name} roskana?",
-    "deleteAsJunkConfirm": "Myös reseptirivit, jotka nimeävät vain tämän, poistetaan. Kunkin voi palauttaa kohdasta Tekoälyn muutokset.",
     "deleteTouches": {
       "recipeLines": "{count, plural, one {# reseptin rivi säilyttää tekstinsä ilman ainesosaa} other {# reseptien riviä säilyttää tekstinsä ilman ainesosaa}}",
       "groceries": "{count, plural, one {# ostos säilyttää tekstinsä ilman ainesosaa} other {# ostosta säilyttää tekstinsä ilman ainesosaa}}",
-      "pantry": "{count, plural, one {# ruokakomeron tuote poistetaan} other {# ruokakomeron tuotetta poistetaan}}",
-      "junkLines": "{count, plural, one {# reseptirivi poistetaan} other {# reseptiriviä poistetaan}}"
+      "pantry": "{count, plural, one {# ruokakomeron tuote poistetaan} other {# ruokakomeron tuotetta poistetaan}}"
     },
     "markDistinct": "Merkitse erilliseksi",
     "summary": "{spellings, plural, one {# käännös} other {# käännöstä}}{kinds, plural, =0 {} one {, # laji} other {, # lajia}}{parent, select, none {} other {, yläkäsite: {parent}}}",
@@ -551,9 +547,7 @@
       "parent": "Sijoitettu kohtaan {of}",
       "parentFromName": "Sijoitettu kohtaan {of} nimen perusteella",
       "plainName": "Nimetty uudelleen, oli {from}",
-      "tool": "Poistettu keittiövälineenä. Reseptirivit jäävät, ilman ainesosaa.",
-      "notAFood": "Poistettu, koska se ei nimeä ainesosaa. Ostokset säilyttävät tekstinsä.",
-      "junkLine": "Rivi {from} poistettu"
+      "notAFood": "Poistettu, koska se ei ole ainesosa. Reseptirivit ja ostokset säilyttävät tekstinsä."
     },
     "icon": {
       "change": "Vaihda kuvake",

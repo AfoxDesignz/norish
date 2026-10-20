@@ -384,7 +384,7 @@
       "food-gone": "L'IA l'a associé à un ingrédient fusionné avant que le nom ne puisse le rejoindre.",
       "upgrade": "Aucun ingrédient connu n'a pu être associé.",
       "seed-ambiguous": "Le catalogue connaît plusieurs ingrédients que cela pourrait être.",
-      "ai-junk": "L'IA a pensé que ce n'est pas un aliment, comme un ustensile de cuisine ou un fragment de ligne de recette, sans en être sûre."
+      "ai-junk": "L'IA a pensé que ce n'est pas un aliment, comme un ustensile de cuisine ou un fragment de ligne de recette."
     },
     "empty": "Aucun ingrédient trouvé",
     "emptyFlagged": "Rien n'est signalé",
@@ -392,14 +392,10 @@
     "delete": "Supprimer",
     "deleteTitle": "Supprimer {name} ?",
     "deleteConfirm": "Ses traductions partent avec lui, ainsi que ce que votre foyer a appris à Norish à son sujet.",
-    "deleteAsJunk": "Supprimer comme déchet",
-    "deleteAsJunkTitle": "Supprimer {name} comme déchet ?",
-    "deleteAsJunkConfirm": "Les lignes de recette qui ne nomment que cela sont aussi retirées. Chacune peut être rétablie depuis Modifié par l'IA.",
     "deleteTouches": {
       "recipeLines": "{count, plural, one {# ligne de recette garde son texte, sans cet ingrédient} other {# lignes de recette gardent leur texte, sans cet ingrédient}}",
       "groceries": "{count, plural, one {# course garde son texte, sans cet ingrédient} other {# courses gardent leur texte, sans cet ingrédient}}",
-      "pantry": "{count, plural, one {# article du garde-manger est retiré} other {# articles du garde-manger sont retirés}}",
-      "junkLines": "{count, plural, one {# ligne de recette est retirée} other {# lignes de recette sont retirées}}"
+      "pantry": "{count, plural, one {# article du garde-manger est retiré} other {# articles du garde-manger sont retirés}}"
     },
     "markDistinct": "Marquer comme distinct",
     "summary": "{spellings, plural, one {# traduction} other {# traductions}}{kinds, plural, =0 {} one {, # sorte} other {, # sortes}}{parent, select, none {} other {, parent: {parent}}}",
@@ -551,9 +547,7 @@
       "parent": "Classé sous {of}",
       "parentFromName": "Classé sous {of}, d'après son nom",
       "plainName": "Renommé depuis {from}",
-      "tool": "Supprimé comme ustensile. Ses lignes de recette restent, sans aliment.",
-      "notAFood": "Supprimé, car cela ne nomme aucun aliment. Ses courses gardent leur texte.",
-      "junkLine": "Ligne {from} retirée"
+      "notAFood": "Supprimé, car ce n'est pas un aliment. Ses lignes de recette et ses courses gardent leur texte."
     },
     "icon": {
       "change": "Changer l’icône",

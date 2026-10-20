@@ -40,9 +40,7 @@ export type AIChange = {
   ingredient: { id: string; name: string; localeNames: LocaleNames } | null;
   /** A parent's parent. */
   target: { id: string; name: string; localeNames: LocaleNames } | null;
-  /** The recipe a Junk Line was deleted from. */
-  recipe: { id: string; name: string } | null;
-  /** The merged or deleted food's name, the name AI replaced, or the deleted line. */
+  /** The merged or deleted food's name, or the name AI replaced. */
   from: string | null;
   fromWords: boolean;
   canAct: boolean;
