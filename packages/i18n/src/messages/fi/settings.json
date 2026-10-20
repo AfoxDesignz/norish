@@ -384,8 +384,7 @@
       "food-gone": "Tekoäly yhdisti tämän ainesosaan, joka yhdistettiin ennen kuin nimi ehti mukaan.",
       "upgrade": "Vastaavaa tunnettua ainesosaa ei löytynyt.",
       "seed-ambiguous": "Luettelo tuntee useita ainesosia, joita tämä voisi olla.",
-      "ai-tool": "Tekoäly arveli tämän olevan keittiöväline eikä ainesosa, eikä ollut varma.",
-      "ai-junk": "Tekoäly arveli, ettei tämä nimeä mitään, kuten reseptirivin katkelma, eikä ollut varma."
+      "ai-junk": "Tekoäly arveli, ettei tämä ole ainesosa, vaan esimerkiksi keittiöväline tai reseptirivin katkelma, eikä ollut varma."
     },
     "empty": "Ainesosia ei löytynyt",
     "emptyFlagged": "Mitään ei ole merkitty",

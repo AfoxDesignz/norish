@@ -384,8 +384,7 @@
       "food-gone": "AI knyttede det til en ingrediens, der blev flettet, før navnet kunne komme med.",
       "upgrade": "Der blev ikke fundet nogen kendt ingrediens, der passer.",
       "seed-ambiguous": "Kataloget kender flere ingredienser, dette kunne være.",
-      "ai-tool": "AI troede, at dette er et køkkenredskab, ikke en ingrediens, og var ikke sikker.",
-      "ai-junk": "AI troede, at dette ikke nævner noget, som et brudstykke af en opskriftslinje, og var ikke sikker."
+      "ai-junk": "AI troede, at dette ikke er en ingrediens, som et køkkenredskab eller et stykke af en opskriftslinje, og var ikke sikker."
     },
     "empty": "Ingen ingredienser fundet",
     "emptyFlagged": "Intet er markeret",

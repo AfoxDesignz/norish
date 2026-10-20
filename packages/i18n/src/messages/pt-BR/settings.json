@@ -384,8 +384,7 @@
       "food-gone": "A IA o associou a um ingrediente mesclado antes que o nome pudesse se juntar a ele.",
       "upgrade": "Nenhum ingrediente conhecido correspondente foi encontrado.",
       "seed-ambiguous": "O catálogo conhece vários ingredientes que este poderia ser.",
-      "ai-tool": "A IA achou que isto é um utensílio de cozinha, não um alimento, e não tinha certeza.",
-      "ai-junk": "A IA achou que isto não nomeia nada, como um fragmento de uma linha da receita, e não tinha certeza."
+      "ai-junk": "A IA achou que isto não é um alimento, como um utensílio de cozinha ou um trecho de uma linha de receita, e não tinha certeza."
     },
     "empty": "Nenhum ingrediente encontrado",
     "emptyFlagged": "Nada está marcado",

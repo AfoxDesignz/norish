@@ -502,7 +502,6 @@ function settledAnswer(answer: AIResolution, splits: boolean): AIResolution {
     case "several":
       return answer.sure && splits ? answer : flaggedNew("ai-unsure");
     case "tool":
-      return answer.sure ? answer : flaggedNew("ai-tool");
     case "nothing":
       return answer.sure ? answer : flaggedNew("ai-junk");
     default:

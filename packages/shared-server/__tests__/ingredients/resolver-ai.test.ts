@@ -864,7 +864,7 @@ describe("ingredient resolver, rung 3", () => {
           )
         )
       ).toMatchObject([
-        { name: "deegroller", flagged: true, flagReason: "ai-tool" },
+        { name: "deegroller", flagged: true, flagReason: "ai-junk" },
         { name: "melted", flagged: true, flagReason: "ai-junk" },
       ]);
     });

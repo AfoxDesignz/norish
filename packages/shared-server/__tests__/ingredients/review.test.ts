@@ -765,7 +765,7 @@ describe("asking AI about an Ingredient", () => {
       });
     });
 
-    it("flags a food AI is not sure is a tool or names nothing with that doubt, deleting nothing", async () => {
+    it("flags a food AI is not sure is a tool or names nothing as junk, deleting nothing", async () => {
       const roller = await flagged("deegroller");
       const melted = await flagged("melted");
 
@@ -773,7 +773,7 @@ describe("asking AI about an Ingredient", () => {
       compares("tool", null, false);
       await expect(askAIAbout(roller.ingredientId)).resolves.toMatchObject({
         outcome: "unsure",
-        reason: "ai-tool",
+        reason: "ai-junk",
       });
       reads({ englishName: null, generalFood: null, sure: false });
       compares("nothing", null, false);
@@ -784,7 +784,7 @@ describe("asking AI about an Ingredient", () => {
 
       await expect(ingredientFor(roller.aliasId)).resolves.toMatchObject({
         flagged: true,
-        flagReason: "ai-tool",
+        flagReason: "ai-junk",
       });
       await expect(ingredientFor(melted.aliasId)).resolves.toMatchObject({
         flagged: true,

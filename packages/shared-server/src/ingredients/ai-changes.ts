@@ -200,7 +200,7 @@ export async function deleteByAI(
       if ((await findFoldsKeptAsNotJunk(folds, tx)).size > 0) return "undone";
     }
     if (await isInAnyPantry(tx, ingredientId)) {
-      await refreshAIFlag(tx, ingredientId, { unsure: true, reason: doubtOf(verdict) });
+      await refreshAIFlag(tx, ingredientId, { unsure: true, reason: "ai-junk" });
 
       return "kept";
     }
@@ -229,11 +229,6 @@ export async function deleteByAI(
   }
 
   return { outcome, lines: lines.length };
-}
-
-/** The flag an unsure tool or nothing raises. */
-export function doubtOf(verdict: NoFoodAnswer): FlagReason {
-  return verdict === "tool" ? "ai-tool" : "ai-junk";
 }
 
 /** Flag a food AI answered about without changing it, unless the answer was sure or a person decided meanwhile. */

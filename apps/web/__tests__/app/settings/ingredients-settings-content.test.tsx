@@ -724,12 +724,12 @@ describe("IngredientsSettingsContent", () => {
   });
 
   it("offers Delete as junk on no other flag", async () => {
-    items = [{ ...onion, flagReason: "ai-tool" }, salt];
+    items = [{ ...onion, flagReason: "ai-unsure" }, salt];
     render(<IngredientsSettingsContent />);
     const opened = await open("onion");
 
     expect(within(opened).getByTestId("ingredient-flag-notice")).toHaveTextContent(
-      "flagReasons.ai-tool"
+      "flagReasons.ai-unsure"
     );
     expect(within(opened).queryByTestId("ingredient-delete-as-junk")).toBeNull();
     expect(within(opened).getByTestId("ingredient-delete")).toBeInTheDocument();

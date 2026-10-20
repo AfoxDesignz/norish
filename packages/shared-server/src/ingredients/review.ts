@@ -11,7 +11,7 @@ import { stripPreparation } from "@norish/shared/lib/spelling-keys";
 
 import type { AIResolution, AskTrace, NoFoodAnswer } from "../ai/resolution/ingredient-resolution";
 import { askWhatFoodThisIs } from "../ai/resolution/ingredient-resolution";
-import { deleteByAI, doubtOf, flagByAnswer, mergeByAI, parentByAI, splitByAI } from "./ai-changes";
+import { deleteByAI, flagByAnswer, mergeByAI, parentByAI, splitByAI } from "./ai-changes";
 import { ingredientChanges } from "./changes";
 import { nameAfterAnswer } from "./plain-names";
 import { resolveParts } from "./resolver";
@@ -115,13 +115,13 @@ async function deleted(
   answer: Extract<AIResolution, { kind: NoFoodAnswer }>,
   trace: AskTrace
 ): Promise<ReviewOutcome> {
-  if (!answer.sure) return await doubted(ingredientId, doubtOf(answer.kind), trace);
+  if (!answer.sure) return await doubted(ingredientId, "ai-junk", trace);
 
   const { outcome, lines } = await deleteByAI(ingredientId, answer.kind);
 
   switch (outcome) {
     case "kept":
-      return { outcome: "unsure", reason: doubtOf(answer.kind), ...trace };
+      return { outcome: "unsure", reason: "ai-junk", ...trace };
     case "gone":
       return { outcome: "skipped", reason: "not-found", ...trace };
     case "decided":

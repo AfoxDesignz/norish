@@ -384,8 +384,7 @@
       "food-gone": "AI matched this to a food that was merged away before the name could join it.",
       "upgrade": "No known food could be matched.",
       "seed-ambiguous": "The catalogue lists several foods this could be.",
-      "ai-tool": "AI thought this is a kitchen tool, not a food, and was not sure.",
-      "ai-junk": "AI thought this names nothing, like a fragment of a recipe line, and was not sure."
+      "ai-junk": "AI thought this is not a food, like a kitchen tool or a fragment of a recipe line, and was not sure."
     },
     "empty": "No ingredients found",
     "emptyFlagged": "Nothing is flagged",

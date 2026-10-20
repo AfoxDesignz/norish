@@ -384,8 +384,7 @@
       "food-gone": "AI koppelde dit aan een ingrediënt dat werd samengevoegd voordat de naam erbij kon.",
       "upgrade": "Er kon geen bekend ingrediënt aan worden gekoppeld.",
       "seed-ambiguous": "De catalogus kent meerdere ingrediënten die dit kunnen zijn.",
-      "ai-tool": "AI dacht dat dit keukengerei is, geen ingrediënt, en wist het niet zeker.",
-      "ai-junk": "AI dacht dat dit niets noemt, zoals een stukje van een receptregel, en wist het niet zeker."
+      "ai-junk": "AI dacht dat dit geen ingrediënt is, zoals keukengerei of een stukje van een receptregel, en wist het niet zeker."
     },
     "empty": "Geen ingrediënten gevonden",
     "emptyFlagged": "Niets is gemarkeerd",

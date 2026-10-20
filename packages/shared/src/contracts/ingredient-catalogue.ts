@@ -42,9 +42,7 @@ export const FLAG_REASONS = [
   "upgrade",
   /** The catalogue seed found several foods its spellings could be. */
   "seed-ambiguous",
-  /** AI thought this names a tool, not a food, and was not sure. */
-  "ai-tool",
-  /** AI thought this names nothing, a Junk Line, and was not sure. */
+  /** AI thought this is a tool or names nothing, a Junk Line, and was not sure. */
   "ai-junk",
 ] as const;
 
