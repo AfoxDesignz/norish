@@ -2,8 +2,10 @@ import type { Page, WebSocket as PageSocket } from "@playwright/test";
 import { request } from "@playwright/test";
 import { WebSocket as RawSocket } from "ws";
 
+import { findNewestGroceryNamed } from "@norish/db/repositories/groceries";
+
 import type { Identity, RealtimeStack, SessionCookies } from "./fixture";
-import { withDatabase } from "../harness/database";
+import { callTrpc } from "../harness/trpc";
 import { waitForSocket } from "./fixture";
 
 const TRPC_JSON = { "content-type": "application/json" };
@@ -43,46 +45,34 @@ export async function callQuery<T>(page: Page, baseURL: string, procedure: strin
 
 export interface HouseholdRow {
   id: string;
-  joinCode: string;
+  /** Only the household's admin is shown the code. */
+  joinCode: string | null;
 }
 
 /**
- * The household a user belongs to, once the asynchronous create/join has
- * landed. Create inserts the household with a code and then replaces it
- * (version 2), so a household is read only once its code is the one that stays.
+ * The household as `identity` reads it, once the asynchronous create/join has landed. Create
+ * inserts the household and then replaces its code (version 2), so only version 2 on counts.
  */
 export async function readHousehold(
   stack: RealtimeStack,
-  userId: string
+  identity: Identity
 ): Promise<HouseholdRow | null> {
-  return withDatabase(stack.server.databaseUrl, async (database) => {
-    const rows = await database.query<{ id: string; join_code: string | null }>(
-      `select h.id, h.join_code
-         from households h
-         join household_users hu on hu.household_id = h.id
-        where hu.user_id = $1
-          and h.version > 1`,
-      [userId]
-    );
-    const row = rows.rows[0];
+  const { household } = await callTrpc<{
+    household: { id: string; version: number; joinCode?: string | null } | null;
+  }>(stack.baseURL, stack.cookies[identity], "households.get");
 
-    return row && row.join_code ? { id: row.id, joinCode: row.join_code } : null;
-  });
+  return household && household.version > 1
+    ? { id: household.id, joinCode: household.joinCode ?? null }
+    : null;
 }
 
+/** The newest grocery by this name: a new grocery takes the top of its store's list. */
 export async function readGrocery(
-  stack: RealtimeStack,
   name: string
 ): Promise<{ id: string; version: number; isDone: boolean } | null> {
-  return withDatabase(stack.server.databaseUrl, async (database) => {
-    const rows = await database.query<{ id: string; version: number; is_done: boolean }>(
-      `select id, version, is_done from groceries where name = $1 order by created_at desc limit 1`,
-      [name]
-    );
-    const row = rows.rows[0];
+  const grocery = await findNewestGroceryNamed(name);
 
-    return row ? { id: row.id, version: row.version, isDone: row.is_done } : null;
-  });
+  return grocery ? { id: grocery.id, version: grocery.version, isDone: grocery.isDone } : null;
 }
 
 /**

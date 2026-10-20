@@ -13,10 +13,11 @@
  */
 import type { Locator, Page } from "@playwright/test";
 
-import { queryTrpc } from "../harness/trpc";
+import type { AIE2EStack } from "./fixture";
+import { createRecipe, readRecipe } from "../harness/recipes";
+import { seedRecipe } from "./cookbooks-support";
 import { expect, test } from "./fixture";
 import {
-  createRecipe,
   readIngredientOf,
   resetCatalogueScenario,
   seedCatalogue,
@@ -24,7 +25,7 @@ import {
   setParent,
   waitForAIPasses,
 } from "./ingredient-catalogue-support";
-import { readGroceryNames, readPantryNames, seedRecipeWithIngredients } from "./pantry-support";
+import { readGroceryNames, readPantryNames } from "./pantry-support";
 
 test.describe.configure({ mode: "serial" });
 
@@ -39,8 +40,10 @@ let page: Page;
 let recipeId: string;
 /** The seeded foods' ids, by name. */
 let ids: Record<string, string>;
+let stack: AIE2EStack;
 
 test.beforeAll(async ({ browser, aiStack }) => {
+  stack = aiStack;
   await resetCatalogueScenario();
 
   ids = await seedCatalogue([
@@ -70,10 +73,10 @@ test.beforeAll(async ({ browser, aiStack }) => {
     }),
   ]);
 
-  await setParent(ids["red onion"]!, ids.onion!);
+  await setParent(aiStack, ids["red onion"]!, ids.onion!);
 
-  await seedStoreFiling(STORE, AISLE, ids.onion!);
-  recipeId = await seedRecipeWithIngredients(RECIPE, ["onion", "butter"]);
+  await seedStoreFiling(aiStack, STORE, AISLE, "onion");
+  recipeId = await seedRecipe(RECIPE, ["onion", "butter"]);
 
   const context = await browser.newContext({
     baseURL: aiStack.baseURL,
@@ -125,7 +128,7 @@ test("a Dutch 'ui' in the Pantry leaves an English recipe's 'onion' off the list
   await pantry.getByTestId("pantry-name").press("Enter");
   // "ui" is a spelling of onion: the Pantry holds the Ingredient, shown by its name.
   await expect(pantry.locator('[data-pantry-ingredient="onion"]')).toHaveText("onion");
-  await expect.poll(readPantryNames).toEqual(["onion"]);
+  await expect.poll(() => readPantryNames(stack)).toEqual(["onion"]);
 
   await page.goto(`/recipes/${recipeId}`);
   await page.getByRole("button", { name: "Add", exact: true }).first().click();
@@ -137,7 +140,7 @@ test("a Dutch 'ui' in the Pantry leaves an English recipe's 'onion' off the list
   await expect(panel.getByRole("checkbox", { name: "butter" })).toBeChecked();
   await panel.getByRole("button", { name: "Add", exact: true }).click();
   await expect(panel).toBeHidden();
-  await expect.poll(readGroceryNames).toEqual(["butter"]);
+  await expect.poll(() => readGroceryNames(stack)).toEqual(["butter"]);
 });
 
 test("the list asks for its next page as the end comes into view", async () => {
@@ -297,7 +300,7 @@ test("AI merges a food a recipe mints by itself, Changed by AI lists the merge, 
       }),
     }
   );
-  await createRecipe(aiStack, "Knoflookbrood", ["knoflookteentjes"]);
+  await createRecipe(aiStack.baseURL, aiStack.ownerCookies, "Knoflookbrood", ["knoflookteentjes"]);
 
   // The pass merges it into garlic.
   await expect.poll(() => readIngredientOf("knoflookteentjes"), { timeout: 30_000 }).toBe("garlic");
@@ -347,7 +350,9 @@ test("AI gives a food a recipe mints its plain name by itself, listed on Changed
     },
     { kind: "success", content: JSON.stringify({ plainName: "zalmmoot" }) }
   );
-  await createRecipe(aiStack, "Zalm uit de oven", ["Lekkerste Zalmmoot"]);
+  await createRecipe(aiStack.baseURL, aiStack.ownerCookies, "Zalm uit de oven", [
+    "Lekkerste Zalmmoot",
+  ]);
 
   await expect
     .poll(() => readIngredientOf("Lekkerste Zalmmoot"), { timeout: 30_000 })
@@ -395,15 +400,14 @@ test("AI removes a food that names nothing; its line stays in the recipe with no
       }),
     }
   );
-  const id = await createRecipe(aiStack, "Snickers ijstaart", ["garlic", "gesmolten"]);
+  const id = await createRecipe(aiStack.baseURL, aiStack.ownerCookies, "Snickers ijstaart", [
+    "garlic",
+    "gesmolten",
+  ]);
   // The create answers before the recipe is written, and a recipe not written yet is not found.
   const lines = () =>
-    queryTrpc<{
-      recipeIngredients: Array<{ ingredientName: string; ingredientId: string | null }>;
-    }>(aiStack.baseURL, aiStack.ownerCookies, "recipes.get", { id }).then(
-      (recipe) =>
-        recipe.recipeIngredients.map((line) => [line.ingredientName, line.ingredientId !== null]),
-      () => undefined
+    readRecipe(aiStack.baseURL, aiStack.ownerCookies, id).then((recipe) =>
+      recipe?.recipeIngredients.map((line) => [line.ingredientName, line.ingredientId !== null])
     );
 
   await expect.poll(lines, { timeout: 30_000 }).toEqual([
@@ -509,17 +513,13 @@ test("a recipe line naming two foods puts each on the list as a grocery of its o
     { name: "zout", aliases: [{ text: "zout", locale: "nl" }] },
     { name: "peper", aliases: [{ text: "peper", locale: "nl" }] },
   ]);
-  const id = await createRecipe(aiStack, "Gebakken eieren", ["zout en peper"]);
+  const id = await createRecipe(aiStack.baseURL, aiStack.ownerCookies, "Gebakken eieren", [
+    "zout en peper",
+  ]);
   // The create answers before the recipe is written, and a recipe not written yet is not found.
   const lineFoods = () =>
-    queryTrpc<{ recipeIngredients: Array<{ foods?: Array<{ name: string }> }> }>(
-      aiStack.baseURL,
-      aiStack.ownerCookies,
-      "recipes.get",
-      { id }
-    ).then(
-      (recipe) => recipe.recipeIngredients[0]?.foods?.map((food) => food.name),
-      () => undefined
+    readRecipe(aiStack.baseURL, aiStack.ownerCookies, id).then((recipe) =>
+      recipe?.recipeIngredients[0]?.foods?.map((food) => food.name)
     );
 
   await expect.poll(lineFoods).toEqual(["zout", "peper"]);

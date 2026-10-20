@@ -91,8 +91,8 @@ test.beforeAll(async ({ realtimeStack }) => {
   });
 
   expect(created.ok).toBe(true);
-  await expect.poll(() => readHousehold(stack, stack.userIds.a)).not.toBeNull();
-  household = (await readHousehold(stack, stack.userIds.a))!;
+  await expect.poll(() => readHousehold(stack, "a").then((row) => row?.joinCode)).toBeTruthy();
+  household = (await readHousehold(stack, "a"))!;
   // The create finishes asynchronously with a connection invalidation; let it land.
   await delay(1_000);
 
@@ -119,7 +119,7 @@ test("a household join mid-connection restarts the joining browser's socket and 
   });
 
   expect(joined.ok).toBe(true);
-  await expect.poll(() => readHousehold(stack, stack.userIds.b)).toEqual(household);
+  await expect.poll(() => readHousehold(stack, "b").then((row) => row?.id)).toBe(household.id);
 
   // The Scope Change closes B's socket with 4000 (ADR-0033) ...
   await expect.poll(() => closeCodes(pageB)).toContain(4000);
@@ -143,7 +143,7 @@ test("grocery create, update and delete reach the other browser without a reload
   await addGrocery(pageA, "realtime-melk");
   await expect(rowFor(pageB, "realtime-melk")).toBeVisible();
 
-  const created = (await readGrocery(stack, "realtime-melk"))!;
+  const created = (await readGrocery("realtime-melk"))!;
   const updated = await callMutation(pageA, stack.baseURL, "groceries.update", {
     groceryId: created.id,
     raw: "realtime-melk-hernoemd",
@@ -154,7 +154,7 @@ test("grocery create, update and delete reach the other browser without a reload
   await expect(rowFor(pageB, "realtime-melk-hernoemd")).toBeVisible();
   await expect(rowFor(pageB, "realtime-melk")).toHaveCount(0);
 
-  const renamed = (await readGrocery(stack, "realtime-melk-hernoemd"))!;
+  const renamed = (await readGrocery("realtime-melk-hernoemd"))!;
   const deleted = await callMutation(pageA, stack.baseURL, "groceries.delete", {
     groceries: [{ id: renamed.id, version: renamed.version }],
   });
@@ -322,7 +322,7 @@ test("a browser back from a network gap gets what it missed through Resume, befo
 
   // The link resent the cursor, and the missed event — that row, by id —
   // rode the new socket.
-  const missed = (await readGrocery(stack, "tunnel-appel"))!;
+  const missed = (await readGrocery("tunnel-appel"))!;
   const resubscribed = frames.frames.filter(
     (frame) =>
       frame.direction === "sent" &&

@@ -8,9 +8,12 @@ import type { StartedRedisContainer } from "@testcontainers/redis";
 import type { ChildProcess } from "node:child_process";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { RedisContainer } from "@testcontainers/redis";
-import { Client } from "pg";
+
+import { setConfig } from "@norish/db/repositories/server-config";
 
 import { REDIS_IMAGE } from "../../../../../packages/shared-server/__tests__/helpers/redis";
+import { MASTER_KEY } from "./environment";
+import { connectRepositories, disconnectRepositories } from "./repositories";
 
 const WEB_DIR = path.resolve(import.meta.dirname, "../../..");
 const BUILD_ID = path.join(WEB_DIR, ".next/BUILD_ID");
@@ -256,6 +259,7 @@ export class ProductionStack {
 
       this.databaseConnectionUrl = this.postgres!.getConnectionUri();
       this.redisConnectionUrl = this.redis!.getConnectionUrl();
+      await connectRepositories(this.databaseConnectionUrl);
 
       phase = "migration boot";
       await this.startServer();
@@ -393,6 +397,7 @@ export class ProductionStack {
 
     await stopAll([
       { label: `[${this.options.project}] production server`, run: () => this.stopServer() },
+      { label: `[${this.options.project}] repository pool`, run: () => disconnectRepositories() },
       {
         label: `[${this.options.project}] Redis`,
         run: async () => {
@@ -449,7 +454,7 @@ export class ProductionStack {
       REDIS_URL: this.redisConnectionUrl!,
       AUTH_URL: this.baseURL,
       TRUSTED_ORIGINS: this.baseURL,
-      MASTER_KEY: "X4fjLgB8egCPwlOQW8iC3JGXAtUIMUOGmk/y29n+YSw=",
+      MASTER_KEY,
       UPLOADS_DIR: this.uploadsDir,
       LOG_LEVEL: "error",
       NEXT_PUBLIC_LOG_LEVEL: "error",
@@ -485,19 +490,8 @@ export class ProductionStack {
   }
 
   private async forceAuthenticationConfig(): Promise<void> {
-    const database = new Client({ connectionString: this.databaseUrl });
-
-    await database.connect();
-
-    try {
-      await database.query(
-        `update server_config set value = 'true'::jsonb
-         where key in ('password_auth_enabled', 'registration_enabled')`
-      );
-    } finally {
-      await database.end();
-    }
-
+    await setConfig("password_auth_enabled", true, null);
+    await setConfig("registration_enabled", true, null);
     await this.redis!.executeCliCmd("flushall");
   }
 

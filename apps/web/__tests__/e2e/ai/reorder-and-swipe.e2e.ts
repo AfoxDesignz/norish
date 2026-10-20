@@ -8,10 +8,10 @@
  * other spec drags these rows, so this one exists to catch that.
  */
 import type { Browser, BrowserContext, Page } from "@playwright/test";
-import { request } from "@playwright/test";
 
 import type { AIE2EStack } from "./fixture";
-import { withDatabase } from "./database";
+import { waitForRecipe } from "../harness/recipes";
+import { callTrpc } from "../harness/trpc";
 import { expect, test } from "./fixture";
 import { createPlainStore } from "./grocery-aisles-support";
 
@@ -47,40 +47,22 @@ function recipeWith(name: string) {
 
 /** Seeds a recipe through the mutation the recipe form uses; answers its id. */
 async function seedRecipeWithRows(stack: AIE2EStack, name: string): Promise<string> {
-  const api = await request.newContext({
-    baseURL: stack.baseURL,
-    extraHTTPHeaders: {
-      origin: stack.baseURL,
-      cookie: stack.ownerCookies.map((cookie) => `${cookie.name}=${cookie.value}`).join("; "),
-    },
-  });
+  const recipeId = await callTrpc<string>(
+    stack.baseURL,
+    stack.ownerCookies,
+    "recipes.create",
+    recipeWith(name)
+  );
 
-  try {
-    const response = await api.post("/api/trpc/recipes.create", {
-      data: { json: recipeWith(name) },
-    });
+  // The mutation answers before its transaction lands; wait for the rows.
+  await waitForRecipe(
+    stack.baseURL,
+    stack.ownerCookies,
+    recipeId,
+    (recipe) => recipe.steps.length === 3
+  );
 
-    if (!response.ok()) throw new Error(`recipes.create failed: ${response.status()}`);
-    const recipeId = ((await response.json()) as { result: { data: { json: string } } }).result.data
-      .json;
-
-    // The mutation answers before its transaction lands; wait for the rows.
-    await expect
-      .poll(
-        () =>
-          withDatabase(
-            async (database) =>
-              (await database.query("select 1 from steps where recipe_id = $1", [recipeId]))
-                .rowCount
-          ),
-        { timeout: 30_000 }
-      )
-      .toBe(3);
-
-    return recipeId;
-  } finally {
-    await api.dispose();
-  }
+  return recipeId;
 }
 
 /** A signed-in owner page; a finger means a phone-width touch screen. */
@@ -252,7 +234,6 @@ async function expectReorder(
 }
 
 for (const pointer of ["mouse", "touch"] as const) {
-  // eslint-disable-next-line sonarjs/assertions-in-tests -- expectReorder asserts every order
   test(`a recipe's ingredients and steps reorder with a ${pointer}`, async ({
     browser,
     aiStack,
@@ -280,7 +261,7 @@ for (const pointer of ["mouse", "touch"] as const) {
       string,
     ];
 
-    for (const store of stores) await createPlainStore(store);
+    for (const store of stores) await createPlainStore(aiStack, store);
     const { context, page } = await openPage(browser, aiStack, pointer);
 
     try {

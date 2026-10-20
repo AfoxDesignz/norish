@@ -84,7 +84,7 @@ test.beforeEach(({ aiStack, page: fixturePage }) => {
 });
 
 test.afterAll(async () => {
-  await setAutomaticEnrichment({}).catch(() => undefined);
+  await setAutomaticEnrichment(stack, {}).catch(() => undefined);
   await configureDecisionModel({ provider: "disabled" }).catch(() => undefined);
 });
 
@@ -224,7 +224,7 @@ function chatRequestCount(): number {
 
 test("a Decision settles automatic categorization, and the AI provider is never asked for it", async () => {
   await decisionModelAtHarness();
-  await setAutomaticEnrichment({ autoCategorization: true });
+  await setAutomaticEnrichment(stack, { autoCategorization: true });
   stack.ai.control.reset();
   stack.ai.control.decideWith(answers({ Breakfast: 0.02, Lunch: 0.03, Dinner: 0.97, Snack: 0.01 }));
 
@@ -233,7 +233,7 @@ test("a Decision settles automatic categorization, and the AI provider is never 
   await eventuallyOnRecipe(async () => {
     await expect(page.getByText("Dinner").first()).toBeVisible({ timeout: 3_000 });
   });
-  expect(await readStoredCategories("Decision Categories Stew")).toEqual(["Dinner"]);
+  expect(await readStoredCategories(stack, "Decision Categories Stew")).toEqual(["Dinner"]);
 
   // The Decision went over loopback to the harness's TypeSafe route, and the
   // one chat completion was the extraction: categorization never reached the
@@ -244,7 +244,7 @@ test("a Decision settles automatic categorization, and the AI provider is never 
 
 test("an unsure Decision hands categorization to the AI provider, whose answer is then checked", async () => {
   await decisionModelAtHarness();
-  await setAutomaticEnrichment({ autoCategorization: true });
+  await setAutomaticEnrichment(stack, { autoCategorization: true });
   stack.ai.control.reset();
   // Nothing clears the category threshold (0.6), and the validation question
   // on the AI provider's answer ("Lunch") is answered from the same set: above
@@ -259,7 +259,7 @@ test("an unsure Decision hands categorization to the AI provider, whose answer i
   await eventuallyOnRecipe(async () => {
     await expect(page.getByText("Lunch").first()).toBeVisible({ timeout: 3_000 });
   });
-  expect(await readStoredCategories("Unsure Decision Stew")).toEqual(["Lunch"]);
+  expect(await readStoredCategories(stack, "Unsure Decision Stew")).toEqual(["Lunch"]);
 
   // The extraction and the categorization both went to the AI provider; the
   // Decision Model was asked at least twice, for the kind and for its check.
@@ -284,7 +284,7 @@ test("an unsure Decision hands categorization to the AI provider, whose answer i
 
 test("a disabled Decision block leaves every kind to the AI provider", async () => {
   await configureDecisionModel({ provider: "disabled" });
-  await setAutomaticEnrichment({ autoCategorization: true });
+  await setAutomaticEnrichment(stack, { autoCategorization: true });
   stack.ai.control.reset();
   stack.ai.control.setDecisionDefault(null);
 
@@ -296,7 +296,7 @@ test("a disabled Decision block leaves every kind to the AI provider", async () 
   await eventuallyOnRecipe(async () => {
     await expect(page.getByText("Snack").first()).toBeVisible({ timeout: 3_000 });
   });
-  expect(await readStoredCategories("No Decision Stew")).toEqual(["Snack"]);
+  expect(await readStoredCategories(stack, "No Decision Stew")).toEqual(["Snack"]);
 
   expect(stack.ai.control.decisionRequestCount).toBe(0);
   expect(chatRequestCount()).toBe(2);
@@ -304,7 +304,7 @@ test("a disabled Decision block leaves every kind to the AI provider", async () 
 
 test("an administrator cancels a running AI job, and the job monitor shows it Cancelled", async () => {
   await configureDecisionModel({ provider: "disabled" });
-  await setAutomaticEnrichment({});
+  await setAutomaticEnrichment(stack, {});
   stack.ai.control.reset();
   stack.ai.control.setDefault(null);
   // The extraction request arrives and is never answered: the job stays active on it.

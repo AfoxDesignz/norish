@@ -18,6 +18,8 @@
  */
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
+import { updateRecipeDishColor } from "@norish/db/repositories/recipes";
+
 import type { DeviceKind } from "../harness/device-preferences";
 import type { AIE2EStack } from "./fixture";
 import { RECIPE_FILTERS_COOKIE } from "../../../lib/recipe-filters-cookie";
@@ -27,8 +29,8 @@ import {
   IPHONE_USER_AGENT,
   setDevicePreferences,
 } from "../harness/device-preferences";
-import { callTrpc } from "../harness/trpc";
-import { databaseUrl, withDatabase } from "./database";
+import { readRecipe, waitForRecipe } from "../harness/recipes";
+import { callTrpc, queryTrpc } from "../harness/trpc";
 import { expect, OWNER, test } from "./fixture";
 
 test.describe.configure({ mode: "serial" });
@@ -37,7 +39,7 @@ let stack: AIE2EStack;
 
 test.beforeEach(async ({ aiStack }) => {
   stack = aiStack;
-  await clearDevicePreferences(databaseUrl());
+  await clearDevicePreferences();
 });
 
 const USER_AGENTS: Record<DeviceKind, string> = {
@@ -369,21 +371,9 @@ async function ensureRecipe(): Promise<string> {
 
   const id = await callApi<string>("recipes.create", RECIPE);
 
-  // The mutation answers before the transaction lands; wait for the row.
-  await expect
-    .poll(
-      () =>
-        withDatabase(async (database) => {
-          const result = await database.query(
-            "update recipes set dish_color = '#b05a2a' where id = $1 returning id",
-            [id]
-          );
-
-          return result.rowCount;
-        }),
-      { timeout: 30_000 }
-    )
-    .toBe(1);
+  await waitForRecipe(stack.baseURL, stack.ownerCookies, id);
+  // A Dish Colour is derived from media, so no editor sets one; the repository does.
+  await updateRecipeDishColor(id, "#b05a2a");
   recipeId = id;
 
   return id;
@@ -697,12 +687,55 @@ test("a shared recipe shows a signed-in reader their own format and a signed-out
 const created = { recipes: [] as string[], cookbooks: [] as string[], stores: [] as string[] };
 
 test.afterAll(async () => {
-  await withDatabase(async (database) => {
-    await database.query("delete from groceries where store_id = any($1)", [created.stores]);
-    await database.query("delete from stores where id = any($1)", [created.stores]);
-    await database.query("delete from cookbooks where id = any($1)", [created.cookbooks]);
-    await database.query("delete from recipes where id = any($1)", [created.recipes]);
-  });
+  const { groceries } = await callTrpc<{
+    groceries: Array<{ id: string; version: number; storeId: string | null }>;
+  }>(stack.baseURL, stack.ownerCookies, "groceries.list");
+  const stores = await callTrpc<Array<{ id: string; version: number }>>(
+    stack.baseURL,
+    stack.ownerCookies,
+    "stores.list"
+  );
+
+  for (const store of stores.filter(({ id }) => created.stores.includes(id))) {
+    await callApi("stores.delete", {
+      storeId: store.id,
+      version: store.version,
+      deleteGroceries: true,
+      grocerySnapshot: groceries
+        .filter((grocery) => grocery.storeId === store.id)
+        .map(({ id, version }) => ({ id, version })),
+    });
+  }
+  for (const id of created.cookbooks) {
+    const { version } = await queryTrpc<{ version: number }>(
+      stack.baseURL,
+      stack.ownerCookies,
+      "cookbooks.get",
+      { id }
+    );
+
+    await callApi("cookbooks.remove", { id, version });
+  }
+  for (const id of created.recipes) {
+    const recipe = await readRecipe(stack.baseURL, stack.ownerCookies, id);
+
+    if (recipe) await callApi("recipes.delete", { id, version: recipe.version });
+  }
+  // Store and recipe deletes land after their mutations answer.
+  await expect
+    .poll(async () => {
+      const left = await callTrpc<Array<{ id: string }>>(
+        stack.baseURL,
+        stack.ownerCookies,
+        "stores.list"
+      );
+      const recipes = await Promise.all(
+        created.recipes.map((id) => readRecipe(stack.baseURL, stack.ownerCookies, id))
+      );
+
+      return left.some(({ id }) => created.stores.includes(id)) || recipes.some(Boolean);
+    })
+    .toBe(false);
 });
 
 /** The Library filters cookie a browser writes, set before a full load. */
@@ -725,17 +758,7 @@ async function createRecipe(name: string, category = "Breakfast"): Promise<strin
     categories: [category],
   });
 
-  // The mutation answers before the transaction lands; wait for the row.
-  await expect
-    .poll(
-      () =>
-        withDatabase(
-          async (database) =>
-            (await database.query("select 1 from recipes where id = $1", [id])).rowCount
-        ),
-      { timeout: 30_000 }
-    )
-    .toBe(1);
+  await waitForRecipe(stack.baseURL, stack.ownerCookies, id);
   created.recipes.push(id);
 
   return id;

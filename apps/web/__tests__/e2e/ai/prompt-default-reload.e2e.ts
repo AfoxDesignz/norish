@@ -76,11 +76,11 @@ test.beforeEach(async ({ aiStack, page: fixturePage }) => {
   ai = aiStack.ai;
   page = fixturePage;
   await writePromptsRow({});
-  await setAutomaticEnrichment({});
+  await setAutomaticEnrichment(stack, {});
 });
 
 test.afterEach(async () => {
-  await setAutomaticEnrichment({}).catch(() => undefined);
+  await setAutomaticEnrichment(stack, {}).catch(() => undefined);
   await writePromptsRow({}).catch(() => undefined);
 });
 
@@ -130,7 +130,7 @@ test("a customized prompt survives a restart and the others follow the shipped d
   expect(await readPromptsRow()).toEqual({ recipeExtraction: CUSTOM_EXTRACTION });
 
   // The surviving customization is what extraction actually sends.
-  await setAutomaticEnrichment({});
+  await setAutomaticEnrichment(stack, {});
   ai.control.reset();
   ai.control.succeedWith(bareRecipe("Imported After The Restart"));
 

@@ -8,11 +8,10 @@
 import type { Route } from "@playwright/test";
 
 import { clearDevicePreferences, readProfilePreferences } from "../harness/device-preferences";
-import { databaseUrl } from "./database";
 import { expect, test } from "./fixture";
 
 test.beforeEach(async () => {
-  await clearDevicePreferences(databaseUrl());
+  await clearDevicePreferences();
 });
 
 test("quick Hidden Items changes all land, and none drops out while the next is queued", async ({

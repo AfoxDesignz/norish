@@ -9,6 +9,7 @@ import {
   listCatalogueIngredients,
   listIngredientUses,
 } from "@norish/db/repositories/ingredient-catalogue";
+import { insertSeededIngredient } from "@norish/db/repositories/ingredient-seed";
 import * as schema from "@norish/db/schema";
 import { parseIngredientSearch } from "@norish/shared/lib/ingredient-search";
 
@@ -229,5 +230,44 @@ describe("removing a spelling", () => {
     await expect(withTransaction((tx) => deleteCatalogueAlias(tx, only!.id))).rejects.toThrow(
       "last"
     );
+  });
+});
+
+describe("insertSeededIngredient", () => {
+  const testBase = new RepositoryTestBase("test_insert_seeded_ingredient");
+
+  beforeAll(async () => {
+    await testBase.setup();
+  });
+
+  beforeEach(async () => {
+    await testBase.beforeEachTest();
+  });
+
+  afterAll(async () => {
+    await testBase.teardown();
+  });
+
+  it("writes the food with each spelling seeded, in its own language", async () => {
+    const id = await insertSeededIngredient({ name: "courgette", flagged: true }, [
+      { text: "courgette", fold: "courgette", locale: "en" },
+      { text: "zucchine", fold: "zucchine", locale: "it" },
+    ]);
+    const db = getTestDb();
+    const [food] = await db.select().from(schema.ingredients).where(eq(schema.ingredients.id, id));
+    const spellings = await db
+      .select()
+      .from(schema.ingredientAliases)
+      .where(eq(schema.ingredientAliases.ingredientId, id));
+
+    expect(food).toMatchObject({ name: "courgette", flagged: true });
+    expect(
+      spellings
+        .map(({ text, locale, seeded }) => ({ text, locale, seeded }))
+        .sort((a, b) => a.text.localeCompare(b.text))
+    ).toEqual([
+      { text: "courgette", locale: "en", seeded: true },
+      { text: "zucchine", locale: "it", seeded: true },
+    ]);
   });
 });

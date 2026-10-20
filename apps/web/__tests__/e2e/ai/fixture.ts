@@ -7,7 +7,6 @@ import { createFakeAIProvider } from "../harness/ai-provider";
 import { signIn } from "../harness/auth";
 import { hydratingBrowser } from "../harness/hydration";
 import { ProductionStack } from "../harness/production-stack";
-import { configureDatabase } from "./database";
 
 export const OWNER = {
   email: "ai-e2e-a@norish.test",
@@ -72,7 +71,6 @@ export const test = base.extend<AITestFixtures, AIWorkerFixtures>({
 
       try {
         await stack.start();
-        configureDatabase(stack.databaseUrl);
         const ownerCookies = await signIn(stack.baseURL, OWNER);
 
         await use({ ai, server: stack, baseURL: stack.baseURL, ownerCookies });

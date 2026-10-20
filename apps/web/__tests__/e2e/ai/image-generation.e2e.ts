@@ -12,10 +12,9 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { Client } from "pg";
 
 import type { AIE2EStack } from "./fixture";
-import { databaseUrl } from "./database";
+import { deleteEveryRecipe } from "../harness/reset";
 import { expect, test } from "./fixture";
 import {
   configureImageGeneration,
@@ -75,20 +74,9 @@ test.beforeEach(({ aiStack, page: testPage }) => {
 });
 
 test.afterEach(async () => {
-  await setAutomaticEnrichment({});
-  await configureImageGeneration(null);
+  await setAutomaticEnrichment(stack, {});
+  await configureImageGeneration(stack, null);
 });
-
-async function deleteAllRecipes(): Promise<void> {
-  const database = new Client({ connectionString: databaseUrl() });
-
-  await database.connect();
-  try {
-    await database.query("delete from recipes");
-  } finally {
-    await database.end();
-  }
-}
 
 async function importRecipe(name: string): Promise<void> {
   const { ai } = stack;
@@ -124,9 +112,9 @@ function directGeneration(): void {
 test("the manual action replaces the primary image and the page re-tints", async () => {
   const name = "Manually Pictured Stew";
 
-  await deleteAllRecipes();
-  await setAutomaticEnrichment({});
-  await configureImageGeneration(stack.ai.url);
+  await deleteEveryRecipe();
+  await setAutomaticEnrichment(stack, {});
+  await configureImageGeneration(stack, stack.ai.url);
   await importRecipe(name);
 
   const { url: photoUrl } = await seedRecipePhoto({
@@ -163,13 +151,13 @@ test("the manual action replaces the primary image and the page re-tints", async
   // The stored outcome: exactly one gallery row, marked, and it is not the
   // photograph. The photograph's row is gone.
   await expect
-    .poll(async () => readStoredGalleryImages(name), {
+    .poll(async () => readStoredGalleryImages(stack, name), {
       timeout: 60_000,
       intervals: [1_000, 2_000, 5_000],
     })
     .toEqual([{ image: expect.not.stringContaining("supplied-photo"), generated: true }]);
 
-  const [generated] = await readStoredGalleryImages(name);
+  const [generated] = await readStoredGalleryImages(stack, name);
 
   // The reader's outcome, without a reload: the canonical recipe update
   // swaps the hero and re-tints the page from the drawing's green.
@@ -191,7 +179,7 @@ test("the manual action replaces the primary image and the page re-tints", async
   );
   await expect(page.locator(`img[src*="supplied-photo"]`)).toHaveCount(0);
 
-  expect(await readStoredDishColor(name)).not.toBe(SUPPLIED_PHOTO_DISH_COLOR);
+  expect(await readStoredDishColor(stack, name)).not.toBe(SUPPLIED_PHOTO_DISH_COLOR);
   expect(stack.ai.control.imageRequestCount).toBe(1);
 
   // The library follows too: the dashboard card reads the first gallery
@@ -228,8 +216,8 @@ test.describe("the bulk sweep", () => {
   }
 
   test.beforeEach(async () => {
-    await deleteAllRecipes();
-    await setAutomaticEnrichment({});
+    await deleteEveryRecipe();
+    await setAutomaticEnrichment(stack, {});
     await importRecipe(GAP_RECIPE);
     await importRecipe(PHOTO_RECIPE);
     await seedRecipePhoto({
@@ -238,8 +226,8 @@ test.describe("the bulk sweep", () => {
       photoPath: SUPPLIED_PHOTO_PATH,
       dishColor: SUPPLIED_PHOTO_DISH_COLOR,
     });
-    await configureImageGeneration(stack.ai.url);
-    await setAutomaticEnrichment({ imageGeneration: true });
+    await configureImageGeneration(stack, stack.ai.url);
+    await setAutomaticEnrichment(stack, { imageGeneration: true });
     stack.ai.control.reset();
     directGeneration();
   });
@@ -258,14 +246,14 @@ test.describe("the bulk sweep", () => {
     await page.getByRole("button", { name: "Run on all recipes" }).click();
 
     await expect
-      .poll(async () => readStoredGalleryImages(GAP_RECIPE), {
+      .poll(async () => readStoredGalleryImages(stack, GAP_RECIPE), {
         timeout: 60_000,
         intervals: [1_000, 2_000, 5_000],
       })
       .toEqual([{ image: expect.stringContaining("/recipes/"), generated: true }]);
 
     // The photographed recipe was never touched: same single supplied row.
-    expect(await readStoredGalleryImages(PHOTO_RECIPE)).toEqual([
+    expect(await readStoredGalleryImages(stack, PHOTO_RECIPE)).toEqual([
       { image: expect.stringContaining("supplied-photo"), generated: false },
     ]);
     expect(stack.ai.control.imageRequestCount).toBe(1);
@@ -291,14 +279,14 @@ test.describe("the bulk sweep", () => {
     await page.getByRole("button", { name: "Overwrite all recipes" }).click();
 
     await expect
-      .poll(async () => readStoredGalleryImages(PHOTO_RECIPE), {
+      .poll(async () => readStoredGalleryImages(stack, PHOTO_RECIPE), {
         timeout: 60_000,
         intervals: [1_000, 2_000, 5_000],
       })
       .toEqual([{ image: expect.not.stringContaining("supplied-photo"), generated: true }]);
 
     await expect
-      .poll(async () => readStoredGalleryImages(GAP_RECIPE), {
+      .poll(async () => readStoredGalleryImages(stack, GAP_RECIPE), {
         timeout: 60_000,
         intervals: [1_000, 2_000, 5_000],
       })

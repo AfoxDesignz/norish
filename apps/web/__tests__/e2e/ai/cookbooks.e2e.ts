@@ -11,6 +11,7 @@
  */
 import type { Page } from "@playwright/test";
 
+import type { AIE2EStack } from "./fixture";
 import {
   clearCookbooks,
   deleteCookbookByTitle,
@@ -30,6 +31,7 @@ const COOKBOOK_TITLE = "Weeknight Dinners";
 const RENAMED_TITLE = "Weeknight Favourites";
 
 let page: Page;
+let stack: AIE2EStack;
 
 type LibraryType = "all" | "recipes" | "cookbooks";
 
@@ -151,8 +153,9 @@ async function openCookbook(title: string) {
   await expect(cookbookHeading()).toHaveText(title);
 }
 
-test.beforeAll(async ({ aiStack: _aiStack }) => {
-  await clearCookbooks();
+test.beforeAll(async ({ aiStack }) => {
+  stack = aiStack;
+  await clearCookbooks(stack);
   await seedRecipe(RECIPE_NAME);
 });
 
@@ -192,7 +195,7 @@ test("creating a cookbook from the Library leaves the reader on the Library", as
   // Library, and the new cookbook appears in it.
   await expect(page).toHaveURL(/\/$/);
   await expect(cookbookCard(COOKBOOK_TITLE)).toBeVisible();
-  expect(await readCookbookTitles()).toContain(COOKBOOK_TITLE);
+  expect(await readCookbookTitles(stack)).toContain(COOKBOOK_TITLE);
 });
 
 test("the Add button under All makes either kind", async () => {
@@ -212,7 +215,7 @@ test("the Add button under All makes either kind", async () => {
 
   await expect(page).toHaveURL(/\/$/);
   await expect(cookbookCard(SECOND)).toBeVisible();
-  expect(await readCookbookTitles()).toContain(SECOND);
+  expect(await readCookbookTitles(stack)).toContain(SECOND);
 
   // Under Recipes the button only makes recipes, because that is all the list
   // can show.
@@ -223,7 +226,7 @@ test("the Add button under All makes either kind", async () => {
 
   // Leave the Library as this scenario found it: the interleaving test after
   // it is about one cookbook standing beside one recipe.
-  await deleteCookbookByTitle(SECOND);
+  await deleteCookbookByTitle(stack, SECOND);
 });
 
 test("a cookbook and a recipe appear interleaved under All", async () => {
@@ -259,7 +262,7 @@ test("filing a recipe from its quick actions shows it on the recipe page card", 
 
   // Toggling stages the change; nothing is written until Save.
   await page.locator(`[data-cookbook-toggle="${COOKBOOK_TITLE}"]`).click();
-  expect(await readCookbookMembers(COOKBOOK_TITLE)).toEqual([]);
+  expect(await readCookbookMembers(stack, COOKBOOK_TITLE)).toEqual([]);
 
   await saveMembership();
 
@@ -268,7 +271,7 @@ test("filing a recipe from its quick actions shows it on the recipe page card", 
 
   await expect(card.locator(`[data-cookbook-chip="${COOKBOOK_TITLE}"]`)).toBeVisible();
   await expect(async () => {
-    expect(await readCookbookMembers(COOKBOOK_TITLE)).toEqual([RECIPE_NAME]);
+    expect(await readCookbookMembers(stack, COOKBOOK_TITLE)).toEqual([RECIPE_NAME]);
   }).toPass({ timeout: 10_000 });
 });
 
@@ -320,7 +323,7 @@ test("the same panel takes the recipe out again", async () => {
   await expect(page.getByTestId("cookbooks-card")).toHaveCount(0);
 
   await expect(async () => {
-    expect(await readCookbookMembers(COOKBOOK_TITLE)).toEqual([]);
+    expect(await readCookbookMembers(stack, COOKBOOK_TITLE)).toEqual([]);
   }).toPass({ timeout: 10_000 });
 });
 
@@ -333,7 +336,7 @@ test("closing the membership panel without saving changes nothing", async () => 
   await closePanel();
 
   await expect(page.getByTestId("cookbooks-card")).toHaveCount(0);
-  expect(await readCookbookMembers(COOKBOOK_TITLE)).toEqual([]);
+  expect(await readCookbookMembers(stack, COOKBOOK_TITLE)).toEqual([]);
 });
 
 test("a cookbook fills itself from its own side", async () => {
@@ -347,12 +350,12 @@ test("a cookbook fills itself from its own side", async () => {
   await page.locator(`[data-add-recipe="${RECIPE_NAME}"]`).click();
 
   // Staged, like every other cookbook panel.
-  expect(await readCookbookMembers(COOKBOOK_TITLE)).toEqual([]);
+  expect(await readCookbookMembers(stack, COOKBOOK_TITLE)).toEqual([]);
 
   await page.getByTestId("save-cookbook-recipes").click();
 
   await expect(async () => {
-    expect(await readCookbookMembers(COOKBOOK_TITLE)).toEqual([RECIPE_NAME]);
+    expect(await readCookbookMembers(stack, COOKBOOK_TITLE)).toEqual([RECIPE_NAME]);
   }).toPass({ timeout: 10_000 });
 });
 
@@ -363,7 +366,7 @@ test("the edit panel takes a recipe out of the cookbook it is editing", async ()
   await ensureFiled();
 
   await expect(async () => {
-    expect(await readCookbookMembers(COOKBOOK_TITLE)).toEqual([RECIPE_NAME]);
+    expect(await readCookbookMembers(stack, COOKBOOK_TITLE)).toEqual([RECIPE_NAME]);
   }).toPass({ timeout: 10_000 });
 
   await page.goto("/");
@@ -374,12 +377,12 @@ test("the edit panel takes a recipe out of the cookbook it is editing", async ()
   await page.locator(`[data-remove-member="${RECIPE_NAME}"]`).click();
 
   // Staged, like everything else in this panel: nothing is written yet.
-  expect(await readCookbookMembers(COOKBOOK_TITLE)).toEqual([RECIPE_NAME]);
+  expect(await readCookbookMembers(stack, COOKBOOK_TITLE)).toEqual([RECIPE_NAME]);
 
   await page.getByRole("button", { name: /^save$/i }).click();
 
   await expect(async () => {
-    expect(await readCookbookMembers(COOKBOOK_TITLE)).toEqual([]);
+    expect(await readCookbookMembers(stack, COOKBOOK_TITLE)).toEqual([]);
   }).toPass({ timeout: 10_000 });
   // Unfiling is never destructive.
   expect(await recipeExists(RECIPE_NAME)).toBe(true);
@@ -393,16 +396,16 @@ test("an uploaded cover replaces the mosaic until it is removed", async () => {
   await chooseCookbookOption("Edit cookbook");
   await page.getByTestId("cookbook-image-file").setInputFiles(await pictureFile("#b4587a"));
   // Staged like the rest of the panel: nothing is saved before Save.
-  expect(await readCookbookImage(COOKBOOK_TITLE)).toBeNull();
+  expect(await readCookbookImage(stack, COOKBOOK_TITLE)).toBeNull();
   await page.getByRole("button", { name: /^save$/i }).click();
 
   await expect(async () => {
-    expect(await readCookbookImage(COOKBOOK_TITLE)).toMatch(
+    expect(await readCookbookImage(stack, COOKBOOK_TITLE)).toMatch(
       /^\/cookbooks\/[a-f0-9-]{36}\/[a-f0-9-]+\.jpg$/
     );
   }).toPass({ timeout: 10_000 });
 
-  const image = (await readCookbookImage(COOKBOOK_TITLE))!;
+  const image = (await readCookbookImage(stack, COOKBOOK_TITLE))!;
 
   expect((await page.request.get(image)).status()).toBe(200);
 
@@ -416,7 +419,7 @@ test("an uploaded cover replaces the mosaic until it is removed", async () => {
   await page.getByRole("button", { name: /^save$/i }).click();
 
   await expect(async () => {
-    expect(await readCookbookImage(COOKBOOK_TITLE)).toBeNull();
+    expect(await readCookbookImage(stack, COOKBOOK_TITLE)).toBeNull();
     // The replaced file goes with it, rather than lingering in uploads.
     expect((await page.request.get(image)).status()).toBe(404);
   }).toPass({ timeout: 10_000 });
@@ -429,7 +432,7 @@ test("renaming and deleting a cookbook leaves its recipes alone", async () => {
   await ensureFiled();
 
   await expect(async () => {
-    expect(await readCookbookMembers(COOKBOOK_TITLE)).toEqual([RECIPE_NAME]);
+    expect(await readCookbookMembers(stack, COOKBOOK_TITLE)).toEqual([RECIPE_NAME]);
   }).toPass({ timeout: 10_000 });
 
   await page.goto("/");
@@ -446,7 +449,7 @@ test("renaming and deleting a cookbook leaves its recipes alone", async () => {
 
   await expect(cookbookHeading()).toHaveText(RENAMED_TITLE);
   await expect(async () => {
-    expect(await readCookbookTitles()).toContain(RENAMED_TITLE);
+    expect(await readCookbookTitles(stack)).toContain(RENAMED_TITLE);
   }).toPass({ timeout: 10_000 });
 
   // Delete, confirmed by name.
@@ -454,7 +457,7 @@ test("renaming and deleting a cookbook leaves its recipes alone", async () => {
   await page.getByTestId("confirm-delete-cookbook").click();
 
   await expect(async () => {
-    expect(await readCookbookTitles()).not.toContain(RENAMED_TITLE);
+    expect(await readCookbookTitles(stack)).not.toContain(RENAMED_TITLE);
   }).toPass({ timeout: 10_000 });
 
   // Organising is never destructive: the recipe it held is untouched.

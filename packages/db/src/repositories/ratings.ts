@@ -49,6 +49,13 @@ export async function rateRecipe(
   return { rating, isNew: true };
 }
 
+/** Take back one user's rating of a recipe; removing none is a no-op. */
+export async function removeRating(userId: string, recipeId: string): Promise<void> {
+  await db
+    .delete(recipeRatings)
+    .where(and(eq(recipeRatings.userId, userId), eq(recipeRatings.recipeId, recipeId)));
+}
+
 export async function getUserRating(userId: string, recipeId: string): Promise<number | null> {
   const result = await db
     .select({ rating: recipeRatings.rating })

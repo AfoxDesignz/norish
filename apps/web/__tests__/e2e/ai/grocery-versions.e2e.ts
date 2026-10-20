@@ -6,9 +6,9 @@
  * Store was refused as stale and read as un-done again after the refetch.
  */
 import type { Page } from "@playwright/test";
-import { Client } from "pg";
 
-import { databaseUrl } from "./database";
+import { findNewestGroceryNamed } from "@norish/db/repositories/groceries";
+
 import { expect, test } from "./fixture";
 import { createPlainStore } from "./grocery-aisles-support";
 
@@ -16,26 +16,8 @@ const STORE = "Versies";
 
 let page: Page;
 
-/** Whether a grocery is done, and its version, as the database has it. */
-async function readGrocery(name: string): Promise<{ isDone: boolean; version: number } | null> {
-  const database = new Client({ connectionString: databaseUrl() });
-
-  await database.connect();
-  try {
-    const rows = await database.query<{ is_done: boolean; version: number }>(
-      "select is_done, version from groceries where name = $1 order by created_at desc limit 1",
-      [name]
-    );
-    const row = rows.rows[0];
-
-    return row ? { isDone: row.is_done, version: row.version } : null;
-  } finally {
-    await database.end();
-  }
-}
-
 test.beforeAll(async ({ browser, aiStack }) => {
-  await createPlainStore(STORE);
+  await createPlainStore(aiStack, STORE);
   const context = await browser.newContext({
     baseURL: aiStack.baseURL,
     storageState: { cookies: aiStack.ownerCookies, origins: [] },
@@ -93,12 +75,14 @@ test("a grocery ticked after another was added to its Store stays done", async (
   // A second line in the same Store, added without a reload in between: the
   // first was shifted down to make room, and its version moved with it.
   await addGrocery("versie-peer");
-  await expect.poll(() => readGrocery("versie-appel").then((row) => row?.version)).toBe(2);
+  await expect
+    .poll(() => findNewestGroceryNamed("versie-appel").then((row) => row?.version))
+    .toBe(2);
 
   await checkboxOf("versie-appel").click();
 
   await expect
-    .poll(() => readGrocery("versie-appel").then((row) => row?.isDone), {
+    .poll(() => findNewestGroceryNamed("versie-appel").then((row) => row?.isDone), {
       timeout: 10_000,
     })
     .toBe(true);
@@ -106,14 +90,14 @@ test("a grocery ticked after another was added to its Store stays done", async (
   await page.waitForTimeout(3000);
   await openDoneRow();
   await expect(rowFor("versie-appel").getByRole("checkbox")).toBeChecked();
-  expect((await readGrocery("versie-appel"))?.isDone).toBe(true);
+  expect((await findNewestGroceryNamed("versie-appel"))?.isDone).toBe(true);
 });
 
 test("and so does the one added last, with nothing moved since", async () => {
   await checkboxOf("versie-peer").click();
 
   await expect
-    .poll(() => readGrocery("versie-peer").then((row) => row?.isDone), {
+    .poll(() => findNewestGroceryNamed("versie-peer").then((row) => row?.isDone), {
       timeout: 10_000,
     })
     .toBe(true);

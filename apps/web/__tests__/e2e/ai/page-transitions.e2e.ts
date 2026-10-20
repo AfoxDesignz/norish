@@ -300,7 +300,7 @@ test("a back link returns a recipe to where it was scrolled, also when the recip
   const id = await seedRecipe(name);
   const shelf = "Stew Shelf";
 
-  await seedCookbook(shelf, [id]);
+  await seedCookbook(aiStack, shelf, [id]);
   // No service worker, so page.route sees the recipe's RSC requests.
   const context = await browser.newContext({
     baseURL: aiStack.baseURL,
@@ -407,7 +407,7 @@ test("creating an account hands the auth screen over to the app in the same tran
   browser,
   aiStack,
 }) => {
-  await enableRegistration();
+  await enableRegistration(aiStack);
   const context = await browser.newContext({ baseURL: aiStack.baseURL });
 
   await recordViewTransitions(context);

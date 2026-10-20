@@ -1,5 +1,10 @@
 import { defineConfig } from "@playwright/test";
 
+import { prepareRepositoryEnvironment } from "./harness/environment";
+
+// Workers load this file before any spec, so the environment is set before a repository is imported.
+prepareRepositoryEnvironment();
+
 export default defineConfig({
   testDir: ".",
   timeout: 120_000,

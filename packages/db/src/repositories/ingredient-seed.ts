@@ -400,6 +400,25 @@ async function removeUnusedDropped(tx: DbTransaction, listed: readonly string[])
   return removed.length;
 }
 
+/** One Ingredient with its seeded spellings, each in its own language, outside a seed file; its id. */
+export async function insertSeededIngredient(
+  ingredient: typeof ingredients.$inferInsert,
+  aliases: ReadonlyArray<{ text: string; fold: string; locale: string | null }>
+): Promise<string> {
+  return await db.transaction(async (tx) => {
+    const [row] = await tx.insert(ingredients).values(ingredient).returning({ id: ingredients.id });
+
+    if (!row) throw new Error("Failed to insert ingredient");
+    if (aliases.length > 0) {
+      await tx
+        .insert(ingredientAliases)
+        .values(aliases.map((alias) => ({ ...alias, ingredientId: row.id, seeded: true })));
+    }
+
+    return row.id;
+  });
+}
+
 /** Every seeded Ingredient, by the taxonomy entry it stands for. */
 export async function listSeededIngredientIds(): Promise<Map<string, string>> {
   const rows = await db

@@ -564,9 +564,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.5
-      '@types/pg':
-        specifier: 8.23.1
-        version: 8.23.1
       '@types/react':
         specifier: 'catalog:'
         version: 19.3.0
@@ -609,9 +606,6 @@ importers:
       next-themes:
         specifier: 0.4.6
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      pg:
-        specifier: 'catalog:'
-        version: 8.23.1
       postcss:
         specifier: 'catalog:'
         version: 8.5.30

@@ -6,34 +6,35 @@
  */
 import type { Locator } from "@playwright/test";
 
+import type { AIE2EStack } from "./fixture";
+import { callTrpc, queryTrpc } from "../harness/trpc";
 import { seedRecipe } from "./cookbooks-support";
-import { withDatabase } from "./database";
 import { expect, test } from "./fixture";
 
-/** The day of the month the recipe is planned on, as stored. */
-function plannedDay(recipeId: string): Promise<number | undefined> {
-  return withDatabase(async (database) => {
-    const result = await database.query<{ day: number }>(
-      `select extract(day from date)::int as day from planned_items where recipe_id = $1`,
-      [recipeId]
-    );
+/** The day of the month the recipe is planned on, as the calendar lists it. */
+async function plannedDay(stack: AIE2EStack, recipeId: string): Promise<number | undefined> {
+  const items = await queryTrpc<Array<{ date: string; recipeId: string | null }>>(
+    stack.baseURL,
+    stack.ownerCookies,
+    "calendar.listItems",
+    { startISO: "2000-01-01", endISO: "2999-12-31" }
+  );
+  const date = items.find((item) => item.recipeId === recipeId)?.date;
 
-    return result.rows[0]?.day;
-  });
+  return date ? Number(date.slice(8, 10)) : undefined;
 }
 
 /** Plans the recipe as the owner's dinner today, in the browser's own calendar. */
-async function planForTonight(recipeId: string): Promise<void> {
+async function planForTonight(stack: AIE2EStack, recipeId: string): Promise<void> {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-  await withDatabase((database) =>
-    database.query(
-      `insert into planned_items (user_id, date, slot, item_type, recipe_id)
-       select user_id, $2, 'Dinner', 'recipe', id from recipes where id = $1`,
-      [recipeId, today]
-    )
-  );
+  await callTrpc(stack.baseURL, stack.ownerCookies, "calendar.createItem", {
+    date: today,
+    slot: "Dinner",
+    itemType: "recipe",
+    recipeId,
+  });
 }
 
 for (const pointer of ["mouse", "touch"] as const) {
@@ -45,7 +46,7 @@ for (const pointer of ["mouse", "touch"] as const) {
 
     const recipeId = await seedRecipe(name);
 
-    await planForTonight(recipeId);
+    await planForTonight(aiStack, recipeId);
     const context = await browser.newContext({
       baseURL: aiStack.baseURL,
       storageState: { cookies: aiStack.ownerCookies, origins: [] },
@@ -73,7 +74,7 @@ for (const pointer of ["mouse", "touch"] as const) {
       await expect(day).toHaveAttribute("aria-valuenow", String(target));
       await press(panel.getByRole("button", { name: "Save" }));
       await expect(panel).toBeHidden();
-      await expect.poll(() => plannedDay(recipeId)).toBe(target);
+      await expect.poll(() => plannedDay(aiStack, recipeId)).toBe(target);
     } finally {
       await context.close();
     }

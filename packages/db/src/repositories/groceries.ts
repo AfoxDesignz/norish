@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import z from "zod";
 
 import type { Db, DbTransaction } from "@norish/db/drizzle";
@@ -27,6 +27,18 @@ export async function getGroceryById(id: string): Promise<GroceryDto | null> {
   if (!parsed.success) throw new Error("Failed to parse grocery by id");
 
   return parsed.data;
+}
+
+/** The grocery last added under this name, on anyone's list. */
+export async function findNewestGroceryNamed(name: string): Promise<GroceryDto | null> {
+  const [row] = await db
+    .select()
+    .from(groceries)
+    .where(eq(groceries.name, name))
+    .orderBy(desc(groceries.createdAt))
+    .limit(1);
+
+  return row ? GrocerySelectBaseSchema.parse(row) : null;
 }
 
 export async function getGroceriesByIds(ids: string[]): Promise<GroceryDto[]> {

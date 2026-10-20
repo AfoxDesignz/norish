@@ -65,6 +65,16 @@ export async function queryTrpc<T>(
   );
 }
 
+/** A procedure answered with a non-OK status; `status` says which. */
+export class TrpcHttpError extends Error {
+  constructor(
+    procedure: string,
+    readonly status: number
+  ) {
+    super(`${procedure} failed: ${status}`);
+  }
+}
+
 async function overHttp<T>(
   baseURL: string,
   cookies: SessionCookies,
@@ -82,7 +92,7 @@ async function overHttp<T>(
   try {
     const response = await send(api, `/api/trpc/${procedure}`);
 
-    if (!response.ok()) throw new Error(`${procedure} failed: ${response.status()}`);
+    if (!response.ok()) throw new TrpcHttpError(procedure, response.status());
 
     return ((await response.json()) as { result: { data: { json: T } } }).result.data.json;
   } finally {

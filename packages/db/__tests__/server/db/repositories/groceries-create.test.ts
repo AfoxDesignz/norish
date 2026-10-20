@@ -13,6 +13,7 @@ import { withTransaction } from "@norish/db/drizzle";
 import {
   createGroceries,
   deleteGroceryByIds,
+  findNewestGroceryNamed,
   listGroceriesByUsers,
   lockGroceryList,
   markAllDoneInStore,
@@ -191,4 +192,55 @@ describe("what a create shifts", () => {
       await expect(Promise.all([edit, other])).resolves.toHaveLength(2);
     }
   );
+});
+
+describe("findNewestGroceryNamed", () => {
+  const testBase = new RepositoryTestBase("test_groceries_newest");
+  let userId: string;
+
+  beforeAll(async () => {
+    await testBase.setup();
+  });
+
+  beforeEach(async () => {
+    userId = (await testBase.beforeEachTest())[0].id;
+  });
+
+  afterAll(async () => {
+    await testBase.teardown();
+  });
+
+  const add = async (name: string, isDone: boolean) => {
+    const id = crypto.randomUUID();
+
+    await createGroceries(
+      [
+        {
+          id,
+          groceries: {
+            userId,
+            name,
+            unit: null,
+            amount: null,
+            isDone,
+            recipeIngredientId: null,
+            recurringGroceryId: null,
+          },
+        },
+      ],
+      [userId]
+    );
+
+    return id;
+  };
+
+  it("answers the grocery last added under the name, ticked or not", async () => {
+    await add("melk", false);
+    const newest = await add("melk", true);
+
+    await add("brood", false);
+
+    expect((await findNewestGroceryNamed("melk"))?.id).toBe(newest);
+    expect(await findNewestGroceryNamed("kaas")).toBeNull();
+  });
 });
