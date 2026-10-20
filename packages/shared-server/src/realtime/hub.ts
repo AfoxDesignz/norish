@@ -36,7 +36,8 @@ export type RealtimeLaggedReason =
   | "cursor-invalid"
   | "cursor-expired"
   | "cursor-trimmed"
-  | "identity-changed";
+  | "identity-changed"
+  | "unavailable";
 
 export class RealtimeLaggedError extends Error {
   override readonly name = "RealtimeLaggedError";

@@ -379,9 +379,32 @@ test("a foreign Origin is refused, an absent one is accepted, and no session clo
   expect(await anonymous.closed).toEqual({ code: 4401, reason: "Unauthorized" });
 });
 
+const groceryList = (response: Response) =>
+  response.url().includes("groceries.list") && response.ok();
+
+test("both browsers converge when Redis does not answer a restarting subscription in time", async () => {
+  const refetched = [pageA, pageB].map((page) =>
+    page.waitForResponse(groceryList, { timeout: 30_000 })
+  );
+
+  // Each restarted subscription then misses the household cache and writes it, which the pause
+  // holds past the command timeout; killing the hub's connection ends every subscription Lagged.
+  await stack.server.redisCli(
+    "del",
+    ...[stack.userIds.a, stack.userIds.b].map((id) => `norish:cache:household:user:${id}`)
+  );
+  stack.server.clearLogs();
+  await stack.server.redisCli("client", "pause", "8000", "write");
+  await stack.server.redisCli("client", "kill", "type", "pubsub");
+
+  await expect.poll(() => serverLogged(["realtime.reconnected"]), { timeout: 30_000 }).toBe(true);
+  await Promise.all(refetched);
+
+  await addGrocery(pageA, "na-redis-pauze");
+  await expect(rowFor(pageB, "na-redis-pauze")).toBeVisible({ timeout: 30_000 });
+});
+
 test("a Redis restart is logged once and both browsers converge afterwards", async () => {
-  const groceryList = (response: Response) =>
-    response.url().includes("groceries.list") && response.ok();
   const refetched = [pageA, pageB].map((page) =>
     page.waitForResponse(groceryList, { timeout: 30_000 })
   );

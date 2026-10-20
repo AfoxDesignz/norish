@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { isTrackedEnvelope, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import type { RealtimeLaggedError as RealtimeLaggedErrorType } from "@norish/shared-server/realtime/hub";
@@ -158,7 +158,9 @@ const { defineRealtimeDomain } = await import("@norish/shared-server/realtime/do
 const { encodeCursor, identityHashFor, RESUME_TTL_SECONDS } =
   await import("@norish/shared-server/realtime/resume");
 const { createCallerFactory, router } = await import("../src/trpc");
-const { realtimeSubscription } = await import("../src/realtime-subscription");
+const { realtimeSubscription, UNAVAILABLE_LAG_PAUSE_MS } =
+  await import("../src/realtime-subscription");
+const { getCachedHouseholdForUser } = await import("@norish/shared-server/cache/household");
 
 /* -------------------------------------------------------------- fixtures */
 
@@ -655,6 +657,53 @@ describe("resume", () => {
     const cause = laggedCause(await failure(iterator.next()));
 
     expect(cause.reason).toBe("identity-changed");
+    controller.abort();
+  });
+});
+
+describe("a read that fails", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  /** Lagged `unavailable`, but only after the pause, so a lasting fault cannot spin the client. */
+  async function laggedAfterThePause(pending: Promise<unknown>) {
+    let settled = false;
+    const ended = failure(pending).finally(() => {
+      settled = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(UNAVAILABLE_LAG_PAUSE_MS - 1);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    return laggedCause(await ended);
+  }
+
+  it("ends Lagged unavailable when the socket's household lookup fails", async () => {
+    vi.mocked(getCachedHouseholdForUser).mockRejectedValueOnce(new Error("Command timed out"));
+
+    const { iterator, controller } = await subscribe(
+      "onCreated",
+      undefined,
+      createMockAuthedContext(undefined, null)
+    );
+
+    expect((await laggedAfterThePause(iterator.next())).reason).toBe("unavailable");
+    expect(logged.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: USER, event: "created", reason: "unavailable" }),
+      "Realtime subscription lagged"
+    );
+    controller.abort();
+  });
+
+  it("ends Lagged unavailable when a stream read fails, and returns every live iterable", async () => {
+    redis.xrevrange.mockRejectedValueOnce(new Error("Command timed out"));
+
+    const { iterator, controller } = await subscribe("onCreated");
+    const cause = await laggedAfterThePause(iterator.next());
+
+    expect(cause).toMatchObject({ channel: CREATED, reason: "unavailable" });
+    expect(hub.sources.get(CREATED)!.returned).toHaveBeenCalled();
     controller.abort();
   });
 });

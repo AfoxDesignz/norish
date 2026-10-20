@@ -16,12 +16,7 @@ import type { Context } from "./context";
 import { withIdempotency } from "./idempotency-middleware";
 import { middleware, publicProcedure } from "./trpc";
 
-/**
- * Middleware that enforces authentication and provides full context:
- * - User authentication
- * - Household resolution
- */
-const withAuth = middleware(async ({ ctx, next }) => {
+function signedInUser(ctx: Context): User {
   if (!ctx.user) {
     throw new TRPCError({
       code: "UNAUTHORIZED",
@@ -29,7 +24,16 @@ const withAuth = middleware(async ({ ctx, next }) => {
     });
   }
 
-  const user = ctx.user;
+  return ctx.user;
+}
+
+/**
+ * Middleware that enforces authentication and provides full context:
+ * - User authentication
+ * - Household resolution
+ */
+const withAuth = middleware(async ({ ctx, next }) => {
+  const user = signedInUser(ctx);
 
   const household = ctx.household ?? (await getCachedHouseholdForUser(user.id));
 
@@ -69,6 +73,11 @@ const withAuth = middleware(async ({ ctx, next }) => {
  * Queries and mutations without the header pass straight through.
  */
 export const authedProcedure = publicProcedure.use(withIdempotency).use(withAuth);
+
+/** Signed in, nothing more: a realtime subscription reads its household itself. */
+export const signedInProcedure = publicProcedure.use(({ ctx, next }) =>
+  next({ ctx: { ...ctx, user: signedInUser(ctx) } })
+);
 
 export type SharedRecipeProcedureContext = Context & {
   sharedRecipe: {
