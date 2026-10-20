@@ -47,6 +47,7 @@ import {
   insertTestRecipeLine,
 } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
+import { foodReading, noFoodReading, severalReading } from "../helpers/ingredient-readings";
 
 vi.mock("@norish/shared-server/ai/runtime/runtime", () => ({
   decide: vi.fn(),
@@ -105,32 +106,19 @@ function answers(prompt: "ingredient-resolution" | "ingredient-plain-name", answ
   (modelAnswers[prompt] ??= []).push(answer);
 }
 
-const NO_READING = {
-  englishName: null,
-  generalFood: null,
-  otherNames: null,
-  parts: null,
-  joined: null,
-};
-
 /** AI reads a name as one food. */
-function reads(reading: {
-  englishName: string | null;
-  generalFood: string | null;
-  otherNames?: string[];
-  sure: boolean;
-}) {
-  answers("ingredient-resolution", { ...NO_READING, verdict: "food", ...reading });
+function reads(reading: Parameters<typeof foodReading>[0]) {
+  answers("ingredient-resolution", foodReading(reading));
 }
 
 /** AI reads a name as several foods. */
 function splits(parts: string[], joined: "together" | "alternatives", sure: boolean) {
-  answers("ingredient-resolution", { ...NO_READING, verdict: "several", parts, joined, sure });
+  answers("ingredient-resolution", severalReading(parts, joined, sure));
 }
 
 /** AI reads a name as no food. */
 function readsNoFood(sure: boolean) {
-  answers("ingredient-resolution", { ...NO_READING, verdict: "not-a-food", sure });
+  answers("ingredient-resolution", noFoodReading(sure));
 }
 
 /** The language model's pick among the foods a reading found: the `food`th, or none. */
@@ -226,6 +214,7 @@ describe("asking AI about an Ingredient", () => {
       into: "frankfurter",
       sure: true,
       englishName: "frankfurter",
+      generalFood: "sausage",
       considered: [],
     });
     await expect(ingredientFor(knaks.aliasId)).resolves.toMatchObject({
@@ -446,6 +435,39 @@ describe("asking AI about an Ingredient", () => {
         id: tomaat.ingredientId,
         flagged: false,
       });
+    });
+
+    it("flags a food the language model is not sure is none of them", async () => {
+      const { tomaat } = await twoFound();
+
+      vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
+      picks(null, false);
+
+      await expect(askAIAbout(tomaat.ingredientId)).resolves.toMatchObject({
+        outcome: "unsure",
+        reason: "ai-unsure",
+      });
+      await expect(ingredientFor(tomaat.aliasId)).resolves.toMatchObject({
+        id: tomaat.ingredientId,
+        flagged: true,
+      });
+    });
+  });
+
+  it("merges into a food only a slip of AI's name finds, unsure, so a person checks it", async () => {
+    const sherry = await kept("sherry");
+    const kers = await flagged("kers");
+
+    reads({ englishName: "cherry", generalFood: null, sure: true });
+
+    await expect(askAIAbout(kers.ingredientId)).resolves.toMatchObject({
+      outcome: "merge",
+      into: "sherry",
+      sure: false,
+    });
+    await expect(ingredientFor(kers.aliasId)).resolves.toMatchObject({
+      id: sherry.ingredientId,
+      flagged: true,
     });
   });
 

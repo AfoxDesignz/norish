@@ -10,6 +10,7 @@ import {
   settleIngredientName,
 } from "@norish/db/repositories/ingredient-catalogue";
 import { createLogger } from "@norish/shared-server/logger";
+import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import { readPlainName } from "../ai/resolution/plain-name";
@@ -18,9 +19,6 @@ import { ingredientChanges } from "./changes";
 import { cleanIngredientText } from "./resolver";
 
 const log = createLogger("ingredients");
-
-/** No foods compared, nothing read as English: what a Plain Name question records beside a merge or a doubt. */
-const NO_TRACE: ReviewTrace = { englishName: null, parts: null, considered: [] };
 
 /** What asking for one food's Plain Name came to, or why the food was passed over. */
 export type PlainNameOutcome =
@@ -44,7 +42,7 @@ export async function giveItsPlainName(ingredientId: string): Promise<PlainNameO
   );
   const plain = read ? cleanIngredientText(read) : "";
 
-  if (!plain) return { outcome: "unsure", reason: "no-food", ...NO_TRACE };
+  if (!plain) return { outcome: "unsure", reason: "no-food", ...noTrace() };
   if (plain === row.name) {
     if (await settleIngredientName(ingredientId)) await ingredientChanges().changed([ingredientId]);
 
@@ -57,7 +55,7 @@ export async function giveItsPlainName(ingredientId: string): Promise<PlainNameO
     const merged = await mergeByAI(ingredientId, holder.id, true);
 
     if (merged === "applied") {
-      return { outcome: "merge", into: holder.name, sure: true, ...NO_TRACE };
+      return { outcome: "merge", into: holder.name, sure: true, ...noTrace() };
     }
 
     return {

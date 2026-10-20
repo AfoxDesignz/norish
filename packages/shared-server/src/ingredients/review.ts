@@ -1,22 +1,26 @@
 /**
- * The AI pass over a food in the catalogue (ADR-0037): AI reads the name once, the code looks the
- * reading up, and the answer is made as an AI Change; a split only when sure, not a food sure or
- * not. The review queue runs it.
+ * The AI pass over a food (ADR-0037): AI reads its name, the code looks the reading up, and the
+ * answer is made as an AI Change. The review queue runs it.
  */
-import type { FlagReason, ReviewOutcome } from "@norish/shared/contracts/ingredient-catalogue";
+import type {
+  FlagReason,
+  ReviewOutcome,
+  ReviewTrace,
+} from "@norish/shared/contracts/ingredient-catalogue";
 import {
   findCatalogueIngredient,
   setIngredientFlagReason,
 } from "@norish/db/repositories/ingredient-catalogue";
+import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
 
-import type { AIResolution, AskTrace } from "../ai/resolution/ingredient-resolution";
+import type { AIResolution } from "../ai/resolution/ingredient-resolution";
 import { askWhatFoodThisIs } from "../ai/resolution/ingredient-resolution";
 import { deleteByAI, flagByAnswer, mergeByAI, parentByAI, splitByAI } from "./ai-changes";
 import { ingredientChanges } from "./changes";
 import { nameAfterAnswer } from "./plain-names";
 import { resolveParts } from "./resolver";
 
-/** How long one food's question may take: AI may be asked twice, and nobody waits on it. */
+/** How long one food's question may take: up to three requests (read, Decision, language model). */
 export const REVIEW_BUDGET_MS = 30_000;
 
 export type { ReviewOutcome };
@@ -24,7 +28,7 @@ export type { ReviewOutcome };
 /** Ask AI what a food is and make the answer; a food not merged away then gets its Plain Name. */
 export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
   const row = await findCatalogueIngredient(ingredientId);
-  const trace: AskTrace = { englishName: null, parts: null, considered: [] };
+  const trace = noTrace();
 
   if (!row) return { outcome: "skipped", reason: "not-found", ...trace };
   if (!row.askable) return { outcome: "skipped", reason: "decided", ...trace };
@@ -83,7 +87,7 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
 async function split(
   food: { id: string; ownerId: string | null },
   answer: Extract<AIResolution, { kind: "several" }>,
-  trace: AskTrace
+  trace: ReviewTrace
 ): Promise<ReviewOutcome> {
   if (!answer.sure) return await doubted(food.id, "ai-unsure", trace);
   // A person may have decided about the food while AI was asked: mint no parts for nothing.
@@ -108,7 +112,7 @@ async function split(
 }
 
 /** Not a food, sure or not: the food goes, and its rows keep their text. */
-async function deleted(ingredientId: string, trace: AskTrace): Promise<ReviewOutcome> {
+async function deleted(ingredientId: string, trace: ReviewTrace): Promise<ReviewOutcome> {
   const outcome = await deleteByAI(ingredientId);
 
   switch (outcome) {
@@ -128,7 +132,7 @@ async function deleted(ingredientId: string, trace: AskTrace): Promise<ReviewOut
 async function doubted(
   ingredientId: string,
   reason: FlagReason,
-  trace: AskTrace
+  trace: ReviewTrace
 ): Promise<ReviewOutcome> {
   await flagByAnswer(ingredientId, false, reason);
 
@@ -139,7 +143,7 @@ async function doubted(
 async function unanswered(
   ingredientId: string,
   reason: FlagReason,
-  trace: AskTrace
+  trace: ReviewTrace
 ): Promise<ReviewOutcome> {
   await setIngredientFlagReason(ingredientId, reason);
   await ingredientChanges().changed([ingredientId]);

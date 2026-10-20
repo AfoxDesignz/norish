@@ -90,10 +90,19 @@ export type ReviewVerdict =
 export interface ReviewTrace {
   /** The plain English food AI read the name as, when it said. */
   englishName: string | null;
+  /** The more general food AI said it is a kind of. */
+  generalFood: string | null;
+  /** The other names AI said a shop sells it under. */
+  otherNames: string[];
   /** The foods AI read the name as several of, when it did. */
   parts: string[] | null;
-  /** The foods AI's reading named, when it named several, which it was then asked to choose between. */
+  /** The foods AI's names found when they found several, which AI then chose between. */
   considered: string[];
+}
+
+/** A trace before AI said anything. */
+export function noTrace(): ReviewTrace {
+  return { englishName: null, generalFood: null, otherNames: [], parts: null, considered: [] };
 }
 
 /**

@@ -31,6 +31,7 @@ import { askAIAbout } from "@norish/shared-server/ingredients/review";
 
 import { getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
+import { foodReading, noFoodReading } from "../helpers/ingredient-readings";
 
 vi.mock("@norish/shared-server/ai/runtime/runtime", () => ({
   decide: vi.fn(),
@@ -144,15 +145,9 @@ describe("ingredient resolver with AI on", () => {
       // The pass reads "rode uien" as red onion, a kind of onion, and files it there.
       const red = lines[1]!.ingredientId!;
 
-      modelAnswers.push({
-        verdict: "food",
-        englishName: "red onion",
-        generalFood: "onion",
-        otherNames: null,
-        parts: null,
-        joined: null,
-        sure: true,
-      });
+      modelAnswers.push(
+        foodReading({ englishName: "red onion", generalFood: "onion", sure: true })
+      );
       await expect(askAIAbout(red)).resolves.toMatchObject({ outcome: "parent", of: "onion" });
       await expect(findIngredientAncestors([red])).resolves.toEqual(
         new Map([[red, [onion.ingredientId]]])
@@ -167,15 +162,7 @@ describe("ingredient resolver with AI on", () => {
     const melted = lines[0]!.foods![0]!;
 
     expectNoAIRequest();
-    modelAnswers.push({
-      verdict: "not-a-food",
-      englishName: null,
-      generalFood: null,
-      otherNames: null,
-      parts: null,
-      joined: null,
-      sure: true,
-    });
+    modelAnswers.push(noFoodReading(true));
     await expect(askAIAbout(melted.ingredientId)).resolves.toMatchObject({ outcome: "not-a-food" });
     await expect(getRecipeFull(recipeId)).resolves.toMatchObject({
       recipeIngredients: [{ ingredientName: "melted", ingredientId: null }],

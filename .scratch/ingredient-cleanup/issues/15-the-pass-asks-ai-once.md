@@ -44,3 +44,11 @@
 - Test trap fixed on the way: `review.test.ts`'s `flagged()` queues `isAIEnabled` once; a text that mints nothing left it unread and the next test saw AI off. The mock is now reset per test.
 - Release notes: an upgrade note for an edited prompt. ADR-0037 amended; CONTEXT.md's Ingredient Alias no longer says the import asks AI.
 
+
+2026-10-20, review fixes:
+
+- A "none of these" the language model is not sure of now flags the food; before, it fell through to the general food as sure. A number off the list counts as unsure too.
+- A food found only through a slip of AI's own names ("cherry" finding "sherry") is merged or parented unsure, so it is flagged for a person. AI's names are clean English, so a slip there is more likely a false friend than a typo.
+- The trace also carries `generalFood` and `otherNames`, so the job monitor shows the whole reading (`noTrace()` in the shared contracts builds an empty one).
+- The second question returns one `{ ingredientId | null, sure }` pick, and the general food is looked up only when no name found a food. `findOtherIngredientsFor` went: the startup recheck calls `findOtherFoodsNamed` without slips. It now also skips texts that name no food, which never matched anything.
+- Not changed: a failed second question still leaves the food unanswered (`ai-unavailable`, asked again nightly) rather than filing it under the general food, since AI never said which food it was. The E2E stubs keep their inline JSON; they can't import the shared-server test helper.

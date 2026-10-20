@@ -28,7 +28,7 @@ import {
 import { createLogger } from "@norish/shared-server/logger";
 import { ingredients as ingredientsRealtime } from "@norish/shared-server/realtime/ingredients";
 
-import { findOtherIngredientsFor, parentFromWordsOf, plainNameOf, RUNG_VERSION } from "../resolver";
+import { findOtherFoodsNamed, parentFromWordsOf, plainNameOf, RUNG_VERSION } from "../resolver";
 import { readIngredientSeedState, updateIngredientSeedState } from "./catalogue-seed";
 
 const log = createLogger("ingredient-recheck");
@@ -43,7 +43,8 @@ export async function recheckUndecidedMints(): Promise<RecheckOutcome> {
   const outcome: RecheckOutcome = { merged: 0, filed: 0 };
 
   for (const mint of await listUndecidedMints()) {
-    const targets = await findOtherIngredientsFor(mint.id, mint.aliases);
+    const found = await findOtherFoodsNamed(mint.id, mint.aliases, { slips: false });
+    const targets = new Set(found.flatMap((food) => (food ? [food.ingredientId] : [])));
 
     if (targets.size === 1) {
       const [target] = targets;

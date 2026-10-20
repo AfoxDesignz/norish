@@ -14,6 +14,7 @@ import {
   runWithModelUseLedger,
 } from "@norish/shared-server/ai/runtime/model-use-ledger";
 import { ingredientChanges } from "@norish/shared-server/ingredients/changes";
+import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
 
 const reviewer = vi.hoisted(() => ({ askAIAbout: vi.fn() }));
 const realtime = vi.hoisted(() => ({ publish: vi.fn(async () => undefined) }));
@@ -71,7 +72,7 @@ function changed() {
     .map(([, payload]) => payload as Record<string, unknown>);
 }
 
-const trace = { englishName: "onion", parts: null, considered: ["onion", "shallot"] };
+const trace = { ...noTrace(), englishName: "onion", considered: ["onion", "shallot"] };
 
 /** What the pass came to for each food in turn, announcing the food as its edits do. */
 function answers(...outcomes: Array<Record<string, unknown>>) {
@@ -98,7 +99,7 @@ describe("processIngredientReviewJob", () => {
     answers(
       { outcome: "merge", into: "onion", sure: true, ...trace },
       { outcome: "unsure", reason: "ai-unsure", ...trace },
-      { outcome: "skipped", reason: "decided", englishName: null, parts: null, considered: [] }
+      { outcome: "skipped", reason: "decided", ...noTrace() }
     );
     const job = fakeJob(["uien", "knaks", "settled"]);
 
@@ -129,9 +130,7 @@ describe("processIngredientReviewJob", () => {
           name: "settled!",
           outcome: "skipped",
           reason: "decided",
-          englishName: null,
-          parts: null,
-          considered: [],
+          ...noTrace(),
         },
       ])
     );

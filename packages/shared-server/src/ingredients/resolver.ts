@@ -648,30 +648,14 @@ export async function findIngredientFor(text: string): Promise<IngredientRef | n
 }
 
 /**
- * The Ingredients other than `ingredientId` that these texts resolve to by
- * the first two rungs, leaving the Ingredient's own spellings out: whether an
- * old mint's spellings would now name a known food, for the startup pass
- * that looks at old Flagged Ingredients again. Mints nothing.
- */
-export async function findOtherIngredientsFor(
-  ingredientId: string,
-  texts: readonly string[]
-): Promise<Set<string>> {
-  const found = await findOtherFoodsNamed(ingredientId, texts, { slips: false });
-
-  return new Set(found.filter((id) => id !== null));
-}
-
-/**
- * The food other than `ingredientId` each text names, in order, as an import finds it: by the first
- * two rungs, else (with `slips`) a slip of the fingers; null where none. What AI's pass looks its
- * reading of a name up by. Mints nothing.
+ * The food other than `ingredientId` each text names as an import finds it: rungs 1–2, else (with
+ * `slips`) a slip of the fingers, which `slip` says. Null where none; mints nothing.
  */
 export async function findOtherFoodsNamed(
   ingredientId: string,
   texts: readonly string[],
   { slips = true }: { slips?: boolean } = {}
-): Promise<Array<string | null>> {
+): Promise<Array<{ ingredientId: string; slip: boolean } | null>> {
   const rules = await currentRules();
   const spellings = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
   const readable = spellings.filter((spelling) => spelling.text && !spellingNamesNoFood(spelling));
@@ -686,11 +670,14 @@ export async function findOtherFoodsNamed(
       )
     : new Map<string, string>();
 
-  return spellings.map((spelling) =>
-    matched.has(spelling)
-      ? (matched.get(spelling)?.ingredientId ?? slipped.get(sameFoodKey(spelling)) ?? null)
-      : null
-  );
+  return spellings.map((spelling) => {
+    const match = matched.get(spelling);
+    const slip = matched.has(spelling) ? slipped.get(sameFoodKey(spelling)) : undefined;
+
+    if (match) return { ingredientId: match.ingredientId, slip: false };
+
+    return slip ? { ingredientId: slip, slip: true } : null;
+  });
 }
 
 /**
