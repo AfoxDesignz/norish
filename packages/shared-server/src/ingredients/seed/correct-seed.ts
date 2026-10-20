@@ -8,19 +8,10 @@ import {
   moveSeededSpelling,
   refileOwnFood,
 } from "@norish/db/repositories/ingredient-seed";
-import { createLogger } from "@norish/shared-server/logger";
-import { ingredients as ingredientsRealtime } from "@norish/shared-server/realtime/ingredients";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import { parentFromWordsOf } from "../resolver";
-import {
-  readIngredientSeedState,
-  SEED_CORRECTIONS_VERSION,
-  SPELLING_MOVES,
-  updateIngredientSeedState,
-} from "./catalogue-seed";
-
-const log = createLogger("ingredient-seed");
+import { oncePerVersion, SEED_CORRECTIONS_VERSION, SPELLING_MOVES } from "./catalogue-seed";
 
 export interface CorrectionOutcome {
   /** Seeded spellings moved to the food the seed now gives them. */
@@ -31,9 +22,14 @@ export interface CorrectionOutcome {
 
 /** Make the corrections where this version of them has not been made; null where it has. */
 export async function correctSeedOnce(): Promise<CorrectionOutcome | null> {
-  if ((await readIngredientSeedState()).correctionsVersion === SEED_CORRECTIONS_VERSION)
-    return null;
+  return await oncePerVersion("correctionsVersion", SEED_CORRECTIONS_VERSION, {
+    pass: correctSeed,
+    changed: (outcome) => outcome.moved + outcome.refiled > 0,
+    done: "Seed corrections made",
+  });
+}
 
+async function correctSeed(): Promise<CorrectionOutcome> {
   const seeded = await listSeededIngredientIds();
   const outcome: CorrectionOutcome = { moved: 0, refiled: 0 };
 
@@ -52,12 +48,6 @@ export async function correctSeedOnce(): Promise<CorrectionOutcome | null> {
         outcome.refiled += 1;
       }
     }
-  }
-
-  await updateIngredientSeedState({ correctionsVersion: SEED_CORRECTIONS_VERSION });
-  log.info({ ...outcome, correctionsVersion: SEED_CORRECTIONS_VERSION }, "Seed corrections made");
-  if (outcome.moved + outcome.refiled > 0) {
-    await ingredientsRealtime.publish("changed", { ingredientIds: [] }, undefined);
   }
 
   return outcome;

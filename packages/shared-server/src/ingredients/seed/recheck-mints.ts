@@ -25,13 +25,9 @@ import {
   fileUndecidedMint,
   listUndecidedMints,
 } from "@norish/db/repositories/ingredient-seed";
-import { createLogger } from "@norish/shared-server/logger";
-import { ingredients as ingredientsRealtime } from "@norish/shared-server/realtime/ingredients";
 
 import { findOtherFoodsNamed, parentFromWordsOf, plainNameOf, RUNG_VERSION } from "../resolver";
-import { readIngredientSeedState, updateIngredientSeedState } from "./catalogue-seed";
-
-const log = createLogger("ingredient-recheck");
+import { oncePerVersion } from "./catalogue-seed";
 
 export interface RecheckOutcome {
   merged: number;
@@ -80,19 +76,10 @@ export async function recheckUndecidedMints(): Promise<RecheckOutcome> {
  * in full at the next boot.
  */
 export async function recheckUndecidedMintsOnRungChange(): Promise<RecheckOutcome | null> {
-  const state = await readIngredientSeedState();
-
-  if (state.rungVersion === RUNG_VERSION) return null;
-
-  const outcome = await recheckUndecidedMints();
-
-  await updateIngredientSeedState({ rungVersion: RUNG_VERSION });
-  log.info({ ...outcome, rungVersion: RUNG_VERSION }, "Undecided mints looked at again");
-
-  // Merges and parents change which food lines mean: open clients refetch.
-  if (outcome.merged > 0 || outcome.filed > 0) {
-    await ingredientsRealtime.publish("changed", { ingredientIds: [] }, undefined);
-  }
-
-  return outcome;
+  return await oncePerVersion("rungVersion", RUNG_VERSION, {
+    pass: recheckUndecidedMints,
+    // Merges and parents change which food lines mean.
+    changed: (outcome) => outcome.merged > 0 || outcome.filed > 0,
+    done: "Undecided mints looked at again",
+  });
 }

@@ -28,16 +28,12 @@ import {
   splitCatalogueIngredient,
 } from "@norish/db/repositories/ingredient-relocation";
 import { getUnits } from "@norish/shared-server/config/server-config-loader";
-import { createLogger } from "@norish/shared-server/logger";
-import { ingredients as ingredientsRealtime } from "@norish/shared-server/realtime/ingredients";
 import { lineFoodText, lineNamesNoFood } from "@norish/shared/lib/ingredient-text";
 import { ingredientAliasFold, withoutStrayMarks } from "@norish/shared/lib/spelling-keys";
 
 import type { ResolvedIngredient } from "../resolver";
 import { cleanSpellingOf, partsByWordsOf, resolveIngredients, resolveLineFoods } from "../resolver";
-import { readIngredientSeedState, updateIngredientSeedState } from "./catalogue-seed";
-
-const log = createLogger("ingredient-cleanup");
+import { oncePerVersion } from "./catalogue-seed";
 
 /** Raised when a release needs the cleanup to run again. */
 export const CLEANUP_VERSION = 1;
@@ -70,20 +66,13 @@ interface Variant extends CleanupSpelling {
 export async function cleanUpCatalogueOnFirstStart(
   askAI: (ingredientIds: string[]) => Promise<void>
 ): Promise<CleanupOutcome | null> {
-  if ((await readIngredientSeedState()).cleanupVersion === CLEANUP_VERSION) return null;
-
-  const outcome = await cleanUpCatalogue(askAI);
-
-  // Recorded only once the whole pass is through, so a failure is retried in full at the next boot.
-  await updateIngredientSeedState({ cleanupVersion: CLEANUP_VERSION });
-  log.info({ ...outcome, cleanupVersion: CLEANUP_VERSION }, "Catalogue cleaned up");
-
-  // Removed spellings, splits and merges change which food rows mean: open clients refetch.
-  if (outcome.seeded + outcome.cleaned + outcome.removed + outcome.split + outcome.renamed > 0) {
-    await ingredientsRealtime.publish("changed", { ingredientIds: [] }, undefined);
-  }
-
-  return outcome;
+  return await oncePerVersion("cleanupVersion", CLEANUP_VERSION, {
+    pass: () => cleanUpCatalogue(askAI),
+    // Removed spellings, splits and merges change which food rows mean.
+    changed: (outcome) =>
+      outcome.seeded + outcome.cleaned + outcome.removed + outcome.split + outcome.renamed > 0,
+    done: "Catalogue cleaned up",
+  });
 }
 
 async function cleanUpCatalogue(
