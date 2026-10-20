@@ -40,8 +40,10 @@ Only a measuring script, no product code. The result is a ticket for the rule, o
 
 **Proposed rule:** an unsure words-parent is filed without a flag when the parent's spelling starts the name and what follows is only:
 
-- form and size words: a new Ingredient Words list for cuts and forms ("blokjes", "roosjes", "chunks", "cubes", "strips", "reepjes", "plakjes", "slices", "wedges", "partjes", "spears", "sticks", "filet", "fillet", "loins", "mince", "gehakt", "pearls", "bolletjes", "curls", "friet", "peulen", "boontjes", "broodjes", "loaf", "hapjes", "zest", "sheets", "vellen") with the existing sizes; or
-- a note opened by a note word ("for", "voor", "naar", "uit", "to", "om", "circa", "bijv", "op", "per"): "greek yogurt for topping", "olijven naar keuze", "tonijn uit blik", "peterselie voor de garnering".
+- form and size words: a new Ingredient Words list for cuts and forms ("bits", "blokjes", "blokken", "bolletjes", "boontjes", "broodjes", "chunks", "cube", "cubes", "curls", "filet", "filets", "fillet", "fillets", "fries", "friet", "gehakt", "hapjes", "loaf", "loins", "mince", "partjes", "pearls", "peulen", "pieces", "plakjes", "reepjes", "roosjes", "sheets", "slices", "spears", "stick", "sticks", "strips", "stukjes", "stukken", "vellen", "wedges", "zest"), with the sizes ("groot", "grote", "jumbo", "klein", "kleine", "large", "medium", "mini", "small"); or
+- a note opened by a note word ("bijv", "bv", "ca", "circa", "for", "naar", "om", "op", "per", "to", "uit", "voor"): "greek yogurt for topping", "olijven naar keuze", "tonijn uit blik", "peterselie voor de garnering".
+
+These lists are exactly what `spike-16/rule.py` measured.
 
 **Flags removed:** 53 of the 273 distinct names (74 of 439 texts), 20 of them own foods that flagged on production. **Wrong parents it files without a flag: none** on this set.
 
