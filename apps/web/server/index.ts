@@ -8,7 +8,10 @@ import { runMigrations } from "@norish/api/startup/migrations";
 import { recheckUndecidedMintsOnBoot } from "@norish/api/startup/recheck-undecided-mints";
 import { registerApiHandlersForQueue } from "@norish/api/startup/register-queue-api-handlers";
 import { seedServerConfig } from "@norish/api/startup/seed-config";
-import { seedIngredientCatalogueOnFirstBoot } from "@norish/api/startup/seed-ingredient-catalogue";
+import {
+  correctSeedOnBoot,
+  seedIngredientCatalogueOnFirstBoot,
+} from "@norish/api/startup/seed-ingredient-catalogue";
 import { registerShutdownHandlers } from "@norish/api/startup/shutdown";
 import { initializeVideoProcessing } from "@norish/api/startup/video-processing";
 import { initializeServerConfig, SERVER_CONFIG } from "@norish/config/env-config-server";
@@ -40,6 +43,8 @@ async function main() {
   // A first boot seeds the catalogue before traffic; later boots leave it to
   // the refresh job, so an unchanged file never holds the server up.
   await seedIngredientCatalogueOnFirstBoot();
+  // Spellings the seed now gives another food move once, with the foods their words filed there.
+  await correctSeedOnBoot();
   log.info("-".repeat(50));
 
   // Old flagged mints, looked at again whenever the resolver's rules change.

@@ -15,7 +15,7 @@ import { ServerConfigKeys } from "@norish/config/zod/server-config";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import { findIngredientAncestors } from "@norish/db/repositories/ingredient-relocation";
 import { listPantryIngredientsByUserIds } from "@norish/db/repositories/pantry";
-import { groceries, ingredients, serverConfig } from "@norish/db/schema";
+import { groceries, ingredientAliases, ingredients, serverConfig } from "@norish/db/schema";
 import { mergeByAI } from "@norish/shared-server/ingredients/ai-changes";
 import {
   addAlias,
@@ -30,6 +30,7 @@ import {
   applySeedFile,
   refreshIngredientCatalogue,
 } from "@norish/shared-server/ingredients/seed/catalogue-seed";
+import { correctSeedOnce } from "@norish/shared-server/ingredients/seed/correct-seed";
 
 import { getSpellingTexts, getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
@@ -286,6 +287,80 @@ describe("the ingredient catalogue seed", () => {
 
       expect(ancestors.get(red.ingredientId)).toEqual([vegetable.ingredientId]);
       expect(ancestors.get(onion.ingredientId)).toEqual([]);
+    });
+  });
+
+  describe("spellings the file gives the wrong food", () => {
+    /** Open Food Facts' coating, which holds seasoning's names too, and the mixed spices they belong to. */
+    const spices =
+      `${excerpt}\n\nen: coating, seasoning\nes: sazonador\nfr: enrobage\n\n` +
+      `en: mixed spices\nnl: gemengde specerijen\n`;
+
+    function parentOf(ingredientId: string) {
+      return findIngredientAncestors([ingredientId]).then(
+        (all) => all.get(ingredientId)?.[0] ?? null
+      );
+    }
+
+    it("gives seasoning to mixed spices, every time the file is applied, and files a seasoning there", async () => {
+      await applySeedFile(spices);
+      await applySeedFile(spices);
+
+      const mixed = await resolve("mixed spices");
+      const coating = await resolve("coating");
+
+      await expect(resolve("seasoning")).resolves.toMatchObject({
+        ingredientId: mixed.ingredientId,
+      });
+      await expect(resolve("sazonador")).resolves.toMatchObject({
+        ingredientId: mixed.ingredientId,
+      });
+      await expect(getSpellingTexts(coating.ingredientId)).resolves.toEqual([
+        "coating",
+        "enrobage",
+      ]);
+      await expect(parentOf((await resolve("taco seasoning")).ingredientId)).resolves.toBe(
+        mixed.ingredientId
+      );
+    });
+
+    it("moves seasoning off coating once on an instance seeded before, with the foods its words filed there", async () => {
+      await applySeedFile(spices);
+      const mixed = await resolve("mixed spices");
+      const coating = await resolve("coating");
+
+      // As a seed from before the correction left it.
+      await getTestDb()
+        .update(ingredientAliases)
+        .set({ ingredientId: coating.ingredientId })
+        .where(eq(ingredientAliases.fold, "seasoning"));
+      const cajun = await resolve("cajun seasoning");
+      const blend = await resolve("seasoning blend");
+      const ranch = await resolve("ranch seasoning");
+
+      await setParent(admin, ranch.ingredientId, coating.ingredientId);
+      await expect(parentOf(cajun.ingredientId)).resolves.toBe(coating.ingredientId);
+
+      await expect(correctSeedOnce()).resolves.toMatchObject({ moved: 1, refiled: 2 });
+
+      await expect(resolve("seasoning")).resolves.toMatchObject({
+        ingredientId: mixed.ingredientId,
+      });
+      await expect(parentOf(cajun.ingredientId)).resolves.toBe(mixed.ingredientId);
+      await expect(parentOf(blend.ingredientId)).resolves.toBe(mixed.ingredientId);
+      // A person's parent stays.
+      await expect(parentOf(ranch.ingredientId)).resolves.toBe(coating.ingredientId);
+      // The words' unsure guess is listed under its new parent, for a person to keep or undo.
+      expect(
+        (await listAIChanges()).map((change) => [change.ingredient?.name, change.target?.name])
+      ).toEqual([["seasoning blend", "mixed spices"]]);
+
+      // Once: a person who moves it back is not overruled at the next boot.
+      await getTestDb()
+        .update(ingredientAliases)
+        .set({ ingredientId: coating.ingredientId })
+        .where(eq(ingredientAliases.fold, "seasoning"));
+      await expect(correctSeedOnce()).resolves.toBeNull();
     });
   });
 

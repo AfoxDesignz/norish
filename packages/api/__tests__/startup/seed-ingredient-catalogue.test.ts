@@ -6,14 +6,20 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { seedIngredientCatalogueOnFirstBoot } from "@norish/api/startup/seed-ingredient-catalogue";
+import {
+  correctSeedOnBoot,
+  seedIngredientCatalogueOnFirstBoot,
+} from "@norish/api/startup/seed-ingredient-catalogue";
 
 const seed = vi.hoisted(() => ({
   readIngredientSeedState: vi.fn(),
   refreshIngredientCatalogue: vi.fn(),
 }));
 
+const corrections = vi.hoisted(() => ({ correctSeedOnce: vi.fn() }));
+
 vi.mock("@norish/shared-server/ingredients/seed/catalogue-seed", () => seed);
+vi.mock("@norish/shared-server/ingredients/seed/correct-seed", () => corrections);
 vi.mock("@norish/shared-server/logger", () => ({
   dbLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -44,5 +50,16 @@ describe("seedIngredientCatalogueOnFirstBoot", () => {
     seed.refreshIngredientCatalogue.mockRejectedValue(new Error("HTTP 503"));
 
     await expect(seedIngredientCatalogueOnFirstBoot()).resolves.toBeUndefined();
+  });
+});
+
+describe("correctSeedOnBoot", () => {
+  it("makes the seed's corrections, and a failure never stops the server", async () => {
+    corrections.correctSeedOnce.mockResolvedValueOnce({ moved: 1, refiled: 2 });
+    await correctSeedOnBoot();
+    corrections.correctSeedOnce.mockRejectedValueOnce(new Error("db down"));
+    await expect(correctSeedOnBoot()).resolves.toBeUndefined();
+
+    expect(corrections.correctSeedOnce).toHaveBeenCalledTimes(2);
   });
 });

@@ -8,13 +8,21 @@
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A new "taco seasoning" is filed under mixed spices, quietly, as a parent whose spelling ends the name is.
-- [ ] After a nightly seed, "seasoning" is still a spelling of mixed spices, not of coating.
-- [ ] An existing "cajun seasoning" filed under coating is under mixed spices after the first start; one a person filed elsewhere stays.
-- [ ] All `CONTRIBUTING.md` gates pass.
+- [x] A new "taco seasoning" is filed under mixed spices, quietly, as a parent whose spelling ends the name is.
+- [x] After a nightly seed, "seasoning" is still a spelling of mixed spices, not of coating.
+- [x] An existing "cajun seasoning" filed under coating is under mixed spices after the first start; one a person filed elsewhere stays.
+- [x] All `CONTRIBUTING.md` gates pass.
 
 ## Comments
 
 Measured on ticket 16's set: 18 names were filed quietly under coating, 10 of them through "seasoning". The other 8 are "… voor de coating" and "… for the coating" notes, which ticket 20 fixes.
+
+2026-10-20, implemented:
+
+- `SPELLING_MOVES` in `catalogue-seed.ts` is the correction list; `seedEntriesOf` applies it to every file read, so a first seed and every nightly one put the spellings on mixed spices. Moved: "seasoning", "sazonador" (es), "fűszerezés" (hu), "ochucující" (cs), "シーズニング" (ja). The other 26 coating spellings mean a coating and stay.
+- An instance seeded before: the seed only adds spellings and leaves a fold another food holds, so a boot step after the first-boot seed (`correctSeedOnBoot` → `correctSeedOnce`) moves the spelling once, with the rows behind it (`moveCatalogueAlias`). It then re-files coating's own children that no person filed and whose words now say mixed spices; an unsure words-parent's open AI Change moves with it. It runs once per `SEED_CORRECTIONS_VERSION` (`correctionsVersion` in the seed state), not on every boot, so a person who moves a spelling back is not overruled. A new correction raises the version.
+- Not the first-start cleanup: raising `CLEANUP_VERSION` would rerun every step, including the AI pass over every undecided food.
+- Checked on the production copy's data: `en:coating` holds "seasoning" and `en:mixed-spices` exists, with garam masala, ras el hanout and shawarma spices under it. Not run end to end on the copy, which is not on this release's schema.
+

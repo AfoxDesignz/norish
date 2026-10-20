@@ -19,7 +19,12 @@ import {
   wasParentUndone,
 } from "./ingredient-ai-changes";
 import { ingredientIsNamed } from "./ingredient-catalogue";
-import { findIngredientAncestors, lockTree } from "./ingredient-relocation";
+import {
+  findIngredientAncestors,
+  lockIngredients,
+  lockTree,
+  moveCatalogueAlias,
+} from "./ingredient-relocation";
 
 /**
  * The catalogue seed's writes (ADR-0038). Applying the seed upserts seeded
@@ -416,6 +421,83 @@ export async function insertSeededIngredient(
     }
 
     return row.id;
+  });
+}
+
+/**
+ * Move a seeded spelling the seed now gives another entry, with the rows behind it, where the first
+ * entry's food still holds it. Whether it moved.
+ */
+export async function moveSeededSpelling(
+  fold: string,
+  fromId: string,
+  toId: string
+): Promise<boolean> {
+  return await db.transaction(async (tx) => {
+    await lockTree(tx);
+    if ((await lockIngredients(tx, [fromId, toId])) < 2) return false;
+    const [alias] = await tx
+      .select({ id: ingredientAliases.id })
+      .from(ingredientAliases)
+      .where(and(eq(ingredientAliases.fold, fold), eq(ingredientAliases.ingredientId, fromId)));
+
+    if (!alias) return false;
+    await moveCatalogueAlias(tx, alias.id, toId);
+
+    return true;
+  });
+}
+
+/** The own foods under `parentId` that no person filed there. */
+export async function listUnchosenOwnChildren(
+  parentId: string
+): Promise<Array<{ id: string; name: string }>> {
+  return await db
+    .select({ id: ingredients.id, name: ingredients.name })
+    .from(ingredients)
+    .where(
+      and(
+        eq(ingredients.parentId, parentId),
+        isNull(ingredients.offId),
+        eq(ingredients.parentChosen, false)
+      )
+    );
+}
+
+/**
+ * Re-file an own food from one parent to another, where it is still under the first, no person
+ * filed it meanwhile, and no person undid the second. With `unsure`, an open parent change moves
+ * with it. Whether it moved.
+ */
+export async function refileOwnFood(
+  id: string,
+  fromId: string,
+  toId: string,
+  unsure: boolean
+): Promise<boolean> {
+  return await db.transaction(async (tx) => {
+    await lockTree(tx);
+    if ((await findIngredientAncestors([toId], tx)).get(toId)?.includes(id)) return false;
+    if (await wasParentUndone(tx, id, toId)) return false;
+
+    const moved = await tx
+      .update(ingredients)
+      .set({ parentId: toId, version: sql`${ingredients.version} + 1` })
+      .where(
+        and(
+          eq(ingredients.id, id),
+          eq(ingredients.parentId, fromId),
+          isNull(ingredients.offId),
+          eq(ingredients.parentChosen, false)
+        )
+      )
+      .returning({ id: ingredients.id });
+
+    if (moved.length > 0 && unsure && (await takeOpenParentChanges(tx, id))) {
+      await recordGuessedParent(tx, id, toId);
+    }
+
+    return moved.length > 0;
   });
 }
 

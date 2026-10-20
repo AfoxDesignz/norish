@@ -48,8 +48,47 @@ function seedText(text: string): string {
   return withoutStrayMarks(cleanIngredientText(text));
 }
 
+/**
+ * Spellings Open Food Facts gives the wrong entry, moved to the right one as the file is read, so
+ * the nightly fetch keeps them there. Raise `SEED_CORRECTIONS_VERSION` with every new one, so an
+ * instance seeded before moves its own copy once (`correctSeedOnce`).
+ */
+export const SPELLING_MOVES: ReadonlyArray<{ from: string; to: string; spellings: string[] }> = [
+  // Its coating also holds seasoning's names; a seasoning is a spice mix (ingredient-cleanup 21).
+  {
+    from: "en:coating",
+    to: "en:mixed-spices",
+    spellings: ["seasoning", "sazonador", "fűszerezés", "ochucující", "シーズニング"],
+  },
+];
+
+export const SEED_CORRECTIONS_VERSION = 1;
+
+/** The entries with `SPELLING_MOVES` made, where the file has both foods. */
+function corrected(entries: SeedEntry[]): SeedEntry[] {
+  const byOffId = new Map(entries.map((entry) => [entry.offId, entry]));
+
+  for (const move of SPELLING_MOVES) {
+    const from = byOffId.get(move.from);
+    const to = byOffId.get(move.to);
+
+    if (!from || !to) continue;
+    const folds = new Set(move.spellings.map(ingredientAliasFold));
+    const moved = from.aliases.filter((alias) => folds.has(alias.fold));
+
+    from.aliases = from.aliases.filter((alias) => !folds.has(alias.fold));
+    to.aliases = [...to.aliases, ...moved];
+  }
+
+  return entries;
+}
+
 /** A taxonomy file, read and folded into the entries the seed applies. */
 export function seedEntriesOf(file: string): SeedEntry[] {
+  return corrected(seedEntriesFrom(file));
+}
+
+function seedEntriesFrom(file: string): SeedEntry[] {
   return parseTaxonomy(file).flatMap((entry) => {
     const name = seedText(entry.name);
 
