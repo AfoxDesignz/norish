@@ -19,6 +19,7 @@ import {
 } from "@norish/db/repositories/ingredient-aliases";
 import { getIngredientWords, getUnits } from "@norish/shared-server/config/server-config-loader";
 import { dbLogger } from "@norish/shared-server/logger";
+import { UNANSWERED_FLAG_REASONS } from "@norish/shared/contracts/ingredient-catalogue";
 import { stripHtmlTags } from "@norish/shared/lib/helpers";
 import { catalogueLanguagesFor } from "@norish/shared/lib/ingredient-names";
 import { namesNoFood } from "@norish/shared/lib/ingredient-text";
@@ -520,7 +521,7 @@ function settledAnswer(answer: AIResolution, splits: boolean): AIResolution {
 }
 
 /** The flags a mint gets where AI was asked and gave no answer. */
-const NO_ANSWER: ReadonlySet<FlagReason> = new Set(["ai-off", "ai-unavailable", "ai-key-rejected"]);
+const NO_ANSWER: ReadonlySet<FlagReason> = new Set(["ai-off", ...UNANSWERED_FLAG_REASONS]);
 
 function gaveNoAnswer(asked: Asked | undefined): boolean {
   if (!asked) return true;
