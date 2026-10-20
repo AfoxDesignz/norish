@@ -93,6 +93,15 @@ function hasOpenChange(ingredientId: string) {
   )})`;
 }
 
+/** Whether a food's parent is still the open guess its words made, in a query over `ingredients`. */
+export const parentIsOpenGuess = sql<boolean>`exists (select 1 from ${ingredientAIChanges} where ${and(
+  eq(ingredientAIChanges.ingredientId, ingredients.id),
+  eq(ingredientAIChanges.targetId, ingredients.parentId),
+  eq(ingredientAIChanges.kind, "parent"),
+  sql`${ingredientAIChanges.undo} ->> 'fromWords' = 'true'`,
+  open
+)})`;
+
 function selectChanges(tx: Db = db) {
   return tx
     .select({

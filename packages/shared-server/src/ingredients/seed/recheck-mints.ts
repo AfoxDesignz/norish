@@ -14,8 +14,9 @@
  * "garlic cloves crushed"), so the sibling mints after it ("garlic cloves
  * thinly sliced") resolve to it and merge, and is filed under the seeded
  * spelling its name contains, staying flagged — an unsure AI Change where
- * the spelling is not what the name ends with; where they name
- * several, it is left for a person.
+ * the spelling is not what the name ends with; a parent that is still such
+ * a guess is read again, and moves or goes; where they name several, it is
+ * left for a person.
  * Nothing here is the resolver's rules over again: it asks the resolver.
  */
 import { withTransaction } from "@norish/db/drizzle";
@@ -60,11 +61,18 @@ export async function recheckUndecidedMints(): Promise<RecheckOutcome> {
     const plain = await plainNameOf(mint.name);
 
     if (plain) await adoptPlainName(mint.id, plain);
-    if (mint.parentId !== null) continue;
+    // A parent AI gave is AI's to change; a guess from the words is read again.
+    if (mint.parentId !== null && !mint.guessed) continue;
 
     const parent = await parentFromWordsOf(mint.name);
+    const parentId = parent?.id ?? null;
 
-    if (parent && (await fileUndecidedMint(mint.id, parent.id, !parent.sure))) outcome.filed += 1;
+    if (
+      parentId !== mint.parentId &&
+      (await fileUndecidedMint(mint.id, parentId, !parent?.sure, mint.parentId))
+    ) {
+      outcome.filed += 1;
+    }
   }
 
   return outcome;

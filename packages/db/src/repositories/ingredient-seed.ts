@@ -15,6 +15,7 @@ import {
 
 import {
   clearAIFlagUnlessOpen,
+  parentIsOpenGuess,
   recordGuessedParent,
   takeOpenParentChanges,
   vouchForOpenAIChanges,
@@ -511,20 +512,28 @@ export async function flagIngredient(id: string): Promise<void> {
     .where(eq(ingredients.id, id));
 }
 
+/** An undecided mint: `guessed` where its parent is still the open guess its words made. */
+export interface UndecidedMint {
+  id: string;
+  name: string;
+  parentId: string | null;
+  guessed: boolean;
+  aliases: string[];
+}
+
 /**
  * The Flagged Ingredients Norish minted itself and no person has decided
  * about: no taxonomy entry, not kept distinct, no parent a person chose (a
  * rename clears the flag, so a flagged one was not renamed since). What the
  * startup pass looks at again whenever the resolver's rules change.
  */
-export async function listUndecidedMints(): Promise<
-  Array<{ id: string; name: string; parentId: string | null; aliases: string[] }>
-> {
+export async function listUndecidedMints(): Promise<UndecidedMint[]> {
   const rows = await db
     .select({
       id: ingredients.id,
       name: ingredients.name,
       parentId: ingredients.parentId,
+      guessed: parentIsOpenGuess,
       alias: ingredientAliases.text,
     })
     .from(ingredients)
@@ -538,16 +547,14 @@ export async function listUndecidedMints(): Promise<
       )
     )
     .orderBy(ingredients.createdAt, ingredients.id, ingredientAliases.createdAt);
-  const byId = new Map<
-    string,
-    { id: string; name: string; parentId: string | null; aliases: string[] }
-  >();
+  const byId = new Map<string, UndecidedMint>();
 
   for (const row of rows) {
     const mint = byId.get(row.id) ?? {
       id: row.id,
       name: row.name,
       parentId: row.parentId,
+      guessed: row.guessed,
       aliases: [],
     };
 
@@ -591,21 +598,25 @@ export async function adoptPlainName(
 }
 
 /**
- * File an undecided mint under the parent its words suggest, leaving it
- * flagged and the parent unchosen: only where it still has no parent, no
- * person decided about it meanwhile, and the parent would close no cycle.
- * With `unsure`, the parent is an unsure AI Change, from the words, for a
- * person to keep or undo, replacing any older one. Whether it was filed.
+ * File an undecided mint under the parent its words suggest, or none (null), leaving it flagged
+ * and the parent unchosen: only where its parent is still `from` (none by default), no person
+ * decided about it meanwhile, and the parent would close no cycle. With `unsure`, the parent is
+ * an unsure AI Change, from the words, for a person to keep or undo, replacing any older one.
+ * Whether it was filed.
  */
 export async function fileUndecidedMint(
   id: string,
-  parentId: string,
-  unsure = false
+  parentId: string | null,
+  unsure = false,
+  from: string | null = null
 ): Promise<boolean> {
   return await fileUnder(
     id,
     parentId,
-    and(isNull(ingredients.parentId), eq(ingredients.flagged, true)),
+    and(
+      from === null ? isNull(ingredients.parentId) : eq(ingredients.parentId, from),
+      eq(ingredients.flagged, true)
+    ),
     unsure
   );
 }
@@ -616,13 +627,15 @@ export async function fileUndecidedMint(
  */
 async function fileUnder(
   id: string,
-  parentId: string,
+  parentId: string | null,
   where: SQL | undefined,
   unsure: boolean
 ): Promise<boolean> {
   return await db.transaction(async (tx) => {
     await lockTree(tx);
-    if ((await findIngredientAncestors([parentId], tx)).get(parentId)?.includes(id)) return false;
+    if (parentId && (await findIngredientAncestors([parentId], tx)).get(parentId)?.includes(id)) {
+      return false;
+    }
     if (id === parentId) return false;
     // A person undid this parent once: AI and the words never set it again.
     if (await wasParentUndone(tx, id, parentId)) return false;
@@ -644,6 +657,8 @@ async function fileUnder(
     // An older guess goes with the old parent; a sure one leaves no doubt behind.
     const replaced = await takeOpenParentChanges(tx, id);
 
+    // No parent is no answer: the mint stays flagged as it was.
+    if (parentId === null) return true;
     if (unsure) await recordGuessedParent(tx, id, parentId);
     else if (replaced) await clearAIFlagUnlessOpen(tx, id);
 

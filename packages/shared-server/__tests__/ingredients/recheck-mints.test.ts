@@ -15,9 +15,11 @@ import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import {
   applyIngredientSeed,
+  fileUndecidedMint,
   listSeededIngredientIds,
 } from "@norish/db/repositories/ingredient-seed";
 import { ingredients, serverConfig } from "@norish/db/schema";
+import { parentByAI } from "@norish/shared-server/ingredients/ai-changes";
 import { listIngredients, markDistinct } from "@norish/shared-server/ingredients/catalogue";
 import { withResolvedIngredients } from "@norish/shared-server/ingredients/recipe-lines";
 import { RUNG_VERSION } from "@norish/shared-server/ingredients/resolver";
@@ -51,6 +53,8 @@ describe("looking at old Flagged Ingredients again", () => {
       seedEntry("en:cumin", "cumin"),
       seedEntry("en:garlic", "garlic"),
       seedEntry("en:chickpea", "chickpeas"),
+      seedEntry("en:tea", "tea", "te"),
+      seedEntry("en:oil", "oil", "olie"),
     ]);
     seeded = await listSeededIngredientIds();
   });
@@ -156,6 +160,41 @@ describe("looking at old Flagged Ingredients again", () => {
     expect(await listAIChanges()).toMatchObject([
       { ingredient: { id: legacy }, sure: false, undo: { kind: "parent", fromWords: true } },
     ]);
+  });
+
+  it("files a guess from a legacy mint's words again under today's rules, and leaves AI's", async () => {
+    const guessed = await legacyMint("olie om te bakken");
+    const answered = await legacyMint("zwarte te bakken");
+
+    // Filed under tea ("te") by the words as an older rule read them, and by AI.
+    await fileUndecidedMint(guessed, seeded.get("en:tea")!, true);
+    await parentByAI(answered, seeded.get("en:tea")!, false);
+
+    await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 0, filed: 1 });
+    expect(await shown(guessed)).toMatchObject({
+      flagged: true,
+      parent: { id: seeded.get("en:oil") },
+    });
+    expect(await shown(answered)).toMatchObject({ parent: { id: seeded.get("en:tea") } });
+    expect(
+      (await listAIChanges()).map((change) => [change.ingredient?.id, change.target?.id])
+    ).toEqual(
+      expect.arrayContaining([
+        [guessed, seeded.get("en:oil")],
+        [answered, seeded.get("en:tea")],
+      ])
+    );
+    expect(await listAIChanges()).toHaveLength(2);
+  });
+
+  it("takes a guess from a legacy mint's words off where today's rules find none", async () => {
+    const guessed = await legacyMint("zwarte te bakken");
+
+    await fileUndecidedMint(guessed, seeded.get("en:tea")!, true);
+
+    await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 0, filed: 1 });
+    expect(await shown(guessed)).toMatchObject({ flagged: true, parent: null });
+    expect(await listAIChanges()).toHaveLength(0);
   });
 
   it("leaves alone what a person decided, even under a flag raised again since", async () => {
