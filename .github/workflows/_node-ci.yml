@@ -78,6 +78,17 @@ jobs:
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: pnpm run typecheck
 
+      # The parser's own tests run under uv, as the E2E job installs it.
+      - name: Install uv
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          cache-dependency-glob: apps/parser-api/uv.lock
+
+      - name: Install the embedded parser runtime
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        run: pnpm --filter @norish/parser-api run install:deps
+
       # Unit tests need NODE_ENV=test: under the workflow-wide "production"
       # Vite resolves Node builtins as browser externals, and every jsdom suite
       # that reaches one dies with "No such built-in module: node:" before a
