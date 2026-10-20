@@ -103,7 +103,7 @@ export async function checkStoreNameExistsInHousehold(
   }
 
   const [row] = await db
-    .select({ count: sql<number>`count(*)` })
+    .select({ count: sql<number>`count(*)::int` })
     .from(stores)
     .where(and(...conditions));
 
@@ -250,7 +250,7 @@ export async function deleteStore(
 
       // Only delete store if it is empty after processing the snapshot
       const [remainingCount] = await trx
-        .select({ count: sql<number>`count(*)` })
+        .select({ count: sql<number>`count(*)::int` })
         .from(groceries)
         .where(eq(groceries.storeId, storeId));
 
@@ -327,7 +327,7 @@ export async function getStoreOwnerId(storeId: string): Promise<string | null> {
 
 export async function countGroceriesInStore(storeId: string): Promise<number> {
   const [row] = await db
-    .select({ count: sql<number>`count(*)` })
+    .select({ count: sql<number>`count(*)::int` })
     .from(groceries)
     .where(eq(groceries.storeId, storeId));
 

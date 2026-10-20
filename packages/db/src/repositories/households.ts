@@ -205,7 +205,7 @@ export async function removeUserFromHousehold(
     }
 
     const rows = await tx
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(householdUsers)
       .where(eq(householdUsers.householdId, householdId));
 

@@ -91,7 +91,7 @@ function nonEmpty(s: string | null | undefined): s is string {
 }
 
 export async function GetTotalRecipeCount(): Promise<number> {
-  const result = await db.select({ count: sql<number>`count(*)` }).from(recipes);
+  const result = await db.select({ count: sql<number>`count(*)::int` }).from(recipes);
 
   return Number(result?.[0]?.count ?? 0);
 }
@@ -669,7 +669,7 @@ export async function listRecipes(
       offset,
     }),
     db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(recipes)
       .where(whereClause),
   ]);
@@ -2035,7 +2035,7 @@ export async function replaceRecipeImages(
  */
 export async function countRecipeImages(recipeId: string): Promise<number> {
   const [result] = await db
-    .select({ count: sql<number>`count(*)` })
+    .select({ count: sql<number>`count(*)::int` })
     .from(recipeImages)
     .where(eq(recipeImages.recipeId, recipeId));
 
@@ -2056,7 +2056,7 @@ export interface RecipeVideoInput {
  */
 export async function countRecipeVideos(recipeId: string): Promise<number> {
   const [result] = await db
-    .select({ count: sql<number>`count(*)` })
+    .select({ count: sql<number>`count(*)::int` })
     .from(recipeVideos)
     .where(eq(recipeVideos.recipeId, recipeId));
 
