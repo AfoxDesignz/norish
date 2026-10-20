@@ -37,6 +37,8 @@ export interface StoredAIChange {
   createdAt: Date;
   ingredient: { id: string; name: string; ownerId: string | null } | null;
   target: { id: string; name: string } | null;
+  /** The parent a change to no parent took away. */
+  dropped: { id: string; name: string } | null;
   undo: AIChangeUndo;
 }
 
@@ -74,6 +76,7 @@ export async function recordGuessedParent(
 }
 
 const targets = alias(ingredients, "ai_change_targets");
+const dropped = alias(ingredients, "ai_change_dropped");
 
 /** How long Changed by AI lists a change a person has no more to do about. */
 const LISTED_FOR = sql`interval '30 days'`;
@@ -114,11 +117,21 @@ function selectChanges(tx: Db = db) {
       ingredientOwnerId: ingredients.ownerId,
       targetId: targets.id,
       targetName: targets.name,
+      droppedId: dropped.id,
+      droppedName: dropped.name,
       undo: ingredientAIChanges.undo,
     })
     .from(ingredientAIChanges)
     .leftJoin(ingredients, eq(ingredients.id, ingredientAIChanges.ingredientId))
-    .leftJoin(targets, eq(targets.id, ingredientAIChanges.targetId));
+    .leftJoin(targets, eq(targets.id, ingredientAIChanges.targetId))
+    .leftJoin(
+      dropped,
+      and(
+        eq(ingredientAIChanges.kind, "parent"),
+        isNull(ingredientAIChanges.targetId),
+        sql`${dropped.id} = (${ingredientAIChanges.undo} ->> 'formerParentId')::uuid`
+      )
+    );
 }
 
 type ChangeRow = Awaited<ReturnType<typeof selectChanges>>[number];
@@ -134,6 +147,7 @@ function toStoredChange(row: ChangeRow): StoredAIChange {
         ? { id: row.ingredientId, name: row.ingredientName, ownerId: row.ingredientOwnerId }
         : null,
     target: row.targetId && row.targetName ? { id: row.targetId, name: row.targetName } : null,
+    dropped: row.droppedId && row.droppedName ? { id: row.droppedId, name: row.droppedName } : null,
     undo: row.undo,
   };
 }
@@ -280,11 +294,11 @@ export async function wasMergeUndone(
   return row !== undefined;
 }
 
-/** Whether a person undid filing `ingredientId` under `parentId`. */
+/** Whether a person undid filing `ingredientId` under `parentId`, or under no parent (null). */
 export async function wasParentUndone(
   tx: Db,
   ingredientId: string,
-  parentId: string
+  parentId: string | null
 ): Promise<boolean> {
   const [row] = await tx
     .select({ id: ingredientAIChanges.id })
@@ -293,7 +307,9 @@ export async function wasParentUndone(
       and(
         eq(ingredientAIChanges.ingredientId, ingredientId),
         eq(ingredientAIChanges.kind, "parent"),
-        eq(ingredientAIChanges.targetId, parentId),
+        parentId === null
+          ? isNull(ingredientAIChanges.targetId)
+          : eq(ingredientAIChanges.targetId, parentId),
         sql`${ingredientAIChanges.undoneAt} is not null`
       )
     )

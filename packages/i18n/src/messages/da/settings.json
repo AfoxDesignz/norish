@@ -547,6 +547,7 @@
       "merge": "{from} lagt sammen hermed",
       "parent": "Placeret under {of}",
       "parentFromName": "Placeret under {of}, ud fra navnet",
+      "parentDropped": "Ikke længere under {of}",
       "plainName": "Omdøbt fra {from}",
       "notAFood": "Slettet, da det ikke er en ingrediens. Opskriftslinjerne og indkøbene beholder deres tekst."
     },

@@ -40,6 +40,8 @@ export type AIChange = {
   ingredient: { id: string; name: string; localeNames: LocaleNames } | null;
   /** A parent's parent. */
   target: { id: string; name: string; localeNames: LocaleNames } | null;
+  /** The parent a change to no parent took away. */
+  dropped: { id: string; name: string; localeNames: LocaleNames } | null;
   /** The merged or deleted food's name, or the name AI replaced. */
   from: string | null;
   fromWords: boolean;

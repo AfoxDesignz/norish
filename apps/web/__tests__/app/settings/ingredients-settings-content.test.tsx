@@ -369,12 +369,14 @@ function change(
     sure = true,
     from = null,
     target = null,
+    dropped = null,
     fromWords = false,
     ingredientId = name,
   }: {
     sure?: boolean;
     from?: string | null;
     target?: string | null;
+    dropped?: string | null;
     fromWords?: boolean;
     ingredientId?: string;
   } = {}
@@ -387,6 +389,7 @@ function change(
     createdAt: new Date(0),
     ingredient: { id: ingredientId, name, localeNames: {} },
     target: target ? { id: target, name: target, localeNames: {} } : null,
+    dropped: dropped ? { id: dropped, name: dropped, localeNames: {} } : null,
     from,
     fromWords,
     canAct: true,
@@ -1168,6 +1171,27 @@ describe("IngredientsSettingsContent", () => {
     });
 
     expect(mutations.keepAIChange).toHaveBeenCalledWith({ changeId: "c1" });
+  });
+
+  it("says which parent AI took away, and undoes it", async () => {
+    items = [{ ...onion, name: "peanut butter" }, salt];
+    changes = [
+      change("c1", "parent", "peanut butter", {
+        sure: false,
+        dropped: "butter",
+        ingredientId: "onion",
+      }),
+    ];
+    render(<IngredientsSettingsContent />);
+    const opened = await open("peanut butter");
+    const unsure = within(opened).getByTestId("ingredient-ai-change");
+
+    expect(unsure).toHaveTextContent("changedByAI.parentDropped");
+    await act(async () => {
+      fireEvent.click(within(unsure).getByTestId("ingredient-ai-change-undo"));
+    });
+
+    expect(mutations.undoAIChange).toHaveBeenCalledWith({ changeId: "c1" });
   });
 
   it("offers Changed by AI only while AI changed something, saying how many to check", async () => {

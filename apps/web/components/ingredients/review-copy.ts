@@ -14,7 +14,12 @@ export function changeMessage(t: Translate, change: AIChange, locale: string): s
     case "merge":
       return t("changedByAI.merge", { from: change.from ?? "" });
     case "parent": {
-      const of = change.target ? ingredientDisplayName(change.target, locale) : "";
+      if (!change.target) {
+        const of = change.dropped ? ingredientDisplayName(change.dropped, locale) : "";
+
+        return t("changedByAI.parentDropped", { of });
+      }
+      const of = ingredientDisplayName(change.target, locale);
 
       return change.fromWords
         ? t("changedByAI.parentFromName", { of })

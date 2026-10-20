@@ -547,6 +547,7 @@
       "merge": "{from} fusionado aquí",
       "parent": "Clasificado bajo {of}",
       "parentFromName": "Clasificado bajo {of}, por su nombre",
+      "parentDropped": "Ya no está bajo {of}",
       "plainName": "Renombrado desde {from}",
       "notAFood": "Eliminado, porque no es un alimento. Sus líneas de receta y compras conservan su texto."
     },

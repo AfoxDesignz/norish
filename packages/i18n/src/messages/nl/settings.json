@@ -547,6 +547,7 @@
       "merge": "{from} hiermee samengevoegd",
       "parent": "Geplaatst onder {of}",
       "parentFromName": "Geplaatst onder {of}, op basis van de naam",
+      "parentDropped": "Niet meer onder {of}",
       "plainName": "Hernoemd van {from}",
       "notAFood": "Verwijderd, want het is geen ingrediënt. De receptregels en boodschappen houden hun tekst."
     },

@@ -547,6 +547,7 @@
       "merge": "{from} yhdistetty tähän",
       "parent": "Sijoitettu kohtaan {of}",
       "parentFromName": "Sijoitettu kohtaan {of} nimen perusteella",
+      "parentDropped": "Ei enää kohdassa {of}",
       "plainName": "Nimetty uudelleen, oli {from}",
       "notAFood": "Poistettu, koska se ei ole ainesosa. Reseptirivit ja ostokset säilyttävät tekstinsä."
     },

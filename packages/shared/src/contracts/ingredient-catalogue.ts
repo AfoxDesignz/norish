@@ -80,6 +80,7 @@ export type ReviewOutcome = ReviewVerdict & ReviewTrace;
 export type ReviewVerdict =
   | { outcome: "merge"; into: string; sure: boolean }
   | { outcome: "parent"; of: string; sure: boolean }
+  | { outcome: "no-parent"; from: string; sure: boolean }
   | { outcome: "rename"; to: string }
   | { outcome: "split"; into: string[] }
   | { outcome: "not-a-food" }

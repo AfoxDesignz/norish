@@ -15,6 +15,7 @@ import type { DecisionQuestions } from "@norish/shared-server/ai/runtime/runtime
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import { findIngredientAncestors } from "@norish/db/repositories/ingredient-relocation";
+import { applyIngredientSeed } from "@norish/db/repositories/ingredient-seed";
 import {
   groceries,
   ingredientAliases,
@@ -31,7 +32,11 @@ import {
   isAIEnabled,
   isDecisionUseEnabled,
 } from "@norish/shared-server/config/server-config-loader";
-import { keepAIChange, undoAIChange } from "@norish/shared-server/ingredients/ai-changes";
+import {
+  keepAIChange,
+  listAIChangesFor,
+  undoAIChange,
+} from "@norish/shared-server/ingredients/ai-changes";
 import {
   markDistinct,
   renameIngredient,
@@ -48,6 +53,7 @@ import {
 } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 import { foodReading, noFoodReading, severalReading } from "../helpers/ingredient-readings";
+import { seedEntry } from "../helpers/seed-entries";
 
 vi.mock("@norish/shared-server/ai/runtime/runtime", () => ({
   decide: vi.fn(),
@@ -359,6 +365,91 @@ describe("asking AI about an Ingredient", () => {
       flagReason: "ai-unsure",
     });
     expect(await changes()).toEqual([]);
+  });
+
+  describe("a food of its own whose words gave it a parent AI does not share", () => {
+    /** A mint its words filed under the seeded butter. */
+    async function underButter(text: string) {
+      await applyIngredientSeed([seedEntry("en:butter", "butter")]);
+      const food = await flagged(text);
+      const butter = await parentOf(food.ingredientId);
+
+      expect(butter).not.toBeNull();
+
+      return { food, butter };
+    }
+
+    it("drops the parent, listed on Changed by AI to undo", async () => {
+      const { food } = await underButter("peanut butter");
+
+      reads({ englishName: "peanut butter", generalFood: "spread", sure: true });
+
+      await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
+        outcome: "no-parent",
+        from: "butter",
+        sure: true,
+      });
+      await expect(parentOf(food.ingredientId)).resolves.toBeNull();
+      await expect(ingredientFor(food.aliasId)).resolves.toMatchObject({ flagged: false });
+      expect(await changes()).toEqual([
+        { kind: "parent", food: "peanut butter", target: null, sure: true, kept: false },
+      ]);
+      expect(await listAIChangesFor(actor)).toMatchObject([
+        { kind: "parent", target: null, dropped: { name: "butter" }, canAct: true },
+      ]);
+    });
+
+    it("puts the parent back on Undo, and AI leaves it when asked again", async () => {
+      const { food, butter } = await underButter("peanut butter");
+
+      reads({ englishName: "peanut butter", generalFood: null, sure: true });
+      await askAIAbout(food.ingredientId);
+      await undoAIChange(actor, (await listAIChanges())[0]!.id);
+      await expect(parentOf(food.ingredientId)).resolves.toBe(butter);
+
+      reads({ englishName: "peanut butter", generalFood: null, sure: true });
+      await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
+        outcome: "skipped",
+        reason: "undone",
+      });
+      await expect(parentOf(food.ingredientId)).resolves.toBe(butter);
+    });
+
+    it("drops a guess when unsure too, flagging the food, and Undo puts it back", async () => {
+      const { food, butter } = await underButter("butter cookie crumbs");
+
+      // The words' unsure guess is the one change listed.
+      expect(await changes()).toMatchObject([{ kind: "parent", target: "butter", sure: false }]);
+      reads({ englishName: "butter cookie crumbs", generalFood: null, sure: false });
+
+      await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
+        outcome: "no-parent",
+        sure: false,
+      });
+      await expect(parentOf(food.ingredientId)).resolves.toBeNull();
+      await expect(ingredientFor(food.aliasId)).resolves.toMatchObject({
+        flagged: true,
+        flagReason: "ai-unsure",
+      });
+      expect(await changes()).toEqual([
+        { kind: "parent", food: "butter cookie crumbs", target: null, sure: false, kept: false },
+      ]);
+
+      await undoAIChange(actor, (await listAIChanges())[0]!.id);
+      await expect(parentOf(food.ingredientId)).resolves.toBe(butter);
+    });
+
+    it("never asks about a parent a person chose", async () => {
+      const { food, butter } = await underButter("peanut butter");
+
+      await setParent(actor, food.ingredientId, butter!);
+
+      await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
+        outcome: "skipped",
+        reason: "decided",
+      });
+      await expect(parentOf(food.ingredientId)).resolves.toBe(butter);
+    });
   });
 
   describe("a reading that finds more than one food", () => {

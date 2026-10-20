@@ -90,20 +90,22 @@ export async function mergeByAI(sourceId: string, targetId: string, sure: boolea
 }
 
 /**
- * File a food under `parentId`, leaving the parent unchosen. It replaces the food's open parent
- * changes, so its Undo goes back to where the oldest of them found the food.
+ * File a food under `parentId`, or under none (null), leaving the parent unchosen. It replaces the
+ * food's open parent changes, so its Undo goes back to where the oldest of them found the food; a
+ * dropped parent's Undo goes back to that parent.
  */
-export async function parentByAI(ingredientId: string, parentId: string, sure: boolean) {
+export async function parentByAI(ingredientId: string, parentId: string | null, sure: boolean) {
   let previous: string | null = null;
+  const ids = parentId ? [ingredientId, parentId] : [ingredientId];
   const outcome = await withTransaction(async (tx): Promise<ApplyOutcome> => {
     await lockTree(tx);
-    if ((await lockIngredients(tx, [ingredientId, parentId])) < 2) return "gone";
+    if ((await lockIngredients(tx, ids)) < ids.length) return "gone";
     if (!(await isAskableByAI(tx, ingredientId))) return "decided";
     if (await wasParentUndone(tx, ingredientId, parentId)) return "undone";
 
-    const ancestors = await findIngredientAncestors([ingredientId, parentId], tx);
+    const ancestors = await findIngredientAncestors(ids, tx);
 
-    if (ancestors.get(parentId)?.includes(ingredientId)) return "gone";
+    if (parentId && ancestors.get(parentId)?.includes(ingredientId)) return "gone";
     previous = ancestors.get(ingredientId)?.[0] ?? null;
     const replaced = await takeOpenParentChanges(tx, ingredientId);
 
@@ -115,7 +117,10 @@ export async function parentByAI(ingredientId: string, parentId: string, sure: b
         ingredientId,
         targetId: parentId,
         sure,
-        undo: { kind: "parent", formerParentId: replaced ? replaced.formerParentId : previous },
+        undo: {
+          kind: "parent",
+          formerParentId: parentId && replaced ? replaced.formerParentId : previous,
+        },
       });
     }
     await refreshAIFlag(tx, ingredientId, { unsure: !sure });
@@ -229,6 +234,8 @@ export interface AIChangeItem {
   ingredient: { id: string; name: string; localeNames: LocaleNames } | null;
   /** A parent's parent. */
   target: { id: string; name: string; localeNames: LocaleNames } | null;
+  /** The parent a change to no parent took away. */
+  dropped: { id: string; name: string; localeNames: LocaleNames } | null;
   /** The merged or deleted food's name, or the name AI replaced. */
   from: string | null;
   fromWords: boolean;
@@ -271,7 +278,9 @@ export async function listAIChangesFor(actor: CatalogueActor): Promise<AIChangeI
   const [{ edit }, changes] = await Promise.all([getIngredientPermissionPolicy(), listAIChanges()]);
   const names = await findLocaleNames(
     changes.flatMap((change) =>
-      [change.ingredient?.id, change.target?.id].filter((id) => id !== undefined)
+      [change.ingredient?.id, change.target?.id, change.dropped?.id].filter(
+        (id) => id !== undefined
+      )
     )
   );
   const named = (food: { id: string; name: string }) => ({
@@ -291,6 +300,7 @@ export async function listAIChangesFor(actor: CatalogueActor): Promise<AIChangeI
       createdAt: change.createdAt,
       ingredient: change.ingredient ? named(change.ingredient) : null,
       target: change.target ? named(change.target) : null,
+      dropped: change.dropped ? named(change.dropped) : null,
       from,
       fromWords,
       canAct: mayEditOwnedRow(edit, actor, ownerId),
@@ -386,10 +396,11 @@ async function reverseChange(tx: DbTransaction, change: StoredAIChange): Promise
       return [restored];
     }
     case "parent": {
-      const [parent] = (await findIngredientAncestors([foodId], tx)).get(foodId) ?? [];
+      const [parent = null] = (await findIngredientAncestors([foodId], tx)).get(foodId) ?? [];
+      const target = change.target?.id ?? null;
 
       // A parent a person set since is theirs to keep.
-      if (!change.target || parent !== change.target.id) return [];
+      if (parent !== target) return [];
       const former = undo.formerParentId;
       const formerFits =
         former !== null &&
@@ -398,7 +409,7 @@ async function reverseChange(tx: DbTransaction, change: StoredAIChange): Promise
 
       await setCatalogueIngredientParent(tx, foodId, formerFits ? former : null, { byAI: true });
 
-      return formerFits ? [change.target.id, former] : [change.target.id];
+      return [target, formerFits ? former : null].filter((id) => id !== null);
     }
     case "plain-name":
       await restoreName(tx, foodId, undo);

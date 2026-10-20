@@ -64,7 +64,9 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
 
   const sure = answer.reason === null;
   const parent = answer.kindOf ? await findCatalogueIngredient(answer.kindOf) : null;
-  const filed = parent ? await parentByAI(ingredientId, parent.id, sure) : null;
+  // No general food: the parent goes; it is no person's, or the food would not be asked about.
+  const dropped = !parent && row.parentId ? await findCatalogueIngredient(row.parentId) : null;
+  const filed = parent || dropped ? await parentByAI(ingredientId, parent?.id ?? null, sure) : null;
 
   if (filed === "decided") return { outcome: "skipped", reason: "decided", ...trace };
   if (filed !== "applied") await flagByAnswer(ingredientId, sure);
@@ -74,6 +76,9 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
 
   if (named) return { ...trace, ...named };
   if (parent && filed === "applied") return { outcome: "parent", of: parent.name, sure, ...trace };
+  if (dropped && filed === "applied") {
+    return { outcome: "no-parent", from: dropped.name, sure, ...trace };
+  }
 
   return sure
     ? { outcome: "distinct", ...trace }
