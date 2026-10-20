@@ -11,6 +11,7 @@ import { isStaleIngredientReference } from "@norish/db/repositories/constraint-v
 import { findFoldsKeptAsNotJunk } from "@norish/db/repositories/ingredient-ai-changes";
 import {
   addIngredientAliases,
+  findAliasesNearFold,
   findIngredientAliasesByFolds,
   findIngredientByAliasId,
   findSeededFoodSpellingsByFolds,
@@ -22,6 +23,7 @@ import { stripHtmlTags } from "@norish/shared/lib/helpers";
 import { catalogueLanguagesFor } from "@norish/shared/lib/ingredient-names";
 import { namesNoFood } from "@norish/shared/lib/ingredient-text";
 import { distinctFoods } from "@norish/shared/lib/line-foods";
+import { mayBeASlip, nearestSlip } from "@norish/shared/lib/name-slips";
 import {
   inflectedReadings,
   joinedParts,
@@ -60,7 +62,9 @@ import { announceMinted } from "./minted";
  *      spelling, so the next occurrence is a rung-1 or rung-2 match; an
  *      unsure answer joins it as an unsure AI Change, which flags the food.
  *      A tool names no food, sure or not; sure, several foods each resolve as a text and nothing
- *      is a Junk Line (`AIResolution`); unsure, those two are minted flagged;
+ *      is a Junk Line (`AIResolution`); unsure, those two are minted flagged. A known food the
+ *      text is a slip of the fingers from ("barmezaan" for "parmezaan") is put to AI too, and is
+ *      taken where AI gives no answer (`findSlips`);
  *   4. a new Ingredient under the food AI said it is a kind of, if any.
  *
  * A mint or a join gives the food only the text's clean spelling, its plain
@@ -369,10 +373,11 @@ async function resolveTexts(
   const rules = await currentRules();
   const asWritten = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
   const { spellings, known, byWords } = await readByWords(asWritten, rules, splitJoined);
-  const answers = await askAboutUnknown(
-    spellings.filter((spelling) => !matchKnown(spelling, known) && !byWords.has(spelling)),
-    options
+  const unknown = spellings.filter(
+    (spelling) => !matchKnown(spelling, known) && !byWords.has(spelling)
   );
+  const slips = await findSlips(unknown);
+  const answers = await askAboutUnknown(unknown, options, slips);
   const resolved = new Map<Spelling, ResolvedFoods>();
   const minted = new Set<string>();
   // The texts AI says name nothing that a person once put back as no Junk Line, by clean spelling.
@@ -399,12 +404,18 @@ async function resolveTexts(
     const match = matchKnown(spelling, known);
 
     const asked = match ? undefined : answers.get(sameFoodKey(spelling));
+    const slip = match ? undefined : slips.get(sameFoodKey(spelling));
 
     // A text a person put back as no Junk Line names no food, whatever AI says of it now.
     if (asked?.answer.kind === "nothing" && notJunk.has(cleanAlias(spelling).fold)) continue;
 
-    // No answer means AI was not asked: the name is minted flagged.
-    const answer = asked ? settledAnswer(asked.answer, split !== "none") : flaggedNew("upgrade");
+    // No answer means AI was not asked: the name is a slip of a known food, else minted flagged.
+    const answer: AIResolution =
+      slip && gaveNoAnswer(asked)
+        ? { kind: "same", ingredientId: slip, sure: true }
+        : asked
+          ? settledAnswer(asked.answer, split !== "none")
+          : flaggedNew("upgrade");
 
     if (answer.kind === "several") {
       const parts = await resolveTexts(
@@ -508,6 +519,44 @@ function settledAnswer(answer: AIResolution, splits: boolean): AIResolution {
   }
 }
 
+/** The flags a mint gets where AI was asked and gave no answer. */
+const NO_ANSWER: ReadonlySet<FlagReason> = new Set(["ai-off", "ai-unavailable", "ai-key-rejected"]);
+
+function gaveNoAnswer(asked: Asked | undefined): boolean {
+  if (!asked) return true;
+
+  return asked.answer.kind === "new" && asked.answer.reason !== null
+    ? NO_ANSWER.has(asked.answer.reason)
+    : false;
+}
+
+/**
+ * The known food each spelling is a slip of the fingers from ("parmezan" for "parmezaan"), by
+ * `sameFoodKey`, where only one food is that near (`nearestSlip`).
+ */
+async function findSlips(spellings: readonly Spelling[]): Promise<Map<string, string>> {
+  const slips = new Map<string, string>();
+  const questions = new Map(spellings.map((spelling) => [sameFoodKey(spelling), spelling]));
+
+  await Promise.all(
+    [...questions].map(async ([key, spelling]) => {
+      const wanted = spelling.plainFold || spelling.bareFold || spelling.fold;
+
+      if (!mayBeASlip(wanted)) return;
+      const near = nearestSlip(
+        wanted,
+        await findAliasesNearFold(wanted),
+        (row) => row.fold,
+        (row) => row.ingredientId
+      );
+
+      if (near) slips.set(key, near.ingredientId);
+    })
+  );
+
+  return slips;
+}
+
 /**
  * Rung 3 for every spelling the first two rungs did not know, asked once per
  * food the spellings name and a few at a time, by the key `sameFoodKey` gives.
@@ -516,7 +565,8 @@ function settledAnswer(answer: AIResolution, splits: boolean): AIResolution {
  */
 async function askAboutUnknown(
   unknown: readonly Spelling[],
-  options: ResolveOptions
+  options: ResolveOptions,
+  slips: ReadonlyMap<string, string>
 ): Promise<Map<string, Asked>> {
   const questions = new Map(unknown.map((spelling) => [sameFoodKey(spelling), spelling]));
   const answers = new Map<string, Asked>();
@@ -528,10 +578,11 @@ async function askAboutUnknown(
   while (pending.length > 0) {
     const batch = pending.splice(0, AI_CONCURRENCY);
     const answered = await Promise.all(
-      batch.map(async ([, spelling]) => {
+      batch.map(async ([key, spelling]) => {
         const words = await parentFromWords(spelling);
         const answer = await askWhatFoodThisIs(spelling.clean, spelling.bare, {
           wordsParent: words,
+          slipOf: slips.get(key) ?? null,
         });
 
         return { answer, words };

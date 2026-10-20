@@ -46,6 +46,12 @@ See `CONTEXT.md` (Junk Line, AI Change) and ADR-0037's 2026-10-17 amendments.
 - One place deletes and records Junk Lines (`deleteJunkLines`) and one builds them (`junkLine`); the split and the deleted-food snapshot read `rowsNaming`; `distinctFoods` (shared) replaces four copies of the dedupe. The AI Change table and its Undo types moved to `schema/ingredient-ai-changes.ts`, so `DeletedLine` takes its join and system from the enums. `mayEditIngredientRow` is `mayEditOwnedRow`, since a Junk Line's recipe policy uses it too. A text kept as no Junk Line is skipped explicitly, not dressed as a tool.
 - Not changed: the module headers of `resolver.ts` and `ingredient-resolution.ts` stay long (a phrase in each was updated); the four words for junk (`nothing`, `not-a-food`, `ai-junk`, Junk Line) are the spec's; the switches on an answer's kind differ per layer (parse, sureness, act at import, act on a food).
 
+2026-10-20, after talking it through with Mike:
+
+- An unsure tool is deleted like a sure one ("unsure tool deleting is also fine"). Non-food purchases stay Ingredients, as the prompt already says.
+- The pass compares a name with the foods sharing a word with AI's English name for it, after the name's own word matches, and looks up the other names AI says a shop sells it under (`otherNames` in the reading). Sending the whole catalogue instead was ruled out on size and on wrong "same" answers.
+- A slip of the fingers ("barmezaan" for "parmezaan") finds its food without AI, by the grocery product rule (`@norish/shared/lib/name-slips`, shared with `chooseUnmistakable`). With AI on it only puts that food before AI; with AI off or failing it is taken. ADR-0037 amended.
+
 Open, for Mike:
 
 - AI never deletes a food a Pantry Ingredient names, against the spec's "leaves groceries and pantry rows pointing at no food": a Pantry Ingredient has no text of its own, so with no food it would name nothing. The food stays, flagged.

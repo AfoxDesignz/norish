@@ -106,6 +106,8 @@ export interface AskOptions {
    * and the words is settled by the Decision where there is one.
    */
   wordsParent?: { id: string } | null;
+  /** A known food the name is a slip of the fingers from ("barmezaan" for "parmezaan"), put to the question too. */
+  slipOf?: string | null;
   /** Where to record what was asked, for a person who wants to know: filled in as it goes. */
   trace?: AskTrace;
 }
@@ -151,10 +153,11 @@ export async function askWhatFoodThisIs(
   const excludeId = options.excludeId ?? null;
   const words = options.wordsParent ?? null;
   const found = await findIngredientCandidates(wordStarts(bare || text), MAX_CANDIDATES, excludeId);
+  const missing = [...new Set([words?.id, options.slipOf])].filter(
+    (id): id is string => !!id && !found.some((candidate) => candidate.id === id)
+  );
   const candidates =
-    words && !found.some((candidate) => candidate.id === words.id)
-      ? [...(await findIngredientCandidatesById([words.id])), ...found]
-      : found;
+    missing.length > 0 ? [...(await findIngredientCandidatesById(missing)), ...found] : found;
 
   if (candidates.length === 0 && !options.thorough) return flaggedNew("unknown-food");
 
@@ -184,8 +187,9 @@ export async function askWhatFoodThisIs(
  * Read first, then compare. The language model says what plain food the
  * name is, what it is a kind of and what else a shop calls it; those are
  * looked up exactly, with their parents, before what the name's own words
- * and the English name's words found. One question is then asked over all. With nothing to compare even then, the
- * reading stands: a food of its own, flagged unless the model was sure.
+ * and the English name's words found. One question is then asked over all.
+ * With nothing to compare even then, the reading stands: a food of its own,
+ * flagged unless the model was sure.
  */
 async function readThenCompare(
   text: string,

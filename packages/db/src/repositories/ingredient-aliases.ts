@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { and, asc, between, eq, inArray, isNotNull, like, ne, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import type { FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
@@ -11,6 +11,7 @@ import {
   recipeIngredients,
 } from "@norish/db/schema";
 import { CATALOGUE_LANGUAGES, chooseLocaleNames } from "@norish/shared/lib/ingredient-names";
+import { slipLengths } from "@norish/shared/lib/name-slips";
 
 import type { LineResolution } from "./ingredients";
 import { isConstraintViolation } from "./constraint-violation";
@@ -75,6 +76,29 @@ export async function findIngredientAliasesByFolds(
   }
 
   return rows;
+}
+
+/**
+ * The spellings `fold` could be a slip of the fingers from (`@norish/shared/lib/name-slips`): of a
+ * length a slip reaches, sharing its first or last letters, so one slip anywhere in it is found.
+ */
+export async function findAliasesNearFold(fold: string): Promise<IngredientAliasRow[]> {
+  const { min, max } = slipLengths(fold);
+  const ends = Math.min(3, Math.floor((fold.length - 1) / 2));
+  const literal = (part: string) => part.replace(/[\\%_]/g, "\\$&");
+
+  return await db
+    .select(aliasColumns)
+    .from(ingredientAliases)
+    .where(
+      and(
+        between(sql`length(${ingredientAliases.fold})`, min, max),
+        or(
+          like(ingredientAliases.fold, `${literal(fold.slice(0, ends))}%`),
+          like(ingredientAliases.fold, `%${literal(fold.slice(-ends))}`)
+        )
+      )
+    );
 }
 
 /**

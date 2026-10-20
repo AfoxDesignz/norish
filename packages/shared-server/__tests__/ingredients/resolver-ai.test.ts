@@ -538,6 +538,56 @@ describe("ingredient resolver, rung 3", () => {
     });
   });
 
+  describe("a slip of the fingers", () => {
+    it("takes the known food a text is a slip of, anywhere in its name, where AI gives no answer", async () => {
+      const parmesan = await known("parmezaan");
+
+      vi.mocked(isAIEnabled).mockResolvedValue(false);
+      const [late, early] = await resolveIngredients(["parmezan", "barmezaan"], { userId });
+
+      expect(late).toMatchObject({ ingredientId: parmesan.ingredientId });
+      expect(early).toMatchObject({ ingredientId: parmesan.ingredientId });
+      // The slip joins as a spelling of its own, which a person can move where it is wrong.
+      expect(late!.aliasId).not.toBe(parmesan.aliasId);
+
+      vi.mocked(isAIEnabled).mockResolvedValue(true);
+      vi.mocked(generateStructured).mockRejectedValue(new Error("provider down"));
+      expect((await resolveOne("parmezaam")).ingredientId).toBe(parmesan.ingredientId);
+    });
+
+    it("takes no slip under five letters, nor one two foods are equally near", async () => {
+      const meel = await known("meel");
+      const [sherry, cherry] = await resolveIngredients(
+        ["sherry", "cherry"],
+        { userId },
+        { ai: false }
+      );
+
+      vi.mocked(isAIEnabled).mockResolvedValue(false);
+      const [melk, xherry] = await resolveIngredients(["melk", "xherry"], { userId });
+
+      expect(melk!.ingredientId).not.toBe(meel.ingredientId);
+      expect([sherry!.ingredientId, cherry!.ingredientId]).not.toContain(xherry!.ingredientId);
+    });
+
+    it("puts the food a text is a slip of before AI, which decides, where AI is on", async () => {
+      const parmesan = await known("parmezaan");
+      const sherry = await known("sherry");
+
+      // No word of either is the start of a word of a known food: only the slip finds one.
+      answersAbout("parmezaan", "same", true);
+      expect((await resolveOne("barmezaan")).ingredientId).toBe(parmesan.ingredientId);
+
+      answers({ verdict: "new", food: null, sure: true });
+      const cherry = await resolveOne("cherry");
+
+      expect(cherry.ingredientId).not.toBe(sherry.ingredientId);
+      expect(vi.mocked(generateStructured).mock.calls[1]![0].sections.join("\n")).toContain(
+        "sherry"
+      );
+    });
+  });
+
   it("mints a flagged food rather than wait past the budget on AI", async () => {
     await known("garlic");
     vi.useFakeTimers({ shouldAdvanceTime: true });
