@@ -57,3 +57,7 @@ Lean recommendation: keep today's rule unless the flags bother Mike with AI off;
 
 The script is `spike-16/words-parents.ts` (copy into `packages/shared-server` to run), and `spike-16/rule.py` applies the rule to its output.
 
+
+2026-10-20, Mike: "I think this is a good rule". It is ticket 20, with the note words added to the words a name is read up to (the "with", "in", "met" list), which files the same names and also stops "olie om te bakken" reaching "te".
+
+On the 26 wrong parents that name several foods: the spike read every text, but an import never gets that far for half of them. Leaving the joined food itself out, as the first-start cleanup does, the joining words split 13 of the 26 before anything is minted ("maple syrup or honey", "Verse basilicum of rucola", "Parmezaanse kaas or Pecorino"). The other 13 have a part the catalogue does not know whole ("kipfilet of kiphaasjes", "toasted pine nuts or cashews"), so they are minted whole, with the flag, and AI's pass splits them when it is sure. Two of the 13 word splits look wrong: "Corn Flour or Starch" gives "Starch" alone, and "vanilla extract or paste" gives "paste" alone.

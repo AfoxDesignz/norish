@@ -1,0 +1,36 @@
+# 20: A parent before forms or a note is filed quietly
+
+**What to build:** Ticket 16's rule (Mike, 2026-10-20: "I think this is a good rule"). A new food's parent from the words is filed without a flag when the parent's spelling starts the name and only cuts, forms, sizes or a note follow it. Today only a parent whose spelling ends the name is filed quietly; every other parent from the words is an unsure AI Change that flags the food.
+
+- **A note:** the note words join the words a name is read up to, the list "with", "in" and "met" are on today ("sardines in water" is filed under sardine). The words before a note are then the name, so the parent ends them, and is sure as today:
+  - "greek yogurt for topping" under greek yogurt;
+  - "olijven naar keuze" under olive;
+  - "tonijn uit blik" under tuna.
+  
+  It also fixes a wrong parent: "olie om te bakken" is read as "olie", never as "te" (tea).
+  - Measured note words: "for", "voor", "naar", "uit", "to", "om", "circa", "ca", "bijv", "bv", "op", "per".
+  - The list's label in the Ingredient Words settings says what it now does: the words a name ends before.
+- **Cuts and forms:** a new Ingredient Words list. A parent whose spelling starts the name, followed only by these words and the sizes, is sure:
+  - "mango blokjes" under mango;
+  - "chicken strips" under chicken;
+  - "kipfilet blokjes" under chicken fillet.
+  - Measured words: "bits", "blokjes", "blokken", "bolletjes", "boontjes", "broodjes", "chunks", "cube", "cubes", "curls", "filet", "filets", "fillet", "fillets", "fries", "friet", "gehakt", "hapjes", "loaf", "loins", "mince", "partjes", "pearls", "peulen", "pieces", "plakjes", "reepjes", "roosjes", "sheets", "slices", "spears", "stick", "sticks", "strips", "stukjes", "stukken", "vellen", "wedges", "zest".
+  - Left out on purpose, because they go both ways: "flakes" (almond flakes, but chili flakes), "leaves" and "blaadjes" (curry leaves, salam leaves), "brokken".
+- **Every language** gets its words in the defaults, as the joining words did.
+- **`RUNG_VERSION` goes up**, so the startup recheck files the old mints again under the new rule.
+- **Upgrade note:** edited Ingredient Words get none of the new words, as with the joining words.
+
+**Blocked by:** None
+
+**Status:** ready-for-agent
+
+- [ ] "mango blokjes", "greek yogurt for topping" and "tonijn uit blik" are minted under mango, greek yogurt and tuna, unflagged, with nothing on Changed by AI.
+- [ ] "onion powder", "chili flakes", "curry leaves" and "salam blaadjes" still flag their food when filed under onion, chili pepper, curry and salami.
+- [ ] "olie om te bakken" is never filed under tea.
+- [ ] The cuts-and-forms list and the longer note list are editable in the Ingredient Words settings, in every language.
+- [ ] Release notes and the upgrade note.
+- [ ] All `CONTRIBUTING.md` gates pass.
+
+## Comments
+
+The word lists come from the same set they were measured on (ticket 16): 53 of 273 unsure parents filed quietly, none wrong. Expect a few misses on other catalogues.
