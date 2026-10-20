@@ -19,13 +19,30 @@
 
 **Blocked by:** 13, 09 (both done)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A recipe saved with AI on makes no AI request while it saves; the pass makes them afterwards.
-- [ ] "barmezaan" in a recipe points at parmezaan when the recipe is saved, AI on or off.
-- [ ] "rode uien" with no translation for it becomes its own flagged ingredient. The pass then files it under onion.
-- [ ] "melted" in a new recipe is minted, then deleted by the pass. It shows on Changed by AI, and Undo brings it back with its line.
-- [ ] Adding a grocery never waits on AI.
-- [ ] `resolver-ai.test.ts`'s import-time cases move to the pass's tests or go. E2E stubs that answered import questions answer the pass instead.
-- [ ] Release notes and the Ingredients docs page say nothing of AI at import.
-- [ ] All `CONTRIBUTING.md` gates pass.
+- [x] A recipe saved with AI on makes no AI request while it saves; the pass makes them afterwards.
+- [x] "barmezaan" in a recipe points at parmezaan when the recipe is saved, AI on or off.
+- [x] "rode uien" with no translation for it becomes its own flagged ingredient. The pass then files it under onion.
+- [x] "melted" in a new recipe is minted, then deleted by the pass. It shows on Changed by AI, and Undo brings it back with its line.
+- [x] Adding a grocery never waits on AI.
+- [x] `resolver-ai.test.ts`'s import-time cases move to the pass's tests or go. E2E stubs that answered import questions answer the pass instead.
+- [x] Release notes and the Ingredients docs page say nothing of AI at import.
+- [x] All `CONTRIBUTING.md` gates pass.
+
+## Comments
+
+2026-10-20, implemented:
+
+- The resolver asks no AI: rungs 1–2, the words' split, then a slip (taken AI on or off), then a flagged mint. Its flag is the new `ai-queued` ("New to Norish. AI looks at it shortly."), `ai-off` with AI off, `upgrade` for the startup passes, as before.
+- Gone: rung 3 at import with the words-against-AI settling (`settleWithWords`, `decideBetween`, `wordsParent`, `slipOf`), the `thorough` switch (the pass always reads first), `RESOLUTION_BUDGET_MS`, `findIngredientCandidatesById`, the unsure join (`addIngredientAliases`'s `unsure`) and the AI-guessed parent at mint (`parentUnsure: "ai"`).
+- The nightly pass also asks foods still flagged `ai-queued`, so one whose pass was lost (Redis down at mint, AI off when it ran) does not keep "shortly" for ever.
+- `resolver-ai.test.ts` now drives a save with AI on: no request, then the pass files "rode uien" under onion and deletes "melted" with Undo. The Decision threshold, refused key, budget and crowded-word cases moved to `review.test.ts`; the rest went with the code.
+- E2E: the merge scenario no longer queues an import answer; the other two only had their comments fixed.
+- ADR-0037 amended, reversing the slip amendment's "with AI on a slip is never taken alone": "cherry" beside "sherry" now joins it unasked, and a person moves it.
+
+2026-10-20, review fixes:
+
+- A food waiting on its pass (`ai-queued`) says `ai-off` when AI was switched off before the pass ran.
+- Tested: a split into parts nothing knows mints them `ai-queued`, each handed to a pass of its own. A part's own pass may split it again, sure only.
+- The nightly reasons are one constant (`RETRIED_FLAG_REASONS`); `unknown-food` is no longer set (old rows keep its copy); `ai-unavailable`'s copy lost "when this name was added".
