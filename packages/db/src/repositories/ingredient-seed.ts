@@ -15,6 +15,7 @@ import {
 
 import {
   clearAIFlagUnlessOpen,
+  parentIsOpenAnswer,
   parentIsOpenGuess,
   recordGuessedParent,
   takeOpenParentChanges,
@@ -512,12 +513,13 @@ export async function flagIngredient(id: string): Promise<void> {
     .where(eq(ingredients.id, id));
 }
 
-/** An undecided mint: `guessed` where its parent is still the open guess its words made. */
+/** An undecided mint; `guessed`: its parent is still its words' open guess; `answered`: AI's is open. */
 export interface UndecidedMint {
   id: string;
   name: string;
   parentId: string | null;
   guessed: boolean;
+  answered: boolean;
   aliases: string[];
 }
 
@@ -534,6 +536,7 @@ export async function listUndecidedMints(): Promise<UndecidedMint[]> {
       name: ingredients.name,
       parentId: ingredients.parentId,
       guessed: parentIsOpenGuess,
+      answered: parentIsOpenAnswer,
       alias: ingredientAliases.text,
     })
     .from(ingredients)
@@ -555,6 +558,7 @@ export async function listUndecidedMints(): Promise<UndecidedMint[]> {
       name: row.name,
       parentId: row.parentId,
       guessed: row.guessed,
+      answered: row.answered,
       aliases: [],
     };
 
@@ -599,22 +603,25 @@ export async function adoptPlainName(
 
 /**
  * File an undecided mint under the parent its words suggest, or none (null), leaving it flagged
- * and the parent unchosen: only where its parent is still `from` (none by default), no person
- * decided about it meanwhile, and the parent would close no cycle. With `unsure`, the parent is
- * an unsure AI Change, from the words, for a person to keep or undo, replacing any older one.
- * Whether it was filed.
+ * and the parent unchosen: only where its parent is still `expectedParentId` (none by default), no
+ * person decided about it meanwhile, and the parent would close no cycle. With `unsure`, the
+ * parent is an unsure AI Change, from the words, replacing any older one. Whether it was filed.
  */
 export async function fileUndecidedMint(
   id: string,
   parentId: string | null,
-  unsure = false,
-  from: string | null = null
+  {
+    unsure = false,
+    expectedParentId = null,
+  }: { unsure?: boolean; expectedParentId?: string | null } = {}
 ): Promise<boolean> {
   return await fileUnder(
     id,
     parentId,
     and(
-      from === null ? isNull(ingredients.parentId) : eq(ingredients.parentId, from),
+      expectedParentId === null
+        ? isNull(ingredients.parentId)
+        : eq(ingredients.parentId, expectedParentId),
       eq(ingredients.flagged, true)
     ),
     unsure

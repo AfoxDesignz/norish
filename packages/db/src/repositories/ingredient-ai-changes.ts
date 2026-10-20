@@ -96,12 +96,22 @@ function hasOpenChange(ingredientId: string) {
   )})`;
 }
 
+const fromWords = sql`${ingredientAIChanges.undo} ->> 'fromWords' = 'true'`;
+
 /** Whether a food's parent is still the open guess its words made, in a query over `ingredients`. */
 export const parentIsOpenGuess = sql<boolean>`exists (select 1 from ${ingredientAIChanges} where ${and(
   eq(ingredientAIChanges.ingredientId, ingredients.id),
   eq(ingredientAIChanges.targetId, ingredients.parentId),
   eq(ingredientAIChanges.kind, "parent"),
-  sql`${ingredientAIChanges.undo} ->> 'fromWords' = 'true'`,
+  fromWords,
+  open
+)})`;
+
+/** Whether AI's own parent answer about a food is still open, in a query over `ingredients`. */
+export const parentIsOpenAnswer = sql<boolean>`exists (select 1 from ${ingredientAIChanges} where ${and(
+  eq(ingredientAIChanges.ingredientId, ingredients.id),
+  eq(ingredientAIChanges.kind, "parent"),
+  sql`not coalesce(${fromWords}, false)`,
   open
 )})`;
 
@@ -266,6 +276,17 @@ export async function moveMergedAIChanges(
     .update(ingredientAIChanges)
     .set({ targetId })
     .where(eq(ingredientAIChanges.targetId, sourceId));
+  await tx
+    .update(ingredientAIChanges)
+    .set({
+      undo: sql`jsonb_set(${ingredientAIChanges.undo}, '{formerParentId}', to_jsonb(${targetId}::text))`,
+    })
+    .where(
+      and(
+        eq(ingredientAIChanges.kind, "parent"),
+        sql`${ingredientAIChanges.undo} ->> 'formerParentId' = ${sourceId}`
+      )
+    );
 }
 
 /** Whether a person undid a merge of any of these spellings into `intoId`. */

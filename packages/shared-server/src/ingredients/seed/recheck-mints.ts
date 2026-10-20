@@ -61,15 +61,18 @@ export async function recheckUndecidedMints(): Promise<RecheckOutcome> {
     const plain = await plainNameOf(mint.name);
 
     if (plain) await adoptPlainName(mint.id, plain);
-    // A parent AI gave is AI's to change; a guess from the words is read again.
-    if (mint.parentId !== null && !mint.guessed) continue;
+    // A parent AI gave or took is AI's to change; a guess from the words is read again.
+    if (mint.answered || (mint.parentId !== null && !mint.guessed)) continue;
 
     const parent = await parentFromWordsOf(mint.name);
     const parentId = parent?.id ?? null;
 
     if (
       parentId !== mint.parentId &&
-      (await fileUndecidedMint(mint.id, parentId, !parent?.sure, mint.parentId))
+      (await fileUndecidedMint(mint.id, parentId, {
+        unsure: !parent?.sure,
+        expectedParentId: mint.parentId,
+      }))
     ) {
       outcome.filed += 1;
     }

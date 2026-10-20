@@ -13,8 +13,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import type { DecisionQuestions } from "@norish/shared-server/ai/runtime/runtime";
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
+import { withTransaction } from "@norish/db/drizzle";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
-import { findIngredientAncestors } from "@norish/db/repositories/ingredient-relocation";
+import {
+  findIngredientAncestors,
+  mergeCatalogueIngredients,
+} from "@norish/db/repositories/ingredient-relocation";
 import { applyIngredientSeed } from "@norish/db/repositories/ingredient-seed";
 import {
   groceries,
@@ -449,6 +453,38 @@ describe("asking AI about an Ingredient", () => {
         reason: "decided",
       });
       await expect(parentOf(food.ingredientId)).resolves.toBe(butter);
+    });
+
+    it("says what it dropped as the food was when AI answered, and nothing where nothing was", async () => {
+      const { food } = await underButter("peanut butter");
+
+      // The parent goes while AI is still reading the name.
+      vi.mocked(generateStructured).mockImplementationOnce((async () => {
+        await getTestDb()
+          .update(ingredients)
+          .set({ parentId: null })
+          .where(eq(ingredients.id, food.ingredientId));
+
+        return foodReading({ englishName: "peanut butter", generalFood: null, sure: true });
+      }) as never);
+
+      await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
+      expect(await changes()).toEqual([]);
+    });
+
+    it("lists and undoes a dropped parent merged into another food since as that food", async () => {
+      const { food, butter } = await underButter("peanut butter");
+      const spread = await kept("spread");
+
+      reads({ englishName: "peanut butter", generalFood: null, sure: true });
+      await askAIAbout(food.ingredientId);
+      await withTransaction((tx) => mergeCatalogueIngredients(tx, butter!, spread.ingredientId));
+
+      expect(await listAIChangesFor(actor)).toMatchObject([
+        { kind: "parent", dropped: { id: spread.ingredientId } },
+      ]);
+      await undoAIChange(actor, (await listAIChanges())[0]!.id);
+      await expect(parentOf(food.ingredientId)).resolves.toBe(spread.ingredientId);
     });
   });
 

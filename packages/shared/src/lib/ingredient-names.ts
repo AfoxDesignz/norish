@@ -14,6 +14,13 @@
 /** An Ingredient's best spelling in each catalogue language it has one in. */
 export type LocaleNames = Record<string, string>;
 
+/** A food as a list names it: its name and its translations. */
+export interface NamedFood {
+  id: string;
+  name: string;
+  localeNames: LocaleNames;
+}
+
 /**
  * The catalogue languages each Norish locale reads names in, most specific
  * first. A locale missing here reads its base language.

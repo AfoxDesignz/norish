@@ -167,7 +167,7 @@ describe("looking at old Flagged Ingredients again", () => {
     const answered = await legacyMint("zwarte te bakken");
 
     // Filed under tea ("te") by the words as an older rule read them, and by AI.
-    await fileUndecidedMint(guessed, seeded.get("en:tea")!, true);
+    await fileUndecidedMint(guessed, seeded.get("en:tea")!, { unsure: true });
     await parentByAI(answered, seeded.get("en:tea")!, false);
 
     await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 0, filed: 1 });
@@ -190,11 +190,22 @@ describe("looking at old Flagged Ingredients again", () => {
   it("takes a guess from a legacy mint's words off where today's rules find none", async () => {
     const guessed = await legacyMint("zwarte te bakken");
 
-    await fileUndecidedMint(guessed, seeded.get("en:tea")!, true);
+    await fileUndecidedMint(guessed, seeded.get("en:tea")!, { unsure: true });
 
     await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 0, filed: 1 });
     expect(await shown(guessed)).toMatchObject({ flagged: true, parent: null });
     expect(await listAIChanges()).toHaveLength(0);
+  });
+
+  it("leaves a mint AI took a parent from without one, sure or not", async () => {
+    const legacy = await legacyMint("ground cumin");
+
+    await fileUndecidedMint(legacy, seeded.get("en:cumin")!);
+    await parentByAI(legacy, null, false);
+
+    await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 0, filed: 0 });
+    expect(await shown(legacy)).toMatchObject({ flagged: true, parent: null });
+    expect(await listAIChanges()).toMatchObject([{ target: null, sure: false }]);
   });
 
   it("leaves alone what a person decided, even under a flag raised again since", async () => {

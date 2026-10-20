@@ -27,7 +27,7 @@ import type {
   CatalogueOwner,
 } from "@norish/db/repositories/ingredient-catalogue";
 import type { CatalogueRefusal, FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
-import type { LocaleNames } from "@norish/shared/lib/ingredient-names";
+import type { LocaleNames, NamedFood } from "@norish/shared/lib/ingredient-names";
 import type {
   IngredientSearchField,
   IngredientSearchMatch,
@@ -131,7 +131,7 @@ export interface IngredientListItem {
   flagged: boolean;
   /** Why it is flagged, where the catalogue recorded one. */
   flagReason: FlagReason | null;
-  parent: { id: string; name: string; localeNames: LocaleNames } | null;
+  parent: NamedFood | null;
   /** How many Ingredients are kinds of this one, for the fold on the page. */
   kinds: number;
   /** The Ingredient Icon it shows (its own, shipped or borrowed), by address; null shows the placeholder. */

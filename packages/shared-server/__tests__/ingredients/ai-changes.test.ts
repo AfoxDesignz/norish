@@ -182,7 +182,9 @@ describe("keeping and undoing AI Changes", () => {
     await undoAIChange(actor, change.id);
 
     await expect(parentOf(red.ingredientId)).resolves.toBe(allium.ingredientId);
-    await expect(parentByAI(red.ingredientId, onion.ingredientId, true)).resolves.toBe("undone");
+    await expect(parentByAI(red.ingredientId, onion.ingredientId, true)).resolves.toMatchObject({
+      outcome: "undone",
+    });
   });
 
   it("keeps an unsure change: the flag goes once nothing else waits on the food", async () => {
@@ -351,7 +353,9 @@ describe("keeping and undoing AI Changes", () => {
     await markDistinct(actor, uien.ingredientId);
 
     await expect(mergeByAI(uien.ingredientId, onion.ingredientId, true)).resolves.toBe("decided");
-    await expect(parentByAI(uien.ingredientId, onion.ingredientId, false)).resolves.toBe("decided");
+    await expect(parentByAI(uien.ingredientId, onion.ingredientId, false)).resolves.toMatchObject({
+      outcome: "decided",
+    });
     await expect(renameByAI(uien.ingredientId, "uien", "ui")).resolves.toBe(false);
     await flagByAnswer(uien.ingredientId, false);
 
