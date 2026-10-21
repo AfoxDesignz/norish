@@ -27,7 +27,7 @@ import {
 } from "@norish/shared-server/config/server-config-loader";
 import { aiLogger } from "@norish/shared-server/logger";
 import { OperationTimeoutError } from "@norish/shared/lib/error-extensions";
-import { onlyNearest } from "@norish/shared/lib/name-slips";
+import { distinctFoods } from "@norish/shared/lib/line-foods";
 import { withTimeout } from "@norish/shared/lib/with-timeout";
 
 import { findOtherFoodsNamed, refOf } from "../../ingredients/resolver";
@@ -132,7 +132,7 @@ async function readThenLookUp(
     const parts: ReadPart[] = [];
 
     for (const food of reading.foods) {
-      const found = await findNamed(food.written, excludeId, food, trace);
+      const found = await findNamed(food.written, excludeId, namesOf(food), trace);
 
       if ("kind" in found) return found;
       parts.push({ text: food.written, found: found.sure ? found.food : null });
@@ -149,20 +149,27 @@ async function readThenLookUp(
     otherNames: food.otherNames,
   });
 
-  const found = await findNamed(text, excludeId, food, trace);
+  const found = await findNamed(text, excludeId, namesOf(food), trace);
 
   if ("kind" in found) return found;
-  const sure = reading.sure && found.sure;
 
-  if (found.food) return { kind: "same", ingredientId: found.food.ingredientId, sure };
+  if (found.food) {
+    return { kind: "same", ingredientId: found.food.ingredientId, sure: reading.sure && found.sure };
+  }
 
-  const [general] = food.parent ? await findOtherFoodsNamed(excludeId, [food.parent]) : [];
-  const parent = onlyNearest(general ?? []);
-  const kindOf = parent?.ingredientId ?? null;
+  const parent = food.parent ? await findNamed(food.parent, excludeId, [food.parent], trace) : null;
 
-  return sure && (parent?.score ?? 1) === 1
+  if (parent && "kind" in parent) return parent;
+  const kindOf = parent?.food?.ingredientId ?? null;
+
+  return reading.sure && found.sure && (parent?.sure ?? true)
     ? { kind: "new", kindOf, flagged: false, reason: null }
     : flaggedNew("ai-unsure", kindOf);
+}
+
+/** A read food's names to look up: its English name and the other names a shop sells it under. */
+function namesOf(food: ReadFood): string[] {
+  return [food.englishName, ...food.otherNames].filter((name) => name !== null);
 }
 
 /**
@@ -173,17 +180,16 @@ async function readThenLookUp(
 async function findNamed(
   text: string,
   excludeId: string,
-  food: ReadFood,
+  names: readonly string[],
   trace: ReviewTrace
 ): Promise<{ food: IngredientRef | null; sure: boolean } | AIResolution> {
-  const names = [food.englishName, ...food.otherNames].filter((name) => name !== null);
   const named = (await findOtherFoodsNamed(excludeId, names)).flat();
   const listed = await findListedIngredientIds(named.map((one) => one.ingredientId));
   // A hidden food is never AI's answer: no merge into it, no parent, no split part.
   const found = named.filter((one) => listed.has(one.ingredientId));
   const exact = found.filter((one) => one.score === 1);
-  const ranked = (exact.length > 0 ? exact : [...found].sort((a, b) => b.score - a.score)).filter(
-    (one, index, all) => all.findIndex((other) => other.ingredientId === one.ingredientId) === index
+  const ranked = distinctFoods(
+    exact.length > 0 ? exact : [...found].sort((a, b) => b.score - a.score)
   );
   let pick: Pick = { ingredientId: ranked[0]?.ingredientId ?? null, sure: true };
 

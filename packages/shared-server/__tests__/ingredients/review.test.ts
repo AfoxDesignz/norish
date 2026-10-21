@@ -719,6 +719,38 @@ describe("asking AI about an Ingredient", () => {
         id: pesto.ingredientId,
       });
     });
+
+    it("asks about a parent only a slip finds, and files it unsure under the one AI picks", async () => {
+      const tortilla = await kept("tortilla");
+      const wrap = await flagged("maïswrap");
+
+      vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
+      reads({ englishName: "corn wrap", parent: "tortila", sure: true });
+      picks(null, true);
+      await expect(askAIAbout(wrap.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
+      expect(listed()).toBe("Foods in the catalogue it may be:\n1. tortilla");
+      await expect(parentOf(wrap.ingredientId)).resolves.toBeNull();
+
+      const flour = await flagged("bloemwrap");
+
+      reads({ englishName: "flour wrap", parent: "tortila", sure: true });
+      picks(1, true);
+      await expect(askAIAbout(flour.ingredientId)).resolves.toMatchObject({
+        outcome: "parent",
+        of: "tortilla",
+        sure: false,
+      });
+      await expect(parentOf(flour.ingredientId)).resolves.toBe(tortilla.ingredientId);
+    });
+
+    it("never files a food under a hidden one", async () => {
+      await unnamed("rye bread");
+      const whole = await flagged("volkoren roggebrood");
+
+      reads({ englishName: "wholegrain rye bread", parent: "rye bread", sure: true });
+      await expect(askAIAbout(whole.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
+      await expect(parentOf(whole.ingredientId)).resolves.toBeNull();
+    });
   });
 
   describe("an answer that breaks its shape", () => {
