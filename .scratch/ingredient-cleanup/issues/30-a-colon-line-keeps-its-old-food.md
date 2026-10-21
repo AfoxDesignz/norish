@@ -6,7 +6,18 @@
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] After the first start, no line ending in a colon names a food; its text is unchanged.
+- [x] After the first start, no line ending in a colon names a food; its text is unchanged.
 - [ ] All `CONTRIBUTING.md` gates pass.
+
+## Implemented (2026-10-21)
+
+- `first-start-cleanup.ts`: in steps 2 and 3 an own spelling a line would name no food by (`lineNamesNoFood({ text })`, so a colon at the end, also a heading or no letters) is never cleaned in place; it goes to `removeVariants`, whose rows `resolveAgain(…, { mint: true })` resolves again. `CLEANUP_VERSION` is 2, so a server that ran version 1 runs the whole cleanup once more.
+- A colon spelling can share its fold with its clean name, so `removeVariants` no longer "merges" a food that had only that spelling into itself: it deletes the food instead.
+- `resolveAgain` (catalogue.ts) had a gap: a line whose text names no food was skipped, and kept the food's other spelling that `deleteCatalogueAlias` had moved it onto. Such a line now gets no food. The delete path is unchanged (its foods are gone already).
+- Rows on a colon spelling, besides lines: a grocery "Voor de salade:" on lettuce is resolved again and gets the own food "Voor de salade", minted from the clean text, as a new grocery of that text would. A pantry item is not resolved again (`NamingRows` has none): on a kept food (lettuce) it stays on that food's other spelling; on a food that had only the colon spelling it goes with the food.
+- Test: `first-start-cleanup.test.ts`, "removes a spelling ending in a colon…" (a colon spelling on seeded lettuce plus a lone own colon food, their lines and a grocery).
+- No release-notes change: line 87 of `0.26.0-beta.md` ("Voor de salade:" names no food) now holds for old lines too.
+- For ticket 31: after this, the measurement's "colon line, with a food" row should be 0 in both 0.26 runs.
+
