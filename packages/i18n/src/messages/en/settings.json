@@ -546,7 +546,6 @@
       "undo": "Undo",
       "merge": "Merged {from} into it",
       "parent": "Filed under {of}",
-      "parentFromName": "Filed under {of}, from its name",
       "parentDropped": "No longer under {of}",
       "plainName": "Renamed from {from}",
       "notAFood": "Deleted as not a food. Its recipe lines and groceries keep their text."

@@ -14,9 +14,7 @@
  * "garlic cloves crushed"), so the sibling mints after it ("garlic cloves
  * thinly sliced") resolve to it and merge, and is filed under the seeded
  * spelling its name ends with, or starts with before cuts and forms alone,
- * staying flagged; a parent an older rule left as an unsure guess is read
- * again, and moves, goes or is now sure; where they name several, it is left
- * for a person.
+ * staying flagged; where they name several, it is left for a person.
  * Nothing here is the resolver's rules over again: it asks the resolver.
  */
 import { withTransaction } from "@norish/db/drizzle";
@@ -61,18 +59,12 @@ export async function recheckUndecidedMints(): Promise<RecheckOutcome> {
     const plain = await plainNameOf(mint.name);
 
     if (plain) await adoptPlainName(mint.id, plain);
-    // A parent AI gave or took is AI's to change; a guess from the words is read again.
-    if (mint.answered || (mint.parentId !== null && !mint.guessed)) continue;
+    // A parent AI gave or took is AI's to change.
+    if (mint.answered || mint.parentId !== null) continue;
 
     const parentId = await parentFromWordsOf(mint.name);
 
-    // An older guess is filed again under the parent the words give, the same one quietly, or none.
-    if (
-      (parentId !== mint.parentId || mint.guessed) &&
-      (await fileUndecidedMint(mint.id, parentId, { expectedParentId: mint.parentId }))
-    ) {
-      outcome.filed += 1;
-    }
+    if (parentId && (await fileUndecidedMint(mint.id, parentId))) outcome.filed += 1;
   }
 
   return outcome;

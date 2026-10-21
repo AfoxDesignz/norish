@@ -370,14 +370,12 @@ function change(
     from = null,
     target = null,
     dropped = null,
-    fromWords = false,
     ingredientId = name,
   }: {
     sure?: boolean;
     from?: string | null;
     target?: string | null;
     dropped?: string | null;
-    fromWords?: boolean;
     ingredientId?: string;
   } = {}
 ) {
@@ -391,7 +389,6 @@ function change(
     target: target ? { id: target, name: target, localeNames: {} } : null,
     dropped: dropped ? { id: dropped, name: dropped, localeNames: {} } : null,
     from,
-    fromWords,
     canAct: true,
   };
 }
@@ -1149,28 +1146,6 @@ describe("IngredientsSettingsContent", () => {
     });
     expect(mutations.undoAIChange).toHaveBeenCalledWith({ changeId: "c1" });
     expect(mutations.merge).not.toHaveBeenCalled();
-  });
-
-  it("says a parent came from the food's own name, and keeps it", async () => {
-    items = [{ ...onion, name: "garlic cloves", parent: { id: "garlic", name: "garlic" } }, salt];
-    changes = [
-      change("c1", "parent", "garlic cloves", {
-        sure: false,
-        target: "garlic",
-        fromWords: true,
-        ingredientId: "onion",
-      }),
-    ];
-    render(<IngredientsSettingsContent />);
-    const opened = await open("garlic cloves");
-    const unsure = within(opened).getByTestId("ingredient-ai-change");
-
-    expect(unsure).toHaveTextContent("changedByAI.parentFromName");
-    await act(async () => {
-      fireEvent.click(within(unsure).getByTestId("ingredient-ai-change-keep"));
-    });
-
-    expect(mutations.keepAIChange).toHaveBeenCalledWith({ changeId: "c1" });
   });
 
   it("says which parent AI took away, and undoes it", async () => {

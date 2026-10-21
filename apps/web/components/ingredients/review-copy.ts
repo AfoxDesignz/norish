@@ -21,9 +21,7 @@ export function changeMessage(t: Translate, change: AIChange, locale: string): s
       }
       const of = ingredientDisplayName(change.target, locale);
 
-      return change.fromWords
-        ? t("changedByAI.parentFromName", { of })
-        : t("changedByAI.parent", { of });
+      return t("changedByAI.parent", { of });
     }
     case "plain-name":
       return t("changedByAI.plainName", { from: change.from ?? "" });

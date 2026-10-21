@@ -263,7 +263,6 @@ export interface AIChangeItem {
   dropped: NamedFood | null;
   /** The merged or deleted food's name, or the name AI replaced. */
   from: string | null;
-  fromWords: boolean;
   canAct: boolean;
 }
 
@@ -273,21 +272,13 @@ function subjectOf(change: StoredAIChange) {
 
   switch (undo.kind) {
     case "merge":
-      return { ownerId: undo.ownerId, from: undo.name, fromWords: false };
+      return { ownerId: undo.ownerId, from: undo.name };
     case "parent":
-      return {
-        ownerId: change.ingredient?.ownerId ?? null,
-        from: null,
-        fromWords: undo.fromWords === true,
-      };
+      return { ownerId: change.ingredient?.ownerId ?? null, from: null };
     case "plain-name":
-      return {
-        ownerId: change.ingredient?.ownerId ?? null,
-        from: undo.formerName,
-        fromWords: false,
-      };
+      return { ownerId: change.ingredient?.ownerId ?? null, from: undo.formerName };
     case "not-a-food":
-      return { ownerId: undo.food.ownerId, from: undo.food.name, fromWords: false };
+      return { ownerId: undo.food.ownerId, from: undo.food.name };
   }
 }
 
@@ -315,7 +306,7 @@ export async function listAIChangesFor(actor: CatalogueActor): Promise<AIChangeI
   });
 
   return changes.map((change) => {
-    const { ownerId, from, fromWords } = subjectOf(change);
+    const { ownerId, from } = subjectOf(change);
 
     return {
       id: change.id,
@@ -327,7 +318,6 @@ export async function listAIChangesFor(actor: CatalogueActor): Promise<AIChangeI
       target: change.target ? named(change.target) : null,
       dropped: change.dropped ? named(change.dropped) : null,
       from,
-      fromWords,
       canAct: mayEditOwnedRow(edit, actor, ownerId),
     };
   });

@@ -81,22 +81,10 @@ function hasOpenChange(ingredientId: string) {
   )})`;
 }
 
-const fromWords = sql`${ingredientAIChanges.undo} ->> 'fromWords' = 'true'`;
-
-/** Whether a food's parent is still the open guess its words made, in a query over `ingredients`. */
-export const parentIsOpenGuess = sql<boolean>`exists (select 1 from ${ingredientAIChanges} where ${and(
-  eq(ingredientAIChanges.ingredientId, ingredients.id),
-  eq(ingredientAIChanges.targetId, ingredients.parentId),
-  eq(ingredientAIChanges.kind, "parent"),
-  fromWords,
-  open
-)})`;
-
-/** Whether AI's own parent answer about a food is still open, in a query over `ingredients`. */
+/** Whether AI's parent answer about a food is still open, in a query over `ingredients`. */
 export const parentIsOpenAnswer = sql<boolean>`exists (select 1 from ${ingredientAIChanges} where ${and(
   eq(ingredientAIChanges.ingredientId, ingredients.id),
   eq(ingredientAIChanges.kind, "parent"),
-  sql`not coalesce(${fromWords}, false)`,
   open
 )})`;
 

@@ -16,7 +16,6 @@ import {
 import {
   clearAIFlagUnlessOpen,
   parentIsOpenAnswer,
-  parentIsOpenGuess,
   takeOpenParentChanges,
   vouchForOpenAIChanges,
   wasParentUndone,
@@ -506,12 +505,11 @@ export async function flagIngredient(id: string): Promise<void> {
     .where(eq(ingredients.id, id));
 }
 
-/** An undecided mint; `guessed`: its parent is still its words' open guess; `answered`: AI's is open. */
+/** An undecided mint; `answered`: AI's parent answer about it is open. */
 export interface UndecidedMint {
   id: string;
   name: string;
   parentId: string | null;
-  guessed: boolean;
   answered: boolean;
   aliases: string[];
 }
@@ -528,7 +526,6 @@ export async function listUndecidedMints(): Promise<UndecidedMint[]> {
       id: ingredients.id,
       name: ingredients.name,
       parentId: ingredients.parentId,
-      guessed: parentIsOpenGuess,
       answered: parentIsOpenAnswer,
       alias: ingredientAliases.text,
     })
@@ -550,7 +547,6 @@ export async function listUndecidedMints(): Promise<UndecidedMint[]> {
       id: row.id,
       name: row.name,
       parentId: row.parentId,
-      guessed: row.guessed,
       answered: row.answered,
       aliases: [],
     };
@@ -595,25 +591,15 @@ export async function adoptPlainName(
 }
 
 /**
- * File an undecided mint under the parent its words suggest, or none (null), leaving it flagged
- * and the parent unchosen: only where its parent is still `expectedParentId` (none by default), no
- * person decided about it meanwhile, and the parent would close no cycle. An older guess from the
- * words goes. Whether it was filed.
+ * File an undecided mint without a parent under the one its words give, leaving it flagged and the
+ * parent unchosen: only where no person decided about it meanwhile and no cycle closes. Whether
+ * it was filed.
  */
-export async function fileUndecidedMint(
-  id: string,
-  parentId: string | null,
-  { expectedParentId = null }: { expectedParentId?: string | null } = {}
-): Promise<boolean> {
+export async function fileUndecidedMint(id: string, parentId: string): Promise<boolean> {
   return await fileUnder(
     id,
     parentId,
-    and(
-      expectedParentId === null
-        ? isNull(ingredients.parentId)
-        : eq(ingredients.parentId, expectedParentId),
-      eq(ingredients.flagged, true)
-    )
+    and(isNull(ingredients.parentId), eq(ingredients.flagged, true))
   );
 }
 
@@ -621,14 +607,10 @@ export async function fileUndecidedMint(
  * File the words' parent where `where` still holds, no person decided (kept distinct, kept a
  * change or chose a parent), no cycle closes and no person undid it. Whether it was filed.
  */
-async function fileUnder(
-  id: string,
-  parentId: string | null,
-  where: SQL | undefined
-): Promise<boolean> {
+async function fileUnder(id: string, parentId: string, where: SQL | undefined): Promise<boolean> {
   return await db.transaction(async (tx) => {
     await lockTree(tx);
-    if (parentId && (await findIngredientAncestors([parentId], tx)).get(parentId)?.includes(id)) {
+    if ((await findIngredientAncestors([parentId], tx)).get(parentId)?.includes(id)) {
       return false;
     }
     if (id === parentId) return false;
@@ -649,11 +631,8 @@ async function fileUnder(
       .returning({ id: ingredients.id });
 
     if (filed.length === 0) return false;
-    // An older guess goes with the old parent; the words' parent leaves no doubt behind.
-    const replaced = await takeOpenParentChanges(tx, id);
-
-    // No parent is no answer: the mint stays flagged as it was.
-    if (parentId !== null && replaced) await clearAIFlagUnlessOpen(tx, id);
+    // AI's open answer goes with the old parent; the words' parent leaves no doubt behind.
+    if (await takeOpenParentChanges(tx, id)) await clearAIFlagUnlessOpen(tx, id);
 
     return true;
   });

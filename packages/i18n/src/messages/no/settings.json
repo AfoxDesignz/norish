@@ -546,7 +546,6 @@
       "undo": "Angre",
       "merge": "{from} slått sammen hit",
       "parent": "Plassert under {of}",
-      "parentFromName": "Plassert under {of}, ut fra navnet",
       "parentDropped": "Ikke lenger under {of}",
       "plainName": "Fikk nytt navn, var {from}",
       "notAFood": "Slettet, siden det ikke er en ingrediens. Oppskriftslinjene og innkjøpene beholder teksten sin."

@@ -15,8 +15,6 @@ import type { MintIngredientInput } from "@norish/db/repositories/ingredient-ali
 import type { FullRecipeDTO, MeasurementSystem } from "@norish/shared/contracts";
 import { encrypt, hashToken } from "@norish/config/crypto";
 import { getRecipeFull } from "@norish/db";
-import { withTransaction } from "@norish/db/drizzle";
-import { recordAIChange } from "@norish/db/repositories/ingredient-ai-changes";
 import { mintIngredientWithAliases } from "@norish/db/repositories/ingredient-aliases";
 import { isFirstLineFood, writeRecipeLineFoodsTx } from "@norish/db/repositories/ingredients";
 import * as schema from "@norish/db/schema";
@@ -188,22 +186,6 @@ export async function mintTestFood(
   });
 
   return row!;
-}
-
-/** File a food under a parent as an older rule's unsure guess from the words of its name. */
-export async function fileAsOldWordsGuess(ingredientId: string, parentId: string) {
-  await withTransaction(async (tx) => {
-    await tx
-      .update(schema.ingredients)
-      .set({ parentId })
-      .where(eq(schema.ingredients.id, ingredientId));
-    await recordAIChange(tx, {
-      ingredientId,
-      targetId: parentId,
-      sure: false,
-      undo: { kind: "parent", formerParentId: null, fromWords: true },
-    });
-  });
 }
 
 /**

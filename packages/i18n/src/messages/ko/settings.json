@@ -546,7 +546,6 @@
       "undo": "되돌리기",
       "merge": "{from}을(를) 여기에 병합함",
       "parent": "{of} 아래에 분류됨",
-      "parentFromName": "이름에 따라 {of} 아래에 분류됨",
       "parentDropped": "더 이상 {of} 아래에 없음",
       "plainName": "{from}에서 이름 변경됨",
       "notAFood": "식재료가 아니어서 삭제했습니다. 레시피 줄과 장보기 항목은 텍스트를 유지합니다."

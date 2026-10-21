@@ -546,7 +546,6 @@
       "undo": "Desfazer",
       "merge": "{from} mesclado aqui",
       "parent": "Classificado sob {of}",
-      "parentFromName": "Classificado sob {of}, pelo nome",
       "parentDropped": "Não está mais sob {of}",
       "plainName": "Renomeado de {from}",
       "notAFood": "Excluído, pois não é um alimento. As linhas da receita e as compras mantêm o texto."

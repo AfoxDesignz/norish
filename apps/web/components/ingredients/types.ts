@@ -44,6 +44,5 @@ export type AIChange = {
   dropped: NamedFood | null;
   /** The merged or deleted food's name, or the name AI replaced. */
   from: string | null;
-  fromWords: boolean;
   canAct: boolean;
 };

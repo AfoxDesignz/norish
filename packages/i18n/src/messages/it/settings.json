@@ -546,7 +546,6 @@
       "undo": "Annulla",
       "merge": "{from} unito qui",
       "parent": "Classificato sotto {of}",
-      "parentFromName": "Classificato sotto {of}, dal nome",
       "parentDropped": "Non più sotto {of}",
       "plainName": "Rinominato da {from}",
       "notAFood": "Eliminato, perché non è un alimento. Le righe della ricetta e la spesa mantengono il loro testo."

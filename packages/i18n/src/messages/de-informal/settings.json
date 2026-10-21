@@ -546,7 +546,6 @@
       "undo": "Rückgängig",
       "merge": "{from} hiermit zusammengeführt",
       "parent": "Unter {of} eingeordnet",
-      "parentFromName": "Unter {of} eingeordnet, nach dem Namen",
       "parentDropped": "Nicht mehr unter {of}",
       "plainName": "Umbenannt von {from}",
       "notAFood": "Gelöscht, da es keine Zutat ist. Rezeptzeilen und Einkäufe behalten ihren Text."

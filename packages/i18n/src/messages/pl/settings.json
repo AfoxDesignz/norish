@@ -546,7 +546,6 @@
       "undo": "Cofnij",
       "merge": "Scalono tu {from}",
       "parent": "Umieszczono pod {of}",
-      "parentFromName": "Umieszczono pod {of} na podstawie nazwy",
       "parentDropped": "Już nie pod {of}",
       "plainName": "Zmieniono nazwę z {from}",
       "notAFood": "Usunięto, bo to nie jest składnik. Wiersze przepisu i zakupy zachowują swój tekst."

@@ -20,7 +20,7 @@ export interface DeletedFood {
   recurring: Array<{ id: string; aliasId: string | null }>;
 }
 
-/** What Undo needs per kind of AI Change; a parent's `fromWords` says the name's words gave it, not AI. */
+/** What Undo needs per kind of AI Change. */
 export type AIChangeUndo =
   | {
       kind: "merge";
@@ -29,7 +29,7 @@ export type AIChangeUndo =
       aliasIds: string[];
       parentId: string | null;
     }
-  | { kind: "parent"; formerParentId: string | null; fromWords?: boolean }
+  | { kind: "parent"; formerParentId: string | null }
   | { kind: "plain-name"; formerName: string; name: string }
   | { kind: "not-a-food"; food: DeletedFood };
 
