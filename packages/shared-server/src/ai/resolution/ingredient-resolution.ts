@@ -20,6 +20,7 @@ import type {
 import type { FlagReason, ReviewTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
 import { findIngredientCandidatesByIds } from "@norish/db/repositories/ingredient-aliases";
+import { findListedIngredientIds } from "@norish/db/repositories/ingredient-catalogue";
 import {
   isAIEnabled,
   isDecisionUseEnabled,
@@ -176,7 +177,10 @@ async function findNamed(
   trace: ReviewTrace
 ): Promise<{ food: IngredientRef | null; sure: boolean } | AIResolution> {
   const names = [food.englishName, ...food.otherNames].filter((name) => name !== null);
-  const found = (await findOtherFoodsNamed(excludeId, names)).flat();
+  const named = (await findOtherFoodsNamed(excludeId, names)).flat();
+  const listed = await findListedIngredientIds(named.map((one) => one.ingredientId));
+  // A hidden food is never AI's answer: no merge into it, no parent, no split part.
+  const found = named.filter((one) => listed.has(one.ingredientId));
   const exact = found.filter((one) => one.score === 1);
   const ranked = (exact.length > 0 ? exact : [...found].sort((a, b) => b.score - a.score)).filter(
     (one, index, all) => all.findIndex((other) => other.ingredientId === one.ingredientId) === index

@@ -257,6 +257,22 @@ export async function isAskableByAI(tx: Db, id: string): Promise<boolean> {
   return row?.askable ?? false;
 }
 
+/** Which of these foods the Ingredients page lists (`listedFood`): the only ones AI's pass names. */
+export async function findListedIngredientIds(ids: readonly string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+  const rows = await db
+    .select({ id: ingredients.id })
+    .from(ingredients)
+    .where(
+      and(
+        inArray(ingredients.id, [...new Set(ids)]),
+        listedFood({ id: sql`${ingredients}.id`, offId: sql`${ingredients}.off_id` })
+      )
+    );
+
+  return new Set(rows.map((row) => row.id));
+}
+
 /**
  * One Ingredient as an edit reads it: its name, whether it is flagged, whose
  * it is, its parent, whether its name is settled, and whether AI may ask

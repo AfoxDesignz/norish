@@ -860,6 +860,15 @@ describe("asking AI about an Ingredient", () => {
     expect(resolutionRequests()).toBe(1);
   });
 
+  it("never merges a food into a hidden one", async () => {
+    await unnamed("rye bread");
+    const rogge = await flagged("roggebrood");
+
+    reads({ englishName: "rye bread", parent: null, sure: true });
+    await expect(askAIAbout(rogge.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
+    await expect(ingredientFor(rogge.aliasId)).resolves.toMatchObject({ id: rogge.ingredientId });
+  });
+
   it("never makes a merge or a parent a person undid again", async () => {
     const onion = await kept("onion");
     const bulbs = await flagged("onion bulbs");
