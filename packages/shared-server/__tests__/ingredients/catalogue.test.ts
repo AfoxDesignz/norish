@@ -298,6 +298,70 @@ describe("the ingredient catalogue", () => {
     });
   });
 
+  it("deletes a mix: each row it named is resolved again from its own text, minting nothing", async () => {
+    const db = getTestDb();
+    const zout = await mint("zout");
+    const peper = await mint("peper");
+
+    await addAlias(actor, zout.ingredientId, "salt");
+    await addAlias(actor, peper.ingredientId, "pepper");
+    const mix = await mint("kruidenmix");
+
+    await addAlias(actor, mix.ingredientId, "zout en peper");
+    await addAlias(actor, mix.ingredientId, "salt and pepper");
+    const [dutch, english] = await resolveIngredients(["zout en peper", "salt and pepper"], {
+      userId: actor.userId,
+    });
+    const rows = await nameEverywhere(dutch!, "zout en peper");
+    const lineOf = async (name: string, aliasId: string) =>
+      (await insertTestRecipeLine({ recipeId: rows.recipe, name }, [aliasId])).id;
+    const lines = {
+      english: await lineOf("salt and pepper", english!.aliasId),
+      mix: await lineOf("1 tl kruidenmix", mix.aliasId),
+      // A line a person pointed at the mix, whose text another food knows whole.
+      zout: await lineOf("zout", mix.aliasId),
+    };
+    const foodsOf = async (lineId: string) =>
+      (
+        await db
+          .select({ ingredientId: ingredientAliases.ingredientId })
+          .from(recipeIngredientFoods)
+          .innerJoin(
+            ingredientAliases,
+            eq(ingredientAliases.id, recipeIngredientFoods.ingredientAliasId)
+          )
+          .where(eq(recipeIngredientFoods.recipeIngredientId, lineId))
+          .orderBy(recipeIngredientFoods.position)
+      ).map((row) => row.ingredientId);
+    const listed = async (table: typeof groceries | typeof recurringGroceries) =>
+      await db
+        .select({ name: table.name, ingredientId: table.ingredientId })
+        .from(table)
+        .where(eq(table.userId, actor.userId))
+        .orderBy(table.name);
+    const foods = await db.select({ id: ingredients.id }).from(ingredients);
+
+    await deleteIngredient(actor, mix.ingredientId);
+
+    const both = [zout.ingredientId, peper.ingredientId];
+
+    await expect(foodsOf(rows.line)).resolves.toEqual(both);
+    await expect(foodsOf(lines.english)).resolves.toEqual(both);
+    await expect(foodsOf(lines.zout)).resolves.toEqual([zout.ingredientId]);
+    await expect(foodsOf(lines.mix)).resolves.toEqual([]);
+    // A Grocery names one food, so "zout en peper" is one per food, as typed.
+    for (const table of [groceries, recurringGroceries]) {
+      await expect(listed(table)).resolves.toEqual([
+        { name: "peper", ingredientId: peper.ingredientId },
+        { name: "zout", ingredientId: zout.ingredientId },
+      ]);
+    }
+    await expect(namedBy(rows)).resolves.toMatchObject({ pantry: [] });
+    await expect(db.select({ id: ingredients.id }).from(ingredients)).resolves.toHaveLength(
+      foods.length - 1
+    );
+  });
+
   it("refuses a name another Ingredient goes by, in any case", async () => {
     await mint("garlic");
     const leek = await mint("leek");

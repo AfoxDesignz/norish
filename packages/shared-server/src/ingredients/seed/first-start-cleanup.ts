@@ -2,7 +2,7 @@
  * The first start's cleanup of what earlier versions left (ADR-0037; ingredient-cleanup ticket 09),
  * once per `CLEANUP_VERSION`: each step's function says what it does.
  */
-import type { CleanupSpelling, NamingRow } from "@norish/db/repositories/ingredient-cleanup";
+import type { CleanupSpelling } from "@norish/db/repositories/ingredient-cleanup";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
 import { withTransaction } from "@norish/db/drizzle";
 import {
@@ -16,8 +16,6 @@ import {
   listOwnFoods,
   listSpellingsForCleanup,
   renameFood,
-  repointGroceries,
-  repointLines,
   rewriteSpelling,
   spellingsBeside,
 } from "@norish/db/repositories/ingredient-cleanup";
@@ -27,12 +25,11 @@ import {
   mergeCatalogueIngredients,
   splitCatalogueIngredient,
 } from "@norish/db/repositories/ingredient-relocation";
-import { getUnits } from "@norish/shared-server/config/server-config-loader";
-import { lineFoodText, lineNamesNoFood } from "@norish/shared/lib/ingredient-text";
 import { ingredientAliasFold, withoutStrayMarks } from "@norish/shared/lib/spelling-keys";
 
 import type { ResolvedIngredient } from "../resolver";
-import { cleanSpellingOf, partsByWordsOf, resolveIngredients, resolveLineFoods } from "../resolver";
+import { resolveAgain } from "../catalogue";
+import { cleanSpellingOf, partsByWordsOf } from "../resolver";
 import { oncePerVersion } from "./catalogue-seed";
 
 /** Raised when a release needs the cleanup to run again. */
@@ -185,67 +182,9 @@ async function removeVariants(variants: readonly Variant[]): Promise<number> {
     return rows;
   });
 
-  await resolveAgain(named);
+  await resolveAgain(named, { mint: true });
 
   return removed;
-}
-
-/** Point each row at what its own text resolves to, with AI off, minting for its owner. */
-async function resolveAgain(rows: Awaited<ReturnType<typeof findRowsNamingSpellings>>) {
-  const units = await getUnits();
-  const lines = await resolveByOwner(rows.lines, async (owned, userId) => {
-    const texts = owned.map(({ name, amount, unit }) =>
-      lineNamesNoFood({ text: name ?? "", amount })
-        ? ""
-        : lineFoodText({ text: name ?? "", amount, unit }, units)
-    );
-    const foods = await resolveLineFoods(texts, { userId }, { ai: false });
-
-    return owned.map((line, index) => ({
-      id: line.id,
-      aliasIds: foods[index]?.foods.map((food) => food.aliasId) ?? [],
-      joined: foods[index]?.joined ?? null,
-    }));
-  });
-  const groceriesOf = (named: NamingRow[]) =>
-    resolveByOwner(named, async (owned, userId) => {
-      const foods = await resolveIngredients(
-        owned.map((row) => row.name ?? ""),
-        { userId },
-        { ai: false }
-      );
-
-      return owned.map((row, index) => ({
-        id: row.id,
-        aliasId: foods[index]?.aliasId ?? null,
-        ingredientId: foods[index]?.ingredientId ?? null,
-      }));
-    });
-  const [groceries, recurring] = [
-    await groceriesOf(rows.groceries),
-    await groceriesOf(rows.recurring),
-  ];
-
-  await withTransaction(async (tx) => {
-    await repointLines(tx, lines);
-    await repointGroceries(tx, "groceries", groceries);
-    await repointGroceries(tx, "recurring", recurring);
-  });
-}
-
-/** Resolve rows a batch per owner, so what a text mints is its row's owner's. */
-async function resolveByOwner<R extends NamingRow, T>(
-  rows: readonly R[],
-  resolve: (owned: R[], userId: string | null) => Promise<T[]>
-): Promise<T[]> {
-  const byOwner = new Map<string | null, R[]>();
-  const resolved: T[] = [];
-
-  for (const row of rows) byOwner.set(row.ownerId, [...(byOwner.get(row.ownerId) ?? []), row]);
-
-  for (const [userId, owned] of byOwner) resolved.push(...(await resolve(owned, userId)));
-
-  return resolved;
 }
 
 /** Split a joined food into the foods its name joins, and remove it; false where one went meanwhile. */

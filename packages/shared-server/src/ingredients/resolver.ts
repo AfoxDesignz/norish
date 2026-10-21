@@ -97,6 +97,8 @@ export interface ResolveActor {
 export interface ResolveOptions {
   /** Whether AI's pass follows a mint; off, a mint is flagged as the upgrade's (the startup passes). */
   ai?: boolean;
+  /** Off, a text no known food or its words name names none: no slip is joined, nothing minted. */
+  mint?: boolean;
 }
 
 /** One text as written, and the alias and Ingredient it resolved to. */
@@ -359,7 +361,7 @@ async function resolveTexts(
   const unknown = spellings.filter(
     (spelling) => !matchKnown(spelling, known) && !byWords.has(spelling)
   );
-  const slips = await findSlips(unknown);
+  const slips = await findSlips(options.mint === false ? [] : unknown);
   let flagReason: Promise<FlagReason> | undefined;
   const resolved = new Map<Spelling, ResolvedFoods>();
   const minted = new Set<string>();
@@ -378,6 +380,7 @@ async function resolveTexts(
 
     const match = matchKnown(spelling, known);
 
+    if (!match && options.mint === false) continue;
     if (!match) {
       const slip = slips.get(sameFoodKey(spelling));
       // The food a slip names may have been merged away since it was found; the text is then minted.

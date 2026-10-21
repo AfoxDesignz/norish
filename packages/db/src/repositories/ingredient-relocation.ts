@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { SQL } from "drizzle-orm";
 import { asc, count, eq, inArray, sql } from "drizzle-orm";
 
@@ -358,38 +357,23 @@ export async function splitCatalogueIngredient(
 
   const [first, ...rest] = parts;
   const others = joined === "together" ? rest : [];
-  const asPart = (part: SplitPart) => ({
+  const named = [first, ...others].map((part) => ({
     name: part.text,
-    ingredientAliasId: part.aliasId,
+    aliasId: part.aliasId,
     ingredientId: part.ingredientId,
-  });
+  })) as [GroceryPart, ...GroceryPart[]];
+  const pick = (table: typeof groceries | typeof recurringGroceries, where: SQL | undefined) =>
+    tx.select({ id: table.id }).from(table).where(where);
 
-  for (const { id, version: _version, ...row } of await tx
-    .select()
-    .from(groceries)
-    .where(naming.groceries)) {
-    await tx
-      .update(groceries)
-      .set({ ...asPart(first), version: sql`${groceries.version} + 1` })
-      .where(eq(groceries.id, id));
-    // ponytail: a copy of a recurring grocery's row recurs with neither; link them if it matters.
-    for (const part of others) {
-      await tx
-        .insert(groceries)
-        .values({ ...row, ...asPart(part), id: randomUUID(), recurringGroceryId: null });
-    }
-  }
-  for (const { id, version: _version, ...row } of await tx
-    .select()
-    .from(recurringGroceries)
-    .where(naming.recurringGroceries)) {
-    await tx
-      .update(recurringGroceries)
-      .set({ ...asPart(first), version: sql`${recurringGroceries.version} + 1` })
-      .where(eq(recurringGroceries.id, id));
-    for (const part of others) {
-      await tx.insert(recurringGroceries).values({ ...row, ...asPart(part), id: randomUUID() });
-    }
+  for (const [kind, rows] of [
+    ["groceries", await pick(groceries, naming.groceries)],
+    ["recurring", await pick(recurringGroceries, naming.recurringGroceries)],
+  ] as const) {
+    await writeGroceryParts(
+      tx,
+      kind,
+      rows.map(({ id }) => ({ id, parts: named }))
+    );
   }
 
   const keepers = await tx
@@ -411,4 +395,61 @@ export async function splitCatalogueIngredient(
     await keepOnePantryRowPerHousehold(tx, part.ingredientId);
   }
   await tx.delete(ingredients).where(eq(ingredients.id, sourceId));
+}
+
+/** A food a Grocery names, and the name it goes by there. */
+export interface GroceryPart {
+  name: string;
+  aliasId: string | null;
+  ingredientId: string | null;
+}
+
+/**
+ * Point Groceries or recurring groceries at the foods they name: the first on the row itself, each
+ * other one on a copy of it, as a Grocery names one food (ADR-0037).
+ */
+export async function writeGroceryParts(
+  tx: DbTransaction,
+  kind: "groceries" | "recurring",
+  rows: ReadonlyArray<{ id: string; parts: readonly [GroceryPart, ...GroceryPart[]] }>
+): Promise<void> {
+  const columns = (part: GroceryPart) => ({
+    name: part.name,
+    ingredientAliasId: part.aliasId,
+    ingredientId: part.ingredientId,
+  });
+
+  for (const {
+    id,
+    parts: [first, ...rest],
+  } of rows) {
+    if (kind === "groceries") {
+      const [row] = await tx
+        .update(groceries)
+        .set({ ...columns(first), version: sql`${groceries.version} + 1` })
+        .where(eq(groceries.id, id))
+        .returning();
+
+      if (!row) continue;
+      const { id: _id, version: _version, ...copy } = row;
+
+      // ponytail: a copy of a recurring grocery's row recurs with neither; link them if it matters.
+      for (const part of rest) {
+        await tx.insert(groceries).values({ ...copy, ...columns(part), recurringGroceryId: null });
+      }
+    } else {
+      const [row] = await tx
+        .update(recurringGroceries)
+        .set({ ...columns(first), version: sql`${recurringGroceries.version} + 1` })
+        .where(eq(recurringGroceries.id, id))
+        .returning();
+
+      if (!row) continue;
+      const { id: _id, version: _version, ...copy } = row;
+
+      for (const part of rest) {
+        await tx.insert(recurringGroceries).values({ ...copy, ...columns(part) });
+      }
+    }
+  }
 }

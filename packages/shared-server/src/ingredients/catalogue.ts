@@ -26,6 +26,8 @@ import type {
   CatalogueIngredient,
   CatalogueOwner,
 } from "@norish/db/repositories/ingredient-catalogue";
+import type { NamingRow, NamingRows } from "@norish/db/repositories/ingredient-cleanup";
+import type { GroceryPart } from "@norish/db/repositories/ingredient-relocation";
 import type { CatalogueRefusal, FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LocaleNames, NamedFood } from "@norish/shared/lib/ingredient-names";
 import type {
@@ -50,6 +52,7 @@ import {
   renameCatalogueIngredient,
   sweepUnusedCatalogueIngredients,
 } from "@norish/db/repositories/ingredient-catalogue";
+import { findRowsNamingFood, repointLines } from "@norish/db/repositories/ingredient-cleanup";
 import { setIngredientIcon } from "@norish/db/repositories/ingredient-icons";
 import {
   countAliasesOf,
@@ -60,19 +63,30 @@ import {
   mergeCatalogueIngredients,
   moveCatalogueAlias,
   setCatalogueIngredientParent,
+  writeGroceryParts,
 } from "@norish/db/repositories/ingredient-relocation";
-import { getIngredientPermissionPolicy } from "@norish/shared-server/config/server-config-loader";
+import {
+  getIngredientPermissionPolicy,
+  getUnits,
+} from "@norish/shared-server/config/server-config-loader";
 import { claimOwnIcon } from "@norish/shared-server/media/ingredient-icon";
 import { isFlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import { viewerAndHouseholdIds } from "@norish/shared/lib/household";
 import { catalogueLanguagesFor, chooseLocaleNames } from "@norish/shared/lib/ingredient-names";
 import { parseIngredientSearch } from "@norish/shared/lib/ingredient-search";
+import { lineFoodText, lineNamesNoFood } from "@norish/shared/lib/ingredient-text";
 import { cleanSpelling, ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import type { IngredientIcon } from "./icons";
 import { ingredientChanges } from "./changes";
 import { ingredientIcons } from "./icons";
-import { cleanIngredientText } from "./resolver";
+import {
+  cleanIngredientText,
+  resolveIngredients,
+  resolveLineFoods,
+  typedParts,
+  writeResolved,
+} from "./resolver";
 
 /** Who is editing: what the policy is asked about. */
 export interface CatalogueActor {
@@ -471,23 +485,125 @@ async function setParentIn(
 }
 
 /**
- * Delete an Ingredient and its spellings; follows `edit`. Its lines and Groceries keep their
- * text and name no food, and its Pantry Ingredients go, since the Pantry holds only foods.
+ * Delete an Ingredient and its spellings; follows `edit`. Its lines and Groceries keep their text
+ * and are resolved again from it, minting nothing (`resolveAgain`), so "zout en peper" names zout
+ * and peper and "kruidenmix" none. Its Pantry Ingredients go, since the Pantry holds only foods.
  */
 export async function deleteIngredient(
   actor: CatalogueActor,
   ingredientId: string
 ): Promise<CatalogueEdit> {
-  return await inEdit(async (tx) => {
+  const named = await withTransaction(async (tx) => {
     await assertMayEditIngredient(tx, actor, ingredientId);
     // The tree lock, as for every edit that changes what a row points at:
     // a merge into this Ingredient must not land while it goes.
     await lockTree(tx);
     if ((await lockIngredients(tx, [ingredientId])) < 1) throw new CatalogueEditError("not-found");
+    const rows = await findRowsNamingFood(tx, ingredientId);
+
     await deleteCatalogueIngredient(tx, ingredientId);
 
-    return { changed: [ingredientId] };
+    return rows;
   });
+
+  await resolveAgain(named, { mint: false });
+  await ingredientChanges().changed([ingredientId]);
+
+  return { changed: [ingredientId] };
+}
+
+/**
+ * Point each row at what its own text resolves to, AI off, minting for its owner; with `mint` off,
+ * a row whose text names no known food keeps what it has. A Grocery naming several foods becomes
+ * one per food, as when typed (`typedParts`).
+ */
+export async function resolveAgain(rows: NamingRows, { mint }: { mint: boolean }): Promise<void> {
+  const options = { ai: false, mint };
+
+  await writeResolved(
+    async () => {
+      const units = await getUnits();
+      const lines = await resolveByOwner(rows.lines, async (owned, userId) => {
+        const texts = owned.map(({ name, amount, unit }) =>
+          lineNamesNoFood({ text: name ?? "", amount })
+            ? ""
+            : lineFoodText({ text: name ?? "", amount, unit }, units)
+        );
+        const foods = await resolveLineFoods(texts, { userId }, options);
+
+        return owned.flatMap((line, index) => {
+          const named = foods[index];
+
+          return named
+            ? [
+                {
+                  id: line.id,
+                  aliasIds: named.foods.map((food) => food.aliasId),
+                  joined: named.joined,
+                },
+              ]
+            : [];
+        });
+      });
+      const groceriesOf = (named: readonly NamingRow[]) =>
+        resolveByOwner(named, async (owned, userId) => {
+          const split = await typedParts(owned, { alternatives: "first" });
+          const foods = await resolveIngredients(
+            split.flat().map((part) => part.name ?? ""),
+            { userId },
+            options
+          );
+          let next = 0;
+
+          return owned.flatMap((row, index) => {
+            const [first, ...rest] = split[index]!.flatMap((part) => {
+              const food = foods[next++];
+
+              return food
+                ? [
+                    {
+                      name: part.name ?? "",
+                      aliasId: food.aliasId,
+                      ingredientId: food.ingredientId,
+                    },
+                  ]
+                : [];
+            });
+
+            return first
+              ? [{ id: row.id, parts: [first, ...rest] as [GroceryPart, ...GroceryPart[]] }]
+              : [];
+          });
+        });
+
+      return {
+        lines,
+        groceries: await groceriesOf(rows.groceries),
+        recurring: await groceriesOf(rows.recurring),
+      };
+    },
+    (resolved) =>
+      withTransaction(async (tx) => {
+        await repointLines(tx, resolved.lines);
+        await writeGroceryParts(tx, "groceries", resolved.groceries);
+        await writeGroceryParts(tx, "recurring", resolved.recurring);
+      })
+  );
+}
+
+/** Resolve rows a batch per owner, so what a text mints is its row's owner's. */
+async function resolveByOwner<R extends NamingRow, T>(
+  rows: readonly R[],
+  resolve: (owned: R[], userId: string | null) => Promise<T[]>
+): Promise<T[]> {
+  const byOwner = new Map<string | null, R[]>();
+  const resolved: T[] = [];
+
+  for (const row of rows) byOwner.set(row.ownerId, [...(byOwner.get(row.ownerId) ?? []), row]);
+
+  for (const [userId, owned] of byOwner) resolved.push(...(await resolve(owned, userId)));
+
+  return resolved;
 }
 
 /** The nightly sweep: delete own Ingredients nothing has named for 90 days; seeded ones stay. */

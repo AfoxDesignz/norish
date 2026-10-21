@@ -65,8 +65,11 @@ again.
 
 **Delete** in an ingredient's panel always works. The dialog says how many
 recipe lines and groceries keep their text without it, and how many pantry
-items go with it. Removing a translation moves what used it to another of the
-ingredient's names.
+items go with it. Those lines and groceries are then read again: one whose text
+names other foods points at them, so deleting a "kruidenmix" with the
+translation "zout en peper" points a "zout en peper" line at salt and pepper,
+and a "zout en peper" grocery becomes two. Nothing new is added. Removing a
+translation moves what used it to another of the ingredient's names.
 
 ![Deleting an ingredient](/img/screenshots/ingredients-delete.png)
 

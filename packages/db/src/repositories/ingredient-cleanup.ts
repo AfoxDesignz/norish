@@ -1,3 +1,4 @@
+import type { SQL } from "drizzle-orm";
 import { and, asc, count, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 
 import type { DbTransaction } from "@norish/db/drizzle";
@@ -13,12 +14,12 @@ import {
   recurringGroceries,
 } from "@norish/db/schema";
 
-import { findGroceryRows, nameIsFree } from "./ingredient-catalogue";
+import { findGroceryRows, nameIsFree, rowsNaming } from "./ingredient-catalogue";
 import { writeRecipeLineFoodsTx } from "./ingredients";
 
 /**
  * The first-start cleanup's reads and writes (ADR-0037): spellings cleaned in place, and the rows
- * a removed spelling named pointed at what their own text resolves to.
+ * a removed spelling or a deleted food named pointed at what their own text resolves to.
  */
 
 /** One spelling as the cleanup reads it. */
@@ -103,16 +104,45 @@ export interface NamingRow {
   ownerId: string | null;
 }
 
+/** The rows that name something: the recipe lines, Groceries and recurring groceries. */
+export interface NamingRows {
+  lines: Array<NamingRow & { amount: string | null; unit: string | null }>;
+  groceries: NamingRow[];
+  recurring: NamingRow[];
+}
+
 /** The recipe lines, Groceries and recurring groceries naming any of these spellings. */
 export async function findRowsNamingSpellings(
   tx: DbTransaction,
   aliasIds: readonly string[]
-): Promise<{
-  lines: Array<NamingRow & { amount: string | null; unit: string | null }>;
-  groceries: NamingRow[];
-  recurring: NamingRow[];
-}> {
+): Promise<NamingRows> {
   if (aliasIds.length === 0) return { lines: [], groceries: [], recurring: [] };
+
+  return await findNamingRows(tx, {
+    lineFoods: inArray(recipeIngredientFoods.ingredientAliasId, [...aliasIds]),
+    groceries: inArray(groceries.ingredientAliasId, [...aliasIds]),
+    recurring: inArray(recurringGroceries.ingredientAliasId, [...aliasIds]),
+  });
+}
+
+/** The recipe lines, Groceries and recurring groceries naming a food (`rowsNaming`). */
+export async function findRowsNamingFood(
+  tx: DbTransaction,
+  ingredientId: string
+): Promise<NamingRows> {
+  const naming = rowsNaming(ingredientId);
+
+  return await findNamingRows(tx, {
+    lineFoods: naming.lineFoods,
+    groceries: naming.groceries,
+    recurring: naming.recurringGroceries,
+  });
+}
+
+async function findNamingRows(
+  tx: DbTransaction,
+  where: { lineFoods: SQL | undefined; groceries: SQL | undefined; recurring: SQL | undefined }
+): Promise<NamingRows> {
   const lines = await tx
     .selectDistinct({
       id: recipeIngredients.id,
@@ -127,10 +157,10 @@ export async function findRowsNamingSpellings(
       eq(recipeIngredients.id, recipeIngredientFoods.recipeIngredientId)
     )
     .innerJoin(recipes, eq(recipes.id, recipeIngredients.recipeId))
-    .where(inArray(recipeIngredientFoods.ingredientAliasId, [...aliasIds]));
+    .where(where.lineFoods);
   const named = await findGroceryRows(tx, {
-    groceries: inArray(groceries.ingredientAliasId, [...aliasIds]),
-    recurring: inArray(recurringGroceries.ingredientAliasId, [...aliasIds]),
+    groceries: where.groceries,
+    recurring: where.recurring,
   });
 
   return { lines, ...named };
@@ -147,26 +177,6 @@ export async function repointLines(
       .update(recipeIngredients)
       .set({ joined: line.joined, version: sql`${recipeIngredients.version} + 1` })
       .where(eq(recipeIngredients.id, line.id));
-  }
-}
-
-/** Point Groceries or recurring groceries at what their text resolved to, or at no food. */
-export async function repointGroceries(
-  tx: DbTransaction,
-  kind: "groceries" | "recurring",
-  rows: ReadonlyArray<{ id: string; aliasId: string | null; ingredientId: string | null }>
-): Promise<void> {
-  const table = kind === "groceries" ? groceries : recurringGroceries;
-
-  for (const row of rows) {
-    await tx
-      .update(table)
-      .set({
-        ingredientAliasId: row.aliasId,
-        ingredientId: row.ingredientId,
-        version: sql`${table.version} + 1`,
-      })
-      .where(eq(table.id, row.id));
   }
 }
 
