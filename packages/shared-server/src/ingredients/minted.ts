@@ -14,9 +14,8 @@ const log = createLogger("ingredients");
 type MintedListener = (ingredientIds: string[]) => Promise<void>;
 
 /**
- * The listener and the held mints, on `globalThis` under `Symbol.for` keys, as the change
- * publisher holds its batches, so a bundler that copies this module into two
- * chunks still keeps one.
+ * The listener and the held mints live on `globalThis` under `Symbol.for` keys, as the change
+ * publisher's batches do, so a module a bundler copies into two chunks still shares them.
  */
 const LISTENER_KEY = Symbol.for("norish:ingredients-minted");
 const HELD_KEY = Symbol.for("norish:ingredients-minted-held");

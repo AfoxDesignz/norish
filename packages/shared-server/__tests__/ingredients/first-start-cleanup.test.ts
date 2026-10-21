@@ -229,7 +229,7 @@ describe("the first-start cleanup", () => {
       { name: "zout", food: seeded.get("en:salt") },
     ]);
 
-    // 5. AI is asked about the own foods a recipe names that no person decided about, and nothing else.
+    // 5. AI is asked only about the own foods a recipe names that no person decided about.
     expect(askAI).toHaveBeenCalledTimes(1);
     expect(askAI.mock.calls[0]![0].sort()).toEqual(
       [gyoza.ingredientId, undecided.ingredientId].sort()

@@ -591,9 +591,8 @@ export async function adoptPlainName(
 }
 
 /**
- * File an undecided mint without a parent under the one its words give, leaving it flagged and the
- * parent unchosen: only where no person decided about it meanwhile and no cycle closes. Whether
- * it was filed.
+ * File an undecided mint without a parent under its words' one, still flagged and unchosen, unless
+ * a person decided about it meanwhile or a cycle closes. Whether it was filed.
  */
 export async function fileUndecidedMint(id: string, parentId: string): Promise<boolean> {
   return await fileUnder(

@@ -1,15 +1,6 @@
 /**
- * What a food a mint made is, asked of AI by the background pass (ADR-0037); an import asks
- * nothing. One language-model request under the administrator-editable `ingredient-resolution`
- * Prompt reads the name and the parent it is filed under, with no catalogue in front of it: a food
- * (its plain English name, the plain food it is made of or sold as, and other names a shop sells it
- * under), several foods, or not a food. The answer's shape is checked, and asked once more where it breaks. The code looks the
- * names up as an import would, a split's parts too. Only where they name more than one food, or
- * only foods a slip of the fingers away, is a second question asked over just those: a Decision when a Decision Model is configured and this
- * use is on, and otherwise — or when the Decision is unsure, or fails — the language model
- * (ADR-0035).
- *
- * Nothing here throws: every failure is a warn log and a flagged answer.
+ * The background pass asks AI what a minted food is (ADR-0037): one reading, the code's lookup, and
+ * a second question where that finds several foods or only slips. Failures are logged, not thrown.
  */
 import { z } from "zod";
 
@@ -79,7 +70,7 @@ function failedNew(error: unknown): AIResolution {
 export interface AskOptions {
   /** The Ingredient the question is about, never its own answer. */
   excludeId: string;
-  /** The name of the parent it is filed under now, shown so AI judges it rather than makes one up. */
+  /** The parent's name it is filed under now, so AI judges it rather than makes one up. */
   filedUnder: string | null;
   /** Where to record what was asked, for a person who wants to know: filled in as it goes. */
   trace: ReviewTrace;
@@ -169,9 +160,8 @@ function namesOf(food: ReadFood): string[] {
 }
 
 /**
- * The food other than `excludeId` a read food's names find: an exact spelling is taken, slips
- * beside it ignored. Several, or slips alone, are asked about, best first. Not sure where AI was
- * not, or a slip of AI's names found it (cherry beside sherry).
+ * The listed food other than `excludeId` these names find: an exact spelling wins, else several or
+ * slips alone are asked about, best first. Sure only where AI is and the pick is no slip.
  */
 async function findNamed(
   text: string,

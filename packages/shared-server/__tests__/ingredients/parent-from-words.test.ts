@@ -1,10 +1,7 @@
 // @vitest-environment node
 /**
- * Rung 4's parent from words, against a real database: a Flagged Ingredient
- * minted for a text that contains a seeded spelling is filed under it,
- * longest first, and stays flagged for a person to look at (ADR-0037 as
- * amended). Only a spelling the text ends with, or starts with before cuts
- * and forms alone, gives a parent, filed quietly; one elsewhere gives none.
+ * Rung 4's parent from words, against a real database: a mint stays flagged under a seeded spelling
+ * its text ends with, or starts with before cuts and forms alone; one elsewhere gives none.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 

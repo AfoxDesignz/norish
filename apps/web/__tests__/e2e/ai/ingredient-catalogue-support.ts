@@ -30,9 +30,8 @@ export async function resetCatalogueScenario(): Promise<void> {
 }
 
 /**
- * A small catalogue of the scenario's own, seeded as the seed writes it (an entry id, so the
- * Ingredients page lists it), instead of fetching Open Food Facts. The foods belong to the first
- * account, so it may edit them.
+ * The scenario's own small catalogue, with entry ids as the seed writes them so the page lists it,
+ * instead of Open Food Facts; the first account owns the foods, so it may edit them.
  */
 export async function seedCatalogue(foods: readonly SeededFood[]): Promise<Record<string, string>> {
   const ownerId = await userIdOf(OWNER);

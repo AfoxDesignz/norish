@@ -132,7 +132,7 @@ const list = authedProcedure
       standaloneOnly: z.boolean().optional(),
       /** The viewer's locale: which spellings ride along with each row. */
       locale: z.string().max(20).optional(),
-      /** Only the foods the page lists; the Pantry's search passes false to find hidden ones too. */
+      /** Only the foods the page lists; the Pantry's search passes false to find hidden ones. */
       listedOnly: z.boolean().default(true),
       cursor: z.number().int().min(0).nullish(),
     })

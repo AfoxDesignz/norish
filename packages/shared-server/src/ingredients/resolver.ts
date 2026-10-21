@@ -66,12 +66,8 @@ import { announceMinted, announcingAfter } from "./minted";
  * A mint or a join gives the food only the text's clean spelling, its plain
  * name else its bare one, never the text as written (ADR-0037).
  *
- * A mint is filed under the longest seeded spelling its words contain, as
- * whole words: a guess from words may set a parent, never merge (ADR-0037 as
- * amended by ADR-0039). Only the spelling its text ends with ("ground cumin"
- * under cumin), or starts with before cuts and forms alone ("mango blokjes"
- * under mango), gives a parent; one found anywhere else in the words gives
- * none ("garlic cloves" stays without), and AI's pass files it.
+ * A mint's words may file it under a seeded spelling they end with ("ground cumin") or start with
+ * before forms alone ("mango blokjes"), never merge it (ADR-0039); else AI's pass files it.
  */
 
 /**
@@ -224,7 +220,7 @@ export async function resolveIngredients(
   return resolved.map((one) => (one?.foods[0] ? { text: one.text, ...one.foods[0] } : null));
 }
 
-/** The food of each part of a split, in order: a found one as is, a text resolved with no split of its own. */
+/** A split's foods in order: a found part as is, a text resolved without a split of its own. */
 export async function resolveParts(
   parts: ReadonlyArray<string | ResolvedIngredient>,
   actor: ResolveActor
@@ -507,19 +503,8 @@ async function mint(
 }
 
 /**
- * The parent a flagged mint is filed under from the words of its text: the
- * longest spelling of a seeded food the text, stripped as rung 2 strips it,
- * ends with ("verse peterselie" under peterselie, "smoked sweet paprika"
- * under sweet paprika), or starts with before cuts, forms and sizes alone
- * ("mango blokjes" under mango), and is longer than; or none. Of two the same
- * length, the one the text ends with. Only the words before the words a name
- * ends before are read ("in", "with", or a note's "for", "om"), and those may
- * name the parent whole ("sardines in water" under sardine, "greek yogurt
- * for topping" under greek yogurt); a word of recipe language alone ("and",
- * "more") names none. Where the words end in a plural, its singular is read
- * too, the whole text included ("carrots" under carrot, "red bell peppers"
- * under red bell pepper): the plural stays a food of its own, for AI or a
- * person to merge.
+ * The longest seeded spelling a mint's words end with (or its singular), or start with before forms
+ * and sizes alone, read up to a word a name ends before ("in", "om"); else null.
  */
 async function parentFromWords(spelling: Spelling): Promise<string | null> {
   const { rules } = spelling;
@@ -642,7 +627,7 @@ export async function findIngredientFor(text: string): Promise<IngredientRef | n
   return match ? refOf(match) : null;
 }
 
-/** A food a name finds, and how: `EXACT` is its own spelling, a slip of the fingers less (`slipsNear`). */
+/** A food a name finds, scored `EXACT` by its own spelling, less by a slip (`slipsNear`). */
 export type FoundFood = IngredientRef & { score: number };
 
 const EXACT = 1;

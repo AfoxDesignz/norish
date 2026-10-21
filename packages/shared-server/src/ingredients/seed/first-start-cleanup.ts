@@ -107,9 +107,8 @@ async function cleanUpCatalogue(
     }
   }
 
-  // 2 and 3. An own spelling that is not its own clean name takes it where it is free, the dirty
-  // ones first ("gyoza vellen )"); the rest go, and their rows are resolved again (`removeVariants`).
-  // One a line would name no food by ("Voor de salade:") always goes, so its lines name none.
+  // 2 and 3. An own spelling takes its clean name where free, dirty ones first; the rest, and any
+  // a line names no food by ("Voor de salade:"), go; their rows resolve again (`removeVariants`).
   const removing: Variant[] = [];
 
   for (const variant of [...variants].sort(

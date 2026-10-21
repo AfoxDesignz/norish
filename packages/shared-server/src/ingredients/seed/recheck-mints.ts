@@ -1,21 +1,6 @@
 /**
- * The pass over the Flagged Ingredients an instance's history left behind:
- * the mints made before the resolver read "salt to taste" as salt, or filed
- * "verse peterselie" under peterselie (ADR-0037 as amended by ADR-0039). It
- * runs once per `RUNG_VERSION`, so lines on legacy recipes reach the seeded
- * Ingredients each time the rules for reading a name improve, without AI,
- * and once after the first seed, for what was minted before there was one.
- *
- * For every flagged mint no person decided about (`listUndecidedMints`), in
- * the order they were minted: where its spellings now resolve, by the
- * resolver's first two rungs, to one other Ingredient, it is merged there,
- * and its lines follow their aliases; where they name none, it takes the
- * plain name the resolver would mint it under today ("garlic cloves" for
- * "garlic cloves crushed"), so the sibling mints after it ("garlic cloves
- * thinly sliced") resolve to it and merge, and is filed under the seeded
- * spelling its name ends with, or starts with before cuts and forms alone,
- * staying flagged; where they name several, it is left for a person.
- * Nothing here is the resolver's rules over again: it asks the resolver.
+ * Once per `RUNG_VERSION`, the resolver reads each undecided mint again, oldest first: merged where
+ * it names one other food, left where several, else given today's plain name and its words' parent.
  */
 import { withTransaction } from "@norish/db/drizzle";
 import { mergeCatalogueIngredients } from "@norish/db/repositories/ingredient-relocation";

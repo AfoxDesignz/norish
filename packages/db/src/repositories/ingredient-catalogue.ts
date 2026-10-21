@@ -234,8 +234,8 @@ function listedFood(food: { id: SQL; offId: SQL }): SQL {
 }
 
 /**
- * Whether AI may ask about an Ingredient (ADR-0037, amended 2026-10-17): one someone's action
- * minted, that a recipe line names and no person kept distinct, named or parented.
+ * Whether AI may ask about a food: an own one a recipe line names that no person kept, named or
+ * parented (ADR-0037). Built per call, as `ingredientIsNamed`: importing runs no query builder.
  */
 function askableByAI(): SQL<boolean> {
   return sql<boolean>`(${and(
@@ -257,7 +257,7 @@ export async function isAskableByAI(tx: Db, id: string): Promise<boolean> {
   return row?.askable ?? false;
 }
 
-/** Which of these foods the Ingredients page lists (`listedFood`): the only ones AI's pass names. */
+/** Which of these foods the Ingredients page lists (`listedFood`), the only ones AI names. */
 export async function findListedIngredientIds(ids: readonly string[]): Promise<Set<string>> {
   if (ids.length === 0) return new Set();
   const rows = await db

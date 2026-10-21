@@ -187,7 +187,7 @@ describe("asking AI about an Ingredient", () => {
     await testBase.teardown();
   });
 
-  /** A food minted while nothing could be asked, flagged as the upgrade leaves them; no row names it. */
+  /** A food minted while AI was off, flagged as the upgrade leaves them; no row names it. */
   async function unnamed(text: string) {
     vi.mocked(isAIEnabled).mockResolvedValueOnce(false);
     const [resolved] = await resolveIngredients([text], { userId: actor.userId });

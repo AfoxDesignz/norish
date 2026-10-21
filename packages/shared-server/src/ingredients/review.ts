@@ -64,7 +64,7 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
 
   const sure = answer.reason === null;
   const parent = answer.kindOf ? await findCatalogueIngredient(answer.kindOf) : null;
-  // No parent the catalogue has: the parent goes. A person's parent made the food unaskable, so it is not one.
+  // A parent AI names that is not found drops the current one; a person's parent is never asked.
   const { outcome: filed, previous } =
     parent || row.parentId
       ? await parentByAI(ingredientId, parent?.id ?? null, sure)
@@ -88,8 +88,8 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
 }
 
 /**
- * Several foods: a part AI's names found is that food, the others resolve as an import resolves
- * them, and the food's rows name them instead. A part spelled by the food itself gets a food of its own.
+ * Several foods: a part AI's names found is that food, the others resolve as an import would, and
+ * the food's rows name them instead; a part spelled by the food moves to the food named for it.
  */
 async function split(
   food: { id: string; ownerId: string | null },

@@ -50,9 +50,8 @@ export interface Scored<T> {
 }
 
 /**
- * Every thing by `thingOf` whose folded name is `wanted` typed with a slip, each by its nearest
- * item, best first. There is no tunable threshold on purpose: there is then no number to re-guess
- * when it misjudges.
+ * Every thing (`thingOf`) an item names that is `wanted` typed with a slip, by its nearest item,
+ * best first. No tunable threshold on purpose: no number to re-guess when it misjudges.
  */
 export function slipsNear<T>(
   wanted: string,
@@ -89,7 +88,7 @@ export function onlyNearest<S extends { score: number }>(scored: readonly S[]): 
   return first && first.score !== second?.score ? first : null;
 }
 
-/** The item whose folded name is `wanted` typed with a slip, the nearest, where one thing is nearest. */
+/** The nearest item whose folded name is `wanted` typed with a slip, unless two things tie. */
 export function nearestSlip<T>(
   wanted: string,
   items: readonly T[],

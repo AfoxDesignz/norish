@@ -712,7 +712,7 @@ export async function moveAlias(
   });
 }
 
-/** Move a spelling to the food named for it, minted with `values` where no food goes by that name. */
+/** Move a spelling to the food named for it, minted with `values` where no food has that name. */
 export async function moveToFoodNamedFor(
   tx: DbTransaction,
   alias: { id: string; text: string },
