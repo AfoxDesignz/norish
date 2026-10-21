@@ -1,32 +1,38 @@
 /** What the language model answers when the AI pass reads a name, as `generateStructured` returns it. */
-const NO_READING = {
-  englishName: null,
-  generalFood: null,
-  otherNames: null,
-  parts: null,
-  joined: null,
-};
-
-/** A name read as one food. */
-export function foodReading(reading: {
-  englishName: string | null;
-  generalFood: string | null;
+interface ReadFood {
+  written?: string;
+  englishName: string;
+  parent?: string | null;
   otherNames?: string[];
-  sure: boolean;
-}) {
-  return { ...NO_READING, verdict: "food", ...reading };
 }
 
-/** A name read as several foods. */
+function food({ written, englishName, parent = null, otherNames }: ReadFood) {
+  return { written: written ?? englishName, englishName, parent, otherNames: otherNames ?? null };
+}
+
+/** A name read as one food. */
+export function foodReading(reading: ReadFood & { sure: boolean }) {
+  return {
+    sure: reading.sure,
+    action: { kind: "food", joined: null, reason: null },
+    foods: [food(reading)],
+  };
+}
+
+/** A name read as several foods: a part given as a string is its own English name. */
 export function severalReading(
-  parts: string[],
+  parts: Array<string | ReadFood>,
   joined: "together" | "alternatives",
   sure: boolean
 ) {
-  return { ...NO_READING, verdict: "several", parts, joined, sure };
+  return {
+    sure,
+    action: { kind: "several", joined, reason: null },
+    foods: parts.map((part) => food(typeof part === "string" ? { englishName: part } : part)),
+  };
 }
 
 /** A name read as no food. */
 export function noFoodReading(sure: boolean) {
-  return { ...NO_READING, verdict: "not-a-food", sure };
+  return { sure, action: { kind: "not-a-food", joined: null, reason: "equipment" }, foods: [] };
 }

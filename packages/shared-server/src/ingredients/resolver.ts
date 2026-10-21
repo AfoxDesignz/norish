@@ -389,7 +389,7 @@ async function resolveTexts(
       // The food a slip names may have been merged away since it was found; the text is then minted.
       const joined = slip
         ? await addIngredientAliases({
-            ingredientId: slip,
+            ingredientId: slip.ingredientId,
             aliases: [cleanAlias(spelling)],
             ownerId: actor.userId,
             locale: actor.locale ?? null,
@@ -440,8 +440,8 @@ function sameFoodKey(spelling: Spelling): string {
 async function findSlips(
   spellings: readonly Spelling[],
   excludeId: string | null = null
-): Promise<Map<string, string>> {
-  const slips = new Map<string, string>();
+): Promise<Map<string, IngredientRef>> {
+  const slips = new Map<string, IngredientRef>();
   const questions = new Map(spellings.map((spelling) => [sameFoodKey(spelling), spelling]));
 
   await Promise.all(
@@ -456,7 +456,7 @@ async function findSlips(
         (row) => row.ingredientId
       );
 
-      if (near) slips.set(key, near.ingredientId);
+      if (near) slips.set(key, near);
     })
   );
 
@@ -668,7 +668,7 @@ export async function findOtherFoodsNamed(
   ingredientId: string,
   texts: readonly string[],
   { slips = true }: { slips?: boolean } = {}
-): Promise<Array<{ ingredientId: string; slip: boolean } | null>> {
+): Promise<Array<(IngredientRef & { slip: boolean }) | null>> {
   const rules = await currentRules();
   const spellings = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
   const readable = spellings.filter((spelling) => spelling.text && !spellingNamesNoFood(spelling));
@@ -681,15 +681,15 @@ export async function findOtherFoodsNamed(
         readable.filter((spelling) => !matched.get(spelling)),
         ingredientId
       )
-    : new Map<string, string>();
+    : new Map<string, IngredientRef>();
 
   return spellings.map((spelling) => {
     const match = matched.get(spelling);
     const slip = matched.has(spelling) ? slipped.get(sameFoodKey(spelling)) : undefined;
 
-    if (match) return { ingredientId: match.ingredientId, slip: false };
+    if (match) return { aliasId: match.aliasId, ingredientId: match.ingredientId, slip: false };
 
-    return slip ? { ingredientId: slip, slip: true } : null;
+    return slip ? { aliasId: slip.aliasId, ingredientId: slip.ingredientId, slip: true } : null;
   });
 }
 

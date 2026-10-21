@@ -270,13 +270,11 @@ test("AI merges a food a recipe mints by itself, Changed by AI lists the merge, 
   ai.control.enqueueIngredients({
     kind: "success",
     content: JSON.stringify({
-      verdict: "food",
-      englishName: "garlic",
-      generalFood: null,
-      otherNames: null,
-      parts: null,
-      joined: null,
       sure: true,
+      action: { kind: "food", joined: null, reason: null },
+      foods: [
+        { written: "knoflookteentjes", englishName: "garlic", parent: null, otherNames: null },
+      ],
     }),
   });
   await createRecipe(aiStack.baseURL, aiStack.ownerCookies, "Knoflookbrood", ["knoflookteentjes"]);
@@ -320,13 +318,9 @@ test("AI gives a food a recipe mints its plain name by itself, listed on Changed
     {
       kind: "success",
       content: JSON.stringify({
-        verdict: "food",
-        englishName: "zalmmoot",
-        generalFood: null,
-        otherNames: null,
-        parts: null,
-        joined: null,
         sure: true,
+        action: { kind: "food", joined: null, reason: null },
+        foods: [{ written: "zalmmoot", englishName: "zalmmoot", parent: null, otherNames: null }],
       }),
     },
     { kind: "success", content: JSON.stringify({ plainName: "zalmmoot" }) }
@@ -361,13 +355,9 @@ test("AI removes a food that names nothing; its line stays in the recipe with no
   ai.control.enqueueIngredients({
     kind: "success",
     content: JSON.stringify({
-      verdict: "not-a-food",
-      englishName: null,
-      generalFood: null,
-      otherNames: null,
-      parts: null,
-      joined: null,
       sure: true,
+      action: { kind: "not-a-food", joined: null, reason: "preparation" },
+      foods: [],
     }),
   });
   const id = await createRecipe(aiStack.baseURL, aiStack.ownerCookies, "Snickers ijstaart", [

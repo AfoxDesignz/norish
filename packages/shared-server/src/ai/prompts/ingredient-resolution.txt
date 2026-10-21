@@ -3,35 +3,48 @@ You are given one name from a recipe, a grocery list or a pantry, and say what
 it is. The catalogue is searched for your answer afterwards, so name foods the
 way a shopper would look for them.
 
-Give "verdict", one of:
+Answer with "action", "foods" and "sure". Give "action.kind", one of:
 
-- "food": the name is one food. Give "englishName", its plain English name
-  ("uien" is "onion", "Unox Knaks" is "frankfurter", "kipfilet" is "chicken
-  breast", "tomatoes, chopped" is "tomato"); "generalFood", the more general
-  food it is a kind of that a shopper also buys ("rode uien" are a kind of
-  "onion", "cherry tomatoes" a kind of "tomato", "Unox Knaks" a kind of
-  "sausage"), or null when there is none; and "otherNames", two or three other
-  names a shop might sell the same food under ("hot dog sausage" and "wiener"
-  for "frankfurter"), or null when there are none. Foods that merely share a
-  word are different foods: "onion powder" is not "onion", "salted butter" is
-  not "salt", "coconut milk" is not "milk".
-- "several": the name names more than one food, joined by "and" or "or" in any
-  language. "Dijon or yellow mustard" is "Dijon mustard" and "yellow mustard";
-  "zout en peper" is "zout" and "peper". Give each food's name in "parts", in
-  the language written, and "joined": "together" when the recipe needs all of
-  them, "alternatives" when any one will do. A food whose own name holds "and"
-  is one food: "mac and cheese", "half and half", "sweet and sour sauce".
-- "not-a-food": the name is no food at all. It is kitchen equipment the cook
-  already has and uses, not something bought for the recipe ("deegroller",
-  "taart- of springvorm (doorsnede 26 cm)", "food processor"); a preparation or
-  a fragment left on a line of its own ("melted", "roughly chopped", "overnight
-  and drained"); a note; or gibberish.
+- "food": the name is one food. Give one entry in "foods".
+- "several": the name names more than one food, joined by "and" or "or" in
+  any language, or written side by side with no joining word. "Dijon or
+  yellow mustard" is "Dijon mustard" and "yellow mustard"; "zout en peper" is
+  "zout" and "peper"; "salt cinnamon" is "salt" and "cinnamon"; "koud water
+  melk" is "koud water" and "melk". Give one entry in "foods" per food, and
+  "action.joined": "together" when the recipe needs all of them,
+  "alternatives" when any one will do. A food whose own name holds "and" is
+  one food: "mac and cheese", "half and half", "sweet and sour sauce".
+- "not-a-food": the name is no food at all. Give no entry in "foods", and
+  "action.reason": "equipment" for kitchen equipment the cook already has and
+  uses, not something bought for the recipe ("deegroller", "taart- of
+  springvorm (doorsnede 26 cm)", "food processor"); "preparation" for a
+  preparation or a fragment left on a line of its own ("melted", "roughly
+  chopped", "overnight and drained"); "note" for a note; "gibberish" for
+  anything else.
+
+Give "action.joined" only for "several" and "action.reason" only for
+"not-a-food", and null otherwise.
 
 Anything a household buys in a shop is a "food", never "not-a-food", even when
 it is not eaten: "baking paper", "aluminium foil", "toilet paper" and "dish
 soap" stay in the catalogue, so their shop and aisle are remembered.
 
-Give each field only for its verdict, and null otherwise.
+For each entry in "foods" give:
+
+- "written": the food as the name writes it, in the language written ("koud
+  water" in "koud water melk").
+- "englishName": its plain English name ("uien" is "onion", "Unox Knaks" is
+  "frankfurter", "kipfilet" is "chicken breast", "tomatoes, chopped" is
+  "tomato", "koud water" is "cold water").
+- "parent": the more general food it is a kind of that a shopper also buys
+  ("rode uien" are a kind of "onion", "cherry tomatoes" a kind of "tomato",
+  "Unox Knaks" a kind of "sausage"), or null when there is none.
+- "otherNames": two or three other names a shop might sell the same food under
+  ("hot dog sausage" and "wiener" for "frankfurter"), or null when there are
+  none.
+
+Foods that merely share a word are different foods: "onion powder" is not
+"onion", "salted butter" is not "salt", "coconut milk" is not "milk".
 
 Set "sure" to false whenever you hesitate between two answers, do not know the
 name, or are guessing at a translation. Set it to true only when a cook would

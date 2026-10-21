@@ -3,7 +3,8 @@
  * nothing. One language-model request under the administrator-editable `ingredient-resolution`
  * Prompt reads the name, with no catalogue in front of it: a food (its plain English name, the more
  * general food it is a kind of, and other names a shop sells it under), several foods, or not a
- * food. The code looks the names up as an import would. Only where they name more than one food is
+ * food. The answer's shape is checked, and asked once more where it breaks. The code looks the
+ * names up as an import would, a split's parts too. Only where they name more than one food is
  * a second question asked over just those: a Decision when a Decision Model is configured and this
  * use is on, and otherwise — or when the Decision is unsure, or fails — the language model
  * (ADR-0035).
@@ -12,7 +13,10 @@
  */
 import { z } from "zod";
 
-import type { IngredientCandidate } from "@norish/db/repositories/ingredient-aliases";
+import type {
+  IngredientCandidate,
+  IngredientRef,
+} from "@norish/db/repositories/ingredient-aliases";
 import type { FlagReason, ReviewTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
 import { findIngredientCandidatesByIds } from "@norish/db/repositories/ingredient-aliases";
@@ -48,8 +52,14 @@ export type AIResolution =
   | { kind: "same"; ingredientId: string; sure: boolean }
   | { kind: "new"; kindOf: string | null; flagged: false; reason: null }
   | { kind: "new"; kindOf: string | null; flagged: true; reason: FlagReason }
-  | { kind: "several"; parts: string[]; joined: LineJoin; sure: boolean }
+  | { kind: "several"; parts: ReadPart[]; joined: LineJoin; sure: boolean }
   | { kind: "not-a-food"; sure: boolean };
+
+/** A part of several foods as written, and the food AI's names for it surely found, if any. */
+export interface ReadPart {
+  text: string;
+  found: IngredientRef | null;
+}
 
 /** A food of its own that nothing sure vouched for: flagged, and why. */
 function flaggedNew(reason: FlagReason, kindOf: string | null = null): AIResolution {
@@ -100,7 +110,7 @@ async function readThenLookUp(
   excludeId: string,
   trace: ReviewTrace
 ): Promise<AIResolution> {
-  let reading: Reading;
+  let reading: Reading | null;
 
   try {
     reading = await readName(text);
@@ -110,24 +120,60 @@ async function readThenLookUp(
     return failedNew(error);
   }
 
-  if (reading.verdict === "not-a-food") return { kind: "not-a-food", sure: reading.sure };
-  if (reading.verdict === "several") {
-    trace.parts = reading.parts;
+  if (!reading) return flaggedNew("ai-unavailable");
+  if (reading.kind === "not-a-food") return { kind: "not-a-food", sure: reading.sure };
+  if (reading.kind === "several") {
+    trace.parts = reading.foods.map((food) => food.written);
+    if (!reading.sure) return { kind: "several", parts: [], joined: reading.joined, sure: false };
 
-    return reading.parts.length > 1
-      ? { kind: "several", parts: reading.parts, joined: reading.joined, sure: reading.sure }
-      : flaggedNew("ai-unsure");
+    const parts: ReadPart[] = [];
+
+    for (const food of reading.foods) {
+      const found = await findNamed(food.written, excludeId, food, trace);
+
+      if ("kind" in found) return found;
+      parts.push({ text: food.written, found: found.sure ? found.food : null });
+    }
+
+    return { kind: "several", parts, joined: reading.joined, sure: true };
   }
 
+  const [food] = reading.foods;
+
   Object.assign(trace, {
-    englishName: reading.englishName,
-    generalFood: reading.generalFood,
-    otherNames: reading.otherNames,
+    englishName: food.englishName,
+    generalFood: food.parent,
+    otherNames: food.otherNames,
   });
 
-  const names = [reading.englishName, ...reading.otherNames].filter((name) => name !== null);
-  const found = (await findOtherFoodsNamed(excludeId, names)).filter((food) => food !== null);
-  const foods = [...new Set(found.map((food) => food.ingredientId))];
+  const found = await findNamed(text, excludeId, food, trace);
+
+  if ("kind" in found) return found;
+  const sure = reading.sure && found.sure;
+
+  if (found.food) return { kind: "same", ingredientId: found.food.ingredientId, sure };
+
+  const [general] = food.parent ? await findOtherFoodsNamed(excludeId, [food.parent]) : [null];
+  const kindOf = general?.ingredientId ?? null;
+
+  return sure && !general?.slip
+    ? { kind: "new", kindOf, flagged: false, reason: null }
+    : flaggedNew("ai-unsure", kindOf);
+}
+
+/**
+ * The food other than `excludeId` a read food's names find, asked which where they find several;
+ * not sure where AI was not, or only a slip of AI's names found it (cherry beside sherry).
+ */
+async function findNamed(
+  text: string,
+  excludeId: string,
+  food: ReadFood,
+  trace: ReviewTrace
+): Promise<{ food: IngredientRef | null; sure: boolean } | AIResolution> {
+  const names = [food.englishName, ...food.otherNames].filter((name) => name !== null);
+  const found = (await findOtherFoodsNamed(excludeId, names)).filter((one) => one !== null);
+  const foods = [...new Set(found.map((one) => one.ingredientId))];
   let pick: Pick = { ingredientId: foods[0] ?? null, sure: true };
 
   if (foods.length > 1) {
@@ -140,93 +186,113 @@ async function readThenLookUp(
     pick = asked;
   }
 
-  // A food only a slip of AI's own names finds may be a false friend ("cherry" beside "sherry").
-  const slipped = found.every((food) => food.ingredientId !== pick.ingredientId || food.slip);
-  const sure = reading.sure && pick.sure && !(pick.ingredientId && slipped);
+  const hits = found.filter((one) => one.ingredientId === pick.ingredientId);
+  const hit = hits.find((one) => !one.slip) ?? hits[0] ?? null;
 
-  if (pick.ingredientId) return { kind: "same", ingredientId: pick.ingredientId, sure };
-
-  const [general] = reading.generalFood
-    ? await findOtherFoodsNamed(excludeId, [reading.generalFood])
-    : [null];
-  const kindOf = general?.ingredientId ?? null;
-
-  return sure && !general?.slip
-    ? { kind: "new", kindOf, flagged: false, reason: null }
-    : flaggedNew("ai-unsure", kindOf);
+  return { food: hit, sure: pick.sure && !hit?.slip };
 }
 
-/** What the language model read a name as. */
-type Reading =
-  | {
-      verdict: "food";
-      englishName: string | null;
-      generalFood: string | null;
-      otherNames: string[];
-      sure: boolean;
-    }
-  | { verdict: "several"; parts: string[]; joined: LineJoin; sure: boolean }
-  | { verdict: "not-a-food"; sure: boolean };
+/** One food as the language model read it, its names trimmed, blanks dropped. */
+interface ReadFood {
+  written: string;
+  englishName: string | null;
+  parent: string | null;
+  otherNames: string[];
+}
 
-const readingSchema = z
+/** What the language model read a name as, its shape checked. */
+type Reading =
+  | { kind: "food"; foods: [ReadFood]; sure: boolean }
+  | { kind: "several"; foods: ReadFood[]; joined: LineJoin; sure: boolean }
+  | { kind: "not-a-food"; sure: boolean };
+
+const readFoodSchema = z
   .object({
-    verdict: z.enum(["food", "several", "not-a-food"]),
-    englishName: z
-      .string()
-      .nullable()
-      .describe("For food: its plain English name, as a shopper would look for it; else null."),
-    generalFood: z
+    written: z.string().describe("The food as the name writes it, in the language written."),
+    englishName: z.string().describe("Its plain English name, as a shopper would look for it."),
+    parent: z
       .string()
       .nullable()
       .describe(
-        "For food: the more general food it is a kind of, in plain English; null when there is none."
+        "The more general food it is a kind of, in plain English; null when there is none."
       ),
     otherNames: z
       .array(z.string())
       .nullable()
-      .describe("For food: two or three other names a shop might sell it under; null when none."),
-    parts: z
-      .array(z.string())
-      .nullable()
-      .describe("For several: each food's name, in the language written; null otherwise."),
-    joined: z
-      .enum(["together", "alternatives"])
-      .nullable()
-      .describe("For several: together when all are needed, alternatives when any one will do."),
-    sure: z.boolean(),
+      .describe("Two or three other names a shop might sell it under; null when none."),
   })
   .strict();
 
-/** What the language model reads a name as, with no catalogue in front of it. */
-async function readName(text: string): Promise<Reading> {
-  const answer = await generateStructured({
-    prompt: "ingredient-resolution",
-    schema: readingSchema,
-    sections: [`Name: ${text}`],
-  });
+/** One flat object, since OpenAI's strict mode refuses a choice of schemas at the top. */
+const readingSchema = z
+  .object({
+    sure: z.boolean(),
+    action: z
+      .object({
+        kind: z.enum(["food", "several", "not-a-food"]),
+        joined: z
+          .enum(["together", "alternatives"])
+          .nullable()
+          .describe(
+            "For several: together when all are needed, alternatives when any one will do."
+          ),
+        reason: z
+          .enum(["equipment", "preparation", "note", "gibberish"])
+          .nullable()
+          .describe("For not-a-food: what the name is instead."),
+      })
+      .strict(),
+    foods: z
+      .array(readFoodSchema)
+      .describe("One entry for food, one per food for several, none for not-a-food."),
+  })
+  .strict();
+
+/**
+ * The answer as a reading, or null where its shape breaks: a food has one entry, several have two
+ * or more and a join, not a food has none and a reason.
+ */
+function checked(answer: z.infer<typeof readingSchema>): Reading | null {
   const plain = (name: string | null) => name?.trim() || null;
-  const plainAll = (names: readonly string[] | null) =>
-    (names ?? []).map(plain).filter((name) => name !== null);
+  const foods = answer.foods.map((food) => ({
+    written: food.written.trim(),
+    englishName: plain(food.englishName),
+    parent: plain(food.parent),
+    otherNames: (food.otherNames ?? []).map(plain).filter((name) => name !== null),
+  }));
+  const { kind, joined, reason } = answer.action;
+  const [first, ...rest] = foods;
 
-  aiLogger.info({ text, ...answer }, "Language model read what food a name is");
+  if (kind === "food" && first && rest.length === 0) {
+    return { kind, foods: [first], sure: answer.sure };
+  }
+  if (kind === "several" && foods.length > 1 && joined) {
+    return { kind, foods, joined, sure: answer.sure };
+  }
+  if (kind === "not-a-food" && foods.length === 0 && reason) return { kind, sure: answer.sure };
 
-  if (answer.verdict === "not-a-food") return { verdict: "not-a-food", sure: answer.sure };
-  if (answer.verdict === "several") {
-    return {
-      verdict: "several",
-      parts: plainAll(answer.parts),
-      joined: answer.joined ?? "together",
-      sure: answer.sure,
-    };
+  return null;
+}
+
+/** What the language model reads a name as, asked once more where the answer breaks its shape. */
+async function readName(text: string): Promise<Reading | null> {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const answer = await generateStructured({
+      prompt: "ingredient-resolution",
+      schema: readingSchema,
+      sections: [`Name: ${text}`],
+    });
+    const reading = checked(answer);
+
+    aiLogger.info({ text, attempt, ...answer }, "Language model read what food a name is");
+    if (reading) return reading;
+    aiLogger.warn(
+      { feature: "ingredient-resolution", text, attempt },
+      "The reading broke its shape"
+    );
   }
 
-  return {
-    verdict: "food",
-    englishName: plain(answer.englishName),
-    generalFood: plain(answer.generalFood),
-    otherNames: plainAll(answer.otherNames),
-    sure: answer.sure,
-  };
+  return null;
 }
 
 /** Which of the found foods the name is, or none (null), and whether AI was sure. */

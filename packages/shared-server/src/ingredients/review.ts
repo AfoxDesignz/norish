@@ -12,13 +12,14 @@ import {
   setIngredientFlagReason,
 } from "@norish/db/repositories/ingredient-catalogue";
 import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
+import { distinctFoods } from "@norish/shared/lib/line-foods";
 
 import type { AIResolution } from "../ai/resolution/ingredient-resolution";
 import { askWhatFoodThisIs } from "../ai/resolution/ingredient-resolution";
 import { deleteByAI, flagByAnswer, mergeByAI, parentByAI, splitByAI } from "./ai-changes";
 import { ingredientChanges } from "./changes";
 import { nameAfterAnswer } from "./plain-names";
-import { resolveParts } from "./resolver";
+import { resolveIngredients } from "./resolver";
 
 /** How long one food's question may take: up to three requests (read, Decision, language model). */
 export const REVIEW_BUDGET_MS = 30_000;
@@ -88,8 +89,8 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
 }
 
 /**
- * Several foods: the parts resolve as an import resolves them, and the food's rows name them instead.
- * A part that is the food itself leaves it as it was.
+ * Several foods: a part AI's names found is that food, the others resolve as an import resolves
+ * them, and the food's rows name them instead. A part that is the food itself leaves it as it was.
  */
 async function split(
   food: { id: string; ownerId: string | null },
@@ -102,7 +103,13 @@ async function split(
 
   if (!now?.askable) return { outcome: "skipped", reason: now ? "decided" : "not-found", ...trace };
 
-  const parts = await resolveParts(answer.parts, { userId: food.ownerId });
+  const unfound = answer.parts.filter((part) => !part.found).map((part) => part.text);
+  const resolved = await resolveIngredients(unfound, { userId: food.ownerId });
+  const parts = distinctFoods(
+    answer.parts
+      .map((part) => (part.found ? { ...part.found, text: part.text } : resolved.shift()))
+      .filter((part) => part != null)
+  );
   const [first, ...rest] = parts;
 
   if (!first || parts.some((part) => part.ingredientId === food.id)) {
