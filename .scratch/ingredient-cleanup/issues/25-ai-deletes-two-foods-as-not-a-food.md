@@ -5,10 +5,11 @@
 - two own foods that name two foods with no joining word between them ("salt cinnamon", "koud water melk"). Each had a line, which now names no food. They read as several foods, not as no food.
 - an own food a grocery named, which is food by its words ("… reserve eten"). The grocery now points at no food and loses its aisle and price. Mike, 2026-10-20: a non-food purchase stays an Ingredient for its aisle and price, so a grocery's food should not be deleted for this either.
 
-**Blocked by:** None
+**Fix (Mike, 2026-10-21):** nothing to build here. The two foods side by side are split through ticket 31's answer; the grocery's food is hidden and never asked through ticket 32. In the run, AI read all three as "not a food" while unsure. Ticket 33 checks them.
 
-**Status:** needs-triage
+**Blocked by:** 31, 32
 
-- [ ] A name of two foods with no joining word is split or left, never deleted as not a food.
-- [ ] A food a grocery names is not deleted as not a food.
-- [ ] All `CONTRIBUTING.md` gates pass.
+**Status:** ready-for-agent
+
+- [ ] "salt cinnamon" and "koud water melk" are split, not deleted (ticket 31).
+- [ ] "… reserve eten" is hidden and never asked (ticket 32).

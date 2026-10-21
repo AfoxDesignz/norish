@@ -4,9 +4,20 @@
 
 Look at where the target came from (a slip of AI's names is unsure by rule, ticket 15) before choosing a fix.
 
+**Why:** AI read "rode pesto" as "red pesto" (under pesto) and "sriracha sauce" as sriracha (under hot sauce), sure. None of its names is a food in the catalogue, so the lookup fell back to a slip of the fingers, which took red port and oyster sauce. With one food found, AI was never asked about it, and the merge was made unsure.
+
+**Fix (Mike, 2026-10-21):** the lookup scores what it finds.
+
+- Each food found carries a score: an exact spelling is 1, a slip its closeness (the Fuse score `name-slips` already computes and drops).
+- An exact match is taken; slips beside it are ignored.
+- Only slips found: they are put to AI as the numbered list, best score first, with "none of these", even when only one was found. That is one more request per such food (5 on the copy).
+- AI off: unchanged.
+
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
-- [ ] "rode pesto" and "sriracha sauce" are not merged into red port and oyster sauce.
+- [ ] "rode pesto" and "sriracha sauce" are not merged into red port and oyster sauce; asked, AI answers none.
+- [ ] "tortilla's" is still merged into tortilla.
+- [ ] An exact match beside a slip is taken without a second question.
 - [ ] All `CONTRIBUTING.md` gates pass.
