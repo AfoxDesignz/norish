@@ -508,7 +508,9 @@ test("a food only a grocery names is not on the Ingredients page, and AI leaves 
 }) => {
   const reserve = "Nora reserve eten";
 
-  await seedCatalogue([{ name: "reservebrood", aliases: [{ text: "reservebrood", locale: "nl" }] }]);
+  await seedCatalogue([
+    { name: "reservebrood", aliases: [{ text: "reservebrood", locale: "nl" }] },
+  ]);
   await waitForAIPasses(aiStack);
   // Were AI asked about the grocery's food, it would delete it as no food.
   ai.control.enqueueIngredients({
