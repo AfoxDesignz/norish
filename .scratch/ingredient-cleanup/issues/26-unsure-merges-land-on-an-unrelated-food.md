@@ -13,9 +13,20 @@
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] "rode pesto" and "sriracha sauce" are not merged into red port and oyster sauce; asked, AI answers none.
-- [ ] "tortilla's" is still merged into tortilla.
-- [ ] An exact match beside a slip is taken without a second question.
+- [x] "rode pesto" and "sriracha sauce" are not merged into red port and oyster sauce; asked, AI answers none.
+- [x] "tortilla's" is still merged into tortilla.
+- [x] An exact match beside a slip is taken without a second question.
 - [ ] All `CONTRIBUTING.md` gates pass.
+
+2026-10-21, implemented:
+
+- `@norish/shared/lib/name-slips`: `slipsNear(wanted, items, nameOf, thingOf)` returns `Scored<T>[]` (`{ item, score }`, score = 1 - how far apart), one per thing by its nearest item, best first. `onlyNearest(list)` is the best unless two things tie (today's rule); `nearestSlip` is `onlyNearest(slipsNear(...))`, so the grocery product rule and an import (AI off) are unchanged.
+- `findOtherFoodsNamed` (resolver) now returns `FoundFood[][]`: per text, `[{ aliasId, ingredientId, score: 1 }]` for its own spelling, else every food a slip away best first, else `[]`. `findSlips` returns these lists per spelling key; `resolveTexts` takes `onlyNearest`. `FoundFood` is exported from the resolver.
+- `findNamed`: an exact spelling of any of AI's names is taken and slips beside it ignored (2+ exact foods are still asked which). Slips alone, even one, go to the existing second question (`askWhich`: Decision, else the language model's numbered list with null for none), best first; the candidates are put in that order (the repository returned them in DB order before). No new prompt; the default prompt's last paragraph now says the second question also comes for foods "spelled a letter or two apart", nearest first.
+- A slip AI picks is still an unsure merge (flagged, Undo), as before. Mike may prefer it sure now that AI was asked; I kept the person's check.
+- The parent lookup in `readThenLookUp` stays on today's behaviour: `onlyNearest` of the parent's list (exact, else the nearest slip unless two tie), a slip parent unsure. `recheck-mints` reads `found.flat()`.
+- Cost (ticket 31): one more resolution request per food whose AI names find only slips (the ticket's estimate: 5 on the copy).
+- Tests: `review.test.ts` "a reading only a slip of the fingers finds" (one slip asked and none kept, every slip listed nearest first, a slip AI picks merges unsure, exact beside a slip takes one request); the zucchini slip case now queues a Decision. `packages/shared/__tests__/lib/name-slips.test.ts`. The test pairs ("porto rosso" for AI's other name "pesto rosso", "sambal oelek"/"sambal olie" for "sambal olek") were picked by computed distance: "red pesto" is not a slip of "red port" by name alone, so the production find went through a spelling the test cannot know.
+- Docs: a release-notes line, the 0.26 upgrade note on the Ingredient resolution prompt names the second question's new case, and the Ingredients page's merge bullet.
