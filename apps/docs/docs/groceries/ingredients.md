@@ -14,7 +14,10 @@ when known. So:
 - a [product](./prices.md) linked to "milk" also works for "melk"
 - "onion" in the [pantry](./pantry.md) also covers its translations
 
-Find it under **Settings => Ingredients**.
+Find it under **Settings => Ingredients**. The page lists every ingredient from
+the catalogue source and every one a recipe uses. One only groceries or the
+pantry use, like "toilet paper", is not listed, and keeps its aisle and price.
+It is listed once a recipe uses it.
 
 ## Catalogue source
 
@@ -51,8 +54,8 @@ recipe, grocery or pantry item adds it. It then does one of these:
   of a line ("melted"). Recipe lines and groceries keep their text.
 
 AI leaves alone an ingredient you marked distinct, renamed or gave a parent,
-and every ingredient from the catalogue source. Ingredients AI could not reach
-are tried again every night.
+every ingredient from the catalogue source, and one no recipe uses.
+Ingredients AI could not reach are tried again every night.
 
 ### Changed by AI
 
