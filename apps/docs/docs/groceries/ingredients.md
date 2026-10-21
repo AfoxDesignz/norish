@@ -39,7 +39,8 @@ until it has its own.
 When AI is set up, it looks at every new ingredient by itself, moments after a
 recipe, grocery or pantry item adds it. It then does one of these:
 
-- merges it into the food it is ("uien" into "onion")
+- merges it into the food it is ("uien" into "onion"). A food only spelled
+  like it, a letter or two apart, is merged only when AI picks it
 - files it under a parent ("cherry tomatoes" under "tomato"), or takes away
   one its name gave it that it is no kind of ("peanut butter" under "butter")
 - gives it a clean name ("GR OF CANNED TUNA" becomes "Canned Tuna")
