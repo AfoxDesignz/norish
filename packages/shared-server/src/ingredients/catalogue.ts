@@ -538,6 +538,9 @@ export async function resolveAgain(rows: NamingRows, { mint }: { mint: boolean }
         return owned.flatMap((line, index) => {
           const resolved = foods[index];
 
+          // A line naming no food loses the one a removed spelling's heir gave it.
+          if (!texts[index]) return [{ id: line.id, aliasIds: [], joined: null }];
+
           return resolved
             ? [
                 {
