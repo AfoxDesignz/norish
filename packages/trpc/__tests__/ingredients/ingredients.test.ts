@@ -36,6 +36,7 @@ const relocation = vi.hoisted(() => ({
   countAliasesOf: vi.fn(),
   findIngredientAncestors: vi.fn(),
   insertCatalogueIngredient: vi.fn(),
+  lockIngredientNamed: vi.fn(async () => null),
   lockIngredients: vi.fn(async (_tx: unknown, ids: readonly string[]) => ids.length),
   lockTree: vi.fn(),
   mergeCatalogueIngredients: vi.fn(),
