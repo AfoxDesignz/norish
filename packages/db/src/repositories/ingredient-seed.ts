@@ -17,7 +17,6 @@ import {
   clearAIFlagUnlessOpen,
   parentIsOpenAnswer,
   parentIsOpenGuess,
-  recordGuessedParent,
   takeOpenParentChanges,
   vouchForOpenAIChanges,
   wasParentUndone,
@@ -466,17 +465,11 @@ export async function listUnchosenOwnChildren(
 }
 
 /** Re-file an own food the words filed under `fromId` under `toId` (`fileUnder`). Whether it moved. */
-export async function refileOwnFood(
-  id: string,
-  fromId: string,
-  toId: string,
-  unsure: boolean
-): Promise<boolean> {
+export async function refileOwnFood(id: string, fromId: string, toId: string): Promise<boolean> {
   return await fileUnder(
     id,
     toId,
-    and(eq(ingredients.parentId, fromId), isNull(ingredients.offId)),
-    unsure
+    and(eq(ingredients.parentId, fromId), isNull(ingredients.offId))
   );
 }
 
@@ -604,16 +597,13 @@ export async function adoptPlainName(
 /**
  * File an undecided mint under the parent its words suggest, or none (null), leaving it flagged
  * and the parent unchosen: only where its parent is still `expectedParentId` (none by default), no
- * person decided about it meanwhile, and the parent would close no cycle. With `unsure`, the
- * parent is an unsure AI Change, from the words, replacing any older one. Whether it was filed.
+ * person decided about it meanwhile, and the parent would close no cycle. An older guess from the
+ * words goes. Whether it was filed.
  */
 export async function fileUndecidedMint(
   id: string,
   parentId: string | null,
-  {
-    unsure = false,
-    expectedParentId = null,
-  }: { unsure?: boolean; expectedParentId?: string | null } = {}
+  { expectedParentId = null }: { expectedParentId?: string | null } = {}
 ): Promise<boolean> {
   return await fileUnder(
     id,
@@ -623,8 +613,7 @@ export async function fileUndecidedMint(
         ? isNull(ingredients.parentId)
         : eq(ingredients.parentId, expectedParentId),
       eq(ingredients.flagged, true)
-    ),
-    unsure
+    )
   );
 }
 
@@ -635,8 +624,7 @@ export async function fileUndecidedMint(
 async function fileUnder(
   id: string,
   parentId: string | null,
-  where: SQL | undefined,
-  unsure: boolean
+  where: SQL | undefined
 ): Promise<boolean> {
   return await db.transaction(async (tx) => {
     await lockTree(tx);
@@ -661,13 +649,11 @@ async function fileUnder(
       .returning({ id: ingredients.id });
 
     if (filed.length === 0) return false;
-    // An older guess goes with the old parent; a sure one leaves no doubt behind.
+    // An older guess goes with the old parent; the words' parent leaves no doubt behind.
     const replaced = await takeOpenParentChanges(tx, id);
 
     // No parent is no answer: the mint stays flagged as it was.
-    if (parentId === null) return true;
-    if (unsure) await recordGuessedParent(tx, id, parentId);
-    else if (replaced) await clearAIFlagUnlessOpen(tx, id);
+    if (parentId !== null && replaced) await clearAIFlagUnlessOpen(tx, id);
 
     return true;
   });

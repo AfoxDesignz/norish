@@ -13,15 +13,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
 import { withTransaction } from "@norish/db/drizzle";
-import {
-  flagUnderOpenChange,
-  listAIChanges,
-  recordGuessedParent,
-} from "@norish/db/repositories/ingredient-ai-changes";
+import { flagUnderOpenChange, listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import { findIngredientAncestors } from "@norish/db/repositories/ingredient-relocation";
 import { listPantryIngredientsByUserIds } from "@norish/db/repositories/pantry";
 import { groceries, ingredientAliases, ingredients, serverConfig } from "@norish/db/schema";
-import { keepAIChange, mergeByAI } from "@norish/shared-server/ingredients/ai-changes";
+import { mergeByAI } from "@norish/shared-server/ingredients/ai-changes";
 import {
   addAlias,
   listIngredients,
@@ -39,6 +35,7 @@ import {
 import { correctSeedOnce } from "@norish/shared-server/ingredients/seed/correct-seed";
 
 import {
+  fileAsOldWordsGuess,
   getSpellingTexts,
   getTestDb,
   nameInATestRecipe,
@@ -356,22 +353,13 @@ describe("the ingredient catalogue seed", () => {
       // As a seed from before the correction left it.
       await moveAlias(admin, await seasoningAlias(), coating.ingredientId);
       const cajun = await resolve("cajun seasoning");
-      const blend = await resolve("seasoning blend");
-      const rub = await resolve("seasoning rub");
+      const chicken = await resolve("chicken seasoning");
       const ranch = await resolve("ranch seasoning");
 
       await setParent(admin, ranch.ingredientId, coating.ingredientId);
-      // A person keeps the words' unsure guess for the rub.
-      const rubChange = (await listAIChanges()).find(
-        (change) => change.ingredient?.name === "seasoning rub"
-      )!;
-
-      await keepAIChange(actor, rubChange.id);
-      // An earlier unsure parent change names coating, though the words are sure of it.
-      await withTransaction(async (tx) => {
-        await recordGuessedParent(tx, cajun.ingredientId, coating.ingredientId);
-        await flagUnderOpenChange(tx, cajun.ingredientId);
-      });
+      // An older rule's unsure guess names coating, though the words are sure of it.
+      await fileAsOldWordsGuess(cajun.ingredientId, coating.ingredientId);
+      await withTransaction((tx) => flagUnderOpenChange(tx, cajun.ingredientId));
 
       await expect(correctSeedOnce()).resolves.toMatchObject({ moved: 1, refiled: 2 });
 
@@ -379,16 +367,11 @@ describe("the ingredient catalogue seed", () => {
         ingredientId: mixed.ingredientId,
       });
       await expect(parentOf(cajun.ingredientId)).resolves.toBe(mixed.ingredientId);
-      await expect(parentOf(blend.ingredientId)).resolves.toBe(mixed.ingredientId);
-      // A parent a person chose or kept stays.
+      await expect(parentOf(chicken.ingredientId)).resolves.toBe(mixed.ingredientId);
+      // A parent a person chose stays.
       await expect(parentOf(ranch.ingredientId)).resolves.toBe(coating.ingredientId);
-      await expect(parentOf(rub.ingredientId)).resolves.toBe(coating.ingredientId);
-      // The words' unsure guess is listed under its new parent; the stale one went.
-      expect(
-        (await listAIChanges())
-          .filter((change) => !change.kept)
-          .map((change) => [change.ingredient?.name, change.target?.name])
-      ).toEqual([["seasoning blend", "mixed spices"]]);
+      // The stale guess went with the old parent.
+      await expect(listAIChanges()).resolves.toEqual([]);
       await expect(ingredientNamed("cajun seasoning")).resolves.toMatchObject({ flagged: false });
 
       // The nightly refresh leaves it there.

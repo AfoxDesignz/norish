@@ -27,6 +27,7 @@ import { readIngredientSeedState } from "@norish/shared-server/ingredients/seed/
 import { recheckUndecidedMintsOnRungChange } from "@norish/shared-server/ingredients/seed/recheck-mints";
 
 import {
+  fileAsOldWordsGuess,
   getTestDb,
   mintTestFood,
   nameInATestRecipe,
@@ -140,14 +141,16 @@ describe("looking at old Flagged Ingredients again", () => {
     const sliced = await legacyMint("garlic cloves thinly sliced");
     const chopped = await legacyMint("garlic cloves, finely chopped");
 
-    await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 2, filed: 1 });
+    await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 2, filed: 0 });
     expect(await shown(sliced)).toBeNull();
     expect(await shown(chopped)).toBeNull();
+    // Garlic starts the name before no cut alone, so it gives no parent.
     expect(await shown(crushed)).toMatchObject({
       name: "garlic cloves",
       flagged: true,
-      parent: { id: seeded.get("en:garlic") },
+      parent: null,
     });
+    expect(await listAIChanges()).toHaveLength(0);
     expect((await shown(crushed))!.aliases.map((alias) => alias.text).sort()).toEqual([
       "garlic cloves",
       "garlic cloves crushed",
@@ -156,25 +159,12 @@ describe("looking at old Flagged Ingredients again", () => {
     ]);
   });
 
-  it("files a legacy mint under a food inside its words, as an unsure AI Change", async () => {
-    const legacy = await legacyMint("garlic cloves crushed");
-
-    await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 0, filed: 1 });
-    expect(await shown(legacy)).toMatchObject({
-      flagged: true,
-      parent: { id: seeded.get("en:garlic") },
-    });
-    expect(await listAIChanges()).toMatchObject([
-      { ingredient: { id: legacy }, sure: false, undo: { kind: "parent", fromWords: true } },
-    ]);
-  });
-
   it("files a guess from a legacy mint's words again under today's rules, and leaves AI's", async () => {
     const guessed = await legacyMint("olie om te bakken");
     const answered = await legacyMint("zwarte te bakken");
 
     // Filed under tea ("te") by the words as an older rule read them, and by AI.
-    await fileUndecidedMint(guessed, seeded.get("en:tea")!, { unsure: true });
+    await fileAsOldWordsGuess(guessed, seeded.get("en:tea")!);
     await parentByAI(answered, seeded.get("en:tea")!, false);
 
     await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 0, filed: 1 });
@@ -194,7 +184,7 @@ describe("looking at old Flagged Ingredients again", () => {
     seeded = await listSeededIngredientIds();
     const guessed = await legacyMint("mango blokjes");
 
-    await fileUndecidedMint(guessed, seeded.get("en:mango")!, { unsure: true });
+    await fileAsOldWordsGuess(guessed, seeded.get("en:mango")!);
 
     await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 0, filed: 1 });
     expect(await shown(guessed)).toMatchObject({ parent: { id: seeded.get("en:mango") } });
@@ -202,9 +192,9 @@ describe("looking at old Flagged Ingredients again", () => {
   });
 
   it("takes a guess from a legacy mint's words off where today's rules find none", async () => {
-    const guessed = await legacyMint("zwarte te bakken");
+    const guessed = await legacyMint("garlic cloves crushed");
 
-    await fileUndecidedMint(guessed, seeded.get("en:tea")!, { unsure: true });
+    await fileAsOldWordsGuess(guessed, seeded.get("en:garlic")!);
 
     await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 0, filed: 1 });
     expect(await shown(guessed)).toMatchObject({ flagged: true, parent: null });

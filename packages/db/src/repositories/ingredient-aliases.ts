@@ -14,7 +14,6 @@ import { slipLengths } from "@norish/shared/lib/name-slips";
 
 import type { LineResolution } from "./ingredients";
 import { isConstraintViolation } from "./constraint-violation";
-import { recordGuessedParent } from "./ingredient-ai-changes";
 
 /**
  * The Ingredient Alias rows the ingredient resolver reads and writes. Nothing
@@ -198,8 +197,6 @@ export interface MintIngredientInput {
   flagReason?: FlagReason | null;
   /** The Parent Ingredient, where the food is a kind of a known one; none where that one is gone. */
   parentId?: string | null;
-  /** Where the parent is a guess from the words of the name: an unsure AI Change. */
-  parentUnsure?: boolean;
 }
 
 /**
@@ -277,11 +274,6 @@ async function mintOnce(input: MintIngredientInput): Promise<IngredientAliasRow[
           version: sql`${ingredients.version} + 1`,
         })
         .where(eq(ingredients.id, ingredientId));
-    }
-
-    // Only a parent the mint applied is an AI Change; a name that joined an existing food got none.
-    if ((minted || takenOver) && input.parentId && input.parentUnsure) {
-      await recordGuessedParent(tx, ingredientId, input.parentId);
     }
 
     await tx

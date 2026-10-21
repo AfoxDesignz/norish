@@ -13,10 +13,10 @@
  * plain name the resolver would mint it under today ("garlic cloves" for
  * "garlic cloves crushed"), so the sibling mints after it ("garlic cloves
  * thinly sliced") resolve to it and merge, and is filed under the seeded
- * spelling its name contains, staying flagged — an unsure AI Change where
- * the spelling is not what the name ends with; a parent that is still such
- * a guess is read again, and moves, goes or is now sure; where they name several, it is
- * left for a person.
+ * spelling its name ends with, or starts with before cuts and forms alone,
+ * staying flagged; a parent an older rule left as an unsure guess is read
+ * again, and moves, goes or is now sure; where they name several, it is left
+ * for a person.
  * Nothing here is the resolver's rules over again: it asks the resolver.
  */
 import { withTransaction } from "@norish/db/drizzle";
@@ -64,16 +64,12 @@ export async function recheckUndecidedMints(): Promise<RecheckOutcome> {
     // A parent AI gave or took is AI's to change; a guess from the words is read again.
     if (mint.answered || (mint.parentId !== null && !mint.guessed)) continue;
 
-    const parent = await parentFromWordsOf(mint.name);
-    const parentId = parent?.id ?? null;
+    const parentId = await parentFromWordsOf(mint.name);
 
-    // A guess the words now read as sure is filed again under the same parent, quietly.
+    // An older guess is filed again under the parent the words give, the same one quietly, or none.
     if (
-      (parentId !== mint.parentId || (mint.guessed && parent?.sure)) &&
-      (await fileUndecidedMint(mint.id, parentId, {
-        unsure: !parent?.sure,
-        expectedParentId: mint.parentId,
-      }))
+      (parentId !== mint.parentId || mint.guessed) &&
+      (await fileUndecidedMint(mint.id, parentId, { expectedParentId: mint.parentId }))
     ) {
       outcome.filed += 1;
     }

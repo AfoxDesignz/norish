@@ -68,11 +68,10 @@ import { announceMinted, announcingAfter } from "./minted";
  *
  * A mint is filed under the longest seeded spelling its words contain, as
  * whole words: a guess from words may set a parent, never merge (ADR-0037 as
- * amended by ADR-0039). The spelling its text ends with ("ground cumin" under
- * cumin), or starts with before cuts and forms alone ("mango blokjes" under
- * mango), is filed quietly; one found anywhere else in the words ("garlic
- * cloves" under garlic, "kale large stalks removed" under kale) is an unsure
- * AI Change, for a person to keep or undo, and needs four letters or more.
+ * amended by ADR-0039). Only the spelling its text ends with ("ground cumin"
+ * under cumin), or starts with before cuts and forms alone ("mango blokjes"
+ * under mango), gives a parent; one found anywhere else in the words gives
+ * none ("garlic cloves" stays without), and AI's pass files it.
  */
 
 /**
@@ -86,9 +85,10 @@ import { announceMinted, announcingAfter } from "./minted";
  * doubled brackets, prices and notes are no part of a name ("baking soda )").
  * 8: a parent found inside a name needs a spelling of four letters or more.
  * 9: a name is read up to a note, and a parent it starts with before its
- * cuts and forms alone is sure.
+ * cuts and forms alone is sure. 10: a spelling anywhere else in a name gives
+ * no parent, so 8's four letters go with it.
  */
-export const RUNG_VERSION = 9;
+export const RUNG_VERSION = 10;
 
 /** Who the resolution is for: the owner of anything it mints. */
 export interface ResolveActor {
@@ -486,7 +486,7 @@ export async function resolveIngredient(
 async function mint(
   spelling: Spelling,
   actor: ResolveActor,
-  { flagReason, parent }: { flagReason: FlagReason; parent: ParentFromWords | null }
+  { flagReason, parent }: { flagReason: FlagReason; parent: string | null }
 ): Promise<IngredientAliasRow[]> {
   const alias = cleanAlias(spelling);
 
@@ -497,95 +497,67 @@ async function mint(
     locale: actor.locale ?? null,
     flagged: true,
     flagReason,
-    parentId: parent?.id ?? null,
-    parentUnsure: parent ? !parent.sure : undefined,
+    parentId: parent,
   });
-}
-
-/**
- * A parent found in the words of a text: `sure` where the text ends with the
- * parent's spelling, the food named last in most languages ("ground cumin"),
- * or starts with it before cuts and forms alone ("chicken strips"), and not
- * where the spelling sits elsewhere in the words ("garlic cloves crushed"
- * under garlic), which a person is asked to confirm.
- */
-export interface ParentFromWords {
-  id: string;
-  sure: boolean;
 }
 
 /**
  * The parent a flagged mint is filed under from the words of its text: the
  * longest spelling of a seeded food the text, stripped as rung 2 strips it,
- * contains as whole words and is longer than ("verse peterselie" under
- * peterselie, "smoked sweet paprika" under sweet paprika, "garlic cloves"
- * under garlic), or none. Of two the same length, the one the text ends
- * with. A spelling the text does not end with needs four letters ("zwarte te
- * bakken" is no tea). Only the words before the words a name ends before are
- * read ("in", "with", or a note's "for", "om"), and those may name the parent
- * whole ("sardines in water" under sardine, "greek yogurt for topping" under
- * greek yogurt); a word of recipe language alone ("and", "more") names none.
- * Where the words end in a plural, its singular is read too, the whole text
- * included ("carrots" under carrot, "red bell peppers" under red bell
- * pepper): the plural stays a food of its own, for AI or a person to merge.
+ * ends with ("verse peterselie" under peterselie, "smoked sweet paprika"
+ * under sweet paprika), or starts with before cuts, forms and sizes alone
+ * ("mango blokjes" under mango), and is longer than; or none. Of two the same
+ * length, the one the text ends with. Only the words before the words a name
+ * ends before are read ("in", "with", or a note's "for", "om"), and those may
+ * name the parent whole ("sardines in water" under sardine, "greek yogurt
+ * for topping" under greek yogurt); a word of recipe language alone ("and",
+ * "more") names none. Where the words end in a plural, its singular is read
+ * too, the whole text included ("carrots" under carrot, "red bell peppers"
+ * under red bell pepper): the plural stays a food of its own, for AI or a
+ * person to merge.
  */
-async function parentFromWords(spelling: Spelling): Promise<ParentFromWords | null> {
+async function parentFromWords(spelling: Spelling): Promise<string | null> {
   const { rules } = spelling;
   const all = (spelling.plainFold || spelling.bareFold || spelling.fold).split(" ");
   const cut = all.findIndex((word, index) => index > 0 && rules.endsBefore.has(word));
   const words = cut > 0 ? all.slice(0, cut) : all;
-  const windows: Array<{ fold: string; sure: boolean }> = [];
+  const windows: string[] = [];
 
-  // Longest first; within a length, the words as written from the end of the
-  // text backwards, then the last of them read in the singular, since the
-  // food is named last ("dried guajillo peppers" under guajillo, not under
-  // the peppercorn "pepper" names). The whole of the words read is no parent
-  // of itself, but its singular may be.
+  // Longest first; within a length the words it ends with, then those it starts with before
+  // cuts and sizes alone, then its end in the singular (the whole words only in the singular).
   for (let length = words.length; length >= 1; length -= 1) {
     // Where the window the words end with starts.
     const tail = words.length - length;
     const readable = (start: number) => !(length === 1 && rules.notFoods.has(words[start]!));
+    const formed =
+      tail > 0 &&
+      readable(0) &&
+      words.slice(length).every((word) => rules.forms.has(word) || rules.sizes.has(word));
 
-    if (length < words.length || cut > 0) {
-      for (let start = tail; start >= 0; start -= 1) {
-        const fold = words.slice(start, start + length).join(" ");
-        // The food the name starts with, followed by its cuts and sizes alone ("mango blokjes").
-        const formed =
-          start === 0 &&
-          words.slice(length).every((word) => rules.forms.has(word) || rules.sizes.has(word));
-        // Inside a name a short spelling is mostly another word ("te" in "zwarte te bakken").
-        const longEnough = start === tail || formed || fold.replaceAll(" ", "").length >= 4;
-
-        if (readable(start) && longEnough) windows.push({ fold, sure: start === tail || formed });
-      }
+    if ((length < words.length || cut > 0) && readable(tail)) {
+      windows.push(words.slice(tail).join(" "));
     }
-    if (readable(tail)) {
-      for (const reading of inflectedReadings(words.slice(tail).join(" "), rules)) {
-        windows.push({ fold: reading, sure: true });
-      }
-    }
+    if (formed) windows.push(words.slice(0, length).join(" "));
+    if (readable(tail)) windows.push(...inflectedReadings(words.slice(tail).join(" "), rules));
   }
 
   if (windows.length === 0) return null;
 
   const seeded = new Map(
-    (await findSeededFoodSpellingsByFolds(windows.map((window) => window.fold))).map((row) => [
-      row.fold,
-      row.ingredientId,
-    ])
+    (await findSeededFoodSpellingsByFolds(windows)).map((row) => [row.fold, row.ingredientId])
   );
 
   for (const window of windows) {
-    const id = seeded.get(window.fold);
+    const id = seeded.get(window);
 
-    if (id) return { id, sure: window.sure };
+    if (id) return id;
   }
 
   return null;
 }
 
 /** The parent a text would be filed under from its words, for the startup pass over old mints. */
-export async function parentFromWordsOf(text: string): Promise<ParentFromWords | null> {
+export async function parentFromWordsOf(text: string): Promise<string | null> {
   return await parentFromWords(spellingOf(cleanIngredientText(text), await currentRules()));
 }
 

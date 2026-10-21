@@ -1,4 +1,3 @@
-import type { SQL } from "drizzle-orm";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
@@ -58,20 +57,6 @@ export async function recordAIChange(
     targetId: change.targetId ?? null,
     sure: change.sure,
     undo: change.undo,
-  });
-}
-
-/** Record a parent a new food was given on a guess from the words of its name. */
-export async function recordGuessedParent(
-  tx: Db,
-  ingredientId: string,
-  parentId: string
-): Promise<void> {
-  await recordAIChange(tx, {
-    ingredientId,
-    targetId: parentId,
-    sure: false,
-    undo: { kind: "parent", formerParentId: null, fromWords: true },
   });
 }
 

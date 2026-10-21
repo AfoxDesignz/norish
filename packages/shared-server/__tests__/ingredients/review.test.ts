@@ -436,12 +436,10 @@ describe("asking AI about an Ingredient", () => {
       await expect(parentOf(food.ingredientId)).resolves.toBe(butter);
     });
 
-    it("drops a guess when unsure too, flagging the food, and Undo puts it back", async () => {
-      const { food, butter } = await underButter("butter cookie crumbs");
+    it("drops the parent when unsure too, flagging the food, and Undo puts it back", async () => {
+      const { food, butter } = await underButter("cookie butter");
 
-      // The words' unsure guess is the one change listed.
-      expect(await changes()).toMatchObject([{ kind: "parent", target: "butter", sure: false }]);
-      reads({ englishName: "butter cookie crumbs", parent: null, sure: false });
+      reads({ englishName: "cookie butter", parent: null, sure: false });
 
       await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
         outcome: "no-parent",
@@ -453,7 +451,7 @@ describe("asking AI about an Ingredient", () => {
         flagReason: "ai-unsure",
       });
       expect(await changes()).toEqual([
-        { kind: "parent", food: "butter cookie crumbs", target: null, sure: false, kept: false },
+        { kind: "parent", food: "cookie butter", target: null, sure: false, kept: false },
       ]);
 
       await undoAIChange(actor, (await listAIChanges())[0]!.id);

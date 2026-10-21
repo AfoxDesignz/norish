@@ -42,9 +42,10 @@ async function correctSeed(): Promise<CorrectionOutcome> {
       if (await moveSeededSpelling(ingredientAliasFold(spelling), fromId, toId)) outcome.moved += 1;
     }
     for (const child of await listUnchosenOwnChildren(fromId)) {
-      const parent = await parentFromWordsOf(child.name);
-
-      if (parent?.id === toId && (await refileOwnFood(child.id, fromId, toId, !parent.sure))) {
+      if (
+        (await parentFromWordsOf(child.name)) === toId &&
+        (await refileOwnFood(child.id, fromId, toId))
+      ) {
         outcome.refiled += 1;
       }
     }
