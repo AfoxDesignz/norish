@@ -204,8 +204,7 @@ export async function splitByAI(
     return { outcome: "applied" as const, movedTo };
   });
 
-  if (outcome === "refused") return outcome;
-  await announceIfApplied(outcome, [...ids, movedTo?.id ?? null]);
+  if (outcome !== "refused") await announceIfApplied(outcome, [...ids, movedTo?.id ?? null]);
   if (outcome === "applied" && movedTo?.minted) await announceMinted([movedTo.id]);
 
   return outcome;
