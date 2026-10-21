@@ -172,7 +172,7 @@ export async function splitByAI(
 ) {
   const ids = [ingredientId, ...parts.map((part) => part.ingredientId)];
   const { outcome, movedTo } = await withTransaction(async (tx) => {
-    const none = (outcome: ApplyOutcome) => ({ outcome, movedTo: null });
+    const none = (outcome: ApplyOutcome | "refused") => ({ outcome, movedTo: null });
 
     await lockTree(tx);
     if ((await lockIngredients(tx, ids)) < new Set(ids).size) return none("gone");
@@ -189,6 +189,8 @@ export async function splitByAI(
         { id: spelledByFood.aliasId, text: alias.text },
         { ownerId: alias.ownerId, flagged: true, flagReason: "ai-queued" }
       );
+      // The food is itself named for the spelling: a split would delete it with the spelling on it.
+      if (movedTo.id === ingredientId) return none("refused");
     }
     const [first, ...rest] = parts.map((part) =>
       part === spelledByFood && movedTo ? { ...part, ingredientId: movedTo.id } : part
@@ -199,6 +201,7 @@ export async function splitByAI(
     return { outcome: "applied" as const, movedTo };
   });
 
+  if (outcome === "refused") return outcome;
   await announceIfApplied(outcome, [...ids, movedTo?.id ?? null]);
   if (outcome === "applied" && movedTo?.minted) await announceMinted([movedTo.id]);
 

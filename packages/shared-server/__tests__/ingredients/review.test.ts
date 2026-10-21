@@ -1263,6 +1263,28 @@ describe("asking AI about an Ingredient", () => {
         expect(await exists(joined.ingredientId)).toBe(false);
       });
 
+      it("leaves it whole, flagged, when the food is itself named for the spelling", async () => {
+        const { cream, joined } = await joinedHoldingCream();
+        const line = await nameEverywhere(cream, "light cooking cream", { pantry: false });
+
+        await getTestDb()
+          .update(ingredients)
+          .set({ name: "Light cooking cream" })
+          .where(eq(ingredients.id, joined.ingredientId));
+        splits(reading, "alternatives", true);
+
+        await expect(askAIAbout(joined.ingredientId)).resolves.toMatchObject({
+          outcome: "unsure",
+          reason: "ai-unsure",
+        });
+        expect(await exists(joined.ingredientId)).toBe(true);
+        expect(await lineFoods(line.line)).toEqual({ joined: null, aliasIds: [cream.aliasId] });
+        await expect(ingredientFor(cream.aliasId)).resolves.toMatchObject({
+          id: joined.ingredientId,
+          flagged: true,
+        });
+      });
+
       it("leaves it whole when AI is not sure", async () => {
         const { cream, joined } = await joinedHoldingCream();
 

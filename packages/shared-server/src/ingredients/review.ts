@@ -116,6 +116,8 @@ async function split(
 
   const applied = await splitByAI(food.id, [first, ...rest], answer.joined);
 
+  if (applied === "refused") return await doubted(food.id, "ai-unsure", trace);
+
   if (applied === "decided" || applied === "gone") {
     return { outcome: "skipped", reason: applied === "gone" ? "not-found" : applied, ...trace };
   }
