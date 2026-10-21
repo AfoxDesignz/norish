@@ -38,7 +38,11 @@ import {
 } from "@norish/shared-server/ingredients/seed/catalogue-seed";
 import { correctSeedOnce } from "@norish/shared-server/ingredients/seed/correct-seed";
 
-import { getSpellingTexts, getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
+import {
+  getSpellingTexts,
+  getTestDb,
+  nameInATestRecipe,
+} from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
 const excerpt = readFileSync(join(__dirname, "fixtures", "ingredients-taxonomy.txt"), "utf8");
@@ -210,6 +214,7 @@ describe("the ingredient catalogue seed", () => {
       const mine = await resolve("Onion");
       const rings = await resolve("uienringen");
 
+      await nameInATestRecipe(actor.userId, rings.aliasId, "uienringen");
       await mergeByAI(rings.ingredientId, mine.ingredientId, false);
       await applySeedFile(excerpt);
 

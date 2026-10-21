@@ -7,7 +7,8 @@
  * page; AI asks about a food a recipe mints by itself, its merge or Plain Name
  * listed on Changed by AI and a merge undone from there; merging it into the food that holds an Aisle Link
  * files its grocery in that aisle; and a recipe line naming two foods puts
- * each on the list on its own. The scenario seeds a small catalogue of its own
+ * each on the list on its own. A food only a grocery names is not on the page, and AI leaves it,
+ * until a recipe names it. The scenario seeds a small catalogue of its own
  * rather than fetching Open Food Facts. The real Norish server, database,
  * Redis, tRPC and realtime are all in the path; nothing outbound is.
  */
@@ -25,6 +26,7 @@ import {
   setParent,
   waitForAIPasses,
 } from "./ingredient-catalogue-support";
+import { seedGrocery } from "./ingredient-icons-support";
 import { readGroceryNames, readPantryNames } from "./pantry-support";
 
 test.describe.configure({ mode: "serial" });
@@ -498,4 +500,50 @@ test("a recipe line naming two foods puts each on the list as a grocery of its o
   await expect(page.locator('[data-grocery-name="zout"]')).toHaveCount(1);
   await expect(page.locator('[data-grocery-name="peper"]')).toHaveCount(1);
   await expect(page.locator('[data-grocery-name="zout en peper"]')).toHaveCount(0);
+});
+
+test("a food only a grocery names is not on the Ingredients page, and AI leaves it, until a recipe names it", async ({
+  ai,
+  aiStack,
+}) => {
+  const reserve = "Nora reserve eten";
+
+  await seedCatalogue([{ name: "reservebrood", aliases: [{ text: "reservebrood", locale: "nl" }] }]);
+  await waitForAIPasses(aiStack);
+  // Were AI asked about the grocery's food, it would delete it as no food.
+  ai.control.enqueueIngredients({
+    kind: "success",
+    content: JSON.stringify({
+      sure: true,
+      action: { kind: "not-a-food", joined: null, reason: "gibberish" },
+      foods: [],
+    }),
+  });
+  await seedGrocery(aiStack, reserve);
+  await expect.poll(() => readIngredientOf(reserve)).toBe(reserve);
+  await waitForAIPasses(aiStack);
+  expect(ai.control.ingredientRequests).toHaveLength(0);
+  expect(await readIngredientOf(reserve)).toBe(reserve);
+
+  // A search finds the listed food beside it, never the grocery's.
+  await page.goto("/settings?tab=ingredients");
+  await page.getByTestId("ingredients-search").fill("reserve");
+  await expect(ingredientRow("onion")).toHaveCount(0);
+  await expect(ingredientRow("reservebrood")).toBeVisible();
+  await expect(ingredientRow(reserve)).toHaveCount(0);
+
+  // A recipe line naming it lists it.
+  const id = await createRecipe(aiStack.baseURL, aiStack.ownerCookies, "Restjes", [reserve]);
+
+  await expect
+    .poll(() =>
+      readRecipe(aiStack.baseURL, aiStack.ownerCookies, id).then(
+        (recipe) => recipe?.recipeIngredients[0]?.foods?.[0]?.name
+      )
+    )
+    .toBe(reserve);
+  // Another search than the cached one: nothing about the food itself changed to refetch it.
+  await page.goto("/settings?tab=ingredients");
+  await page.getByTestId("ingredients-search").fill("nora reserve");
+  await expect(ingredientRow(reserve)).toBeVisible();
 });

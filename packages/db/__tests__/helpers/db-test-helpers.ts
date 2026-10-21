@@ -264,6 +264,13 @@ export async function insertTestRecipeLine(
   return line!;
 }
 
+/** A line of a new recipe of `userId`'s naming the food by `aliasId`: AI asks only about a food a recipe names. */
+export async function nameInATestRecipe(userId: string, aliasId: string, text = "a line") {
+  const recipe = await createTestRecipe(userId);
+
+  return await insertTestRecipeLine({ recipeId: recipe.id, name: text }, [aliasId]);
+}
+
 export async function createTestRecipeIngredients(
   recipeId: string,
   ingredientId: string,

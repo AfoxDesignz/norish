@@ -132,11 +132,14 @@ const list = authedProcedure
       standaloneOnly: z.boolean().optional(),
       /** The viewer's locale: which spellings ride along with each row. */
       locale: z.string().max(20).optional(),
+      /** Also the foods the page hides, which the Pantry's search still finds. */
+      withHidden: z.boolean().optional(),
       cursor: z.number().int().min(0).nullish(),
     })
   )
   .query(async ({ ctx, input }) => {
     const page = await listIngredients(viewerOf(ctx), {
+      listedOnly: !input.withHidden,
       search: input.search,
       match: input.match,
       fields: input.fields,
@@ -156,6 +159,7 @@ const kinds = authedProcedure
   .query(async ({ ctx, input }) => {
     const page = await listIngredients(viewerOf(ctx), {
       parentId: input.parentId,
+      listedOnly: true,
       locale: input.locale,
     });
 

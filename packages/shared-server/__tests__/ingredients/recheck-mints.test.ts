@@ -26,7 +26,11 @@ import { RUNG_VERSION } from "@norish/shared-server/ingredients/resolver";
 import { readIngredientSeedState } from "@norish/shared-server/ingredients/seed/catalogue-seed";
 import { recheckUndecidedMintsOnRungChange } from "@norish/shared-server/ingredients/seed/recheck-mints";
 
-import { getTestDb, mintTestFood } from "../../../db/__tests__/helpers/db-test-helpers";
+import {
+  getTestDb,
+  mintTestFood,
+  nameInATestRecipe,
+} from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 import { seedEntry } from "../helpers/seed-entries";
 
@@ -70,6 +74,9 @@ describe("looking at old Flagged Ingredients again", () => {
       flagged: true,
       flagReason: "upgrade",
     });
+
+    // A recipe names it, so AI may change it too.
+    await nameInATestRecipe(actor.userId, minted.aliasId, text);
 
     return minted.ingredientId;
   }

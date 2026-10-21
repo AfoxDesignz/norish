@@ -43,6 +43,7 @@ import {
   getRecipeIngredients,
   getTestDb,
   insertTestRecipeLine,
+  nameInATestRecipe,
 } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
@@ -72,8 +73,11 @@ describe("keeping and undoing AI Changes", () => {
     await testBase.teardown();
   });
 
+  /** A food a recipe line names, so AI may change it. */
   async function mint(text: string, userId = actor.userId) {
     const [resolved] = await resolveIngredients([text], { userId });
+
+    await nameInATestRecipe(userId, resolved!.aliasId, text);
 
     return resolved!;
   }

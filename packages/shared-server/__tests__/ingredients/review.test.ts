@@ -54,6 +54,7 @@ import {
   createTestRecipe,
   getTestDb,
   insertTestRecipeLine,
+  nameInATestRecipe,
 } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 import { foodReading, noFoodReading, severalReading } from "../helpers/ingredient-readings";
@@ -183,12 +184,21 @@ describe("asking AI about an Ingredient", () => {
     await testBase.teardown();
   });
 
-  /** A food minted while nothing could be asked: flagged, as the upgrade leaves them. */
-  async function flagged(text: string) {
+  /** A food minted while nothing could be asked, flagged as the upgrade leaves them; no row names it. */
+  async function unnamed(text: string) {
     vi.mocked(isAIEnabled).mockResolvedValueOnce(false);
     const [resolved] = await resolveIngredients([text], { userId: actor.userId });
 
     return resolved!;
+  }
+
+  /** `unnamed`, with a recipe line naming it. */
+  async function flagged(text: string) {
+    const food = await unnamed(text);
+
+    await nameInATestRecipe(actor.userId, food.aliasId, text);
+
+    return food;
   }
 
   /** A food someone kept: unflagged, and never asked about itself. */
@@ -826,6 +836,32 @@ describe("asking AI about an Ingredient", () => {
     expect(vi.mocked(generateStructured)).not.toHaveBeenCalled();
   });
 
+  it("asks nothing about a grocery food, nor an own food nothing names, until a recipe line names it", async () => {
+    const reserve = await unnamed("Nora reserve eten");
+    const loose = await unnamed("kokosbloesemsuiker");
+
+    await getTestDb().insert(groceries).values({
+      userId: actor.userId,
+      name: "Nora reserve eten",
+      ingredientAliasId: reserve.aliasId,
+      ingredientId: reserve.ingredientId,
+    });
+
+    for (const food of [reserve, loose]) {
+      await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
+        outcome: "skipped",
+        reason: "decided",
+      });
+    }
+    expect(resolutionRequests()).toBe(0);
+
+    await nameInATestRecipe(actor.userId, reserve.aliasId, "Nora reserve eten");
+    reads({ englishName: "Nora reserve food", sure: true });
+
+    await expect(askAIAbout(reserve.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
+    expect(resolutionRequests()).toBe(1);
+  });
+
   it("never makes a merge or a parent a person undid again", async () => {
     const onion = await kept("onion");
     const bulbs = await flagged("onion bulbs");
@@ -1330,7 +1366,7 @@ describe("asking AI about an Ingredient", () => {
         ["deegroller", true],
         ["taartvorm", false],
       ] as const) {
-        const food = await flagged(text);
+        const food = await unnamed(text);
 
         await nameEverywhere(food, text);
         readsNoFood(sure);

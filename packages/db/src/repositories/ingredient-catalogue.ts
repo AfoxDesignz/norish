@@ -112,6 +112,8 @@ export async function listCatalogueIngredients(query: {
   standaloneOnly?: boolean;
   /** Only this Ingredient, for a panel that follows one food a filter no longer lists. */
   id?: string;
+  /** Only the foods the Ingredients page lists (`listedFood`), and only their kinds counted. */
+  listedOnly?: boolean;
   limit: number;
   offset: number;
 }): Promise<CatalogueIngredient[]> {
@@ -120,6 +122,9 @@ export async function listCatalogueIngredients(query: {
   const exactFirst = query.search
     ? [sql`case when lower(${ingredients.name}) = ${query.search.fold} then 0 else 1 end`]
     : [];
+  const listedKind = query.listedOnly
+    ? sql` and ${listedFood({ id: sql`k.id`, offId: sql`k.off_id` })}`
+    : sql``;
 
   const rows = await db
     .select({
@@ -132,13 +137,16 @@ export async function listCatalogueIngredients(query: {
       parentId: parents.id,
       parentName: parents.name,
       // The table under its own name again: a Drizzle alias in raw SQL renders bare.
-      kinds: sql<number>`(select count(*)::int from ${ingredients} k where k.parent_id = ${ingredients.id})`,
+      kinds: sql<number>`(select count(*)::int from ${ingredients} k where k.parent_id = ${ingredients.id}${listedKind})`,
     })
     .from(ingredients)
     .leftJoin(parents, eq(parents.id, ingredients.parentId))
     .where(
       and(
         query.id === undefined ? undefined : eq(ingredients.id, query.id),
+        query.listedOnly
+          ? listedFood({ id: sql`${ingredients}.id`, offId: sql`${ingredients}.off_id` })
+          : undefined,
         query.flaggedOnly ? eq(ingredients.flagged, true) : undefined,
         query.parentId === undefined
           ? undefined
@@ -148,7 +156,7 @@ export async function listCatalogueIngredients(query: {
         query.standaloneOnly
           ? and(
               isNull(ingredients.parentId),
-              sql`not exists (select 1 from ${ingredients} k where k.parent_id = ${ingredients.id})`
+              sql`not exists (select 1 from ${ingredients} k where k.parent_id = ${ingredients.id}${listedKind})`
             )
           : undefined,
         matchesSearch
@@ -207,21 +215,42 @@ export async function listCatalogueAliasesOf(ingredientId: string): Promise<Cata
     .orderBy(asc(ingredientAliases.createdAt), asc(ingredientAliases.id));
 }
 
+/** Whether a recipe line names the food with this id (`rowsNaming`). */
+function namedByARecipeLine(food: SQL): SQL {
+  return exists(
+    db
+      .select({ one: sql`1` })
+      .from(recipeIngredientFoods)
+      .where(rowsNaming(food).lineFoods)
+  );
+}
+
 /**
- * Whether AI may ask about an Ingredient (ADR-0037, amended 2026-10-17): one
- * someone's action minted, that no person kept distinct, named or parented.
+ * Whether the Ingredients page lists a food: a seeded one always, an own one once a recipe line
+ * names it. The others, grocery foods and own foods nothing names, are hidden and AI leaves them.
  */
-export const askableByAI = sql<boolean>`(${and(
-  isNull(ingredients.offId),
-  eq(ingredients.keptDistinct, false),
-  eq(ingredients.nameChosen, false),
-  eq(ingredients.parentChosen, false)
-)})`;
+function listedFood(food: { id: SQL; offId: SQL }): SQL {
+  return sql`(${food.offId} is not null or ${namedByARecipeLine(food.id)})`;
+}
+
+/**
+ * Whether AI may ask about an Ingredient (ADR-0037, amended 2026-10-17): one someone's action
+ * minted, that a recipe line names and no person kept distinct, named or parented.
+ */
+function askableByAI(): SQL<boolean> {
+  return sql<boolean>`(${and(
+    isNull(ingredients.offId),
+    eq(ingredients.keptDistinct, false),
+    eq(ingredients.nameChosen, false),
+    eq(ingredients.parentChosen, false),
+    namedByARecipeLine(sql`${ingredients}.id`)
+  )})`;
+}
 
 /** Whether AI may still ask about the food, read through the caller's transaction and lock. */
 export async function isAskableByAI(tx: Db, id: string): Promise<boolean> {
   const [row] = await tx
-    .select({ askable: askableByAI })
+    .select({ askable: askableByAI() })
     .from(ingredients)
     .where(eq(ingredients.id, id));
 
@@ -254,7 +283,7 @@ export async function findCatalogueIngredient(id: string): Promise<
       ownerId: ingredients.ownerId,
       parentId: ingredients.parentId,
       nameSettled: ingredients.nameSettled,
-      askable: askableByAI,
+      askable: askableByAI(),
     })
     .from(ingredients)
     .where(eq(ingredients.id, id))
@@ -297,7 +326,7 @@ export async function listUnansweredIngredientIds(): Promise<string[]> {
       and(
         eq(ingredients.flagged, true),
         inArray(ingredients.flagReason, [...RETRIED_FLAG_REASONS]),
-        askableByAI
+        askableByAI()
       )
     );
 
@@ -306,7 +335,7 @@ export async function listUnansweredIngredientIds(): Promise<string[]> {
 
 /** Every food AI may ask about: what the first start after the upgrade asks about. */
 export async function listAskableIngredientIds(): Promise<string[]> {
-  const rows = await db.select({ id: ingredients.id }).from(ingredients).where(askableByAI);
+  const rows = await db.select({ id: ingredients.id }).from(ingredients).where(askableByAI());
 
   return rows.map((row) => row.id);
 }

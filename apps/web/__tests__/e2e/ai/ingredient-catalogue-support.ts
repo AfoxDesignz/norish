@@ -30,8 +30,9 @@ export async function resetCatalogueScenario(): Promise<void> {
 }
 
 /**
- * A small catalogue of the scenario's own, its spellings seeded as the seed writes them,
- * instead of fetching Open Food Facts. The foods belong to the first account, so it may edit them.
+ * A small catalogue of the scenario's own, seeded as the seed writes it (an entry id, so the
+ * Ingredients page lists it), instead of fetching Open Food Facts. The foods belong to the first
+ * account, so it may edit them.
  */
 export async function seedCatalogue(foods: readonly SeededFood[]): Promise<Record<string, string>> {
   const ownerId = await userIdOf(OWNER);
@@ -39,7 +40,7 @@ export async function seedCatalogue(foods: readonly SeededFood[]): Promise<Recor
 
   for (const food of foods) {
     ids[food.name] = await insertSeededIngredient(
-      { name: food.name, ownerId, flagged: food.flagged ?? false },
+      { name: food.name, offId: `e2e:${food.name}`, ownerId, flagged: food.flagged ?? false },
       food.aliases.map((alias) => ({ ...alias, fold: ingredientAliasFold(alias.text) }))
     );
   }

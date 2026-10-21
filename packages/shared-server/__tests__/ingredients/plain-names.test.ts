@@ -21,7 +21,11 @@ import { giveItsPlainName } from "@norish/shared-server/ingredients/plain-names"
 import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
-import { getSpellingTexts, getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
+import {
+  getSpellingTexts,
+  getTestDb,
+  nameInATestRecipe,
+} from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
 vi.mock("@norish/shared-server/ai/runtime/runtime", () => ({
@@ -60,8 +64,11 @@ describe("Plain Names", () => {
     await testBase.teardown();
   });
 
+  /** A food a recipe line names, so AI may name it. */
   async function food(text: string) {
     const [resolved] = await resolveIngredients([text], { userId: actor.userId });
+
+    await nameInATestRecipe(actor.userId, resolved!.aliasId, text);
 
     return resolved!.ingredientId;
   }

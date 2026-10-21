@@ -185,6 +185,8 @@ export async function listIngredients(
     standaloneOnly?: boolean;
     /** Only this Ingredient. */
     id?: string;
+    /** Only the foods the Ingredients page lists: no grocery food, no own food nothing names. */
+    listedOnly?: boolean;
     offset?: number;
     locale?: string;
   }
@@ -200,6 +202,7 @@ export async function listIngredients(
       parentId: query.parentId,
       standaloneOnly: query.standaloneOnly ?? false,
       id: query.id,
+      listedOnly: query.listedOnly,
       // One more than a page says whether there is a next one.
       limit: INGREDIENT_PAGE_SIZE + 1,
       offset,

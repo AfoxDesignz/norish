@@ -151,6 +151,18 @@ describe("the first-start cleanup", () => {
 
     const undecided = await oldMint("kokosbloesemsuiker", ["kokosbloesemsuiker"]);
     const decided = await oldMint("palmsuiker", ["palmsuiker"]);
+    // A grocery food: only a Grocery names it, so AI leaves it.
+    const reserve = await oldMint("Nora reserve eten", ["Nora reserve eten"]);
+
+    await insertTestRecipeLine({ recipeId: recipe.id, name: "kokosbloesemsuiker", order: "2" }, [
+      undecided.aliasIds[0]!,
+    ]);
+    await db.insert(groceries).values({
+      userId,
+      name: "Nora reserve eten",
+      ingredientAliasId: reserve.aliasIds[0]!,
+      ingredientId: reserve.ingredientId,
+    });
 
     await markDistinct(
       { userId, householdUserIds: null, isServerAdmin: false },
@@ -186,6 +198,7 @@ describe("the first-start cleanup", () => {
       db
         .select({ alias: groceries.ingredientAliasId, food: groceries.ingredientId })
         .from(groceries)
+        .where(eq(groceries.ingredientId, gyoza.ingredientId))
     ).resolves.toEqual([{ alias: gyoza.aliasIds[1], food: gyoza.ingredientId }]);
     const gyozaFoods = (await db.select({ name: ingredients.name }).from(ingredients)).filter(
       (row) => row.name.includes("gyoza")
@@ -211,7 +224,7 @@ describe("the first-start cleanup", () => {
       { name: "zout", food: seeded.get("en:salt") },
     ]);
 
-    // 5. AI is asked about the own foods no person decided about, and nothing else.
+    // 5. AI is asked about the own foods a recipe names that no person decided about, and nothing else.
     expect(askAI).toHaveBeenCalledTimes(1);
     expect(askAI.mock.calls[0]![0].sort()).toEqual(
       [gyoza.ingredientId, undecided.ingredientId].sort()

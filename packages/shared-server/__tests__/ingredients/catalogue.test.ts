@@ -11,6 +11,7 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
+import { writeGroceryParts } from "@norish/db/repositories/ingredient-relocation";
 import {
   groceries,
   ingredientAliases,
@@ -35,7 +36,6 @@ import {
   setParent,
   sweepUnusedIngredients,
 } from "@norish/shared-server/ingredients/catalogue";
-import { writeGroceryParts } from "@norish/db/repositories/ingredient-relocation";
 import { publishIngredientChangesTo } from "@norish/shared-server/ingredients/changes";
 import { resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
 import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
@@ -603,6 +603,50 @@ describe("the ingredient catalogue", () => {
     // Only where asked: by parent alone, the kinds of cola. (Filing it clears its flag.)
     await setParent(actor, nut.ingredientId, cola.ingredientId);
     await expect(names("cola", { fields: ["parent"] })).resolves.toEqual(["cola nut"]);
+  });
+
+  it("lists only seeded foods and the own foods a recipe line names, counting only listed kinds", async () => {
+    const [milk] = await getTestDb()
+      .insert(ingredients)
+      .values({ name: "milk", offId: "en:milk" })
+      .returning({ id: ingredients.id });
+    const reserve = await mint("Nora reserve melk");
+    await mint("melkpoeder");
+
+    await getTestDb().insert(groceries).values({
+      userId: actor.userId,
+      name: "Nora reserve melk",
+      ingredientAliasId: reserve.aliasId,
+      ingredientId: reserve.ingredientId,
+    });
+    await getTestDb()
+      .update(ingredients)
+      .set({ parentId: milk!.id })
+      .where(eq(ingredients.id, reserve.ingredientId));
+
+    const listed = async (search?: string) =>
+      (await listIngredients(actor, { search, listedOnly: true })).items.map((item) => ({
+        name: item.name,
+        kinds: item.kinds,
+      }));
+
+    // The grocery food and the own food nothing names are hidden, search included.
+    await expect(listed()).resolves.toEqual([{ name: "milk", kinds: 0 }]);
+    await expect(listed("melk")).resolves.toEqual([]);
+    // A panel reads one food by its id whatever the page lists.
+    expect((await listIngredients(actor, { id: reserve.ingredientId })).items).toHaveLength(1);
+
+    const recipe = await createTestRecipe(actor.userId);
+
+    await insertTestRecipeLine({ recipeId: recipe.id, name: "Nora reserve melk" }, [
+      reserve.aliasId,
+    ]);
+    await expect(listed("melk")).resolves.toEqual([{ name: "Nora reserve melk", kinds: 0 }]);
+    // Flagged first.
+    await expect(listed()).resolves.toEqual([
+      { name: "Nora reserve melk", kinds: 0 },
+      { name: "milk", kinds: 1 },
+    ]);
   });
 
   it("leaves another member's Ingredient alone under the default household policy", async () => {
