@@ -1,10 +1,11 @@
 /**
- * Ticket 12: the same counts from a 0.25.1 or a 0.26 database, read-only.
- *   node measure.mjs <database url> [redis url] [private dir] > run.json
- *   node measure.mjs compare <label>=<run.json> ... > table.md
- * The private dir gets the named cases' line texts (production text, kept out of the repo).
+ * Tickets 12 and 31: the same counts from a 0.25.1 or a 0.26 database, read-only.
+ *   node measure.mjs <database url> [redis url] [server log] > run.json
+ *   node measure.mjs compare <label>=<run.json> ... > table.md    (counts only)
+ *   node measure.mjs report <label>=<run.json> ... > report.html  (names and line texts too)
+ * run.json and the report hold production text: keep them outside the repo, never publish them.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,27 +13,132 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const require = createRequire(join(root, "packages/db/package.json"));
 
-// The spec's named cases, each with the texts it is looked up by (production writes some otherwise).
+const lc = (text) => (text ?? "").toLowerCase();
+const named = (n, name) => n.foods.find((f) => lc(f.name) === name);
+const everyLineNames = (n, test) =>
+  n.lines.length > 0 && n.lines.every((l) => test(l.foods.map(lc)));
+
+// The named cases, each with the texts it is looked up by and, from ticket 24 on, the ticket's check.
 const CASES = {
-  "gyoza vellen": ["gyoza vellen", "gyoza vellen )", "gyoza vellen ((ontdooid))"],
-  "3wu)": ["3wu)"],
-  "paprika (vrucht)": ["paprika (vrucht)"],
-  "zout en peper": ["zout en peper"],
-  "boter of olie": ["boter of olie"],
-  "water of kokosmelk": ["water of kokosmelk"],
-  "juice of a lemon": ["juice of"],
-  "mac and cheese": ["mac and cheese"],
-  "toilet paper": ["toilet paper", "toiletpapier"],
-  deegroller: ["deegroller"],
-  melted: ["melted"],
-  "Voor de salade:": ["Voor de salade:"],
-  "taart- of springvorm": ["taart- of springvorm", "taart- of springvorm (doorsnede 26 cm)"],
+  "gyoza vellen": {
+    ticket: 12,
+    lookups: ["gyoza vellen", "gyoza vellen )", "gyoza vellen ((ontdooid))"],
+  },
+  "3wu)": { ticket: 12, lookups: ["3wu)"] },
+  "paprika (vrucht)": { ticket: 12, lookups: ["paprika (vrucht)"] },
+  "zout en peper": { ticket: 12, lookups: ["zout en peper"] },
+  "boter of olie": { ticket: 12, lookups: ["boter of olie"] },
+  "water of kokosmelk": { ticket: 12, lookups: ["water of kokosmelk"] },
+  "juice of a lemon": { ticket: 12, lookups: ["juice of"] },
+  "mac and cheese": { ticket: 12, lookups: ["mac and cheese"] },
+  "toilet paper": { ticket: 12, lookups: ["toilet paper", "toiletpapier"] },
+  deegroller: { ticket: 12, lookups: ["deegroller"] },
+  melted: { ticket: 12, lookups: ["melted"] },
+  "Voor de salade:": { ticket: 12, lookups: ["Voor de salade:"] },
+  "taart- of springvorm": {
+    ticket: 12,
+    lookups: ["taart- of springvorm", "taart- of springvorm (doorsnede 26 cm)"],
+  },
+  "salt cinnamon": {
+    ticket: 24,
+    lookups: ["salt cinnamon"],
+    expect: "split into its foods, not deleted",
+    holds: (n) => !named(n, "salt cinnamon") && everyLineNames(n, (foods) => foods.length >= 2),
+  },
+  "koud water melk": {
+    ticket: 24,
+    lookups: ["koud water melk", "koud water (of"],
+    expect: "split into its foods, not deleted",
+    holds: (n) => !named(n, "koud water melk") && everyLineNames(n, (foods) => foods.length >= 2),
+  },
+  "Nora reserve eten": {
+    ticket: "25, 28",
+    lookups: ["nora reserve eten"],
+    expect: "kept, hidden, no parent",
+    holds: (n) =>
+      named(n, "nora reserve eten")?.hidden === true && !named(n, "nora reserve eten").parent,
+  },
+  "rode pesto": {
+    ticket: 26,
+    lookups: ["rode pesto"],
+    expect: "not merged into red port",
+    holds: (n) => everyLineNames(n, (foods) => foods.length > 0 && !foods.includes("red port")),
+  },
+  "sriracha sauce": {
+    ticket: 26,
+    lookups: ["sriracha sauce"],
+    expect: "not merged into oyster sauce",
+    holds: (n) => everyLineNames(n, (foods) => foods.length > 0 && !foods.includes("oyster sauce")),
+  },
+  "tortilla's": {
+    ticket: 26,
+    lookups: ["tortilla's"],
+    expect: "on tortilla (or corn tortilla)",
+    holds: (n) => everyLineNames(n, (foods) => foods.some((f) => f.endsWith("tortilla"))),
+  },
+  "chocolate whey": {
+    ticket: 27,
+    lookups: ["chocolate whey"],
+    expect: "keeps whey",
+    holds: (n) => lc(named(n, "chocolate whey")?.parent) === "whey",
+  },
+  "Italian herbs": {
+    ticket: 27,
+    lookups: ["italian herbs"],
+    expect: "keeps herb",
+    holds: (n) => ["herb", "herbs"].includes(lc(named(n, "italian herbs")?.parent)),
+  },
+  "chinese 5 spice": {
+    ticket: 27,
+    lookups: ["chinese 5 spice"],
+    expect: "keeps spice",
+    holds: (n) => lc(named(n, "chinese 5 spice")?.parent) === "spice",
+  },
+  "Denta tix": {
+    ticket: 27,
+    lookups: ["denta tix"],
+    expect: "loses tea",
+    holds: (n) => lc(named(n, "denta tix")?.parent) !== "tea",
+  },
+  "ground cumin": {
+    ticket: 28,
+    lookups: ["ground cumin"],
+    expect: "under cumin",
+    holds: (n) =>
+      n.foods.length > 0 &&
+      n.foods.every((f) => lc(f.name) === "cumin" || lc(f.parent) === "cumin"),
+  },
+  "mango blokjes": {
+    ticket: 28,
+    lookups: ["mango blokjes"],
+    expect: "under mango",
+    holds: (n) => lc(named(n, "mango blokjes")?.parent) === "mango",
+  },
+  "light cooking cream or non-fat Greek yogurt": {
+    ticket: 29,
+    lookups: ["light cooking cream"],
+    // The new food may then be merged by AI's pass ("light cream"), so any cream food counts.
+    expect: "split; the cream lines on a cream food of their own",
+    holds: (n) =>
+      !named(n, "light cooking cream or non-fat greek yogurt") &&
+      everyLineNames(n, (foods) => foods.some((f) => f.includes("cream"))) &&
+      n.lines.every((l) => !/ or /i.test(l.text) || l.joined === "alternatives"),
+  },
+  "colon lines": {
+    ticket: 30,
+    lookups: [],
+    expect: "no line ending in a colon names a food",
+    holds: (_n, counts) => !counts.lines["colon line, with a food"],
+  },
 };
 
-if (process.argv[2] === "compare") compare(process.argv.slice(3));
-else await measure(process.argv[2], process.argv[3], process.argv[4]);
+const [command, ...args] = process.argv.slice(2);
 
-async function measure(databaseUrl, redisUrl, privateDir) {
+if (command === "compare") console.log(compare(load(args)));
+else if (command === "report") console.log(report(load(args)));
+else await measure(command, args[0], args[1]);
+
+async function measure(databaseUrl, redisUrl, serverLog) {
   const { Client } = require("pg");
   const db = new Client({ connectionString: databaseUrl });
 
@@ -46,13 +152,25 @@ async function measure(databaseUrl, redisUrl, privateDir) {
   const hasTable = async (name) =>
     (await scalar("select to_regclass($1) is not null", [name])) === true;
 
-  const lineFoods = (await hasTable("recipe_ingredient_foods"))
+  const lineTable = await hasTable("recipe_ingredient_foods");
+  const lineFoods = lineTable
     ? `select ri.id, ri.name, ri.joined::text as joined, f.position, a.ingredient_id, a.text as spelling
          from recipe_ingredients ri
          left join recipe_ingredient_foods f on f.recipe_ingredient_id = ri.id
          left join ingredient_aliases a on a.id = f.ingredient_alias_id`
     : `select ri.id, ri.name, null::text as joined, 0 as position, a.ingredient_id, a.text as spelling
          from recipe_ingredients ri left join ingredient_aliases a on a.id = ri.ingredient_alias_id`;
+  // Ticket 25: an own food is listed once a recipe line names it; groceries alone leave it hidden.
+  const lineSpellings = lineTable
+    ? "select ingredient_alias_id from recipe_ingredient_foods"
+    : "select ingredient_alias_id from recipe_ingredients where ingredient_alias_id is not null";
+  const namedByLine = `exists (select 1 from ingredient_aliases a where a.ingredient_id = i.id and a.id in (${lineSpellings}))`;
+  const namedBy = (table) =>
+    `exists (select 1 from ${table} g where g.ingredient_id = i.id or g.ingredient_alias_id in (select id from ingredient_aliases where ingredient_id = i.id))`;
+  const namedByGrocery = ["groceries", "recurring_groceries", "pantry_ingredients"]
+    .map(namedBy)
+    .join(" or ");
+  const listed = `(i.off_id is not null or ${namedByLine})`;
   const words = JSON.parse(
     readFileSync(join(root, "packages/config/src/ingredient-words.default.json"), "utf8")
   );
@@ -106,17 +224,44 @@ async function measure(databaseUrl, redisUrl, privateDir) {
       recurringGroceries: await scalar("select count(*)::int from recurring_groceries"),
       pantryIngredients: await scalar("select count(*)::int from pantry_ingredients"),
     },
-    // By this release's joining words in every language, so all four runs are read alike.
+    hidden: {
+      "grocery foods": await scalar(
+        `select count(*)::int from ingredients i where not ${listed} and (${namedByGrocery})`
+      ),
+      "foods nothing names": await scalar(
+        `select count(*)::int from ingredients i where not ${listed} and not (${namedByGrocery})`
+      ),
+    },
+    // By this release's joining words in every language, so all runs are read alike.
     joinedOwnFoods: await scalar(
       "select count(*)::int from ingredients where off_id is null and lower(name) ~ $1",
       [`\\s(${joining.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\s`]
     ),
+  };
+  const names = {
+    flagged: await rows(
+      "select name, coalesce(flag_reason, '(none)') as reason from ingredients where flagged order by flag_reason, lower(name)"
+    ),
+    aiChanges: [],
   };
 
   if (await hasTable("ingredient_ai_changes")) {
     counts.aiChanges =
       await tally(`select kind || ', ' || case when sure then 'sure' else 'unsure' end as k, count(*)::int as n
       from ingredient_ai_changes group by 1 order by 1`);
+    // Each change as the food it was and what it became (merge: the food's name went into the target).
+    names.aiChanges = await rows(`select c.kind, c.sure,
+        case when c.undone_at is not null then 'undone' when c.kept_at is not null then 'kept' else 'open' end as state,
+        case c.kind when 'merge' then c.undo->>'name' when 'not-a-food' then c.undo->'food'->>'name'
+                    when 'plain-name' then c.undo->>'formerName' else i.name end as food,
+        case c.kind when 'merge' then 'merged into ' || i.name when 'not-a-food' then 'deleted'
+                    when 'plain-name' then 'renamed ' || (c.undo->>'name')
+                    when 'parent' then coalesce('under ' || t.name, 'no parent') || coalesce(' (was ' || fp.name || ')', '')
+                    else c.kind end as became
+      from ingredient_ai_changes c left join ingredients i on i.id = c.ingredient_id
+      left join ingredients t on t.id = c.target_id
+      left join ingredients fp on fp.id = (c.undo->>'formerParentId')::uuid
+      order by c.kind, c.sure desc, 4`);
   }
   if (await hasTable("ingredient_suggestions")) {
     counts.suggestions = await tally(
@@ -124,16 +269,15 @@ async function measure(databaseUrl, redisUrl, privateDir) {
     );
   }
 
-  const named = {};
-  const privateLines = {};
+  const cases = {};
 
-  for (const [text, lookups] of Object.entries(CASES)) {
-    const exact = lookups.map((t) => t.toLowerCase());
+  for (const [text, { lookups }] of Object.entries(CASES)) {
+    const exact = lookups.map(lc);
     const lines = await rows(
       `select x.id, x.name, max(x.joined) as joined, array_remove(array_agg(distinct x.spelling), null) as spellings,
-              coalesce(string_agg(i.name, ' + ' order by x.position) filter (where i.id is not null), '(no food)') as foods
+              array_remove(array_agg(i.name order by x.position), null) as foods
          from (${lineFoods}) x left join ingredients i on i.id = x.ingredient_id
-        where lower(x.name) like any($1) group by x.id, x.name`,
+        where lower(x.name) like any($1) group by x.id, x.name order by x.name`,
       [exact.map((t) => `%${t.replace(/[\\%_]/g, "\\$&")}%`)]
     );
     // The case's own texts, and the spellings its lines point at (a cleanup may have renamed one).
@@ -143,41 +287,30 @@ async function measure(databaseUrl, redisUrl, privateDir) {
       [exact, lines.flatMap((l) => l.spellings)]
     );
     const foods = await rows(
-      `select distinct i.name, i.off_id is not null as seeded, i.flagged, i.flag_reason, i.kept_distinct, p.name as parent
+      `select distinct i.name, i.off_id is not null as seeded, i.flagged, i.flag_reason as reason, i.kept_distinct as distinct,
+              not ${listed} as hidden, p.name as parent
         from ingredients i left join ingredients p on p.id = i.parent_id
         where lower(i.name) = any($1) or i.id = any($2::uuid[]) order by i.name limit 12`,
       [exact, spellings.map((sp) => sp.ingredient_id)]
     );
-    const byFoods = {};
 
-    for (const line of lines) {
-      const key = line.joined ? `${line.foods} (${line.joined})` : line.foods;
-
-      byFoods[key] = (byFoods[key] ?? 0) + 1;
-    }
-    named[text] = {
-      spellings: spellings.map((s) => `${s.text}${s.seeded ? " [seed]" : ""} → ${s.food}`),
-      foods: foods.map(
-        (f) =>
-          `${f.name}${f.seeded ? " [seed]" : ""}${f.flagged ? ` [flag: ${f.flag_reason}]` : ""}${f.kept_distinct ? " [distinct]" : ""}${f.parent ? ` under ${f.parent}` : ""}`
-      ),
-      lines: lines.length,
-      linesBy: byFoods,
+    cases[text] = {
+      spellings: spellings.map(({ text, seeded, food }) => ({ text, seeded, food })),
+      foods,
+      lines: lines.map((l) => ({ text: l.name, foods: l.foods, joined: l.joined })),
     };
-    privateLines[text] = lines.map((l) => `${l.name} → ${l.foods}`);
   }
 
   await db.query("rollback");
   await db.end();
 
   const ai = redisUrl ? await aiUse(redisUrl) : null;
+  const start = serverLog ? startFrom(readFileSync(serverLog, "utf8")) : null;
 
-  if (privateDir)
-    writeFileSync(join(privateDir, "named-lines.json"), JSON.stringify(privateLines, null, 2));
-  console.log(JSON.stringify({ counts, ai, named }, null, 2));
+  console.log(JSON.stringify({ counts, names, ai, start, cases }, null, 2));
 }
 
-/** Requests and tokens per queue, from every job's progress (the job monitor's Models row). */
+/** Requests, tokens and time per queue, from every job's progress (the job monitor's Models row). */
 async function aiUse(redisUrl) {
   const ioredis = createRequire(join(root, "packages/queue/package.json"))("ioredis");
   const Redis = ioredis.default ?? ioredis.Redis ?? ioredis;
@@ -193,7 +326,12 @@ async function aiUse(redisUrl) {
       const parts = key.split(":");
 
       if (parts.length !== 3 || (await redis.type(key)) !== "hash") continue;
-      const progress = await redis.hget(key, "progress");
+      const [progress, processedOn, finishedOn] = await redis.hmget(
+        key,
+        "progress",
+        "processedOn",
+        "finishedOn"
+      );
 
       if (!progress) continue;
       const uses = [];
@@ -207,9 +345,22 @@ async function aiUse(redisUrl) {
 
       walk(JSON.parse(progress));
       if (uses.length === 0) continue;
-      const q = (byQueue[parts[1]] ??= { jobs: 0, requests: 0, failed: 0, tokens: 0, models: {} });
+      const q = (byQueue[parts[1]] ??= {
+        jobs: 0,
+        requests: 0,
+        failed: 0,
+        tokens: 0,
+        models: {},
+        tokensByModel: {},
+        ms: 0,
+        first: Infinity,
+        last: 0,
+      });
 
       q.jobs += 1;
+      q.ms += Number(finishedOn ?? processedOn) - Number(processedOn);
+      q.first = Math.min(q.first, Number(processedOn));
+      q.last = Math.max(q.last, Number(finishedOn ?? processedOn));
       for (const use of uses) {
         q.requests += 1;
         if (use.outcome === "failed") q.failed += 1;
@@ -217,6 +368,7 @@ async function aiUse(redisUrl) {
         const model = `${use.provider} · ${use.model}`;
 
         q.models[model] = (q.models[model] ?? 0) + 1;
+        q.tokensByModel[model] = (q.tokensByModel[model] ?? 0) + (use.tokens ?? 0);
       }
     }
   } while (cursor !== "0");
@@ -225,61 +377,238 @@ async function aiUse(redisUrl) {
   return byQueue;
 }
 
-function compare(args) {
-  const runs = args.map((arg) => {
+/** The boot's steps from a pino-pretty server log: each step's logged outcome and its time. */
+function startFrom(log) {
+  // eslint-disable-next-line no-control-regex
+  const lines = log.replace(/\x1b\[[0-9;]*m/g, "").split("\n");
+  const at = (line) => {
+    const m = /^\[(\d+):(\d+):(\d+)\.(\d+)\]/.exec(line);
+
+    return m && ((+m[1] * 60 + +m[2]) * 60 + +m[3]) * 1000 + +m[4];
+  };
+  const steps = [];
+  let first = null;
+  let since = null;
+  let ready = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const time = at(lines[i]);
+
+    if (time === null) continue;
+    const message = lines[i].replace(/^\[[^\]]*\]\s+\w+\s+(\([^)]*\))?:?\s*/, "").trim();
+
+    // From the config load, after the embedded parser's own start.
+    if (message.startsWith("Server configuration loaded")) first ??= time;
+
+    if (/^-{20,}$/.test(message)) since = time;
+    if (ready === null && message.startsWith("HTTP:")) ready = time - first;
+    const fields = {};
+
+    for (let j = i + 1; j < lines.length && /^\s{4}\w+: /.test(lines[j]); j++) {
+      const [, key, value] = /^\s{4}(\w+): (.*)$/.exec(lines[j]);
+
+      fields[key] = /^\d+$/.test(value) ? Number(value) : value.replace(/^"|"$/g, "");
+    }
+    if (ready === null && fields.module === "ingredient-seed") {
+      const { module: _module, ...outcome } = fields;
+
+      steps.push({ step: message, ms: since === null ? null : time - since, ...outcome });
+    }
+  }
+
+  return { readyMs: ready, steps };
+}
+
+function load(args) {
+  return args.map((arg) => {
     const [label, file] = arg.split("=");
 
     return { label, ...JSON.parse(readFileSync(file, "utf8")) };
   });
+}
+
+/** The tables of counts, every run a column. */
+function tables(runs) {
   const out = [];
   const table = (title, pick) => {
     const keys = [...new Set(runs.flatMap((r) => Object.keys(pick(r) ?? {})))];
 
-    if (keys.length === 0) return;
-    out.push(
-      `**${title}**`,
-      "",
-      `| | ${runs.map((r) => r.label).join(" | ")} |`,
-      `|---|${runs.map(() => "---:").join("|")}|`
-    );
-    for (const key of keys)
-      out.push(`| ${key} | ${runs.map((r) => pick(r)?.[key] ?? "–").join(" | ")} |`);
-    out.push("");
+    if (keys.length > 0)
+      out.push({ title, keys, values: keys.map((k) => runs.map((r) => pick(r)?.[k] ?? "–")) });
   };
 
   table("Ingredients", (r) => r.counts.ingredients);
   table("Flagged, by reason", (r) => r.counts.flaggedBy);
   table("Spellings", (r) => r.counts.spellings);
-  table("Recipe lines", (r) => r.counts.lines);
-  table("Rows that point at no food", (r) => r.counts.noFood);
-  table("Rows", (r) => r.counts.rows);
   table("Joined names still a food of their own", (r) => ({
     "own foods": r.counts.joinedOwnFoods,
   }));
+  table("Recipe lines", (r) => r.counts.lines);
+  table("Rows that point at no food", (r) => r.counts.noFood);
+  table("Rows", (r) => r.counts.rows);
+  table("Hidden (ticket 25)", (r) => r.counts.hidden);
   table("0.25.1 suggestions left", (r) => r.counts.suggestions);
   table("AI Changes", (r) => r.counts.aiChanges);
+  table("The first start", (r) =>
+    r.start
+      ? Object.fromEntries([
+          ["ready, ms", r.start.readyMs],
+          ...r.start.steps.map((s) => [`${s.step}, ms`, s.ms]),
+          ...r.start.steps.flatMap((s) =>
+            Object.entries(s)
+              .filter(
+                ([k, v]) =>
+                  k !== "ms" && k !== "step" && !k.endsWith("Version") && typeof v === "number"
+              )
+              .map(([k, v]) => [`${s.step}: ${k}`, v])
+          ),
+        ])
+      : null
+  );
   for (const queue of [...new Set(runs.flatMap((r) => Object.keys(r.ai ?? {})))]) {
     table(`AI use, ${queue} queue`, (r) => {
       const q = r.ai?.[queue];
 
       return (
-        q && { jobs: q.jobs, requests: q.requests, failed: q.failed, tokens: q.tokens, ...q.models }
+        q && {
+          jobs: q.jobs,
+          requests: q.requests,
+          failed: q.failed,
+          tokens: q.tokens,
+          "job time, s": q.ms === undefined ? "–" : Math.round(q.ms / 1000),
+          "first start to last end, s":
+            q.last === undefined ? "–" : Math.round((q.last - q.first) / 1000),
+          ...Object.fromEntries(
+            Object.entries(q.models).map(([m, n]) => [
+              `${m}, requests / tokens`,
+              `${n} / ${q.tokensByModel?.[m] ?? "–"}`,
+            ])
+          ),
+        }
       );
     });
   }
-  out.push("**Named cases**", "");
-  for (const text of Object.keys(runs[0].named)) {
-    out.push(`- **"${text}"**`);
-    for (const r of runs) {
-      const n = r.named[text];
-      const lines = Object.entries(n.linesBy)
-        .map(([foods, count]) => `${count}× ${foods}`)
-        .join("; ");
 
-      out.push(
-        `  - ${r.label}: spellings ${n.spellings.join(", ") || "none"}. Foods ${n.foods.join(", ") || "none"}. Lines ${n.lines}${lines ? `: ${lines}` : ""}.`
-      );
-    }
-  }
-  console.log(out.join("\n"));
+  return out;
+}
+
+function compare(runs) {
+  return tables(runs)
+    .flatMap(({ title, keys, values }) => [
+      `**${title}**`,
+      "",
+      `| | ${runs.map((r) => r.label).join(" | ")} |`,
+      `|---|${runs.map(() => "---:").join("|")}|`,
+      ...keys.map((k, i) => `| ${k} | ${values[i].join(" | ")} |`),
+      "",
+    ])
+    .join("\n");
+}
+
+function report(runs) {
+  const esc = (v) =>
+    String(v ?? "").replace(
+      /[&<>"]/g,
+      (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]
+    );
+  const list = (items) =>
+    items.length
+      ? `<ul>${items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`
+      : "<p class=none>none</p>";
+  const head = `<tr><th></th>${runs.map((r) => `<th>${esc(r.label)}</th>`).join("")}</tr>`;
+  const row = (label, cells, raw = false) =>
+    `<tr><th>${esc(label)}</th>${cells.map((c) => `<td>${raw ? c : esc(c)}</td>`).join("")}</tr>`;
+  const section = (title, body) => `<h2>${esc(title)}</h2><table>${head}${body}</table>`;
+  const food = (f) =>
+    `${f.name}${f.seeded ? " [seed]" : ""}${f.flagged ? ` [flag: ${f.reason}]` : ""}${f.distinct ? " [distinct]" : ""}${f.hidden ? " [hidden]" : ""}${f.parent ? ` under ${f.parent}` : ""}`;
+  const lines = (n) =>
+    n.lines.map(
+      (l) => `${l.text} → ${l.foods.join(" + ") || "(no food)"}${l.joined ? ` (${l.joined})` : ""}`
+    );
+
+  const counts = tables(runs)
+    .map(({ title, keys, values }) =>
+      section(title, keys.map((k, i) => row(k, values[i])).join(""))
+    )
+    .join("");
+  const flagged = section(
+    "Flagged foods",
+    row(
+      "names",
+      runs.map((r) => list((r.names?.flagged ?? []).map((f) => `${f.name} (${f.reason})`))),
+      true
+    )
+  );
+  const changes = section(
+    "AI Changes, each",
+    row(
+      "food → became",
+      runs.map((r) =>
+        list(
+          (r.names?.aiChanges ?? []).map(
+            (c) => `${c.kind}, ${c.sure ? "sure" : "unsure"}, ${c.state}: ${c.food} → ${c.became}`
+          )
+        )
+      ),
+      true
+    )
+  );
+  const cases = Object.entries(CASES)
+    .map(([text, c]) => {
+      const verdict = (r) => {
+        if (!c.holds) return "";
+        const n = r.cases?.[text];
+
+        return n ? (c.holds(n, r.counts) ? "holds" : "does not hold") : "not measured";
+      };
+      const pick = (f) =>
+        runs.map((r) => (r.cases?.[text] ? f(r.cases[text]) : "<p class=none>not measured</p>"));
+
+      return `<h3>${esc(text)} <small>ticket ${esc(c.ticket)}${c.expect ? `: ${esc(c.expect)}` : ""}</small></h3><table>${head}${
+        c.holds
+          ? row(
+              "check",
+              runs.map((r) => `<b class="${verdict(r).replace(/ /g, "-")}">${verdict(r)}</b>`),
+              true
+            )
+          : ""
+      }${row(
+        "spellings",
+        pick((n) =>
+          list(n.spellings.map((s) => `${s.text}${s.seeded ? " [seed]" : ""} → ${s.food}`))
+        ),
+        true
+      )}${row(
+        "foods",
+        pick((n) => list(n.foods.map(food))),
+        true
+      )}${row(
+        "lines",
+        pick((n) => `<p>${n.lines.length}</p>${list(lines(n))}`),
+        true
+      )}</table>`;
+    })
+    .join("");
+
+  return `<!doctype html><html lang=en><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>Ingredient cleanup measure</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1d1d1f;--muted:#6e6e73;--line:#ddd;--ok:#1a7f37;--bad:#c62828}
+@media (prefers-color-scheme:dark){:root{--bg:#161618;--fg:#ececf0;--muted:#9a9aa2;--line:#333;--ok:#4cc26a;--bad:#ff6b6b}}
+body{background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,sans-serif;margin:0 auto;padding:16px;max-width:1400px}
+table{border-collapse:collapse;width:100%;margin:0 0 24px;table-layout:fixed}
+th,td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+tr:first-child th{border-bottom:2px solid var(--fg)}
+td{font-variant-numeric:tabular-nums}
+th:first-child{width:22%}
+ul{margin:0;padding-left:18px}
+.none,small{color:var(--muted)}
+.holds{color:var(--ok)}.does-not-hold{color:var(--bad)}
+</style>
+<h1>Ingredient cleanup measure</h1>
+<p class=none>Production text. Kept outside the repository; never publish.</p>
+<table>${head}${row(
+    "run",
+    runs.map((r) => r.note ?? "")
+  )}</table>${counts}${flagged}${changes}<h2>Named cases</h2>${cases}</html>`;
 }
