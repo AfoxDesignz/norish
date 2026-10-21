@@ -4,12 +4,12 @@
 
 **Why:** AI read "rode pesto" as "red pesto" (under pesto) and "sriracha sauce" as sriracha (under hot sauce), sure. None of its names is a food in the catalogue, so the lookup fell back to a slip of the fingers, which took red port and oyster sauce. With one food found, AI was never asked about it, and the merge was made unsure.
 
-**Fix (Mike, 2026-10-21):** the lookup scores what it finds.
+**Fix (Mike, 2026-10-21):** the fuzzy matcher returns a scored list. `nearestSlip` already scores every name in reach (how far apart, from both sides) and then keeps only the nearest, or nothing where two different foods tie. It becomes a list of every food within a slip, with its score, best first; the grocery product rule keeps reading the first.
 
-- Each food found carries a score: an exact spelling is 1, a slip its closeness (the Fuse score `name-slips` already computes and drops).
+- The lookup of AI's names gives each food found a score: an exact spelling is 1, a slip its closeness.
 - An exact match is taken; slips beside it are ignored.
-- Only slips found: they are put to AI as the numbered list, best score first, with "none of these", even when only one was found. That is one more request per such food (5 on the copy).
-- AI off: unchanged.
+- Only slips found: they are put to AI as the numbered list, best score first, with "none of these", even when only one was found. The best slip is not taken unasked, since red port was the best slip for "red pesto". One more request per such food (5 on the copy).
+- AI off: the best slip, as today.
 
 **Blocked by:** None
 
