@@ -1082,6 +1082,82 @@ describe("asking AI about an Ingredient", () => {
       expect(await exists(joined.ingredientId)).toBe(false);
     });
 
+    describe("a joined food that holds one part's spelling", () => {
+      async function joinedHoldingCream() {
+        const cream = await flagged("light cooking cream");
+        const joined = await flagged("light cooking cream or non-fat Greek yogurt");
+
+        await withTransaction((tx) =>
+          mergeCatalogueIngredients(tx, cream.ingredientId, joined.ingredientId, {
+            keepFlag: true,
+          })
+        );
+
+        const yogurt = await kept("greek yogurt");
+
+        return { cream: { ...cream, ingredientId: joined.ingredientId }, joined, yogurt };
+      }
+
+      const reading = [
+        { written: "light cooking cream", englishName: "light cooking cream" },
+        { written: "non-fat Greek yogurt", englishName: "greek yogurt" },
+      ];
+
+      it("moves the spelling and its lines to a food of its own, and splits the rest", async () => {
+        const { cream, joined, yogurt } = await joinedHoldingCream();
+        const both = await nameEverywhere(joined, "light cooking cream or non-fat Greek yogurt", {
+          pantry: false,
+        });
+        const alone = await nameEverywhere(cream, "light cooking cream", { pantry: false });
+        const minted: string[] = [];
+
+        splits(reading, "alternatives", true);
+        onIngredientsMinted(async (ids) => void minted.push(...ids));
+        try {
+          await expect(askAIAbout(joined.ingredientId)).resolves.toMatchObject({
+            outcome: "split",
+            into: ["light cooking cream", "non-fat Greek yogurt"],
+          });
+        } finally {
+          onIngredientsMinted(undefined);
+        }
+
+        const own = await ingredientFor(cream.aliasId);
+
+        expect(own).toMatchObject({
+          name: "light cooking cream",
+          flagged: true,
+          flagReason: "ai-queued",
+        });
+        expect(own!.id).not.toBe(joined.ingredientId);
+        expect(minted).toEqual([own!.id]);
+        expect(await lineFoods(both.line)).toEqual({
+          joined: "alternatives",
+          aliasIds: [cream.aliasId, yogurt.aliasId],
+        });
+        expect(await lineFoods(alone.line)).toEqual({ joined: null, aliasIds: [cream.aliasId] });
+        expect(
+          (await rowsOf(groceries)).filter((row) => row.name === "light cooking cream")
+        ).toEqual([
+          { name: "light cooking cream", aliasId: cream.aliasId },
+          { name: "light cooking cream", aliasId: cream.aliasId },
+        ]);
+        expect(await exists(joined.ingredientId)).toBe(false);
+      });
+
+      it("leaves it whole when AI is not sure", async () => {
+        const { cream, joined } = await joinedHoldingCream();
+
+        splits(reading, "alternatives", false);
+        await expect(askAIAbout(joined.ingredientId)).resolves.toMatchObject({
+          outcome: "unsure",
+        });
+        await expect(ingredientFor(cream.aliasId)).resolves.toMatchObject({
+          id: joined.ingredientId,
+        });
+      });
+    });
+
     it("puts the first of a split's alternatives on the list, and keeps each in the Pantry", async () => {
       const joined = await flagged("Dijon or yellow mustard");
       const dijon = await kept("Dijon mustard");

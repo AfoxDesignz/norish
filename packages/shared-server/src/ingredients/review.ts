@@ -92,7 +92,7 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
 
 /**
  * Several foods: a part AI's names found is that food, the others resolve as an import resolves
- * them, and the food's rows name them instead. A part that is the food itself leaves it as it was.
+ * them, and the food's rows name them instead. A part spelled by the food itself gets a food of its own.
  */
 async function split(
   food: { id: string; ownerId: string | null },
@@ -107,14 +107,14 @@ async function split(
 
   const unfound = answer.parts.filter((part) => !part.found).map((part) => part.text);
   const resolved = await resolveIngredients(unfound, { userId: food.ownerId });
-  const parts = distinctFoods(
-    answer.parts
-      .map((part) => (part.found ? { ...part.found, text: part.text } : resolved.shift()))
-      .filter((part) => part != null)
-  );
+  const read = answer.parts
+    .map((part) => (part.found ? { ...part.found, text: part.text } : resolved.shift()))
+    .filter((part) => part != null);
+  const parts = distinctFoods(read);
   const [first, ...rest] = parts;
 
-  if (!first || parts.some((part) => part.ingredientId === food.id)) {
+  // Two parts spelled by the food itself would fold into one: which spelling is which is unknown.
+  if (!first || read.filter((part) => part.ingredientId === food.id).length > 1) {
     return await doubted(food.id, "ai-unsure", trace);
   }
 

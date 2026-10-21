@@ -253,12 +253,12 @@ export async function countAliasesOf(tx: DbTransaction, ingredientId: string): P
 }
 
 /**
- * A new Ingredient a person made, named for a spelling moved out to it. Its
+ * A new Ingredient named for a spelling moved out to it, by a person or AI's split (flagged). Its
  * name is unique, so one another Ingredient goes by throws a unique violation.
  */
 export async function insertCatalogueIngredient(
   tx: DbTransaction,
-  values: { name: string; ownerId: string | null }
+  values: Pick<typeof ingredients.$inferInsert, "name" | "ownerId" | "flagged" | "flagReason">
 ): Promise<string> {
   const [row] = await tx.insert(ingredients).values(values).returning({ id: ingredients.id });
 
