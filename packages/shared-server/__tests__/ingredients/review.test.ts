@@ -1285,6 +1285,27 @@ describe("asking AI about an Ingredient", () => {
         });
       });
 
+      it("names the food once where the food named for the spelling is another part", async () => {
+        const { cream, joined, yogurt } = await joinedHoldingCream();
+
+        await getTestDb()
+          .update(ingredients)
+          .set({ name: "Light cooking cream" })
+          .where(eq(ingredients.id, yogurt.ingredientId));
+        await nameEverywhere(joined, "light cooking cream and non-fat Greek yogurt", {
+          pantry: false,
+        });
+        splits(reading, "together", true);
+
+        await expect(askAIAbout(joined.ingredientId)).resolves.toMatchObject({ outcome: "split" });
+        await expect(ingredientFor(cream.aliasId)).resolves.toMatchObject({
+          id: yogurt.ingredientId,
+        });
+        expect(await rowsOf(groceries)).toEqual([
+          { name: "light cooking cream", aliasId: cream.aliasId },
+        ]);
+      });
+
       it("leaves it whole when AI is not sure", async () => {
         const { cream, joined } = await joinedHoldingCream();
 

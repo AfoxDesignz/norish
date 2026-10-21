@@ -47,6 +47,7 @@ import {
   splitCatalogueIngredient,
 } from "@norish/db/repositories/ingredient-relocation";
 import { getIngredientPermissionPolicy } from "@norish/shared-server/config/server-config-loader";
+import { distinctFoods } from "@norish/shared/lib/line-foods";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import type { CatalogueActor, CatalogueEdit } from "./catalogue";
@@ -192,8 +193,10 @@ export async function splitByAI(
       // The food is itself named for the spelling: a split would delete it with the spelling on it.
       if (movedTo.id === ingredientId) return none("refused");
     }
-    const [first, ...rest] = parts.map((part) =>
-      part === spelledByFood && movedTo ? { ...part, ingredientId: movedTo.id } : part
+    const [first, ...rest] = distinctFoods(
+      parts.map((part) =>
+        part === spelledByFood && movedTo ? { ...part, ingredientId: movedTo.id } : part
+      )
     );
 
     await splitCatalogueIngredient(tx, ingredientId, [first!, ...rest], joined);
