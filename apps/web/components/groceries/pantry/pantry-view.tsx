@@ -73,7 +73,7 @@ export function PantryView() {
   const typed = draft.trim();
   const [search] = useDebounceValue(typed, SEARCH_DELAY_MS);
   const catalogue = useQuery({
-    ...trpc.ingredients.list.queryOptions({ search, locale, withHidden: true }),
+    ...trpc.ingredients.list.queryOptions({ search, locale, listedOnly: false }),
     enabled: !isOffline && search.length >= SEARCH_MIN_LENGTH,
   });
 
