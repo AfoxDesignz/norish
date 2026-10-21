@@ -14,7 +14,7 @@ import {
 import { createRecipeWithRefs, updateRecipeWithRefs } from "@norish/db/repositories/recipes";
 import { getUnits } from "@norish/shared-server/config/server-config-loader";
 import { lineFoodText, lineNamesNoFood } from "@norish/shared/lib/ingredient-text";
-import { joinOf } from "@norish/shared/lib/line-foods";
+import { distinctFoods, joinOf } from "@norish/shared/lib/line-foods";
 
 import type { ResolveActor } from "./resolver";
 import { cleanIngredientText, resolveLineFoods, resolveParts, writeResolved } from "./resolver";
@@ -106,7 +106,7 @@ export async function withResolvedIngredients<
     }
     // Several texts name a food each; without a join only the first is read, as a line shows it.
     if (named.length > 1 && line.joined) {
-      const foods = await resolveParts(named, actor);
+      const foods = distinctFoods(await resolveParts(named, actor));
 
       resolved.set(text, { foods, joined: joinOf(foods, line.joined) });
     } else {

@@ -224,14 +224,19 @@ export async function resolveIngredients(
   return resolved.map((one) => (one?.foods[0] ? { text: one.text, ...one.foods[0] } : null));
 }
 
-/** The foods of the parts AI split a name into, each resolved as a text with no split of its own. */
+/** The food of each part of a split, in order: a found one as is, a text resolved with no split of its own. */
 export async function resolveParts(
-  parts: readonly string[],
+  parts: ReadonlyArray<string | ResolvedIngredient>,
   actor: ResolveActor
 ): Promise<ResolvedIngredient[]> {
-  const resolved = await resolveIngredients(parts, actor);
+  const resolved = await resolveIngredients(
+    parts.filter((part) => typeof part === "string"),
+    actor
+  );
 
-  return distinctFoods(resolved.filter((one) => one !== null));
+  return parts
+    .map((part) => (typeof part === "string" ? resolved.shift() : part))
+    .filter((part) => part != null);
 }
 
 /** One text as written, and the foods it names in order, with how several go together. */

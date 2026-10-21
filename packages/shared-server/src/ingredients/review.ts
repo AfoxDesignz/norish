@@ -20,7 +20,7 @@ import { deleteByAI, flagByAnswer, mergeByAI, parentByAI, splitByAI } from "./ai
 import { ingredientChanges } from "./changes";
 import { announcingAfter } from "./minted";
 import { nameAfterAnswer } from "./plain-names";
-import { resolveIngredients } from "./resolver";
+import { resolveParts } from "./resolver";
 
 /** How long one food's question may take: up to three requests (read, Decision, language model). */
 export const REVIEW_BUDGET_MS = 30_000;
@@ -106,11 +106,10 @@ async function split(
 
   if (!now?.askable) return { outcome: "skipped", reason: now ? "decided" : "not-found", ...trace };
 
-  const unfound = answer.parts.filter((part) => !part.found).map((part) => part.text);
-  const resolved = await resolveIngredients(unfound, { userId: food.ownerId });
-  const read = answer.parts
-    .map((part) => (part.found ? { ...part.found, text: part.text } : resolved.shift()))
-    .filter((part) => part != null);
+  const read = await resolveParts(
+    answer.parts.map((part) => (part.found ? { ...part.found, text: part.text } : part.text)),
+    { userId: food.ownerId }
+  );
   const parts = distinctFoods(read);
   const [first, ...rest] = parts;
 
