@@ -2,8 +2,6 @@
 
 **What to build:** Found by ticket 12. With AI on, the pass made 5 unsure merges on the production copy. Two of them join a food to an unrelated one: "rode pesto" into red port, and "sriracha sauce" into oyster sauce. Their recipe lines now name the wrong food until someone presses Undo. An unsure answer is applied by design (flagged, with Undo), but these two are not near misses. The others ("koffiewater" into water, "refried beans" into red bean, "tortilla's" into tortilla) are close.
 
-Look at where the target came from (a slip of AI's names is unsure by rule, ticket 15) before choosing a fix.
-
 **Why:** AI read "rode pesto" as "red pesto" (under pesto) and "sriracha sauce" as sriracha (under hot sauce), sure. None of its names is a food in the catalogue, so the lookup fell back to a slip of the fingers, which took red port and oyster sauce. With one food found, AI was never asked about it, and the merge was made unsure.
 
 **Fix (Mike, 2026-10-21):** the lookup scores what it finds.

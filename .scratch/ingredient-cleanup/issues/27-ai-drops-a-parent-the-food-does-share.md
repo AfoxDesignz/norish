@@ -6,11 +6,11 @@
 
 **Fix (Mike, 2026-10-21):** AI keeps to the facts.
 
-- The prompt asks each food's `parent` (ticket 31) as a plain food a shopper buys, the base food it is made of or sold as: "chocolate whey" is whey, "Italian herbs" is herbs, "rode uien" is onion. Never a category ("spice blend", "dog treats"); null when there is none.
+- The prompt asks each food's `parent` (ticket 24) as a plain food a shopper buys, the base food it is made of or sold as: "chocolate whey" is whey, "Italian herbs" is herbs, "rode uien" is onion. Never a category ("spice blend", "dog treats"); null when there is none.
 - The question shows the parent the food has now ("Filed under: whey"), so AI judges a real parent instead of making one up.
 - The code looks the answer up as today. No check on shared words.
 
-**Blocked by:** 31
+**Blocked by:** 24
 
 **Status:** ready-for-agent
 

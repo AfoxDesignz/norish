@@ -1,4 +1,4 @@
-# 30: A joined food holding one part's spelling is never split
+# 29: A joined food holding one part's spelling is never split
 
 **What to build:** Found by ticket 12. With AI on, AI read "light cooking cream or non-fat Greek yogurt" as two alternatives, sure. The pass still flagged it unsure and left it whole. The food also carries the spelling "light cooking cream", so that part resolves to the food itself, and a split whose part is the food is refused. Its lines keep naming one joined food.
 
