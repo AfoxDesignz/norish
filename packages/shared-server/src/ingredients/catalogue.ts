@@ -694,17 +694,31 @@ export async function moveAlias(
     }
     if (targetId === sourceId) return { ingredientId: sourceId, changed: [sourceId] };
     if ((await countAliasesOf(tx, sourceId)) <= 1) throw new CatalogueEditError("last-alias");
+    if (targetId) {
+      await moveCatalogueAlias(tx, aliasId, targetId);
 
-    const to =
-      targetId ??
-      (await refusedOn("name-taken", () =>
-        insertCatalogueIngredient(tx, { name: alias.text, ownerId: actor.userId })
-      ));
+      return { ingredientId: targetId, changed: [sourceId, targetId] };
+    }
 
-    await moveCatalogueAlias(tx, aliasId, to);
+    const to = await refusedOn("name-taken", () =>
+      moveToFoodNamedFor(tx, { id: aliasId, text: alias.text }, { ownerId: actor.userId })
+    );
 
     return { ingredientId: to, changed: [sourceId, to] };
   });
+}
+
+/** Move a spelling to a new food named for it, minted with `values`. */
+export async function moveToFoodNamedFor(
+  tx: DbTransaction,
+  alias: { id: string; text: string },
+  values: Omit<Parameters<typeof insertCatalogueIngredient>[1], "name">
+): Promise<string> {
+  const id = await insertCatalogueIngredient(tx, { name: alias.text, ...values });
+
+  await moveCatalogueAlias(tx, alias.id, id);
+
+  return id;
 }
 
 /**

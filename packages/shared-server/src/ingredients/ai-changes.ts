@@ -50,7 +50,13 @@ import { getIngredientPermissionPolicy } from "@norish/shared-server/config/serv
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import type { CatalogueActor, CatalogueEdit } from "./catalogue";
-import { CatalogueEditError, inEdit, mayEditOwnedRow, refusedOn } from "./catalogue";
+import {
+  CatalogueEditError,
+  inEdit,
+  mayEditOwnedRow,
+  moveToFoodNamedFor,
+  refusedOn,
+} from "./catalogue";
 import { ingredientChanges } from "./changes";
 import { announceMinted } from "./minted";
 
@@ -156,9 +162,8 @@ export async function renameByAI(ingredientId: string, formerName: string, name:
 }
 
 /**
- * Split a food into the foods its parts resolved to, and delete it. A part spelled by the food
- * itself moves that spelling, and the rows it names, to a new food of its own, queued for AI's
- * pass. Not an AI Change: a grocery split in two has no Undo.
+ * Split a food into the foods its parts resolved to, and delete it; a part spelled by the food
+ * moves that spelling to a new food named for it. Not an AI Change: a split grocery has no Undo.
  */
 export async function splitByAI(
   ingredientId: string,
@@ -166,36 +171,36 @@ export async function splitByAI(
   joined: LineJoin
 ) {
   const ids = [ingredientId, ...parts.map((part) => part.ingredientId)];
-  let own: string | null = null;
-  const outcome = await withTransaction(async (tx): Promise<ApplyOutcome> => {
+  const { outcome, movedTo } = await withTransaction(async (tx) => {
+    const none = (outcome: ApplyOutcome) => ({ outcome, movedTo: null });
+
     await lockTree(tx);
-    if ((await lockIngredients(tx, ids)) < new Set(ids).size) return "gone";
-    if (!(await isAskableByAI(tx, ingredientId))) return "decided";
-    const self = parts.find((part) => part.ingredientId === ingredientId);
+    if ((await lockIngredients(tx, ids)) < new Set(ids).size) return none("gone");
+    if (!(await isAskableByAI(tx, ingredientId))) return none("decided");
+    const spelledByFood = parts.find((part) => part.ingredientId === ingredientId);
+    let movedTo: string | null = null;
 
-    if (self) {
-      const alias = await findCatalogueAliasOwner(tx, self.aliasId);
+    if (spelledByFood) {
+      const alias = await findCatalogueAliasOwner(tx, spelledByFood.aliasId);
 
-      if (alias?.ingredientId !== ingredientId) return "gone";
-      own = await insertCatalogueIngredient(tx, {
-        name: alias.text,
-        ownerId: alias.ownerId,
-        flagged: true,
-        flagReason: "ai-queued",
-      });
-      await moveCatalogueAlias(tx, self.aliasId, own);
+      if (alias?.ingredientId !== ingredientId) return none("gone");
+      movedTo = await moveToFoodNamedFor(
+        tx,
+        { id: spelledByFood.aliasId, text: alias.text },
+        { ownerId: alias.ownerId, flagged: true, flagReason: "ai-queued" }
+      );
     }
-    const moved = (part: SplitPart) =>
-      part === self && own ? { ...part, ingredientId: own } : part;
-    const [first, ...rest] = parts;
+    const [first, ...rest] = parts.map((part) =>
+      part === spelledByFood && movedTo ? { ...part, ingredientId: movedTo } : part
+    );
 
-    await splitCatalogueIngredient(tx, ingredientId, [moved(first), ...rest.map(moved)], joined);
+    await splitCatalogueIngredient(tx, ingredientId, [first!, ...rest], joined);
 
-    return "applied";
+    return { outcome: "applied" as const, movedTo };
   });
 
-  await announceIfApplied(outcome, [...ids, own]);
-  if (outcome === "applied" && own) await announceMinted([own]);
+  await announceIfApplied(outcome, [...ids, movedTo]);
+  if (outcome === "applied" && movedTo) await announceMinted([movedTo]);
 
   return outcome;
 }
