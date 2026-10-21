@@ -10,7 +10,17 @@
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A sure split of a joined food that holds one part's spelling makes the split, and that part gets a food of its own.
-- [ ] All `CONTRIBUTING.md` gates pass.
+- [x] A sure split of a joined food that holds one part's spelling makes the split, and that part gets a food of its own.
+- [ ] All `CONTRIBUTING.md` gates pass. (shared-server ingredient tests, typecheck and lint pass; the full repo gates are the orchestrator's run)
+
+2026-10-21, implemented:
+
+- `review.ts` `split()` no longer refuses a part that resolves to the food itself. It refuses only when two parts do (they would fold into one by `distinctFoods`, and which spelling is which is unknown). An unsure split is left whole as before.
+- `splitByAI` (`ai-changes.ts`), under the tree lock and the foods' locks: the part whose `ingredientId` is the food reads its alias (`findCatalogueAliasOwner`), inserts a new food named for the alias's text, owned by the alias's owner, flagged `ai-queued` (`insertCatalogueIngredient` now takes `flagged`/`flagReason`), and moves the alias there with `moveCatalogueAlias` (the unmerge's own move: recipe lines, groceries and Pantry rows on that spelling follow it). Then `splitCatalogueIngredient` splits the rest as before, so the joined line names the new food and the other part, and the joined food goes. The new food is announced through `announceMinted`, so AI's pass reads it next (parent, Plain Name).
+- Undo: a split is not an AI Change and has no Undo; neither has the moved spelling. Undoing it would mean a person moving the spelling back by hand (Spellings: move).
+- Not handled: a new food's name already taken by another food throws a unique violation and fails that food's pass (the spelling's fold is unique, so a food of that name normally already owns the spelling and the part would have been found there).
+- Test: `review.test.ts` "a joined food that holds one part's spelling" (the cream line and grocery follow the spelling to a new flagged food, the joined line names cream and yogurt as alternatives, the joined food is gone; unsure leaves it whole).
+- Docs: a release-notes line and a sentence on the Ingredients page's split bullet.
+- For ticket 31: on the production copy "light cooking cream or non-fat Greek yogurt" should now be split, its 4 "light cooking cream" lines on a new food light cooking cream (which then gets one more AI read).
