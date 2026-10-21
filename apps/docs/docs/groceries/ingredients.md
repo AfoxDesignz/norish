@@ -43,7 +43,8 @@ recipe, grocery or pantry item adds it. It then does one of these:
 - files it under a parent ("cherry tomatoes" under "tomato"), or takes away
   one its name gave it that it is no kind of ("peanut butter" under "butter")
 - gives it a clean name ("GR OF CANNED TUNA" becomes "Canned Tuna")
-- splits a name that is several foods ("Dijon or yellow mustard")
+- splits a name that is several foods ("Dijon or yellow mustard", or "salt
+  cinnamon" with no joining word)
 - deletes it when it is not a food, like a tool ("deegroller") or a fragment
   of a line ("melted"). Recipe lines and groceries keep their text.
 
