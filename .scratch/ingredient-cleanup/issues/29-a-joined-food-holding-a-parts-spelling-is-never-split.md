@@ -4,7 +4,7 @@
 
 **Fix (Mike, 2026-10-21):** the part's spelling moves from the joined food to a new food of its own, and the split goes ahead:
 
-- the spelling "light cooking cream" moves to a new food light cooking cream, and a line "200 ml light cooking cream" follows it there;
+- the spelling "light cooking cream" moves to a new food light cooking cream, and the lines it names follow it there (4 on the production copy, each naming only light cooking cream);
 - a line "light cooking cream or non-fat Greek yogurt" names light cooking cream and greek yogurt, as alternatives;
 - the joined food goes.
 
