@@ -9,7 +9,10 @@ import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
-import { mintIngredientWithAliases } from "@norish/db/repositories/ingredient-aliases";
+import {
+  addIngredientAliases,
+  mintIngredientWithAliases,
+} from "@norish/db/repositories/ingredient-aliases";
 import {
   applyIngredientSeed,
   listSeededIngredientIds,
@@ -29,6 +32,7 @@ import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import {
   createTestRecipe,
+  getRecipeIngredients,
   getSpellingTexts,
   getTestDb,
   insertTestRecipeLine,
@@ -60,6 +64,7 @@ describe("the first-start cleanup", () => {
       seedEntry("en:bell-pepper", "bell pepper", "paprika (vrucht)"),
       seedEntry("en:salt", "salt", "zout", "Salz"),
       seedEntry("en:pepper", "pepper", "peper", "Pfeffer"),
+      seedEntry("en:lettuce", "lettuce", "sla"),
     ]);
     seeded = await listSeededIngredientIds();
   });
@@ -320,5 +325,52 @@ describe("the first-start cleanup", () => {
     await expect(
       getTestDb().select({ name: groceries.name, food: groceries.ingredientId }).from(groceries)
     ).resolves.toEqual([{ name: ")", food: null }]);
+  });
+
+  it("removes a spelling ending in a colon, so its line names no food and keeps its text", async () => {
+    const lettuce = seeded.get("en:lettuce")!;
+    const [colon] = (await addIngredientAliases({
+      ingredientId: lettuce,
+      aliases: [{ text: "Voor de salade:", fold: ingredientAliasFold("Voor de salade:") }],
+      ownerId: userId,
+      locale: null,
+    }))!;
+    const own = await oldMint("Voor het beslag:", ["Voor het beslag:"]);
+    const recipe = await createTestRecipe(userId);
+    const saladLine = await insertTestRecipeLine(
+      { recipeId: recipe.id, name: "Voor de salade:", order: "0" },
+      [colon!.aliasId]
+    );
+    const batterLine = await insertTestRecipeLine(
+      { recipeId: recipe.id, name: "Voor het beslag:", order: "1" },
+      [own.aliasIds[0]!]
+    );
+
+    await getTestDb().insert(groceries).values({
+      userId,
+      name: "Voor de salade:",
+      ingredientAliasId: colon!.aliasId,
+      ingredientId: lettuce,
+    });
+
+    await expect(cleanUpCatalogueOnFirstStart(askAI)).resolves.toMatchObject({
+      cleaned: 0,
+      removed: 2,
+    });
+    expect((await getSpellingTexts(lettuce)).sort()).toEqual(["lettuce", "sla"]);
+    expect(await exists(own.ingredientId)).toBe(false);
+    expect(await lineSpellings(saladLine.id)).toEqual([]);
+    expect(await lineSpellings(batterLine.id)).toEqual([]);
+    expect((await getRecipeIngredients(recipe.id)).map((line) => line.name).sort()).toEqual([
+      "Voor de salade:",
+      "Voor het beslag:",
+    ]);
+    // A grocery keeps a food, as a new one of that text would: its own, minted from the clean text.
+    await expect(
+      getTestDb()
+        .select({ name: groceries.name, food: ingredients.name })
+        .from(groceries)
+        .innerJoin(ingredients, eq(ingredients.id, groceries.ingredientId))
+    ).resolves.toEqual([{ name: "Voor de salade:", food: "Voor de salade" }]);
   });
 });

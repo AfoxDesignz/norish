@@ -25,6 +25,7 @@ import {
   mergeCatalogueIngredients,
   splitCatalogueIngredient,
 } from "@norish/db/repositories/ingredient-relocation";
+import { lineNamesNoFood } from "@norish/shared/lib/ingredient-text";
 import { ingredientAliasFold, withoutStrayMarks } from "@norish/shared/lib/spelling-keys";
 
 import type { ResolvedIngredient } from "../resolver";
@@ -33,7 +34,7 @@ import { cleanSpellingOf, partsByWordsOf } from "../resolver";
 import { oncePerVersion } from "./catalogue-seed";
 
 /** Raised when a release needs the cleanup to run again. */
-export const CLEANUP_VERSION = 1;
+export const CLEANUP_VERSION = 2;
 
 /** How many variants one round removes; each round commits, so a boot cut short resumes. */
 // ponytail: ~2 ms a variant, ~2.5 min for production's 71k; set-based if ticket 12 finds it slow.
@@ -44,7 +45,7 @@ export interface CleanupOutcome {
   seeded: number;
   /** Own spellings given their clean text in place (2, and 3 where the clean name was free). */
   cleaned: number;
-  /** Own spellings removed, their rows resolved again (3). */
+  /** Own spellings removed, their rows resolved again (3, and 2's that name no food). */
   removed: number;
   /** Joined foods split and removed (4). */
   split: number;
@@ -108,12 +109,17 @@ async function cleanUpCatalogue(
 
   // 2 and 3. An own spelling that is not its own clean name takes it where it is free, the dirty
   // ones first ("gyoza vellen )"); the rest go, and their rows are resolved again (`removeVariants`).
+  // One a line would name no food by ("Voor de salade:") always goes, so its lines name none.
   const removing: Variant[] = [];
 
   for (const variant of [...variants].sort(
     (a, b) => Number(b.fold === b.clean.fold) - Number(a.fold === a.clean.fold)
   )) {
-    if (variant.clean.fold && (await rewriteSpelling(variant.id, variant.clean))) {
+    if (
+      variant.clean.fold &&
+      !lineNamesNoFood({ text: variant.text }) &&
+      (await rewriteSpelling(variant.id, variant.clean))
+    ) {
       outcome.cleaned += 1;
     } else {
       removing.push(variant);
@@ -168,7 +174,8 @@ async function removeVariants(variants: readonly Variant[]): Promise<number> {
       if (beside.others === 0) {
         const target = variant.clean.fold ? await foodSpelled(tx, variant.clean.fold) : null;
 
-        if (!target) {
+        // A colon spelling's fold may be its clean one, so the food holding it is its own.
+        if (!target || target === beside.ingredientId) {
           await deleteCatalogueIngredient(tx, beside.ingredientId);
           removed += 1;
           continue;
