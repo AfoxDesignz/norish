@@ -10,9 +10,21 @@
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A grocery food is not on the Ingredients page, not even by search, and its grocery keeps its aisle and price.
-- [ ] AI does not ask about it.
-- [ ] Once a recipe line names it, it is listed and AI may ask about it.
-- [ ] All `CONTRIBUTING.md` gates pass, including a browser check of the page.
+- [x] A grocery food is not on the Ingredients page, not even by search, and its grocery keeps its aisle and price.
+- [x] AI does not ask about it.
+- [x] Once a recipe line names it, it is listed and AI may ask about it.
+- [ ] All `CONTRIBUTING.md` gates pass, including a browser check of the page. (the whole `ai` E2E project is green, 182/182; shared-server, db, trpc and queue suites, typecheck and lint green; the full repo gates are the orchestrator's run)
+
+2026-10-21, implemented:
+
+- One predicate, read from the rows (`packages/db/src/repositories/ingredient-catalogue.ts`): `listedFood` = `off_id is not null` or `namedByARecipeLine` (a `recipe_ingredient_foods` row on one of the food's aliases, via `rowsNaming(food).lineFoods`). Hidden = not listed: an own food (`off_id` null) no recipe line names, whether Groceries, recurring groceries or Pantry Ingredients name it (a grocery food) or nothing does.
+- AI: `askableByAI()` (now a function, built per call like `ingredientIsNamed`) also requires `namedByARecipeLine`. It is the one predicate behind `isAskableByAI` (every AI Change re-checks it under its lock: merge, parent, rename, split, delete, flag), `findCatalogueIngredient().askable` (the pass's first skip, "decided"), `listUnansweredIngredientIds` (nightly) and `listAskableIngredientIds` (first start). A grocery food minted with AI on keeps its `ai-queued` flag when the pass skips it, so the nightly retry asks it once a recipe line names it. The producer `addIngredientReviewJob` is unchanged: a pass over a hidden food skips it without a request.
+- Race this opened, fixed first (own commit): the resolver announced a mint before the caller wrote the rows naming it, so a pass could read a just-imported recipe food as hidden. `announcingAfter` in `minted.ts` (an AsyncLocalStorage on `globalThis`) holds mints until the write is done; `writeResolved` and the pass's split run inside it.
+- Page: `listCatalogueIngredients({ listedOnly })` filters the rows and counts only listed kinds (`kinds`, and "without parent or kinds"). `listIngredients` passes it through; tRPC `ingredients.list` sets it unless `withHidden` and `ingredients.kinds` always. `ingredients.get` (one food by id) is not filtered: the Pantry and the recipe nutrition card open a food's panel by id. The Pantry's search passes `withHidden: true`, so it still finds the foods the Pantry keeps (Mike's call if he wants it hidden there too). The Ingredients page's merge/parent picker uses `list`, so it no longer offers a hidden food.
+- Known limits, not built: a listed food filed under a hidden parent is found by search but not in the tree (it is not a root); an already open page shows a newly named food only when its cached search refetches (5 min stale time), since naming an existing food announces no ingredient change.
+- Tests: `review.test.ts` "asks nothing about a grocery food, nor an own food nothing names, until a recipe line names it"; `catalogue.test.ts` "lists only seeded foods and the own foods a recipe line names, counting only listed kinds"; `resolver.test.ts` "hands on a write's mints only once the write is done"; `first-start-cleanup.test.ts` now has a grocery food AI is not asked about. Test helpers that mint a food for AI now name it in a recipe (`nameInATestRecipe` in `packages/db/__tests__/helpers/db-test-helpers.ts`).
+- E2E: `ingredient-catalogue.e2e.ts` "a food only a grocery names is not on the Ingredients page, and AI leaves it, until a recipe names it" (a not-a-food answer waits on the ingredients lane and is never asked for; the search finds the listed "reservebrood" and not the grocery food, then finds it once a recipe line names it). `seedCatalogue` now gives its foods an entry id (`e2e:<name>`), as the seed does, so the page lists them.
+- Docs: a sentence on the Ingredients page, "one no recipe uses" in what AI leaves alone, a release-notes line, and the grocery food in `CONTEXT.md` (Ingredient).
+- For ticket 31: "grocery foods" = `off_id is null`, no `recipe_ingredient_foods` row on any of its aliases, and a `groceries`, `recurring_groceries` or `pantry_ingredients` row naming it (`ingredient_alias_id` in its aliases or `ingredient_id` = the food, as `rowsNaming`). "Own foods nothing names" = `off_id is null and not ingredientIsNamed()`. Hidden = both together = `not listedFood`.
