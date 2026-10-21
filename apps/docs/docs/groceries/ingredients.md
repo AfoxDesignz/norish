@@ -45,7 +45,8 @@ recipe, grocery or pantry item adds it. It then does one of these:
   one its name gave it that it is no kind of ("peanut butter" under "butter")
 - gives it a clean name ("GR OF CANNED TUNA" becomes "Canned Tuna")
 - splits a name that is several foods ("Dijon or yellow mustard", or "salt
-  cinnamon" with no joining word)
+  cinnamon" with no joining word). A spelling of one of those foods that it
+  also has becomes an ingredient of its own
 - deletes it when it is not a food, like a tool ("deegroller") or a fragment
   of a line ("melted"). Recipe lines and groceries keep their text.
 
