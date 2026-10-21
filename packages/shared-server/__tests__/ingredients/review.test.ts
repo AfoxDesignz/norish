@@ -1222,15 +1222,15 @@ describe("asking AI about an Ingredient", () => {
           onIngredientsMinted(undefined);
         }
 
-        const own = await ingredientFor(cream.aliasId);
+        const creamFood = await ingredientFor(cream.aliasId);
 
-        expect(own).toMatchObject({
+        expect(creamFood).toMatchObject({
           name: "light cooking cream",
           flagged: true,
           flagReason: "ai-queued",
         });
-        expect(own!.id).not.toBe(joined.ingredientId);
-        expect(minted).toEqual([own!.id]);
+        expect(creamFood!.id).not.toBe(joined.ingredientId);
+        expect(minted).toEqual([creamFood!.id]);
         expect(await lineFoods(both.line)).toEqual({
           joined: "alternatives",
           aliasIds: [cream.aliasId, yogurt.aliasId],

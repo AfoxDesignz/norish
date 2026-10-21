@@ -718,9 +718,9 @@ export async function moveToFoodNamedFor(
   alias: { id: string; text: string },
   values: Omit<Parameters<typeof insertCatalogueIngredient>[1], "name">
 ): Promise<{ id: string; minted: boolean }> {
-  const held = await lockIngredientNamed(tx, alias.text);
-  const food = held
-    ? { id: held, minted: false }
+  const existing = await lockIngredientNamed(tx, alias.text);
+  const food = existing
+    ? { id: existing, minted: false }
     : { id: await insertCatalogueIngredient(tx, { name: alias.text, ...values }), minted: true };
 
   await moveCatalogueAlias(tx, alias.id, food.id);

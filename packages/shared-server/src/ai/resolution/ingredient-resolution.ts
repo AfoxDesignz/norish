@@ -203,11 +203,11 @@ async function findNamed(
     pick = asked;
   }
 
-  const hit = ranked.find((one) => one.ingredientId === pick.ingredientId);
+  const picked = ranked.find((one) => one.ingredientId === pick.ingredientId);
 
   return {
-    food: hit ? refOf(hit) : null,
-    sure: pick.sure && (!hit || isExact(hit)),
+    food: picked ? refOf(picked) : null,
+    sure: pick.sure && (!picked || isExact(picked)),
   };
 }
 
@@ -271,7 +271,7 @@ const readingSchema = z
  * The answer as a reading, or null where its shape breaks: a food has one entry, several have two
  * or more and a join, not a food has none and a reason.
  */
-function checked(answer: z.infer<typeof readingSchema>): Reading | null {
+function asReading(answer: z.infer<typeof readingSchema>): Reading | null {
   const plain = (name: string | null) => name?.trim() || null;
   const foods = answer.foods.map((food) => ({
     written: food.written.trim(),
@@ -301,7 +301,7 @@ async function readName(text: string, filedUnder: string | null): Promise<Readin
     const answer = await inTime(() =>
       generateStructured({ prompt: "ingredient-resolution", schema: readingSchema, sections })
     );
-    const reading = checked(answer);
+    const reading = asReading(answer);
 
     aiLogger.info({ text, attempt, ...answer }, "Language model read what food a name is");
     if (reading) return reading;
