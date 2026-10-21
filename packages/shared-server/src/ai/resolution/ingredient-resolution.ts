@@ -29,7 +29,7 @@ import { aiLogger } from "@norish/shared-server/logger";
 import { distinctFoods } from "@norish/shared/lib/line-foods";
 import { withTimeout } from "@norish/shared/lib/with-timeout";
 
-import { findOtherFoodsNamed, refOf } from "../../ingredients/resolver";
+import { findOtherFoodsNamed, isExact, refOf } from "../../ingredients/resolver";
 import { isCredentialRejection } from "../runtime/errors";
 import { decide, generateStructured } from "../runtime/runtime";
 
@@ -183,7 +183,7 @@ async function findNamed(
   const listed = await findListedIngredientIds(named.map((one) => one.ingredientId));
   // A hidden food is never AI's answer: no merge into it, no parent, no split part.
   const found = named.filter((one) => listed.has(one.ingredientId));
-  const exact = found.filter((one) => one.score === 1);
+  const exact = found.filter(isExact);
   const ranked = distinctFoods(
     exact.length > 0 ? exact : [...found].sort((a, b) => b.score - a.score)
   );
@@ -207,7 +207,7 @@ async function findNamed(
 
   return {
     food: hit ? refOf(hit) : null,
-    sure: pick.sure && (hit?.score ?? 1) === 1,
+    sure: pick.sure && (!hit || isExact(hit)),
   };
 }
 

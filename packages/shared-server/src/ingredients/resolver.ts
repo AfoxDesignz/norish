@@ -642,8 +642,15 @@ export async function findIngredientFor(text: string): Promise<IngredientRef | n
   return match ? refOf(match) : null;
 }
 
-/** A food a name finds, and how: 1 is its own spelling, a slip of the fingers less (`slipsNear`). */
+/** A food a name finds, and how: `EXACT` is its own spelling, a slip of the fingers less (`slipsNear`). */
 export type FoundFood = IngredientRef & { score: number };
+
+const EXACT = 1;
+
+/** Whether a name found the food by its own spelling, not a slip of the fingers. */
+export function isExact(found: FoundFood): boolean {
+  return found.score === EXACT;
+}
 
 /** Just the alias and food of a row that carries more. */
 export function refOf({ aliasId, ingredientId }: IngredientRef): IngredientRef {
@@ -676,7 +683,7 @@ export async function findOtherFoodsNamed(
   return spellings.map((spelling) => {
     const match = matched.get(spelling);
 
-    if (match) return [{ ...refOf(match), score: 1 }];
+    if (match) return [{ ...refOf(match), score: EXACT }];
 
     return (matched.has(spelling) && slipped.get(sameFoodKey(spelling))) || [];
   });
