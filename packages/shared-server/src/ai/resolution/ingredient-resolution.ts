@@ -29,7 +29,7 @@ import { OperationTimeoutError } from "@norish/shared/lib/error-extensions";
 import { onlyNearest } from "@norish/shared/lib/name-slips";
 import { withTimeout } from "@norish/shared/lib/with-timeout";
 
-import { findOtherFoodsNamed } from "../../ingredients/resolver";
+import { findOtherFoodsNamed, refOf } from "../../ingredients/resolver";
 import { isCredentialRejection } from "../runtime/errors";
 import { decide, generateStructured } from "../runtime/runtime";
 
@@ -200,7 +200,7 @@ async function findNamed(
   const hit = ranked.find((one) => one.ingredientId === pick.ingredientId);
 
   return {
-    food: hit ? { aliasId: hit.aliasId, ingredientId: hit.ingredientId } : null,
+    food: hit ? refOf(hit) : null,
     sure: pick.sure && (hit?.score ?? 1) === 1,
   };
 }

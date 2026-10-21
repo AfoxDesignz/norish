@@ -380,7 +380,7 @@ async function resolveTexts(
     if (named) {
       resolved.set(spelling, {
         text: spelling.text,
-        foods: named.foods.map(({ aliasId, ingredientId }) => ({ aliasId, ingredientId })),
+        foods: named.foods.map(refOf),
         joined: named.joined,
       });
       continue;
@@ -415,7 +415,7 @@ async function resolveTexts(
 
     resolved.set(spelling, {
       text: spelling.text,
-      foods: [{ aliasId: alias.aliasId, ingredientId: alias.ingredientId }],
+      foods: [refOf(alias)],
       joined: null,
     });
   }
@@ -639,13 +639,14 @@ export async function findIngredientFor(text: string): Promise<IngredientRef | n
   const spelling = spellingOf(cleaned, await currentRules());
   const match = matchKnown(spelling, await knownAliases([spelling]));
 
-  return match ? { aliasId: match.aliasId, ingredientId: match.ingredientId } : null;
+  return match ? refOf(match) : null;
 }
 
 /** A food a name finds, and how: 1 is its own spelling, a slip of the fingers less (`slipsNear`). */
 export type FoundFood = IngredientRef & { score: number };
 
-function refOf({ aliasId, ingredientId }: IngredientRef): IngredientRef {
+/** Just the alias and food of a row that carries more. */
+export function refOf({ aliasId, ingredientId }: IngredientRef): IngredientRef {
   return { aliasId, ingredientId };
 }
 
