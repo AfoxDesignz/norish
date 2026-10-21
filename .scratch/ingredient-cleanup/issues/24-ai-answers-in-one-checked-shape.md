@@ -10,8 +10,20 @@
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] "salt cinnamon" and "koud water melk" are split into their foods, not deleted.
-- [ ] An answer that breaks the shape is asked once more, then flagged.
-- [ ] All `CONTRIBUTING.md` gates pass.
+- [x] "salt cinnamon" and "koud water melk" are split into their foods, not deleted.
+- [x] An answer that breaks the shape is asked once more, then flagged.
+- [ ] All `CONTRIBUTING.md` gates pass. (shared-server tests, typecheck and lint, the queue's review tests, `i18n:check`, `build:web` and the `ai` E2E spec `ingredient-catalogue.e2e.ts` pass; the full repo gates are the orchestrator's run)
+
+2026-10-21, implemented:
+
+- The schema is `readingSchema` in `packages/shared-server/src/ai/resolution/ingredient-resolution.ts`: `{ sure, action: { kind, joined, reason }, foods: [{ written, englishName, parent, otherNames }] }`, all fields present, nullable where empty (OpenAI strict mode). `checked(answer)` turns it into a `Reading` or null; `readName` asks a second time when null.
+- Twice broken: the food is flagged `ai-unavailable` (no new reason, no new strings). It is "failed" in that reason's own words, and the nightly sweep asks it again, so a fixed prompt recovers it by itself. Cost ceiling: two requests per such food per night while an edited prompt keeps breaking the shape. Mike may prefer `ai-unsure` (a person checks it, never re-asked).
+- `parent` (ticket 27) is wired as the old general food: the code looks it up with `findOtherFoodsNamed` as before, and the trace still calls it `generalFood`. The prompt's `parent` wording is today's "more general food it is a kind of"; 27 rewrites it and adds "Filed under".
+- `action.reason` is required by the check and logged, not used further.
+- The lookup of AI's names is one function, `findNamed` (names = englishName + otherNames, `findOtherFoodsNamed`, the second question where they find 2+ foods, a slip-only find unsure). A single food and each part of a split go through it; ticket 26's scored lookup changes it in one place.
+- A split's part: `AIResolution` several carries `parts: ReadPart[]` (`{ text: written, found: IngredientRef | null }`). A part found surely by its names points at the alias its name matched (nothing is added to that food); a part found by nothing, or only unsurely, resolves its written text as before (`resolveIngredients` in `review.ts`'s `split`, minting it flagged). An unsure split is not looked up at all. The food itself is never found by its names (`findOtherFoodsNamed` excludes it), so ticket 29's case still reaches the written fallback and the "part is the food itself" refusal.
+- `findOtherFoodsNamed` now returns `IngredientRef & { slip }` (aliasId added); `findSlips` returns the slip's alias row instead of its food id.
+- Prompt: several also covers foods side by side ("salt cinnamon", "koud water melk"). Tests: `review.test.ts` "splits foods written side by side, finding each part by its English name and other names" and "an answer that breaks its shape". The test helper `__tests__/helpers/ingredient-readings.ts` builds the new shape (`foodReading({ englishName, parent, otherNames, written })`, `severalReading(parts as strings or { written, englishName, ... })`).
+- Docs: the 0.26 upgrade note on the Ingredient resolution prompt names the new answer and what a broken one does; the Ingredients page names "salt cinnamon".
