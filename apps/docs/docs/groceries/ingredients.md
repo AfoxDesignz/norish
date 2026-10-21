@@ -54,7 +54,8 @@ recipe, grocery or pantry item adds it. It then does one of these:
   of a line ("melted"). Recipe lines and groceries keep their text.
 
 AI leaves alone an ingredient you marked distinct, renamed or gave a parent,
-every ingredient from the catalogue source, and one no recipe uses.
+every ingredient from the catalogue source, and one no recipe uses, which it
+also never merges another into or files another under.
 Ingredients AI could not reach are tried again every night.
 
 ### Changed by AI
