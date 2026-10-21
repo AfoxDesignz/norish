@@ -34,8 +34,10 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
   if (!row) return { outcome: "skipped", reason: "not-found", ...trace };
   if (!row.askable) return { outcome: "skipped", reason: "decided", ...trace };
 
+  const filedUnder = row.parentId ? await findCatalogueIngredient(row.parentId) : null;
   const answer = await askWhatFoodThisIs(row.name, {
     excludeId: ingredientId,
+    filedUnder: filedUnder?.name ?? null,
     budgetMs: REVIEW_BUDGET_MS,
     trace,
   });
@@ -65,7 +67,7 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
 
   const sure = answer.reason === null;
   const parent = answer.kindOf ? await findCatalogueIngredient(answer.kindOf) : null;
-  // No general food: the parent goes. A person's parent made the food unaskable, so it is not one.
+  // No parent the catalogue has: the parent goes. A person's parent made the food unaskable, so it is not one.
   const { outcome: filed, previous } =
     parent || row.parentId
       ? await parentByAI(ingredientId, parent?.id ?? null, sure)

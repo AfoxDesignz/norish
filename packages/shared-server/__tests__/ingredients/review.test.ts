@@ -228,7 +228,7 @@ describe("asking AI about an Ingredient", () => {
       into: "frankfurter",
       sure: true,
       englishName: "frankfurter",
-      generalFood: "sausage",
+      parent: "sausage",
       considered: [],
     });
     await expect(ingredientFor(knaks.aliasId)).resolves.toMatchObject({
@@ -314,6 +314,8 @@ describe("asking AI about an Ingredient", () => {
       flagged: false,
     });
     expect(resolutionRequests()).toBe(1);
+    // A food under no parent is asked about its name alone.
+    expect(vi.mocked(generateStructured).mock.calls[0]![0].sections).toEqual(["Name: rode uien"]);
     expect(await changes()).toMatchObject([{ kind: "parent", sure: true }]);
   });
 
@@ -489,6 +491,48 @@ describe("asking AI about an Ingredient", () => {
       ]);
       await undoAIChange(actor, (await listAIChanges())[0]!.id);
       await expect(parentOf(food.ingredientId)).resolves.toBe(spread.ingredientId);
+    });
+  });
+
+  describe("a food whose words filed it under a plain food it does share", () => {
+    /** A mint its words filed under the seeded `parent`. */
+    async function under(parent: string, text: string) {
+      await applyIngredientSeed([seedEntry(`en:${parent}`, parent)]);
+      const food = await flagged(text);
+      const filed = await parentOf(food.ingredientId);
+
+      expect(filed).not.toBeNull();
+
+      return { food, filed };
+    }
+
+    it("shows AI the parent the food is filed under, and keeps it when AI names it", async () => {
+      const { food, filed } = await under("whey", "chocolate whey");
+
+      reads({ englishName: "chocolate whey protein", parent: "whey", sure: true });
+
+      await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
+        parent: "whey",
+      });
+      expect(vi.mocked(generateStructured).mock.calls[0]![0].sections).toEqual([
+        "Name: chocolate whey",
+        "Filed under: whey",
+      ]);
+      await expect(parentOf(food.ingredientId)).resolves.toBe(filed);
+      await expect(ingredientFor(food.aliasId)).resolves.toMatchObject({ flagged: false });
+    });
+
+    it("moves it to the plain food AI names when the catalogue has that food", async () => {
+      const { food } = await under("spice", "chinese 5 spice");
+      const mixed = await kept("mixed spices");
+
+      reads({ englishName: "five spice powder", parent: "mixed spices", sure: true });
+
+      await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
+        outcome: "parent",
+        of: "mixed spices",
+      });
+      await expect(parentOf(food.ingredientId)).resolves.toBe(mixed.ingredientId);
     });
   });
 

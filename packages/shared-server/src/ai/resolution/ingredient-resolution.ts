@@ -1,9 +1,9 @@
 /**
  * What a food a mint made is, asked of AI by the background pass (ADR-0037); an import asks
  * nothing. One language-model request under the administrator-editable `ingredient-resolution`
- * Prompt reads the name, with no catalogue in front of it: a food (its plain English name, the more
- * general food it is a kind of, and other names a shop sells it under), several foods, or not a
- * food. The answer's shape is checked, and asked once more where it breaks. The code looks the
+ * Prompt reads the name and the parent it is filed under, with no catalogue in front of it: a food
+ * (its plain English name, the plain food it is made of or sold as, and other names a shop sells it
+ * under), several foods, or not a food. The answer's shape is checked, and asked once more where it breaks. The code looks the
  * names up as an import would, a split's parts too. Only where they name more than one food is
  * a second question asked over just those: a Decision when a Decision Model is configured and this
  * use is on, and otherwise — or when the Decision is unsure, or fails — the language model
@@ -75,6 +75,8 @@ function failedNew(error: unknown): AIResolution {
 export interface AskOptions {
   /** The Ingredient the question is about, never its own answer. */
   excludeId: string;
+  /** The name of the parent it is filed under now, shown so AI judges it rather than makes one up. */
+  filedUnder: string | null;
   /** How long to wait for an answer before flagging the food as unanswered instead. */
   budgetMs: number;
   /** Where to record what was asked, for a person who wants to know: filled in as it goes. */
@@ -86,7 +88,7 @@ export async function askWhatFoodThisIs(text: string, options: AskOptions): Prom
   if (!(await isAIEnabled())) return flaggedNew("ai-off");
 
   return withTimeout(
-    () => readThenLookUp(text, options.excludeId, options.trace),
+    () => readThenLookUp(text, options),
     options.budgetMs,
     "Ingredient resolution"
   ).catch((error: unknown) => {
@@ -103,17 +105,16 @@ export async function askWhatFoodThisIs(text: string, options: AskOptions): Prom
 
 /**
  * The reading, looked up: a food the names find is the one, several found are asked about; else
- * the general food found is its parent. Flagged unless AI was sure; a slip's find never is.
+ * the parent AI named, found, is its parent. Flagged unless AI was sure; a slip's find never is.
  */
 async function readThenLookUp(
   text: string,
-  excludeId: string,
-  trace: ReviewTrace
+  { excludeId, filedUnder, trace }: AskOptions
 ): Promise<AIResolution> {
   let reading: Reading | null;
 
   try {
-    reading = await readName(text);
+    reading = await readName(text, filedUnder);
   } catch (error) {
     aiLogger.warn({ err: error, feature: "ingredient-resolution", text }, "Reading a name failed");
 
@@ -142,7 +143,7 @@ async function readThenLookUp(
 
   Object.assign(trace, {
     englishName: food.englishName,
-    generalFood: food.parent,
+    parent: food.parent,
     otherNames: food.otherNames,
   });
 
@@ -214,7 +215,7 @@ const readFoodSchema = z
       .string()
       .nullable()
       .describe(
-        "The more general food it is a kind of, in plain English; null when there is none."
+        "The plain food a shopper buys that it is made of or sold as, never a category; null when there is none."
       ),
     otherNames: z
       .array(z.string())
@@ -275,12 +276,14 @@ function checked(answer: z.infer<typeof readingSchema>): Reading | null {
 }
 
 /** What the language model reads a name as, asked once more where the answer breaks its shape. */
-async function readName(text: string): Promise<Reading | null> {
+async function readName(text: string, filedUnder: string | null): Promise<Reading | null> {
+  const sections = [`Name: ${text}`, ...(filedUnder ? [`Filed under: ${filedUnder}`] : [])];
+
   for (let attempt = 1; attempt <= 2; attempt++) {
     const answer = await generateStructured({
       prompt: "ingredient-resolution",
       schema: readingSchema,
-      sections: [`Name: ${text}`],
+      sections,
     });
     const reading = checked(answer);
 
