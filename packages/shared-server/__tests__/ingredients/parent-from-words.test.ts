@@ -120,6 +120,63 @@ describe("a mint's parent from the words of its text", () => {
     expect(await listAIChanges()).toHaveLength(0);
   });
 
+  it("reads a name up to a note, so the parent before it is sure", async () => {
+    await applyIngredientSeed([
+      seedEntry("en:greek-yogurt", "greek yogurt"),
+      seedEntry("en:tuna", "tuna", "tonijn"),
+      seedEntry("en:olive", "olive", "olijven"),
+    ]);
+    seeded = await listSeededIngredientIds();
+
+    for (const [text, offId] of [
+      ["greek yogurt for topping", "en:greek-yogurt"],
+      ["olijven naar keuze", "en:olive"],
+      ["tonijn uit blik", "en:tuna"],
+    ] as const) {
+      expect(await mintOne(text)).toMatchObject({ parent: { id: seeded.get(offId) } });
+    }
+    expect(await listAIChanges()).toHaveLength(0);
+  });
+
+  it("files a parent the name starts with quietly where only cuts, forms and sizes follow", async () => {
+    await applyIngredientSeed([
+      seedEntry("en:mango", "mango"),
+      seedEntry("en:chicken", "chicken", "kip"),
+      seedEntry("en:onion", "onion"),
+      seedEntry("en:chicken-fillet", "chicken fillet", "kipfilet"),
+      seedEntry("en:chili-pepper", "chili pepper", "chili"),
+      seedEntry("en:curry", "curry"),
+      seedEntry("en:salami", "salami", "salam"),
+    ]);
+    seeded = await listSeededIngredientIds();
+
+    for (const [text, offId] of [
+      ["mango blokjes", "en:mango"],
+      ["chicken strips", "en:chicken"],
+      ["kipfilet blokjes", "en:chicken-fillet"],
+      ["kip grote reepjes", "en:chicken"],
+    ] as const) {
+      expect(await mintOne(text)).toMatchObject({ parent: { id: seeded.get(offId) } });
+    }
+    expect(await listAIChanges()).toHaveLength(0);
+
+    // A product named after a food is no form of it: still a question.
+    for (const [text, offId] of [
+      ["onion powder", "en:onion"],
+      ["chili flakes", "en:chili-pepper"],
+      ["curry leaves", "en:curry"],
+      ["salam blaadjes", "en:salami"],
+    ] as const) {
+      expect(await mintOne(text)).toMatchObject({ parent: { id: seeded.get(offId) } });
+    }
+    expect((await listAIChanges()).map((change) => change.sure)).toEqual([
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+
   it("never files under a word of recipe language another language spells a food with", async () => {
     await applyIngredientSeed([
       seedEntry("en:duck", "duck", "and"),

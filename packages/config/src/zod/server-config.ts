@@ -218,14 +218,16 @@ export const IngredientWordsLanguageSchema = z.object({
   alternatives: z.array(z.string()).default([]),
   /** The word between a leading measure and its food: "a pinch of nutmeg". */
   connectors: z.array(z.string()).default([]),
-  /** After these comes what a food is packed or served in or with: "tuna in olive oil". */
-  servedWith: z.array(z.string()).default([]),
+  /** The words a name ends before, which start what it comes in or a note: "greek yogurt for topping". */
+  endsBefore: z.array(z.string()).default([]),
   /** Words that never name a food alone, however another language spells one with them. */
   notFoods: z.array(z.string()).default([]),
   /** Words that say an amount is a guess: "about", "ongeveer". */
   approximately: z.array(z.string()).default([]),
   /** Sizes: "large", "grote". A line's unit that is one counts a piece. */
   sizes: z.array(z.string()).default([]),
+  /** Cuts and forms of a food, after its name: "mango blokjes", "chicken strips". */
+  forms: z.array(z.string()).default([]),
   /** Plural and diminutive endings, each with the ending of the form it stands for. */
   inflections: z.array(z.tuple([z.string(), z.string()])).default([]),
 });

@@ -176,15 +176,22 @@ describe("looking at old Flagged Ingredients again", () => {
       parent: { id: seeded.get("en:oil") },
     });
     expect(await shown(answered)).toMatchObject({ parent: { id: seeded.get("en:tea") } });
+    // Oil is read up to the note ("om"), so it is sure: only AI's change is left.
     expect(
       (await listAIChanges()).map((change) => [change.ingredient?.id, change.target?.id])
-    ).toEqual(
-      expect.arrayContaining([
-        [guessed, seeded.get("en:oil")],
-        [answered, seeded.get("en:tea")],
-      ])
-    );
-    expect(await listAIChanges()).toHaveLength(2);
+    ).toEqual([[answered, seeded.get("en:tea")]]);
+  });
+
+  it("files a guess its words now read as sure again, quietly, under the same parent", async () => {
+    await applyIngredientSeed([seedEntry("en:mango", "mango")]);
+    seeded = await listSeededIngredientIds();
+    const guessed = await legacyMint("mango blokjes");
+
+    await fileUndecidedMint(guessed, seeded.get("en:mango")!, { unsure: true });
+
+    await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 0, filed: 1 });
+    expect(await shown(guessed)).toMatchObject({ parent: { id: seeded.get("en:mango") } });
+    expect(await listAIChanges()).toHaveLength(0);
   });
 
   it("takes a guess from a legacy mint's words off where today's rules find none", async () => {

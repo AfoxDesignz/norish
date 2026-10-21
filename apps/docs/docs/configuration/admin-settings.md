@@ -37,8 +37,11 @@ it matches an ingredient name to a food. The list is per locale:
   en peper" and "of" in "boter of olie". A recipe line is split there only when
   each part is a known food, and never where Norish knows the whole name ("mac
   and cheese")
-- `servedWith`: what the food comes in, like "in" in "tuna in olive oil", which
-  is tuna
+- `endsBefore`: where a name ends, like "in" in "tuna in olive oil", which is
+  tuna, or "for" in "greek yogurt for topping"
+- `forms`: cuts and forms after a food's name, like "blokjes" in "mango
+  blokjes". A new ingredient named so is filed under the food without a
+  question
 - `notFoods`: words that are never a food on their own, like "and" or "with"
 - `inflections`: plural and diminutive endings, so "onions" becomes "onion" and
   "cherries" becomes "cherry"

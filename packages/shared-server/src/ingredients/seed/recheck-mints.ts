@@ -15,7 +15,7 @@
  * thinly sliced") resolve to it and merge, and is filed under the seeded
  * spelling its name contains, staying flagged — an unsure AI Change where
  * the spelling is not what the name ends with; a parent that is still such
- * a guess is read again, and moves or goes; where they name several, it is
+ * a guess is read again, and moves, goes or is now sure; where they name several, it is
  * left for a person.
  * Nothing here is the resolver's rules over again: it asks the resolver.
  */
@@ -67,8 +67,9 @@ export async function recheckUndecidedMints(): Promise<RecheckOutcome> {
     const parent = await parentFromWordsOf(mint.name);
     const parentId = parent?.id ?? null;
 
+    // A guess the words now read as sure is filed again under the same parent, quietly.
     if (
-      parentId !== mint.parentId &&
+      (parentId !== mint.parentId || (mint.guessed && parent?.sure)) &&
       (await fileUndecidedMint(mint.id, parentId, {
         unsure: !parent?.sure,
         expectedParentId: mint.parentId,

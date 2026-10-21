@@ -199,7 +199,10 @@ export interface SpellingRules {
   connectors: ReadonlySet<string>;
   approximately: ReadonlyArray<Phrase>;
   sizes: ReadonlySet<string>;
-  servedWith: ReadonlySet<string>;
+  /** Cuts and forms of a food, after its name: "mango blokjes". */
+  forms: ReadonlySet<string>;
+  /** The words a name ends before: what it comes in, or a note ("greek yogurt for topping"). */
+  endsBefore: ReadonlySet<string>;
   notFoods: ReadonlySet<string>;
   /** Folded [plural ending, singular ending] pairs, the longest plural ending first. */
   inflections: ReadonlyArray<readonly [string, string]>;
@@ -297,7 +300,8 @@ export function spellingRules(
     connectors: wordsOf((language) => language.connectors),
     approximately: longestFirst(approximately),
     sizes: wordsOf((language) => language.sizes),
-    servedWith: wordsOf((language) => language.servedWith),
+    forms: wordsOf((language) => language.forms),
+    endsBefore: wordsOf((language) => language.endsBefore),
     notFoods: wordsOf((language) => language.notFoods),
     inflections: [...inflections.values()].sort((a, b) => b[0].length - a[0].length),
   };
