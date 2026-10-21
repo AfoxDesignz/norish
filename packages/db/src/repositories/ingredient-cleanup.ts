@@ -121,7 +121,7 @@ export async function findRowsNamingSpellings(
   return await findNamingRows(tx, {
     lineFoods: inArray(recipeIngredientFoods.ingredientAliasId, [...aliasIds]),
     groceries: inArray(groceries.ingredientAliasId, [...aliasIds]),
-    recurring: inArray(recurringGroceries.ingredientAliasId, [...aliasIds]),
+    recurringGroceries: inArray(recurringGroceries.ingredientAliasId, [...aliasIds]),
   });
 }
 
@@ -130,18 +130,16 @@ export async function findRowsNamingFood(
   tx: DbTransaction,
   ingredientId: string
 ): Promise<NamingRows> {
-  const naming = rowsNaming(ingredientId);
-
-  return await findNamingRows(tx, {
-    lineFoods: naming.lineFoods,
-    groceries: naming.groceries,
-    recurring: naming.recurringGroceries,
-  });
+  return await findNamingRows(tx, rowsNaming(ingredientId));
 }
 
 async function findNamingRows(
   tx: DbTransaction,
-  where: { lineFoods: SQL | undefined; groceries: SQL | undefined; recurring: SQL | undefined }
+  where: {
+    lineFoods: SQL | undefined;
+    groceries: SQL | undefined;
+    recurringGroceries: SQL | undefined;
+  }
 ): Promise<NamingRows> {
   const lines = await tx
     .selectDistinct({
@@ -160,7 +158,7 @@ async function findNamingRows(
     .where(where.lineFoods);
   const named = await findGroceryRows(tx, {
     groceries: where.groceries,
-    recurring: where.recurring,
+    recurring: where.recurringGroceries,
   });
 
   return { lines, ...named };

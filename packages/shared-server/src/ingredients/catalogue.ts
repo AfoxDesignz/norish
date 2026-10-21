@@ -27,7 +27,6 @@ import type {
   CatalogueOwner,
 } from "@norish/db/repositories/ingredient-catalogue";
 import type { NamingRow, NamingRows } from "@norish/db/repositories/ingredient-cleanup";
-import type { GroceryPart } from "@norish/db/repositories/ingredient-relocation";
 import type { CatalogueRefusal, FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LocaleNames, NamedFood } from "@norish/shared/lib/ingredient-names";
 import type {
@@ -486,14 +485,13 @@ async function setParentIn(
 
 /**
  * Delete an Ingredient and its spellings; follows `edit`. Its lines and Groceries keep their text
- * and are resolved again from it, minting nothing (`resolveAgain`), so "zout en peper" names zout
- * and peper and "kruidenmix" none. Its Pantry Ingredients go, since the Pantry holds only foods.
+ * and are resolved again from it, minting nothing; its Pantry Ingredients go.
  */
 export async function deleteIngredient(
   actor: CatalogueActor,
   ingredientId: string
 ): Promise<CatalogueEdit> {
-  const named = await withTransaction(async (tx) => {
+  const naming = await withTransaction(async (tx) => {
     await assertMayEditIngredient(tx, actor, ingredientId);
     // The tree lock, as for every edit that changes what a row points at:
     // a merge into this Ingredient must not land while it goes.
@@ -506,16 +504,19 @@ export async function deleteIngredient(
     return rows;
   });
 
-  await resolveAgain(named, { mint: false });
-  await ingredientChanges().changed([ingredientId]);
+  try {
+    await resolveAgain(naming, { mint: false });
+  } finally {
+    // The delete went through either way.
+    await ingredientChanges().changed([ingredientId]);
+  }
 
   return { changed: [ingredientId] };
 }
 
 /**
- * Point each row at what its own text resolves to, AI off, minting for its owner; with `mint` off,
- * a row whose text names no known food keeps what it has. A Grocery naming several foods becomes
- * one per food, as when typed (`typedParts`).
+ * Point each row at what its own text resolves to, AI off, minting for its owner unless `mint` is
+ * off; a Grocery naming several foods becomes one per food (`typedParts`).
  */
 export async function resolveAgain(rows: NamingRows, { mint }: { mint: boolean }): Promise<void> {
   const options = { ai: false, mint };
@@ -532,32 +533,32 @@ export async function resolveAgain(rows: NamingRows, { mint }: { mint: boolean }
         const foods = await resolveLineFoods(texts, { userId }, options);
 
         return owned.flatMap((line, index) => {
-          const named = foods[index];
+          const resolved = foods[index];
 
-          return named
+          return resolved
             ? [
                 {
                   id: line.id,
-                  aliasIds: named.foods.map((food) => food.aliasId),
-                  joined: named.joined,
+                  aliasIds: resolved.foods.map((food) => food.aliasId),
+                  joined: resolved.joined,
                 },
               ]
             : [];
         });
       });
-      const groceriesOf = (named: readonly NamingRow[]) =>
-        resolveByOwner(named, async (owned, userId) => {
+      const groceriesOf = (naming: readonly NamingRow[]) =>
+        resolveByOwner(naming, async (owned, userId) => {
           const split = await typedParts(owned, { alternatives: "first" });
           const foods = await resolveIngredients(
             split.flat().map((part) => part.name ?? ""),
             { userId },
             options
           );
-          let next = 0;
+          let partIndex = 0;
 
           return owned.flatMap((row, index) => {
-            const [first, ...rest] = split[index]!.flatMap((part) => {
-              const food = foods[next++];
+            const parts = split[index]!.flatMap((part) => {
+              const food = foods[partIndex++];
 
               return food
                 ? [
@@ -570,9 +571,7 @@ export async function resolveAgain(rows: NamingRows, { mint }: { mint: boolean }
                 : [];
             });
 
-            return first
-              ? [{ id: row.id, parts: [first, ...rest] as [GroceryPart, ...GroceryPart[]] }]
-              : [];
+            return parts.length > 0 ? [{ id: row.id, name: row.name, parts }] : [];
           });
         });
 

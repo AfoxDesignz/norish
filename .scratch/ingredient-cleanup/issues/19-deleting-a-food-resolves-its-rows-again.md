@@ -28,3 +28,5 @@ The nightly sweep needs nothing: what it deletes names nothing.
 - A row whose text names nothing known keeps what the delete left it: a line "zout en kruidenmix" keeps zout.
 - The delete dialog's copy ("keep their text without it") still holds, so it is unchanged.
 - ADR-0037 and the Ingredient glossary entry are amended, and the Ingredients docs page and the release notes say what a delete now does.
+- After the review, the change is announced even where resolving again fails, since the delete has gone through. A grocery renamed between the read and the write is left alone (`writeGroceryParts` writes only where the name is still the one read).
+- The dialog's "keep their text without it" is loose in one case: a "zout en peper" grocery becomes a "zout" and a "peper" grocery. The counts still hold. The copy is unchanged in every locale, for Mike to decide.

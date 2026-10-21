@@ -1,5 +1,5 @@
 import type { SQL } from "drizzle-orm";
-import { asc, count, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 
 import type { Db, DbTransaction } from "@norish/db/drizzle";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
@@ -357,22 +357,22 @@ export async function splitCatalogueIngredient(
 
   const [first, ...rest] = parts;
   const others = joined === "together" ? rest : [];
-  const named = [first, ...others].map((part) => ({
+  const groceryParts = [first, ...others].map((part) => ({
     name: part.text,
     aliasId: part.aliasId,
     ingredientId: part.ingredientId,
-  })) as [GroceryPart, ...GroceryPart[]];
-  const pick = (table: typeof groceries | typeof recurringGroceries, where: SQL | undefined) =>
-    tx.select({ id: table.id }).from(table).where(where);
+  }));
+  const namingIds = (table: typeof groceries | typeof recurringGroceries, where: SQL | undefined) =>
+    tx.select({ id: table.id, name: table.name }).from(table).where(where);
 
   for (const [kind, rows] of [
-    ["groceries", await pick(groceries, naming.groceries)],
-    ["recurring", await pick(recurringGroceries, naming.recurringGroceries)],
+    ["groceries", await namingIds(groceries, naming.groceries)],
+    ["recurring", await namingIds(recurringGroceries, naming.recurringGroceries)],
   ] as const) {
     await writeGroceryParts(
       tx,
       kind,
-      rows.map(({ id }) => ({ id, parts: named }))
+      rows.map(({ id, name }) => ({ id, name, parts: groceryParts }))
     );
   }
 
@@ -411,8 +411,10 @@ export interface GroceryPart {
 export async function writeGroceryParts(
   tx: DbTransaction,
   kind: "groceries" | "recurring",
-  rows: ReadonlyArray<{ id: string; parts: readonly [GroceryPart, ...GroceryPart[]] }>
+  /** `name`: the text the parts were read from; a row renamed since is left alone. */
+  rows: ReadonlyArray<{ id: string; name: string | null; parts: readonly GroceryPart[] }>
 ): Promise<void> {
+  const table = kind === "groceries" ? groceries : recurringGroceries;
   const columns = (part: GroceryPart) => ({
     name: part.name,
     ingredientAliasId: part.aliasId,
@@ -421,35 +423,26 @@ export async function writeGroceryParts(
 
   for (const {
     id,
+    name,
     parts: [first, ...rest],
   } of rows) {
-    if (kind === "groceries") {
-      const [row] = await tx
-        .update(groceries)
-        .set({ ...columns(first), version: sql`${groceries.version} + 1` })
-        .where(eq(groceries.id, id))
-        .returning();
+    if (!first) continue;
+    const [row] = await tx
+      .update(table)
+      .set({ ...columns(first), version: sql`${table.version} + 1` })
+      .where(and(eq(table.id, id), sql`${table.name} is not distinct from ${name}`))
+      .returning();
 
-      if (!row) continue;
-      const { id: _id, version: _version, ...copy } = row;
+    if (!row) continue;
+    const { id: _id, version: _version, ...copy } = row;
 
-      // ponytail: a copy of a recurring grocery's row recurs with neither; link them if it matters.
-      for (const part of rest) {
-        await tx.insert(groceries).values({ ...copy, ...columns(part), recurringGroceryId: null });
-      }
-    } else {
-      const [row] = await tx
-        .update(recurringGroceries)
-        .set({ ...columns(first), version: sql`${recurringGroceries.version} + 1` })
-        .where(eq(recurringGroceries.id, id))
-        .returning();
-
-      if (!row) continue;
-      const { id: _id, version: _version, ...copy } = row;
-
-      for (const part of rest) {
-        await tx.insert(recurringGroceries).values({ ...copy, ...columns(part) });
-      }
+    // ponytail: a copy of a recurring grocery's row recurs with neither; link them if it matters.
+    for (const part of rest) {
+      await tx.insert(table).values({
+        ...copy,
+        ...columns(part),
+        ...("recurringGroceryId" in copy && { recurringGroceryId: null }),
+      });
     }
   }
 }

@@ -35,6 +35,7 @@ import {
   setParent,
   sweepUnusedIngredients,
 } from "@norish/shared-server/ingredients/catalogue";
+import { writeGroceryParts } from "@norish/db/repositories/ingredient-relocation";
 import { publishIngredientChangesTo } from "@norish/shared-server/ingredients/changes";
 import { resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
 import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
@@ -360,6 +361,43 @@ describe("the ingredient catalogue", () => {
     await expect(db.select({ id: ingredients.id }).from(ingredients)).resolves.toHaveLength(
       foods.length - 1
     );
+  });
+
+  it("joins no slip when it resolves a deleted food's rows again", async () => {
+    const parmezaan = await mint("parmezaan");
+    const typo = await mint("parmezan kaas");
+    const rows = await nameEverywhere(typo, "parmezan");
+
+    await deleteIngredient(actor, typo.ingredientId);
+
+    await expect(namedBy(rows)).resolves.toMatchObject({
+      line: { aliasId: null },
+      grocery: { aliasId: null, ingredientId: null },
+    });
+    await expect(getSpellingTexts(parmezaan.ingredientId)).resolves.toEqual(["parmezaan"]);
+    // An import would take it as the slip it is.
+    await expect(mint("parmezan")).resolves.toMatchObject({
+      ingredientId: parmezaan.ingredientId,
+    });
+  });
+
+  it("leaves a grocery renamed after its text was read for a delete", async () => {
+    const db = getTestDb();
+    const zout = await mint("zout");
+    const [grocery] = await db
+      .insert(groceries)
+      .values({ userId: actor.userId, name: "zout en peper" })
+      .returning({ id: groceries.id });
+    const parts = [{ name: "zout", aliasId: zout.aliasId, ingredientId: zout.ingredientId }];
+
+    await db.update(groceries).set({ name: "suiker" }).where(eq(groceries.id, grocery!.id));
+    await db.transaction((tx) =>
+      writeGroceryParts(tx, "groceries", [{ id: grocery!.id, name: "zout en peper", parts }])
+    );
+
+    await expect(
+      db.select({ name: groceries.name, ingredientId: groceries.ingredientId }).from(groceries)
+    ).resolves.toEqual([{ name: "suiker", ingredientId: null }]);
   });
 
   it("refuses a name another Ingredient goes by, in any case", async () => {

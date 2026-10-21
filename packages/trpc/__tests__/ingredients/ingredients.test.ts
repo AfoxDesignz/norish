@@ -41,6 +41,12 @@ const relocation = vi.hoisted(() => ({
   mergeCatalogueIngredients: vi.fn(),
   moveCatalogueAlias: vi.fn(),
   setCatalogueIngredientParent: vi.fn(),
+  writeGroceryParts: vi.fn(),
+}));
+// What a deleted food named, resolved again: nothing, here.
+const cleanup = vi.hoisted(() => ({
+  findRowsNamingFood: vi.fn(async () => ({ lines: [], groceries: [], recurring: [] })),
+  repointLines: vi.fn(),
 }));
 const aliases = vi.hoisted(() => ({ findLocaleNames: vi.fn(async () => new Map()) }));
 const iconsRepo = vi.hoisted(() => ({
@@ -59,6 +65,7 @@ const iconFiles = vi.hoisted(() => ({
 const policy = vi.hoisted(() => ({
   getIngredientPermissionPolicy: vi.fn(),
   canDrawImages: vi.fn(async () => true),
+  getUnits: vi.fn(async () => ({})),
 }));
 const drawer = vi.hoisted(() => ({
   drawIngredientIcon: vi.fn(async () => ({ bytes: Buffer.from([9, 9]), mediaType: "image/png" })),
@@ -85,6 +92,7 @@ vi.mock("@norish/shared-server/ingredients/icons", async (original) => ({
 vi.mock("@norish/queue/redis/bullmq", () => ({ getBullClient: vi.fn() }));
 vi.mock("@norish/db/repositories/ingredient-catalogue", () => catalogue);
 vi.mock("@norish/db/repositories/ingredient-relocation", () => relocation);
+vi.mock("@norish/db/repositories/ingredient-cleanup", () => cleanup);
 vi.mock("@norish/db/repositories/ingredient-aliases", () => aliases);
 vi.mock("@norish/db/repositories/ingredient-icons", () => iconsRepo);
 vi.mock("@norish/shared-server/media/ingredient-icon", async (original) => ({
