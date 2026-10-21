@@ -265,6 +265,20 @@ export async function insertCatalogueIngredient(
   return row!.id;
 }
 
+/** The food that goes by `name` in any case, locked, or null. */
+export async function lockIngredientNamed(
+  tx: DbTransaction,
+  name: string
+): Promise<string | null> {
+  const [row] = await tx
+    .select({ id: ingredients.id })
+    .from(ingredients)
+    .where(eq(sql`lower(${ingredients.name})`, sql`lower(${name})`))
+    .for("update");
+
+  return row?.id ?? null;
+}
+
 /**
  * Move one spelling to another Ingredient: the unmerge. The lines behind the
  * spelling go with it; the Product Links, Aisle Links and store preferences

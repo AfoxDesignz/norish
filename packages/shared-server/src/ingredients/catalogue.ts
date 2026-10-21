@@ -57,6 +57,7 @@ import {
   countAliasesOf,
   findIngredientAncestors,
   insertCatalogueIngredient,
+  lockIngredientNamed,
   lockIngredients,
   lockTree,
   mergeCatalogueIngredients,
@@ -704,21 +705,27 @@ export async function moveAlias(
       moveToFoodNamedFor(tx, { id: aliasId, text: alias.text }, { ownerId: actor.userId })
     );
 
-    return { ingredientId: to, changed: [sourceId, to] };
+    // A person asked for a new food, so another one of that name refuses it.
+    if (!to.minted) throw new CatalogueEditError("name-taken");
+
+    return { ingredientId: to.id, changed: [sourceId, to.id] };
   });
 }
 
-/** Move a spelling to a new food named for it, minted with `values`. */
+/** Move a spelling to the food named for it, minted with `values` where no food goes by that name. */
 export async function moveToFoodNamedFor(
   tx: DbTransaction,
   alias: { id: string; text: string },
   values: Omit<Parameters<typeof insertCatalogueIngredient>[1], "name">
-): Promise<string> {
-  const id = await insertCatalogueIngredient(tx, { name: alias.text, ...values });
+): Promise<{ id: string; minted: boolean }> {
+  const held = await lockIngredientNamed(tx, alias.text);
+  const food = held
+    ? { id: held, minted: false }
+    : { id: await insertCatalogueIngredient(tx, { name: alias.text, ...values }), minted: true };
 
-  await moveCatalogueAlias(tx, alias.id, id);
+  await moveCatalogueAlias(tx, alias.id, food.id);
 
-  return id;
+  return food;
 }
 
 /**

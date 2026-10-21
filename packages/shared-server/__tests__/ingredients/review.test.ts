@@ -1179,6 +1179,24 @@ describe("asking AI about an Ingredient", () => {
         expect(await exists(joined.ingredientId)).toBe(false);
       });
 
+      it("moves the spelling to the food already named for it", async () => {
+        const { cream, joined } = await joinedHoldingCream();
+        // A Plain Name can give another food that name while the joined food keeps the spelling.
+        const named = await kept("cooking cream, light");
+
+        await getTestDb()
+          .update(ingredients)
+          .set({ name: "Light cooking cream" })
+          .where(eq(ingredients.id, named.ingredientId));
+        splits(reading, "alternatives", true);
+
+        await expect(askAIAbout(joined.ingredientId)).resolves.toMatchObject({ outcome: "split" });
+        await expect(ingredientFor(cream.aliasId)).resolves.toMatchObject({
+          id: named.ingredientId,
+        });
+        expect(await exists(joined.ingredientId)).toBe(false);
+      });
+
       it("leaves it whole when AI is not sure", async () => {
         const { cream, joined } = await joinedHoldingCream();
 

@@ -163,7 +163,7 @@ export async function renameByAI(ingredientId: string, formerName: string, name:
 
 /**
  * Split a food into the foods its parts resolved to, and delete it; a part spelled by the food
- * moves that spelling to a new food named for it. Not an AI Change: a split grocery has no Undo.
+ * moves that spelling to the food named for it. Not an AI Change: a split grocery has no Undo.
  */
 export async function splitByAI(
   ingredientId: string,
@@ -178,7 +178,7 @@ export async function splitByAI(
     if ((await lockIngredients(tx, ids)) < new Set(ids).size) return none("gone");
     if (!(await isAskableByAI(tx, ingredientId))) return none("decided");
     const spelledByFood = parts.find((part) => part.ingredientId === ingredientId);
-    let movedTo: string | null = null;
+    let movedTo: { id: string; minted: boolean } | null = null;
 
     if (spelledByFood) {
       const alias = await findCatalogueAliasOwner(tx, spelledByFood.aliasId);
@@ -191,7 +191,7 @@ export async function splitByAI(
       );
     }
     const [first, ...rest] = parts.map((part) =>
-      part === spelledByFood && movedTo ? { ...part, ingredientId: movedTo } : part
+      part === spelledByFood && movedTo ? { ...part, ingredientId: movedTo.id } : part
     );
 
     await splitCatalogueIngredient(tx, ingredientId, [first!, ...rest], joined);
@@ -199,8 +199,8 @@ export async function splitByAI(
     return { outcome: "applied" as const, movedTo };
   });
 
-  await announceIfApplied(outcome, [...ids, movedTo]);
-  if (outcome === "applied" && movedTo) await announceMinted([movedTo]);
+  await announceIfApplied(outcome, [...ids, movedTo?.id ?? null]);
+  if (outcome === "applied" && movedTo?.minted) await announceMinted([movedTo.id]);
 
   return outcome;
 }
