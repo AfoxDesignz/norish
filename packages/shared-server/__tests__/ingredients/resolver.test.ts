@@ -95,6 +95,26 @@ describe("ingredient resolver", () => {
     }
   });
 
+  it("hands on a write's mints only once the write is done, so the pass reads the rows naming them", async () => {
+    const minted: string[][] = [];
+
+    onIngredientsMinted(async (ids) => void minted.push(ids));
+    try {
+      const food = await writeResolved(
+        () => resolveOne("kardemompeulen"),
+        async (resolved) => {
+          expect(minted).toEqual([]);
+
+          return resolved;
+        }
+      );
+
+      expect(minted).toEqual([[food.ingredientId]]);
+    } finally {
+      onIngredientsMinted(undefined);
+    }
+  });
+
   it("resolves a spelling Norish knows to the Ingredient it already has", async () => {
     const onions = await resolveOne("onions");
     const again = await resolveOne("  Onions! ");

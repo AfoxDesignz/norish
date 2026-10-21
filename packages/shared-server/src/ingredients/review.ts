@@ -18,6 +18,7 @@ import type { AIResolution } from "../ai/resolution/ingredient-resolution";
 import { askWhatFoodThisIs } from "../ai/resolution/ingredient-resolution";
 import { deleteByAI, flagByAnswer, mergeByAI, parentByAI, splitByAI } from "./ai-changes";
 import { ingredientChanges } from "./changes";
+import { announcingAfter } from "./minted";
 import { nameAfterAnswer } from "./plain-names";
 import { resolveIngredients } from "./resolver";
 
@@ -53,7 +54,7 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
 
     return { outcome: "merge", into: into.name, sure: answer.sure, ...trace };
   }
-  if (answer.kind === "several") return await split(row, answer, trace);
+  if (answer.kind === "several") return await announcingAfter(() => split(row, answer, trace));
   if (answer.kind === "not-a-food") return await deleted(ingredientId, trace);
   // AI was switched off meanwhile: a food waiting on this pass says so; another keeps its reason.
   if (answer.reason === "ai-off") {

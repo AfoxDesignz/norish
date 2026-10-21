@@ -34,7 +34,7 @@ import {
   spellingRules,
 } from "@norish/shared/lib/spelling-keys";
 
-import { announceMinted } from "./minted";
+import { announceMinted, announcingAfter } from "./minted";
 
 /**
  * The ingredient resolver: the one module that mints Ingredients and
@@ -714,19 +714,21 @@ export async function findOtherFoodsNamed(
  * `resolveGroceryNames`, `withResolvedIngredients` — so the second run can
  * never write the first run's stale ids.
  */
-export async function writeResolved<R, T>(
+export function writeResolved<R, T>(
   resolve: () => Promise<R>,
   write: (resolved: R) => Promise<T>
 ): Promise<T> {
-  try {
-    return await write(await resolve());
-  } catch (error) {
-    if (!isStaleIngredientReference(error)) throw error;
-    dbLogger.warn(
-      { err: error },
-      "An Ingredient went away between resolving and writing; resolving again"
-    );
+  return announcingAfter(async () => {
+    try {
+      return await write(await resolve());
+    } catch (error) {
+      if (!isStaleIngredientReference(error)) throw error;
+      dbLogger.warn(
+        { err: error },
+        "An Ingredient went away between resolving and writing; resolving again"
+      );
 
-    return await write(await resolve());
-  }
+      return await write(await resolve());
+    }
+  });
 }
