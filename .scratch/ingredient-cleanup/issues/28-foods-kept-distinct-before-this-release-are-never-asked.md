@@ -6,11 +6,8 @@ Options: leave it (a person's mark stands); or ask AI once, at the first start, 
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** wontfix
 
 - [x] Mike's call is recorded here.
-- [ ] The upgrade clears every Keep distinct mark made before this release, so AI asks those foods once.
-- [ ] The Upgrade notes say so.
-- [ ] All `CONTRIBUTING.md` gates pass.
 
-Mike, 2026-10-21: "remove everything i marked distinct so we get a fresh look". A mark made after the upgrade stands as today.
+Mike, 2026-10-21: the product leaves a person's Keep distinct mark alone. The measurement starts fresh: the next AI-on run clears `kept_distinct` on its clone before the first start, so AI asks those 114 foods too.
