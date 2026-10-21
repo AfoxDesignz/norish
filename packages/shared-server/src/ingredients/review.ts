@@ -22,9 +22,6 @@ import { announcingAfter } from "./minted";
 import { nameAfterAnswer } from "./plain-names";
 import { resolveParts } from "./resolver";
 
-/** How long one food's question may take: up to three requests (read, Decision, language model). */
-export const REVIEW_BUDGET_MS = 30_000;
-
 export type { ReviewOutcome };
 
 /** Ask AI what a food is and make the answer; a food not merged away then gets its Plain Name. */
@@ -39,7 +36,6 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
   const answer = await askWhatFoodThisIs(row.name, {
     excludeId: ingredientId,
     filedUnder: filedUnder?.name ?? null,
-    budgetMs: REVIEW_BUDGET_MS,
     trace,
   });
 

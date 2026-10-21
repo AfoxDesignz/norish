@@ -29,7 +29,10 @@ import {
   recipeIngredients,
   recurringGroceries,
 } from "@norish/db/schema";
-import { RESOLUTION_THRESHOLD } from "@norish/shared-server/ai/resolution/ingredient-resolution";
+import {
+  REQUEST_BUDGET_MS,
+  RESOLUTION_THRESHOLD,
+} from "@norish/shared-server/ai/resolution/ingredient-resolution";
 import { AIProviderError } from "@norish/shared-server/ai/runtime/errors";
 import { decide, generateStructured } from "@norish/shared-server/ai/runtime/runtime";
 import {
@@ -48,7 +51,7 @@ import {
 } from "@norish/shared-server/ingredients/catalogue";
 import { onIngredientsMinted } from "@norish/shared-server/ingredients/minted";
 import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
-import { askAIAbout, REVIEW_BUDGET_MS } from "@norish/shared-server/ingredients/review";
+import { askAIAbout } from "@norish/shared-server/ingredients/review";
 
 import {
   createTestRecipe,
@@ -993,11 +996,33 @@ describe("asking AI about an Ingredient", () => {
       const pending = askAIAbout(cloves.ingredientId);
 
       await vi.waitFor(() => expect(vi.mocked(generateStructured)).toHaveBeenCalled());
-      await vi.advanceTimersByTimeAsync(REVIEW_BUDGET_MS);
+      await vi.advanceTimersByTimeAsync(REQUEST_BUDGET_MS);
       await expect(pending).resolves.toMatchObject({ outcome: "unsure", reason: "ai-unavailable" });
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("gives each request its own budget, so a Decision that never answers falls back to the language model", async () => {
+    const tomato = await kept("tomato");
+
+    await kept("plum tomato");
+    const tomaat = await flagged("tomaat");
+
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      reads({ englishName: "tomato", parent: null, otherNames: ["plum tomato"], sure: true });
+      vi.mocked(decide).mockReturnValueOnce(new Promise(() => undefined));
+      picks(1, true);
+      const pending = askAIAbout(tomaat.ingredientId);
+
+      await vi.waitFor(() => expect(vi.mocked(decide)).toHaveBeenCalled());
+      await vi.advanceTimersByTimeAsync(REQUEST_BUDGET_MS);
+      await expect(pending).resolves.toMatchObject({ outcome: "merge", into: "tomato" });
+    } finally {
+      vi.useRealTimers();
+    }
+    await expect(ingredientFor(tomaat.aliasId)).resolves.toMatchObject({ id: tomato.ingredientId });
   });
 
   describe("several foods, and not a food", () => {

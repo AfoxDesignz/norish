@@ -26,7 +26,6 @@ import {
   isDecisionUseEnabled,
 } from "@norish/shared-server/config/server-config-loader";
 import { aiLogger } from "@norish/shared-server/logger";
-import { OperationTimeoutError } from "@norish/shared/lib/error-extensions";
 import { distinctFoods } from "@norish/shared/lib/line-foods";
 import { withTimeout } from "@norish/shared/lib/with-timeout";
 
@@ -42,6 +41,9 @@ import { decide, generateStructured } from "../runtime/runtime";
  * test, never a setting.
  */
 export const RESOLUTION_THRESHOLD = 0.8;
+
+/** How long one request to AI may take: a pass makes one per question, a split's parts included. */
+export const REQUEST_BUDGET_MS = 10_000;
 
 /** How many of a candidate's other names one question shows. */
 const SHOWN_ALIASES = 5;
@@ -79,8 +81,6 @@ export interface AskOptions {
   excludeId: string;
   /** The name of the parent it is filed under now, shown so AI judges it rather than makes one up. */
   filedUnder: string | null;
-  /** How long to wait for an answer before flagging the food as unanswered instead. */
-  budgetMs: number;
   /** Where to record what was asked, for a person who wants to know: filled in as it goes. */
   trace: ReviewTrace;
 }
@@ -89,20 +89,12 @@ export interface AskOptions {
 export async function askWhatFoodThisIs(text: string, options: AskOptions): Promise<AIResolution> {
   if (!(await isAIEnabled())) return flaggedNew("ai-off");
 
-  return withTimeout(
-    () => readThenLookUp(text, options),
-    options.budgetMs,
-    "Ingredient resolution"
-  ).catch((error: unknown) => {
-    if (!(error instanceof OperationTimeoutError)) throw error;
+  return await readThenLookUp(text, options);
+}
 
-    aiLogger.warn(
-      { feature: "ingredient-resolution", text, budgetMs: options.budgetMs },
-      "Ingredient resolution ran out of time, flagging the Ingredient"
-    );
-
-    return flaggedNew("ai-unavailable");
-  });
+/** One request to AI, given up on as failed past `REQUEST_BUDGET_MS`. */
+function inTime<T>(request: () => Promise<T>): Promise<T> {
+  return withTimeout(request, REQUEST_BUDGET_MS, "Ingredient resolution");
 }
 
 /**
@@ -154,7 +146,11 @@ async function readThenLookUp(
   if ("kind" in found) return found;
 
   if (found.food) {
-    return { kind: "same", ingredientId: found.food.ingredientId, sure: reading.sure && found.sure };
+    return {
+      kind: "same",
+      ingredientId: found.food.ingredientId,
+      sure: reading.sure && found.sure,
+    };
   }
 
   const parent = food.parent ? await findNamed(food.parent, excludeId, [food.parent], trace) : null;
@@ -302,11 +298,9 @@ async function readName(text: string, filedUnder: string | null): Promise<Readin
   const sections = [`Name: ${text}`, ...(filedUnder ? [`Filed under: ${filedUnder}`] : [])];
 
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const answer = await generateStructured({
-      prompt: "ingredient-resolution",
-      schema: readingSchema,
-      sections,
-    });
+    const answer = await inTime(() =>
+      generateStructured({ prompt: "ingredient-resolution", schema: readingSchema, sections })
+    );
     const reading = checked(answer);
 
     aiLogger.info({ text, attempt, ...answer }, "Language model read what food a name is");
@@ -398,7 +392,9 @@ async function decideFood(
   candidates: readonly IngredientCandidate[]
 ): Promise<Pick | null> {
   const { state, questions, options } = foodChoice(text, candidates);
-  const { answers } = await decide({ feature: "ingredient-resolution", state, questions });
+  const { answers } = await inTime(() =>
+    decide({ feature: "ingredient-resolution", state, questions })
+  );
   const { choice, probabilities } = answers.food;
   const probability = probabilities[choice] ?? 0;
 
@@ -428,21 +424,23 @@ async function askLanguageModel(
   text: string,
   candidates: readonly IngredientCandidate[]
 ): Promise<Pick> {
-  const answer = await generateStructured({
-    prompt: "ingredient-resolution",
-    schema: pickSchema,
-    sections: [
-      `Name: ${text}`,
-      [
-        "Foods in the catalogue it may be:",
-        ...candidates.map((candidate, index) =>
-          candidate.aliases.length > 0
-            ? `${index + 1}. ${candidate.name} (also: ${candidate.aliases.slice(0, SHOWN_ALIASES).join(", ")})`
-            : `${index + 1}. ${candidate.name}`
-        ),
-      ].join("\n"),
-    ],
-  });
+  const answer = await inTime(() =>
+    generateStructured({
+      prompt: "ingredient-resolution",
+      schema: pickSchema,
+      sections: [
+        `Name: ${text}`,
+        [
+          "Foods in the catalogue it may be:",
+          ...candidates.map((candidate, index) =>
+            candidate.aliases.length > 0
+              ? `${index + 1}. ${candidate.name} (also: ${candidate.aliases.slice(0, SHOWN_ALIASES).join(", ")})`
+              : `${index + 1}. ${candidate.name}`
+          ),
+        ].join("\n"),
+      ],
+    })
+  );
   const food = answer.food === null ? undefined : candidates[answer.food - 1];
 
   aiLogger.info({ text, ...answer }, "Language model picked which food a name is");
