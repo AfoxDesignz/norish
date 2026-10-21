@@ -250,6 +250,7 @@ describe("asking AI about an Ingredient", () => {
     reads({ englishName: "tomato, chopped", parent: null, sure: true });
     await expect(askAIAbout(tomaat.ingredientId)).resolves.toMatchObject({ outcome: "merge" });
     reads({ englishName: "zuchini", parent: null, sure: true });
+    decides("Is zucchini", 0.95);
     await expect(askAIAbout(courgette.ingredientId)).resolves.toMatchObject({ outcome: "merge" });
 
     await expect(ingredientFor(tomaat.aliasId)).resolves.toMatchObject({
@@ -629,20 +630,86 @@ describe("asking AI about an Ingredient", () => {
     });
   });
 
-  it("merges into a food only a slip of AI's name finds, unsure, so a person checks it", async () => {
-    const sherry = await kept("sherry");
-    const kers = await flagged("kers");
+  describe("a reading only a slip of the fingers finds", () => {
+    /** The numbered foods the language model's second question listed. */
+    function listed() {
+      const [, second] = vi
+        .mocked(generateStructured)
+        .mock.calls.filter(([request]) => request.prompt === "ingredient-resolution");
 
-    reads({ englishName: "cherry", parent: null, sure: true });
+      return second?.[0].sections?.[1];
+    }
 
-    await expect(askAIAbout(kers.ingredientId)).resolves.toMatchObject({
-      outcome: "merge",
-      into: "sherry",
-      sure: false,
+    it("asks AI about the one food found, and keeps a food that is none of them its own", async () => {
+      const port = await kept("porto rosso");
+      const pesto = await flagged("rode pesto");
+
+      vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
+      reads({ englishName: "red pesto", parent: "pesto", otherNames: ["pesto rosso"], sure: true });
+      picks(null, true);
+
+      await expect(askAIAbout(pesto.ingredientId)).resolves.toMatchObject({
+        outcome: "distinct",
+        considered: ["porto rosso"],
+      });
+      expect(listed()).toBe("Foods in the catalogue it may be:\n1. porto rosso");
+      await expect(ingredientFor(pesto.aliasId)).resolves.toMatchObject({
+        id: pesto.ingredientId,
+        flagged: false,
+      });
+      expect(port.ingredientId).not.toBe(pesto.ingredientId);
     });
-    await expect(ingredientFor(kers.aliasId)).resolves.toMatchObject({
-      id: sherry.ingredientId,
-      flagged: true,
+
+    it("lists every food within a slip, the nearest first", async () => {
+      await kept("sambal olie");
+      await kept("sambal oelek");
+      const sauce = await flagged("sambel");
+
+      vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
+      reads({ englishName: "sambal olek", parent: null, sure: true });
+      picks(null, true);
+
+      await expect(askAIAbout(sauce.ingredientId)).resolves.toMatchObject({
+        outcome: "distinct",
+      });
+      expect(listed()).toBe("Foods in the catalogue it may be:\n1. sambal oelek\n2. sambal olie");
+    });
+
+    it("merges into the slip AI picks, unsure, so a person checks it", async () => {
+      const tortilla = await kept("tortilla");
+      const tortillas = await flagged("maïstortilla");
+
+      reads({ englishName: "tortila", parent: null, sure: true });
+      decides("Is tortilla", 0.95);
+
+      await expect(askAIAbout(tortillas.ingredientId)).resolves.toMatchObject({
+        outcome: "merge",
+        into: "tortilla",
+        sure: false,
+      });
+      await expect(ingredientFor(tortillas.aliasId)).resolves.toMatchObject({
+        id: tortilla.ingredientId,
+        flagged: true,
+      });
+    });
+
+    it("takes an exact match beside a slip without a second question", async () => {
+      const pesto = await kept("red pesto");
+
+      await kept("red port");
+      const rode = await flagged("rode pesto");
+
+      reads({ englishName: "red pesto", parent: null, otherNames: ["red pest"], sure: true });
+
+      await expect(askAIAbout(rode.ingredientId)).resolves.toMatchObject({
+        outcome: "merge",
+        into: "red pesto",
+        sure: true,
+      });
+      expect(resolutionRequests()).toBe(1);
+      await expect(ingredientFor(rode.aliasId)).resolves.toMatchObject({
+        id: pesto.ingredientId,
+      });
     });
   });
 

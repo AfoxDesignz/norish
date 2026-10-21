@@ -53,8 +53,9 @@ Set "sure" to false whenever you hesitate between two answers, do not know the
 name, or are guessing at a translation. Set it to true only when a cook would
 not hesitate.
 
-When the names you gave find more than one food in the catalogue, you are asked
-again with those foods as a numbered list. Then give "food", the number of the
+When the names you gave find more than one food in the catalogue, or find only
+foods spelled a letter or two apart from them, you are asked again with those
+foods as a numbered list, the nearest first. Then give "food", the number of the
 listed food the name is, or null when it is none of them, and "sure" as above.
 Pick a food only when a shopper buying it would be buying exactly what the name
 asks for: a wrong pick lends one food's price, shop and aisle to another.

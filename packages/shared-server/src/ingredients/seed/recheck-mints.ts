@@ -41,7 +41,7 @@ export async function recheckUndecidedMints(): Promise<RecheckOutcome> {
 
   for (const mint of await listUndecidedMints()) {
     const found = await findOtherFoodsNamed(mint.id, mint.aliases, { slips: false });
-    const targets = new Set(found.flatMap((food) => (food ? [food.ingredientId] : [])));
+    const targets = new Set(found.flat().map((food) => food.ingredientId));
 
     if (targets.size === 1) {
       const [target] = targets;

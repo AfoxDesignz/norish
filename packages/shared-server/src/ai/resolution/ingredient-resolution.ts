@@ -4,8 +4,8 @@
  * Prompt reads the name and the parent it is filed under, with no catalogue in front of it: a food
  * (its plain English name, the plain food it is made of or sold as, and other names a shop sells it
  * under), several foods, or not a food. The answer's shape is checked, and asked once more where it breaks. The code looks the
- * names up as an import would, a split's parts too. Only where they name more than one food is
- * a second question asked over just those: a Decision when a Decision Model is configured and this
+ * names up as an import would, a split's parts too. Only where they name more than one food, or
+ * only foods a slip of the fingers away, is a second question asked over just those: a Decision when a Decision Model is configured and this
  * use is on, and otherwise — or when the Decision is unsure, or fails — the language model
  * (ADR-0035).
  *
@@ -26,6 +26,7 @@ import {
 } from "@norish/shared-server/config/server-config-loader";
 import { aiLogger } from "@norish/shared-server/logger";
 import { OperationTimeoutError } from "@norish/shared/lib/error-extensions";
+import { onlyNearest } from "@norish/shared/lib/name-slips";
 import { withTimeout } from "@norish/shared/lib/with-timeout";
 
 import { findOtherFoodsNamed } from "../../ingredients/resolver";
@@ -154,17 +155,19 @@ async function readThenLookUp(
 
   if (found.food) return { kind: "same", ingredientId: found.food.ingredientId, sure };
 
-  const [general] = food.parent ? await findOtherFoodsNamed(excludeId, [food.parent]) : [null];
-  const kindOf = general?.ingredientId ?? null;
+  const [general] = food.parent ? await findOtherFoodsNamed(excludeId, [food.parent]) : [];
+  const parent = onlyNearest(general ?? []);
+  const kindOf = parent?.ingredientId ?? null;
 
-  return sure && !general?.slip
+  return sure && (parent?.score ?? 1) === 1
     ? { kind: "new", kindOf, flagged: false, reason: null }
     : flaggedNew("ai-unsure", kindOf);
 }
 
 /**
- * The food other than `excludeId` a read food's names find, asked which where they find several;
- * not sure where AI was not, or only a slip of AI's names found it (cherry beside sherry).
+ * The food other than `excludeId` a read food's names find: an exact spelling is taken, slips
+ * beside it ignored. Several, or slips alone, are asked about, best first. Not sure where AI was
+ * not, or a slip of AI's names found it (cherry beside sherry).
  */
 async function findNamed(
   text: string,
@@ -173,12 +176,19 @@ async function findNamed(
   trace: ReviewTrace
 ): Promise<{ food: IngredientRef | null; sure: boolean } | AIResolution> {
   const names = [food.englishName, ...food.otherNames].filter((name) => name !== null);
-  const found = (await findOtherFoodsNamed(excludeId, names)).filter((one) => one !== null);
-  const foods = [...new Set(found.map((one) => one.ingredientId))];
-  let pick: Pick = { ingredientId: foods[0] ?? null, sure: true };
+  const found = (await findOtherFoodsNamed(excludeId, names)).flat();
+  const exact = found.filter((one) => one.score === 1);
+  const ranked = (exact.length > 0 ? exact : [...found].sort((a, b) => b.score - a.score)).filter(
+    (one, index, all) => all.findIndex((other) => other.ingredientId === one.ingredientId) === index
+  );
+  let pick: Pick = { ingredientId: ranked[0]?.ingredientId ?? null, sure: true };
 
-  if (foods.length > 1) {
-    const candidates = await findIngredientCandidatesByIds(foods);
+  // One exact food is the answer; slips alone are asked about even when only one was found.
+  if (ranked.length > (exact.length > 0 ? 1 : 0)) {
+    const ids = ranked.map((one) => one.ingredientId);
+    const candidates = (await findIngredientCandidatesByIds(ids)).sort(
+      (a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)
+    );
 
     trace.considered.push(...candidates.map((candidate) => candidate.name));
     const asked = await askWhich(text, candidates);
@@ -187,10 +197,12 @@ async function findNamed(
     pick = asked;
   }
 
-  const hits = found.filter((one) => one.ingredientId === pick.ingredientId);
-  const hit = hits.find((one) => !one.slip) ?? hits[0] ?? null;
+  const hit = ranked.find((one) => one.ingredientId === pick.ingredientId);
 
-  return { food: hit, sure: pick.sure && !hit?.slip };
+  return {
+    food: hit ? { aliasId: hit.aliasId, ingredientId: hit.ingredientId } : null,
+    sure: pick.sure && (hit?.score ?? 1) === 1,
+  };
 }
 
 /** One food as the language model read it, its names trimmed, blanks dropped. */

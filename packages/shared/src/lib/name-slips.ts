@@ -43,24 +43,28 @@ function slipsApart(a: string, b: string): number {
   return Math.max(scored(a, b), scored(b, a));
 }
 
+/** An item a name may be, and how close: 1 is the name itself, a slip less. */
+export interface Scored<T> {
+  item: T;
+  score: number;
+}
+
 /**
- * The item whose folded name is `wanted` typed with a slip, the nearest; null
- * where none is that near, or where the nearest are different things by
- * `thingOf` (two different names equally near are two things it could be).
- * There is no tunable threshold on purpose: there is then no number to
- * re-guess when it misjudges.
+ * Every thing by `thingOf` whose folded name is `wanted` typed with a slip, each by its nearest
+ * item, best first. There is no tunable threshold on purpose: there is then no number to re-guess
+ * when it misjudges.
  */
-export function nearestSlip<T>(
+export function slipsNear<T>(
   wanted: string,
   items: readonly T[],
   nameOf: (item: T) => string,
   thingOf: (item: T) => string = nameOf
-): T | null {
+): Scored<T>[] {
   const allowance = slipAllowance(wanted);
 
-  if (allowance === 0) return null;
+  if (allowance === 0) return [];
 
-  let nearest: { item: T; apart: number }[] = [];
+  const nearest = new Map<string, Scored<T>>();
 
   for (const item of items) {
     const name = nameOf(item);
@@ -69,17 +73,30 @@ export function nearestSlip<T>(
     const apart = slipsApart(wanted, name);
 
     if (apart > allowance) continue;
-    const held = nearest[0];
+    const thing = thingOf(item);
+    const score = 1 - apart;
 
-    if (!held || apart < held.apart) nearest = [{ item, apart }];
-    else if (apart === held.apart) nearest.push({ item, apart });
+    if (score > (nearest.get(thing)?.score ?? -1)) nearest.set(thing, { item, score });
   }
 
-  const first = nearest[0];
+  return [...nearest.values()].sort((a, b) => b.score - a.score);
+}
 
-  if (!first) return null;
+/** The best of a scored list, best first; null where it is empty or two things tie for best. */
+export function onlyNearest<S extends { score: number }>(scored: readonly S[]): S | null {
+  const [first, second] = scored;
 
-  return nearest.every((near) => thingOf(near.item) === thingOf(first.item)) ? first.item : null;
+  return first && first.score !== second?.score ? first : null;
+}
+
+/** The item whose folded name is `wanted` typed with a slip, the nearest, where one thing is nearest. */
+export function nearestSlip<T>(
+  wanted: string,
+  items: readonly T[],
+  nameOf: (item: T) => string,
+  thingOf: (item: T) => string = nameOf
+): T | null {
+  return onlyNearest(slipsNear(wanted, items, nameOf, thingOf))?.item ?? null;
 }
 
 /** Whether `wanted` could be some name a slip away, which is from five letters up. */

@@ -26,7 +26,7 @@ import { stripHtmlTags } from "@norish/shared/lib/helpers";
 import { catalogueLanguagesFor } from "@norish/shared/lib/ingredient-names";
 import { namesNoFood } from "@norish/shared/lib/ingredient-text";
 import { distinctFoods, joinOf } from "@norish/shared/lib/line-foods";
-import { mayBeASlip, nearestSlip } from "@norish/shared/lib/name-slips";
+import { mayBeASlip, onlyNearest, slipsNear } from "@norish/shared/lib/name-slips";
 import {
   inflectedReadings,
   joinedParts,
@@ -385,7 +385,7 @@ async function resolveTexts(
 
     if (!match && options.mint === false) continue;
     if (!match) {
-      const slip = slips.get(sameFoodKey(spelling));
+      const slip = onlyNearest(slips.get(sameFoodKey(spelling)) ?? []);
       // The food a slip names may have been merged away since it was found; the text is then minted.
       const joined = slip
         ? await addIngredientAliases({
@@ -434,14 +434,14 @@ function sameFoodKey(spelling: Spelling): string {
 }
 
 /**
- * The known food each spelling is a slip of the fingers from ("parmezan" for "parmezaan"), by
- * `sameFoodKey`, where only one food is that near (`nearestSlip`).
+ * The known foods each spelling is a slip of the fingers from ("parmezan" for "parmezaan"), by
+ * `sameFoodKey`, best first (`slipsNear`).
  */
 async function findSlips(
   spellings: readonly Spelling[],
   excludeId: string | null = null
-): Promise<Map<string, IngredientRef>> {
-  const slips = new Map<string, IngredientRef>();
+): Promise<Map<string, FoundFood[]>> {
+  const slips = new Map<string, FoundFood[]>();
   const questions = new Map(spellings.map((spelling) => [sameFoodKey(spelling), spelling]));
 
   await Promise.all(
@@ -449,14 +449,19 @@ async function findSlips(
       const wanted = spelling.plainFold || spelling.bareFold || spelling.fold;
 
       if (!mayBeASlip(wanted)) return;
-      const near = nearestSlip(
+      const near = slipsNear(
         wanted,
         (await findAliasesNearFold(wanted)).filter((row) => row.ingredientId !== excludeId),
         (row) => row.fold,
         (row) => row.ingredientId
       );
 
-      if (near) slips.set(key, near);
+      if (near.length > 0) {
+        slips.set(
+          key,
+          near.map(({ item, score }) => ({ ...refOf(item), score }))
+        );
+      }
     })
   );
 
@@ -660,15 +665,22 @@ export async function findIngredientFor(text: string): Promise<IngredientRef | n
   return match ? { aliasId: match.aliasId, ingredientId: match.ingredientId } : null;
 }
 
+/** A food a name finds, and how: 1 is its own spelling, a slip of the fingers less (`slipsNear`). */
+export type FoundFood = IngredientRef & { score: number };
+
+function refOf({ aliasId, ingredientId }: IngredientRef): IngredientRef {
+  return { aliasId, ingredientId };
+}
+
 /**
- * The food other than `ingredientId` each text names as an import finds it: rungs 1–2, else (with
- * `slips`) a slip of the fingers, which `slip` says. Null where none; mints nothing.
+ * The foods other than `ingredientId` each text names as an import finds them: rungs 1–2, the one
+ * food, else (with `slips`) every food a slip of the fingers away, best first. Mints nothing.
  */
 export async function findOtherFoodsNamed(
   ingredientId: string,
   texts: readonly string[],
   { slips = true }: { slips?: boolean } = {}
-): Promise<Array<(IngredientRef & { slip: boolean }) | null>> {
+): Promise<FoundFood[][]> {
   const rules = await currentRules();
   const spellings = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
   const readable = spellings.filter((spelling) => spelling.text && !spellingNamesNoFood(spelling));
@@ -681,15 +693,14 @@ export async function findOtherFoodsNamed(
         readable.filter((spelling) => !matched.get(spelling)),
         ingredientId
       )
-    : new Map<string, IngredientRef>();
+    : new Map<string, FoundFood[]>();
 
   return spellings.map((spelling) => {
     const match = matched.get(spelling);
-    const slip = matched.has(spelling) ? slipped.get(sameFoodKey(spelling)) : undefined;
 
-    if (match) return { aliasId: match.aliasId, ingredientId: match.ingredientId, slip: false };
+    if (match) return [{ ...refOf(match), score: 1 }];
 
-    return slip ? { aliasId: slip.aliasId, ingredientId: slip.ingredientId, slip: true } : null;
+    return (matched.has(spelling) && slipped.get(sameFoodKey(spelling))) || [];
   });
 }
 
