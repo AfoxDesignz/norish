@@ -17,6 +17,7 @@ import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue
 import { withTransaction } from "@norish/db/drizzle";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import { findIngredientByAliasId } from "@norish/db/repositories/ingredient-aliases";
+import { listJunkFolds } from "@norish/db/repositories/ingredient-junk-pile";
 import {
   findIngredientAncestors,
   mergeCatalogueIngredients,
@@ -139,9 +140,9 @@ function splits(
   answers("ingredient-resolution", severalReading(parts, joined, sure));
 }
 
-/** AI reads a name as no food. */
-function readsNoFood(sure: boolean) {
-  answers("ingredient-resolution", noFoodReading(sure));
+/** AI reads a name as no food, by default a tool. */
+function readsNoFood(sure: boolean, reason?: Parameters<typeof noFoodReading>[1]) {
+  answers("ingredient-resolution", noFoodReading(sure, reason));
 }
 
 /** The language model's pick among the foods a reading found: the one named `food`, or none. */
@@ -1989,16 +1990,33 @@ describe("asking AI about an Ingredient", () => {
       });
     });
 
-    it("deletes a food AI is not sure is not a food, as it does when sure", async () => {
-      const melted = await flagged("melted");
+    it("deletes a food AI is not sure is a tool, as it does when sure", async () => {
+      const mould = await flagged("taartvorm");
 
-      readsNoFood(false);
-      await expect(askAIAbout(melted.ingredientId)).resolves.toMatchObject({
+      readsNoFood(false, "equipment");
+      await expect(askAIAbout(mould.ingredientId)).resolves.toMatchObject({
         outcome: "not-a-food",
       });
       expect(resolutionRequests()).toBe(1);
-      expect(await exists(melted.ingredientId)).toBe(false);
+      expect(await exists(mould.ingredientId)).toBe(false);
       expect(await listAIChanges()).toMatchObject([{ undo: { kind: "not-a-food" } }]);
+    });
+
+    it("only flags a food AI is not sure names nothing, deleting nothing and remembering nothing", async () => {
+      const tortacles = await flagged("tortacles");
+
+      readsNoFood(false, "gibberish");
+      await expect(askAIAbout(tortacles.ingredientId)).resolves.toMatchObject({
+        outcome: "unsure",
+        reason: "ai-junk",
+      });
+      await expect(findIngredientByAliasId(tortacles.aliasId)).resolves.toMatchObject({
+        id: tortacles.ingredientId,
+        flagged: true,
+        flagReason: "ai-junk",
+      });
+      expect(await listAIChanges()).toEqual([]);
+      await expect(listJunkFolds()).resolves.toEqual([]);
     });
 
     it("keeps a food a Pantry Ingredient names, flagged, sure or not that it is not a food", async () => {

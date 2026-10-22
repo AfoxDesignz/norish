@@ -39,7 +39,10 @@ export function severalReading(
   };
 }
 
-/** A name read as no food. */
-export function noFoodReading(sure: boolean) {
-  return { sure, action: { kind: "not-a-food", joined: null, reason: "equipment" }, foods: [] };
+/** A name read as no food, by default a tool. */
+export function noFoodReading(
+  sure: boolean,
+  reason: "equipment" | "preparation" | "note" | "gibberish" = "equipment"
+) {
+  return { sure, action: { kind: "not-a-food", joined: null, reason }, foods: [] };
 }

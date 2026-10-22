@@ -51,7 +51,12 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
     return { outcome: "merge", into: into.name, sure: answer.sure, ...trace };
   }
   if (answer.kind === "several") return await announcingAfter(() => split(row, answer, trace));
-  if (answer.kind === "not-a-food") return await deleted(ingredientId, trace);
+  if (answer.kind === "not-a-food") {
+    // A tool goes unsure too (Mike, ticket 08); an unsure "names nothing" is only flagged.
+    return answer.sure || answer.tool
+      ? await deleted(ingredientId, trace)
+      : await doubted(ingredientId, "ai-junk", trace);
+  }
   if (answer.kind === "unanswered") {
     if (answer.reason !== "ai-off") return await unanswered(ingredientId, answer.reason, trace);
     // AI was switched off meanwhile: a food waiting on this pass says so; another keeps its reason.
@@ -124,7 +129,7 @@ async function split(
   return { outcome: "split", into: parts.map((part) => part.text), ...trace };
 }
 
-/** Not a food, sure or not: the food goes, and its rows keep their text. */
+/** Not a food: the food goes, and its rows keep their text. */
 async function deleted(ingredientId: string, trace: ReviewTrace): Promise<ReviewOutcome> {
   const outcome = await deleteByAI(ingredientId);
 

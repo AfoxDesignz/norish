@@ -53,7 +53,7 @@ export type AIResolution =
   | { kind: "same"; ingredientId: string; sure: boolean }
   | { kind: "own"; parentId: string | null; sure: boolean }
   | { kind: "several"; parts: ReadPart[]; joined: LineJoin; sure: boolean }
-  | { kind: "not-a-food" }
+  | { kind: "not-a-food"; sure: boolean; tool: boolean }
   | { kind: "unanswered"; reason: UnansweredReason };
 
 /** Why AI gave no answer: switched off, unreachable, or its key refused. */
@@ -114,7 +114,7 @@ async function readThenLookUp(
   });
 
   if (!reading) throw new Unanswered("ai-unavailable");
-  if (reading.kind === "not-a-food") return { kind: "not-a-food" };
+  if (reading.kind === "not-a-food") return reading;
   if (reading.kind === "several") {
     trace.parts = reading.foods.map((food) => food.written);
     if (!reading.sure) return { kind: "several", parts: [], joined: reading.joined, sure: false };
@@ -278,7 +278,7 @@ interface ReadFood {
 type Reading =
   | { kind: "food"; foods: [ReadFood]; sure: boolean }
   | { kind: "several"; foods: ReadFood[]; joined: LineJoin; sure: boolean }
-  | { kind: "not-a-food"; sure: boolean };
+  | { kind: "not-a-food"; sure: boolean; tool: boolean };
 
 const readFoodSchema = z
   .object({
@@ -368,7 +368,9 @@ function asReading(answer: z.infer<typeof readingSchema>): Reading | null {
   if (kind === "several" && foods.length > 1 && joined) {
     return { kind, foods, joined, sure: answer.sure };
   }
-  if (kind === "not-a-food" && foods.length === 0 && reason) return { kind, sure: answer.sure };
+  if (kind === "not-a-food" && foods.length === 0 && reason) {
+    return { kind, sure: answer.sure, tool: reason === "equipment" };
+  }
 
   return null;
 }

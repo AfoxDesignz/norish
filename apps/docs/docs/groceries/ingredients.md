@@ -59,7 +59,8 @@ recipe, grocery or pantry item adds it. It then does one of these:
   cinnamon" with no joining word). A spelling of one of those foods that it
   also has becomes an ingredient of its own
 - deletes it when it is not a food, like a tool ("deegroller") or a fragment
-  of a line ("melted"). Recipe lines and groceries keep their text.
+  of a line ("melted"). Recipe lines and groceries keep their text. A fragment
+  AI is not sure of is only flagged
 
 AI leaves alone an ingredient you marked distinct, renamed or gave a parent,
 every ingredient from the catalogue source, and one no recipe uses, which it
