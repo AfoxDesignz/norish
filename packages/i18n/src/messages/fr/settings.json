@@ -530,6 +530,10 @@
       "none": "Plus rien ne l'utilise"
     },
     "keepAlias": "Garder {alias}",
+    "junkTitle": "Marquer {alias} comme n'étant pas un aliment ?",
+    "junkBody": "Aucun autre ingrédient n'a cette traduction. Les nouvelles recettes ignorent le texte marqué comme n'étant pas un aliment.",
+    "junkRemove": "Supprimer seulement",
+    "junkMark": "Pas un aliment",
     "expandKinds": "Afficher les sortes de {name}",
     "collapseKinds": "Masquer les sortes de {name}",
     "layoutSection": "Affichage",

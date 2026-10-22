@@ -530,6 +530,10 @@
       "none": "Niets gebruikt het meer"
     },
     "keepAlias": "{alias} behouden",
+    "junkTitle": "{alias} markeren als geen ingrediënt?",
+    "junkBody": "Geen ander ingrediënt heeft deze vertaling. Nieuwe recepten slaan tekst over die als geen ingrediënt is gemarkeerd.",
+    "junkRemove": "Alleen verwijderen",
+    "junkMark": "Geen ingrediënt",
     "expandKinds": "Toon de soorten {name}",
     "collapseKinds": "Verberg de soorten {name}",
     "layoutSection": "Weergave",

@@ -530,6 +530,10 @@
       "none": "Ingenting bruker den lenger"
     },
     "keepAlias": "Behold {alias}",
+    "junkTitle": "Merk {alias} som ikke en ingrediens?",
+    "junkBody": "Ingen annen ingrediens har denne oversettelsen. Nye oppskrifter hopper over tekst som er merket som ikke en ingrediens.",
+    "junkRemove": "Bare fjern",
+    "junkMark": "Ikke en ingrediens",
     "expandKinds": "Vis typer av {name}",
     "collapseKinds": "Skjul typer av {name}",
     "layoutSection": "Visning",

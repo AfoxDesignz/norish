@@ -41,6 +41,7 @@ import { IngredientIconField } from "./ingredient-icon-field";
 import { IngredientNutritionSection } from "./ingredient-nutrition";
 import { IngredientRelocationPanel } from "./ingredient-relocation";
 import { IngredientStatusChip } from "./ingredient-status-chip";
+import { JunkSpellingModal } from "./junk-spelling-modal";
 import { changeMessage, showRefusal } from "./review-copy";
 import { isOpenChange, useAIChanges } from "./use-ai-changes";
 import { useIngredientCache } from "./use-ingredient-cache";
@@ -153,6 +154,9 @@ function IngredientPanelContent({
   const [parent, setParent] = useState<DraftParent>(item.parent);
   const [added, setAdded] = useState<string[]>([]);
   const [removed, setRemoved] = useState<ReadonlySet<string>>(() => new Set());
+  // Of `removed`, the spellings the viewer says name no food, for the junk pile.
+  const [junk, setJunk] = useState<ReadonlySet<string>>(() => new Set());
+  const [askingJunk, setAskingJunk] = useState<Spelling | null>(null);
   const [icon, setIcon] = useState<IconDraft>(undefined);
   // What the row counts: every spelling the food has, and the draft's changes to them.
   const spellingCount = item.aliases.length + hiddenSpellings + added.length - removed.size;
@@ -243,11 +247,12 @@ function IngredientPanelContent({
       setKeeps(null);
     }
     if (!catalogueDirty) return;
-    const draft = { added, removed, parent, icon };
+    const draft = { added, removed, junk, parent, icon };
 
     // The row reads as the draft has it, and the draft is spent, at once.
     setAdded([]);
     setRemoved(new Set());
+    setJunk(new Set());
     setIcon(undefined);
     const saved = await run(
       "save",
@@ -272,6 +277,7 @@ function IngredientPanelContent({
           ...(parentChanged ? { parentId: parent?.id ?? null } : {}),
           add: added,
           remove: [...removed],
+          junk: [...junk],
           ...(iconChanged ? { icon: icon?.file ?? null } : {}),
         })
     );
@@ -281,6 +287,7 @@ function IngredientPanelContent({
       keepDraftRef.current = true;
       setAdded(draft.added);
       setRemoved(draft.removed);
+      setJunk(draft.junk);
       setName(nextName);
       setParent(draft.parent);
       setIcon(draft.icon);
@@ -345,9 +352,26 @@ function IngredientPanelContent({
     );
   };
 
+  /** Stage a spelling's removal, onto the junk pile when `asJunk`; staged again, it is kept. */
+  const toggleRemoval = (spelling: Spelling, asJunk = false) => {
+    const pending = removed.has(spelling.id);
+    const toggled = (current: ReadonlySet<string>, on: boolean) => {
+      const next = new Set(current);
+
+      if (on) next.add(spelling.id);
+      else next.delete(spelling.id);
+
+      return next;
+    };
+
+    setRemoved((current) => toggled(current, !pending));
+    setJunk((current) => toggled(current, !pending && asJunk));
+  };
+
   /**
    * One spelling the food goes by. One the viewer may edit is a button: the
-   * chip itself moves the spelling to another food, the cross removes it.
+   * chip itself moves the spelling to another food, the cross asks whether it
+   * names no food (no other food can hold the text, folds being unique) and removes it.
    */
   const spellingChip = (spelling: Spelling) => {
     const pendingRemoval = removed.has(spelling.id);
@@ -386,16 +410,7 @@ function IngredientPanelContent({
             className="text-muted hover:text-foreground ml-1 cursor-[var(--cursor-interactive)]"
             data-testid="ingredient-alias-remove"
             type="button"
-            onClick={() =>
-              setRemoved((current) => {
-                const next = new Set(current);
-
-                if (pendingRemoval) next.delete(spelling.id);
-                else next.add(spelling.id);
-
-                return next;
-              })
-            }
+            onClick={() => (pendingRemoval ? toggleRemoval(spelling) : setAskingJunk(spelling))}
           >
             {pendingRemoval ? (
               <ArrowUturnLeftIcon className="size-3" />
@@ -669,6 +684,15 @@ function IngredientPanelContent({
         relocation={relocation}
         onClose={() => setRelocation(null)}
         onConfirm={saveRelocation}
+      />
+
+      <JunkSpellingModal
+        alias={askingJunk?.text ?? null}
+        onClose={() => setAskingJunk(null)}
+        onRemove={(asJunk) => {
+          if (askingJunk) toggleRemoval(askingJunk, asJunk);
+          setAskingJunk(null);
+        }}
       />
 
       <DeleteIngredientModal

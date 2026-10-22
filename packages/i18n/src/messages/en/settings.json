@@ -530,6 +530,10 @@
       "none": "Nothing uses it any more"
     },
     "keepAlias": "Keep {alias}",
+    "junkTitle": "Mark {alias} as not a food?",
+    "junkBody": "No other ingredient has this translation. New recipes skip text marked as not a food.",
+    "junkRemove": "Just remove",
+    "junkMark": "Not a food",
     "expandKinds": "Show the kinds of {name}",
     "collapseKinds": "Hide the kinds of {name}",
     "layoutSection": "Layout",

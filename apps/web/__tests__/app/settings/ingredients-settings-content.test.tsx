@@ -7,7 +7,7 @@ import { useSyncExternalStore } from "react";
 import IngredientsSettingsContent from "@/app/(app)/settings/ingredients/components/ingredients-settings-content";
 import { showSafeErrorToast } from "@/lib/ui/safe-error-toast";
 import { toast } from "@heroui/react";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import "@testing-library/jest-dom";
@@ -609,6 +609,7 @@ describe("IngredientsSettingsContent", () => {
       name: "Onion",
       add: [],
       remove: [],
+      junk: [],
     });
     expect(invalidateQueries).toHaveBeenCalled();
   });
@@ -798,6 +799,7 @@ describe("IngredientsSettingsContent", () => {
       ingredientId: "salt",
       add: ["zout"],
       remove: [],
+      junk: [],
     });
   });
 
@@ -805,9 +807,14 @@ describe("IngredientsSettingsContent", () => {
     render(<IngredientsSettingsContent />);
     const opened = await open("onion");
     await showSpellings(opened);
-    const remove = () => within(opened).getByRole("button", { name: "removeAlias" });
+    const remove = async () => {
+      fireEvent.click(within(opened).getByRole("button", { name: "removeAlias" }));
+      await act(async () => {
+        fireEvent.click(await screen.findByTestId("ingredient-junk-remove"));
+      });
+    };
 
-    fireEvent.click(remove());
+    await remove();
     // Marked for removal, the chip stays, struck through, with a way back.
     expect(within(opened).getAllByTestId("ingredient-alias")[0]).toHaveAttribute(
       "data-pending",
@@ -817,7 +824,7 @@ describe("IngredientsSettingsContent", () => {
     fireEvent.click(within(opened).getByRole("button", { name: "keepAlias" }));
     expect(within(opened).getByTestId("ingredient-save")).toBeDisabled();
 
-    fireEvent.click(remove());
+    await remove();
     await act(async () => {
       fireEvent.click(within(opened).getByTestId("ingredient-save"));
     });
@@ -826,6 +833,39 @@ describe("IngredientsSettingsContent", () => {
       ingredientId: "onion",
       add: [],
       remove: ["a-onion"],
+      junk: [],
+    });
+  });
+
+  it("asks whether a spelling removed by hand names no food: yes marks it for the junk pile, closing stages nothing", async () => {
+    render(<IngredientsSettingsContent />);
+    const opened = await open("onion");
+    await showSpellings(opened);
+    const cross = () => within(opened).getByRole("button", { name: "removeAlias" });
+
+    fireEvent.click(cross());
+    expect(await screen.findByTestId("ingredient-junk-dialog")).toHaveTextContent("junkTitle");
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId("ingredient-junk-dialog"), { key: "Escape" });
+    });
+    await waitFor(() => expect(screen.queryByTestId("ingredient-junk-dialog")).toBeNull());
+    expect(within(opened).getAllByTestId("ingredient-alias")[0]).not.toHaveAttribute(
+      "data-pending"
+    );
+
+    fireEvent.click(cross());
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId("ingredient-junk-mark"));
+    });
+    await act(async () => {
+      fireEvent.click(within(opened).getByTestId("ingredient-save"));
+    });
+
+    expect(mutations.saveDraft).toHaveBeenCalledWith({
+      ingredientId: "onion",
+      add: [],
+      remove: ["a-onion"],
+      junk: ["a-onion"],
     });
   });
 
@@ -905,6 +945,7 @@ describe("IngredientsSettingsContent", () => {
       parentId: "salt",
       add: [],
       remove: [],
+      junk: [],
     });
   });
 
@@ -1016,6 +1057,7 @@ describe("IngredientsSettingsContent", () => {
       parentId: null,
       add: [],
       remove: [],
+      junk: [],
     });
   });
 

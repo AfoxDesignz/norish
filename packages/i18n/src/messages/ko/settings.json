@@ -530,6 +530,10 @@
       "none": "더 이상 사용하는 곳이 없습니다"
     },
     "keepAlias": "{alias} 유지",
+    "junkTitle": "{alias}을(를) 식재료가 아님으로 표시할까요?",
+    "junkBody": "이 번역을 가진 다른 식재료가 없습니다. 새 레시피는 식재료가 아님으로 표시된 텍스트를 건너뜁니다.",
+    "junkRemove": "제거만 하기",
+    "junkMark": "식재료 아님",
     "expandKinds": "{name}의 종류 보기",
     "collapseKinds": "{name}의 종류 숨기기",
     "layoutSection": "보기",

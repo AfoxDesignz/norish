@@ -530,6 +530,10 @@
       "none": "Mikään ei enää käytä sitä"
     },
     "keepAlias": "Säilytä {alias}",
+    "junkTitle": "Merkitäänkö {alias} muuksi kuin ainesosaksi?",
+    "junkBody": "Millään muulla ainesosalla ei ole tätä käännöstä. Uudet reseptit ohittavat tekstin, joka on merkitty muuksi kuin ainesosaksi.",
+    "junkRemove": "Poista vain",
+    "junkMark": "Ei ainesosa",
     "expandKinds": "Näytä lajit: {name}",
     "collapseKinds": "Piilota lajit: {name}",
     "layoutSection": "Näkymä",

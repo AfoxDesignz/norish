@@ -530,6 +530,10 @@
       "none": "Nic już tego nie używa"
     },
     "keepAlias": "Zachowaj {alias}",
+    "junkTitle": "Oznaczyć {alias} jako niebędące składnikiem?",
+    "junkBody": "Żaden inny składnik nie ma tego tłumaczenia. Nowe przepisy pomijają tekst oznaczony jako niebędący składnikiem.",
+    "junkRemove": "Tylko usuń",
+    "junkMark": "To nie składnik",
     "expandKinds": "Pokaż rodzaje {name}",
     "collapseKinds": "Ukryj rodzaje {name}",
     "layoutSection": "Widok",

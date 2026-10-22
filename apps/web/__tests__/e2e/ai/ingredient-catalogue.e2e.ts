@@ -14,6 +14,8 @@
  */
 import type { Locator, Page } from "@playwright/test";
 
+import { RULES_TTL_MS } from "@norish/shared-server/ingredients/resolver";
+
 import type { AIE2EStack } from "./fixture";
 import { createRecipe, readRecipe } from "../harness/recipes";
 import { seedRecipe } from "./cookbooks-support";
@@ -362,12 +364,12 @@ test("AI gives a food a recipe mints its plain name by itself, listed on Changed
   await expect(ingredientRow("zalmmoot")).toBeVisible();
 });
 
-test("AI removes a food that names nothing; its line stays in the recipe with no food, and Undo brings the food back", async ({
+test("AI removes a food that names nothing; its line stays in the recipe with no food, the next line naming it mints nothing, and Undo brings the food back", async ({
   ai,
   aiStack,
 }) => {
   await waitForAIPasses(aiStack);
-  // The save mints "gesmolten" flagged, asking nothing. The pass reads it as not a food.
+  // The save mints "uitgelekt" flagged, asking nothing. The pass reads it as not a food.
   ai.control.enqueueIngredients({
     kind: "success",
     content: JSON.stringify({
@@ -376,27 +378,39 @@ test("AI removes a food that names nothing; its line stays in the recipe with no
       foods: [],
     }),
   });
-  const id = await createRecipe(aiStack.baseURL, aiStack.ownerCookies, "Snickers ijstaart", [
-    "garlic",
-    "gesmolten",
-  ]);
-  // The create answers before the recipe is written, and a recipe not written yet is not found.
-  const lines = () =>
+  const linesOf = (id: string) => () =>
     readRecipe(aiStack.baseURL, aiStack.ownerCookies, id).then((recipe) =>
       recipe?.recipeIngredients.map((line) => [line.ingredientName, line.ingredientId !== null])
     );
+  const id = await createRecipe(aiStack.baseURL, aiStack.ownerCookies, "Snickers ijstaart", [
+    "garlic",
+    "uitgelekt",
+  ]);
+  // The create answers before the recipe is written, and a recipe not written yet is not found.
+  const lines = linesOf(id);
 
   await expect.poll(lines, { timeout: 30_000 }).toEqual([
     ["garlic", true],
-    ["gesmolten", false],
+    ["uitgelekt", false],
   ]);
+
+  // Its text is on the junk pile: the next recipe saying it mints nothing, so AI is asked nothing.
+  // The pass ran in the workers; the server's resolver reads the pile again within RULES_TTL_MS.
+  await waitForAIPasses(aiStack);
+  await page.waitForTimeout(RULES_TTL_MS + 1_000);
+  const asked = ai.control.ingredientRequests.length;
+  const next = await createRecipe(aiStack.baseURL, aiStack.ownerCookies, "Bonen", ["uitgelekt"]);
+
+  await expect.poll(linesOf(next), { timeout: 30_000 }).toEqual([["uitgelekt", false]]);
+  await waitForAIPasses(aiStack);
+  expect(ai.control.ingredientRequests).toHaveLength(asked);
 
   await page.goto("/settings?tab=ingredients");
   await page.getByTestId("ingredients-ai-changes-open").click();
   const panel = page.getByRole("dialog", { name: "Changed by AI" });
   const deleted = panel
     .getByTestId("ingredient-ai-change")
-    .filter({ hasText: "gesmolten" })
+    .filter({ hasText: "uitgelekt" })
     .filter({ hasText: "Deleted as not a food" });
 
   await expect(deleted).toHaveAttribute("data-kind", "not-a-food");
@@ -404,8 +418,60 @@ test("AI removes a food that names nothing; its line stays in the recipe with no
   await expect(deleted).toHaveCount(0);
   await expect.poll(lines).toEqual([
     ["garlic", true],
-    ["gesmolten", true],
+    ["uitgelekt", true],
   ]);
+});
+
+test("removing a translation by hand asks whether it names no food: Not a food keeps new lines off it, Just remove does not", async ({
+  aiStack,
+}) => {
+  await waitForAIPasses(aiStack);
+  await page.goto("/settings?tab=ingredients");
+  await page.getByTestId("ingredients-search").fill("garlic");
+  await ingredientRow("garlic").getByTestId("ingredient-toggle").click();
+  const opened = ingredientPanel("garlic");
+  const spellings = page.getByRole("dialog", { name: "Translations" });
+
+  // "boneless" starts on the seeded junk pile; added by hand, it names garlic.
+  await opened.getByTestId("ingredient-all-spellings").click();
+  for (const text of ["boneless", "look"]) {
+    await spellings.getByTestId("ingredient-alias-input").fill(text);
+    await spellings.getByTestId("ingredient-alias-input").press("Enter");
+  }
+  await spellings.getByRole("button", { name: "Done" }).click();
+  await opened.getByTestId("ingredient-save").click();
+  await expect.poll(() => readIngredientOf("boneless")).toBe("garlic");
+  await expect.poll(() => readIngredientOf("look")).toBe("garlic");
+
+  await opened.getByTestId("ingredient-all-spellings").click();
+  const junk = page.getByTestId("ingredient-junk-dialog");
+
+  await spellings.getByRole("button", { name: "Remove boneless" }).click();
+  await expect(junk).toContainText("Mark boneless as not a food?");
+  await junk.getByTestId("ingredient-junk-mark").click();
+  await expect(junk).toBeHidden();
+  await spellings.getByRole("button", { name: "Remove look" }).click();
+  await junk.getByTestId("ingredient-junk-remove").click();
+  await expect(spellings.locator('[data-pending="removed"]')).toHaveCount(2);
+  await spellings.getByRole("button", { name: "Done" }).click();
+  await opened.getByTestId("ingredient-save").click();
+  await expect.poll(() => readIngredientOf("boneless")).toBeNull();
+  await expect.poll(() => readIngredientOf("look")).toBeNull();
+  await opened.getByRole("button", { name: "Close panel" }).click();
+
+  // "boneless" names no food now; "look" is a new food of its own.
+  const id = await createRecipe(aiStack.baseURL, aiStack.ownerCookies, "Kip", ["boneless", "look"]);
+
+  await expect
+    .poll(
+      () =>
+        readRecipe(aiStack.baseURL, aiStack.ownerCookies, id).then((recipe) =>
+          recipe?.recipeIngredients.map((line) => line.ingredientId !== null)
+        ),
+      { timeout: 30_000 }
+    )
+    .toEqual([false, true]);
+  await waitForAIPasses(aiStack);
 });
 
 /** The panel a row opens: a dialog named after the food. */

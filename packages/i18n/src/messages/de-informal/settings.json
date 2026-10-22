@@ -530,6 +530,10 @@
       "none": "Nichts verwendet es mehr"
     },
     "keepAlias": "{alias} behalten",
+    "junkTitle": "{alias} als keine Zutat markieren?",
+    "junkBody": "Keine andere Zutat hat diese Übersetzung. Neue Rezepte überspringen Text, der als keine Zutat markiert ist.",
+    "junkRemove": "Nur entfernen",
+    "junkMark": "Keine Zutat",
     "expandKinds": "Sorten von {name} anzeigen",
     "collapseKinds": "Sorten von {name} ausblenden",
     "layoutSection": "Ansicht",

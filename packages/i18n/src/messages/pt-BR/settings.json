@@ -530,6 +530,10 @@
       "none": "Nada usa mais isso"
     },
     "keepAlias": "Manter {alias}",
+    "junkTitle": "Marcar {alias} como não sendo um alimento?",
+    "junkBody": "Nenhum outro ingrediente tem esta tradução. Receitas novas ignoram texto marcado como não sendo um alimento.",
+    "junkRemove": "Só remover",
+    "junkMark": "Não é um alimento",
     "expandKinds": "Mostrar os tipos de {name}",
     "collapseKinds": "Ocultar os tipos de {name}",
     "layoutSection": "Exibição",
