@@ -67,9 +67,16 @@ function flaggedNew(reason: FlagReason, kindOf: string | null = null): AIResolut
   return { kind: "new", kindOf, flagged: true, reason };
 }
 
-/** The flagged answer for a failed request: a refused key says so, so the cause is not a guess. */
-function failedNew(error: unknown): AIResolution {
-  return flaggedNew(isCredentialRejection(error) ? "ai-key-rejected" : "ai-unavailable");
+/** A question AI gave no answer to, thrown to the entry; why is the food's flag. */
+class Unanswered extends Error {
+  constructor(readonly reason: FlagReason) {
+    super(reason);
+  }
+}
+
+/** A failed request: a refused key says so, so the cause is not a guess. */
+function failed(error: unknown): Unanswered {
+  return new Unanswered(isCredentialRejection(error) ? "ai-key-rejected" : "ai-unavailable");
 }
 
 /** How a question is asked. */
@@ -86,7 +93,12 @@ export interface AskOptions {
 export async function askWhatFoodThisIs(text: string, options: AskOptions): Promise<AIResolution> {
   if (!(await isAIEnabled())) return flaggedNew("ai-off");
 
-  return await readThenLookUp(text, options);
+  try {
+    return await readThenLookUp(text, options);
+  } catch (error) {
+    if (error instanceof Unanswered) return flaggedNew(error.reason);
+    throw error;
+  }
 }
 
 /**
@@ -97,17 +109,13 @@ async function readThenLookUp(
   text: string,
   { excludeId, filedUnder, trace }: AskOptions
 ): Promise<AIResolution> {
-  let reading: Reading | null;
-
-  try {
-    reading = await readName(text, filedUnder);
-  } catch (error) {
+  const reading = await readName(text, filedUnder).catch((error: unknown) => {
     aiLogger.warn({ err: error, feature: "ingredient-resolution", text }, "Reading a name failed");
 
-    return failedNew(error);
-  }
+    throw failed(error);
+  });
 
-  if (!reading) return flaggedNew("ai-unavailable");
+  if (!reading) throw new Unanswered("ai-unavailable");
   if (reading.kind === "not-a-food") return { kind: "not-a-food", sure: reading.sure };
   if (reading.kind === "several") {
     trace.parts = reading.foods.map((food) => food.written);
@@ -123,7 +131,6 @@ async function readThenLookUp(
         trace
       );
 
-      if ("kind" in found) return found;
       parts.push({ text: food.written, found: found.food });
     }
 
@@ -141,7 +148,6 @@ async function readThenLookUp(
 
   const found = await findNamed({ name: text, readAs: food }, excludeId, namesOf(food), trace);
 
-  if ("kind" in found) return found;
   const same = (ingredientId: string): AIResolution => ({
     kind: "same",
     ingredientId,
@@ -152,7 +158,6 @@ async function readThenLookUp(
   if (found.food && food.englishName && found.byFirstName) return same(found.food.ingredientId);
   const parent = food.parent ? await findByName(food.parent, excludeId, trace) : null;
 
-  if (parent && "kind" in parent) return parent;
   // A food only AI's other names (or a slip) find is never the parent AI gave: filed under it.
   if (found.food && parent?.food?.ingredientId !== found.food.ingredientId) {
     return same(found.food.ingredientId);
@@ -164,7 +169,6 @@ async function readThenLookUp(
       ? parent
       : await findByName(food.category, excludeId, trace, { seeded: true });
 
-  if (filed && "kind" in filed) return filed;
   const kindOf = filed?.food?.ingredientId ?? null;
 
   return reading.sure && found.sure && (filed?.sure ?? true)
@@ -180,9 +184,12 @@ export async function findFoodNamed(
   name: string,
   excludeId: string
 ): Promise<{ food: IngredientRef | null } | null> {
-  const found = await findByName(name, excludeId, noTrace());
-
-  return "kind" in found ? null : { food: found.food };
+  try {
+    return { food: (await findByName(name, excludeId, noTrace())).food };
+  } catch (error) {
+    if (error instanceof Unanswered) return null;
+    throw error;
+  }
 }
 
 /** `findNamed` for a name AI gave alone, with no reading of its own (a parent, a category). */
@@ -228,7 +235,7 @@ async function findNamed(
   names: readonly string[],
   trace: ReviewTrace,
   { seeded = false }: { seeded?: boolean } = {}
-): Promise<Found | AIResolution> {
+): Promise<Found> {
   const byName = await findFood(names, { except: excludeId, among: seeded ? "seeded" : "listed" });
   const found = byName.flat();
   const exact = found.filter(isExact);
@@ -246,10 +253,7 @@ async function findNamed(
       .map((candidate) => ({ ...candidate, matched: matched.get(candidate.id) ?? candidate.name }));
 
     trace.considered.push(...candidates.map((candidate) => candidate.name));
-    const answer = await askWhich(asked, candidates, exact.length === 0);
-
-    if ("kind" in answer) return answer;
-    pick = answer;
+    pick = await askWhich(asked, candidates, exact.length === 0);
   }
 
   const picked = ranked.find((one) => one.ingredientId === pick.ingredientId);
@@ -406,13 +410,13 @@ interface Pick {
 
 /**
  * The Decision, then the language model where the Decision is below its threshold, off or failing.
- * A failed language model is a flagged answer.
+ * A failed language model throws `Unanswered`.
  */
 async function askWhich(
   asked: Asked,
   candidates: readonly Candidate[],
   slips: boolean
-): Promise<Pick | AIResolution> {
+): Promise<Pick> {
   const text = asked.name;
 
   if (await isDecisionUseEnabled("ingredientResolution")) {
@@ -435,7 +439,7 @@ async function askWhich(
       "Ingredient resolution failed, flagging the Ingredient"
     );
 
-    return failedNew(error);
+    throw failed(error);
   });
 }
 
