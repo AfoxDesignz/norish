@@ -176,13 +176,7 @@ async function readThenLookUp(
     [food.category, true],
   ] as const) {
     if (!name) continue;
-    const named = await findNamed(
-      { name, readAs: { englishName: null, parent: null, category: null } },
-      excludeId,
-      [name],
-      trace,
-      { seeded }
-    );
+    const named = await findByName(name, excludeId, trace, { seeded });
 
     if ("kind" in named) return named;
     parent = named;
@@ -203,14 +197,21 @@ export async function findFoodNamed(
   name: string,
   excludeId: string
 ): Promise<{ food: IngredientRef | null } | null> {
-  const found = await findNamed(
-    { name, readAs: { englishName: null, parent: null, category: null } },
-    excludeId,
-    [name],
-    noTrace()
-  );
+  const found = await findByName(name, excludeId, noTrace());
 
   return "kind" in found ? null : { food: found.food };
+}
+
+/** `findNamed` for a name AI gave alone, with no reading of its own (a parent, a category). */
+function findByName(
+  name: string,
+  excludeId: string,
+  trace: ReviewTrace,
+  options?: { seeded?: boolean }
+) {
+  const readAs = { englishName: null, parent: null, category: null };
+
+  return findNamed({ name, readAs }, excludeId, [name], trace, options);
 }
 
 /** A read food's names to look up: its English name and the other names a shop sells it under. */
