@@ -643,10 +643,12 @@ async function namedNow(tx: Db, undo: ChangedSpelling): Promise<Map<string, stri
   const rows = [...named.groceries, ...named.recurring];
 
   return new Map([
-    ...(await readLineFoods(
-      tx,
-      undo.lines.map((line) => line.id)
-    )).map((line) => [line.id, line.aliasIds] as const),
+    ...(
+      await readLineFoods(
+        tx,
+        undo.lines.map((line) => line.id)
+      )
+    ).map((line) => [line.id, line.aliasIds] as const),
     ...rows.map((row) => [row.id, row.aliasId ? [row.aliasId] : []] as const),
   ]);
 }
@@ -743,9 +745,7 @@ export async function restoreSpelling(
     tx,
     lines.filter(
       (line) =>
-        present.has(line.id) &&
-        line.aliasIds.every((id) => aliases.has(id)) &&
-        unchanged(line.id)
+        present.has(line.id) && line.aliasIds.every((id) => aliases.has(id)) && unchanged(line.id)
     )
   );
   await pointBack(tx, ingredientId, [

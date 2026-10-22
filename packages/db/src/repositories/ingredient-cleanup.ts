@@ -14,7 +14,12 @@ import {
   recurringGroceries,
 } from "@norish/db/schema";
 
-import { findGroceryRows, ingredientIsListed, nameIsFree, rowsNaming } from "./ingredient-catalogue";
+import {
+  findGroceryRows,
+  ingredientIsListed,
+  nameIsFree,
+  rowsNaming,
+} from "./ingredient-catalogue";
 import { writeRecipeLineFoodsTx } from "./ingredients";
 
 /**
