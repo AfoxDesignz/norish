@@ -32,6 +32,13 @@ matches "parmezaan". A name that joins foods names each of them: "zout en
 peper" is salt and pepper, and "boter of olie" is butter or oil. A name nothing
 matches becomes a new ingredient, under its clean name.
 
+Norish also keeps a list of texts that are not a food: what AI deleted as one,
+what you marked as one, and common words like "to taste", "boneless" or
+"rolling pin" in every language Norish speaks. A recipe line that says only
+such a text names no food. One that starts with it, like "boneless, skinless
+chicken breasts", is read on the rest. Adding the text as a translation takes
+it off the list.
+
 ![The Ingredients page, with a flagged ingredient](/img/screenshots/ingredients-page.png)
 
 An ingredient filed under a parent uses the parent's aisle, nutrition and icon
@@ -77,7 +84,9 @@ items go with it. Those lines and groceries are then read again: one whose text
 names other foods points at them, so deleting a "kruidenmix" with the
 translation "zout en peper" points a "zout en peper" line at salt and pepper,
 and a "zout en peper" grocery becomes two. Nothing new is added. Removing a
-translation moves what used it to another of the ingredient's names.
+translation moves what used it to another of the ingredient's names, and asks
+whether the text is not a food: **Not a food** puts it on that list, **Just
+remove** only removes it.
 
 ![Deleting an ingredient](/img/screenshots/ingredients-delete.png)
 
