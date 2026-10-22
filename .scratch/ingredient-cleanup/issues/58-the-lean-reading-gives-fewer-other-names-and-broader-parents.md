@@ -10,4 +10,14 @@ Mike decided the prompt texts on 2026-10-22, so this is his call: put other name
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** done
+
+## Decided (Mike, 2026-10-22)
+
+The two prompt texts (`ingredient-resolution.txt`, `ingredient-match.txt`) stay word for word. In the reading schema's descriptions: `otherNames` goes back to the old wording that gave other names for 71% of foods, and the `parent` description loses the "Not a food that only shares a word" sentence (the model applied it to parents: cumin powder lost cumin for spice, 14 times). The match prompt already holds that rule.
+
+## Implemented (2026-10-22)
+
+- `readFoodSchema` in `packages/shared-server/src/ai/resolution/ingredient-resolution.ts`: `otherNames` is `Two or three other names a shop might sell the same food under ("hot dog sausage" and "wiener" for "frankfurter"), or null when there are none.` (the old prompt bullet, before ticket 56); `parent` is `The plain food a shopper buys that this is made of or sold as ("chocolate whey" is "whey", "rode uien" is "onion"). Null when there is none, or when the name is that plain food itself.`
+- Test: `review.test.ts` "looks up the other names AI says a shop sells the food under" also checks the request's JSON schema carries the `otherNames` wording and no "only shares a word".
+- Not looked into: the parent's children before filing (the ticket's other option). The next ticket 31 run shows whether the descriptions bring other names and specific parents back.
