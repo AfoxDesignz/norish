@@ -46,15 +46,18 @@ export const REQUEST_BUDGET_MS = 30_000;
 const SHOWN_ALIASES = 5;
 
 /**
- * What rung 3 made of a name: a known food, a food of its own (flagged unless sure, filed under its
- * parent), several foods with their parts, or not a food.
+ * What rung 3 made of a name: a known food, a food of its own (under its parent, if any), several
+ * foods with their parts, not a food, or no answer and why.
  */
 export type AIResolution =
   | { kind: "same"; ingredientId: string; sure: boolean }
-  | { kind: "new"; kindOf: string | null; flagged: false; reason: null }
-  | { kind: "new"; kindOf: string | null; flagged: true; reason: FlagReason }
+  | { kind: "own"; parentId: string | null; sure: boolean }
   | { kind: "several"; parts: ReadPart[]; joined: LineJoin; sure: boolean }
-  | { kind: "not-a-food"; sure: boolean };
+  | { kind: "not-a-food" }
+  | { kind: "unanswered"; reason: UnansweredReason };
+
+/** Why AI gave no answer: switched off, unreachable, or its key refused. */
+type UnansweredReason = Extract<FlagReason, "ai-off" | "ai-unavailable" | "ai-key-rejected">;
 
 /** A part of several foods as written, and the food AI's names for it found or AI picked, if any. */
 export interface ReadPart {
@@ -62,14 +65,9 @@ export interface ReadPart {
   found: IngredientRef | null;
 }
 
-/** A food of its own that nothing sure vouched for: flagged, and why. */
-function flaggedNew(reason: FlagReason, kindOf: string | null = null): AIResolution {
-  return { kind: "new", kindOf, flagged: true, reason };
-}
-
 /** A question AI gave no answer to, thrown to the entry; why is the food's flag. */
 class Unanswered extends Error {
-  constructor(readonly reason: FlagReason) {
+  constructor(readonly reason: UnansweredReason) {
     super(reason);
   }
 }
@@ -91,12 +89,12 @@ export interface AskOptions {
 
 /** Ask what `text` is: AI reads it, and the code looks the reading up. */
 export async function askWhatFoodThisIs(text: string, options: AskOptions): Promise<AIResolution> {
-  if (!(await isAIEnabled())) return flaggedNew("ai-off");
+  if (!(await isAIEnabled())) return { kind: "unanswered", reason: "ai-off" };
 
   try {
     return await readThenLookUp(text, options);
   } catch (error) {
-    if (error instanceof Unanswered) return flaggedNew(error.reason);
+    if (error instanceof Unanswered) return { kind: "unanswered", reason: error.reason };
     throw error;
   }
 }
@@ -116,7 +114,7 @@ async function readThenLookUp(
   });
 
   if (!reading) throw new Unanswered("ai-unavailable");
-  if (reading.kind === "not-a-food") return { kind: "not-a-food", sure: reading.sure };
+  if (reading.kind === "not-a-food") return { kind: "not-a-food" };
   if (reading.kind === "several") {
     trace.parts = reading.foods.map((food) => food.written);
     if (!reading.sure) return { kind: "several", parts: [], joined: reading.joined, sure: false };
@@ -169,11 +167,11 @@ async function readThenLookUp(
       ? parent
       : await findByName(food.category, excludeId, trace, { seeded: true });
 
-  const kindOf = filed?.food?.ingredientId ?? null;
-
-  return reading.sure && found.sure && (filed?.sure ?? true)
-    ? { kind: "new", kindOf, flagged: false, reason: null }
-    : flaggedNew("ai-unsure", kindOf);
+  return {
+    kind: "own",
+    parentId: filed?.food?.ingredientId ?? null,
+    sure: reading.sure && found.sure && (filed?.sure ?? true),
+  };
 }
 
 /**

@@ -52,18 +52,16 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
   }
   if (answer.kind === "several") return await announcingAfter(() => split(row, answer, trace));
   if (answer.kind === "not-a-food") return await deleted(ingredientId, trace);
-  // AI was switched off meanwhile: a food waiting on this pass says so; another keeps its reason.
-  if (answer.reason === "ai-off") {
+  if (answer.kind === "unanswered") {
+    if (answer.reason !== "ai-off") return await unanswered(ingredientId, answer.reason, trace);
+    // AI was switched off meanwhile: a food waiting on this pass says so; another keeps its reason.
     if (row.flagReason === "ai-queued") await setIngredientFlagReason(ingredientId, "ai-off");
 
     return { outcome: "unsure", reason: "ai-off", ...trace };
   }
-  if (answer.reason !== null && answer.reason !== "ai-unsure") {
-    return await unanswered(ingredientId, answer.reason, trace);
-  }
 
-  const sure = answer.reason === null;
-  const parent = answer.kindOf ? await findCatalogueIngredient(answer.kindOf) : null;
+  const { sure } = answer;
+  const parent = answer.parentId ? await findCatalogueIngredient(answer.parentId) : null;
   // A parent AI names that is not found drops the current one; a person's parent is never asked.
   const { outcome: filed, previous } =
     parent || row.parentId
