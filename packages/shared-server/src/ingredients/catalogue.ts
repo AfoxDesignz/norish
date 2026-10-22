@@ -400,6 +400,7 @@ async function addAliasIn(
   if (!alias && (await findIngredientIdByFold(tx, fold)) !== ingredientId) {
     throw new CatalogueEditError("spelling-taken");
   }
+
   return { changed: [ingredientId], piled: await takeOffJunkPile(tx, [fold]) };
 }
 
