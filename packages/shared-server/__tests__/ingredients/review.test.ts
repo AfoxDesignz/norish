@@ -756,6 +756,26 @@ describe("asking AI about an Ingredient", () => {
     });
   });
 
+  describe("a name that is a food's own", () => {
+    it("AI's parent jam files under the food jam, not yam (whose hr spelling is jam)", async () => {
+      // As the seed left it before ticket 32: yam's Croatian spelling took the fold of jam's name.
+      await applyIngredientSeed([
+        seedEntry("en:yam", "yam", "jam"),
+        { ...seedEntry("en:jam", "confiture"), name: "jam", nameFold: "jam" },
+      ]);
+      const hero = await flagged("Hero Bosvruchtenjam");
+
+      reads({ englishName: "forest fruit jam", parent: "jam", sure: true });
+
+      await expect(askAIAbout(hero.ingredientId)).resolves.toMatchObject({
+        outcome: "parent",
+        of: "jam",
+        sure: true,
+      });
+      expect(resolutionRequests()).toBe(1);
+    });
+  });
+
   describe("an answer that breaks its shape", () => {
     /** A name read as several foods that names only one. */
     const broken = () => severalReading(["onion"], "together", true);

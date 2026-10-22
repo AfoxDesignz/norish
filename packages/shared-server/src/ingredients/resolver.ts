@@ -13,6 +13,7 @@ import {
   findAliasesNearFold,
   findIngredientAliasesByFolds,
   findIngredientByAliasId,
+  findIngredientsNamed,
   findSeededFoodSpellingsByFolds,
   mintIngredientWithAliases,
 } from "@norish/db/repositories/ingredient-aliases";
@@ -29,6 +30,7 @@ import { distinctFoods, joinOf } from "@norish/shared/lib/line-foods";
 import { mayBeASlip, onlyNearest, slipsNear } from "@norish/shared/lib/name-slips";
 import {
   inflectedReadings,
+  ingredientAliasFold,
   joinedParts,
   spellingKeys,
   spellingRules,
@@ -643,8 +645,8 @@ export function refOf({ aliasId, ingredientId }: IngredientRef): IngredientRef {
 }
 
 /**
- * The foods other than `ingredientId` each text names as an import finds them: rungs 1–2, the one
- * food, else (with `slips`) every food a slip of the fingers away, best first. Mints nothing.
+ * The foods other than `ingredientId` each text names: the food named it, else the one food rungs
+ * 1–2 find, else (with `slips`) every food a slip of the fingers away, best first. Mints nothing.
  */
 export async function findOtherFoodsNamed(
   ingredientId: string,
@@ -654,10 +656,24 @@ export async function findOtherFoodsNamed(
   const rules = await currentRules();
   const spellings = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
   const readable = spellings.filter((spelling) => spelling.text && !spellingNamesNoFood(spelling));
-  const known = new Map(
-    [...(await knownAliases(readable))].filter(([, row]) => row.ingredientId !== ingredientId)
+  const all = await knownAliases(readable);
+  const known = new Map([...all].filter(([, row]) => row.ingredientId !== ingredientId));
+  // A food's name beats another food's spelling (yam's Croatian "jam" is not the food jam); a
+  // spelling the asked food holds stays its own, so a split moves it to the food named for it.
+  const named = new Map(
+    (
+      await findIngredientsNamed(
+        readable.flatMap((spelling) => [spelling.fold, spelling.clean.toLowerCase()])
+      )
+    )
+      .filter((row) => row.ingredientId !== ingredientId)
+      .map((row) => [ingredientAliasFold(row.name), refOf(row)])
   );
-  const matched = new Map(readable.map((spelling) => [spelling, matchKnown(spelling, known)]));
+  const byName = (spelling: Spelling) =>
+    all.get(spelling.fold)?.ingredientId === ingredientId ? undefined : named.get(spelling.fold);
+  const matched = new Map(
+    readable.map((spelling) => [spelling, byName(spelling) ?? matchKnown(spelling, known)])
+  );
   const slipped = slips
     ? await findSlips(
         readable.filter((spelling) => !matched.get(spelling)),

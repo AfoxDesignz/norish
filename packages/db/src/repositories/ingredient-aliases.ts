@@ -76,6 +76,26 @@ export async function findIngredientAliasesByFolds(
   return rows;
 }
 
+/** The foods whose lowercased name is one of `names`, each with one of its spellings. */
+export async function findIngredientsNamed(
+  names: readonly string[]
+): Promise<Array<IngredientRef & { name: string }>> {
+  const unique = [...new Set(names.filter((name) => name.length > 0))];
+
+  if (unique.length === 0) return [];
+
+  return await db
+    .selectDistinctOn([ingredients.id], {
+      name: ingredients.name,
+      ingredientId: ingredients.id,
+      aliasId: ingredientAliases.id,
+    })
+    .from(ingredients)
+    .innerJoin(ingredientAliases, eq(ingredientAliases.ingredientId, ingredients.id))
+    .where(inArray(sql`lower(${ingredients.name})`, unique))
+    .orderBy(ingredients.id, asc(ingredientAliases.createdAt));
+}
+
 /**
  * The spellings `fold` could be a slip of the fingers from (`@norish/shared/lib/name-slips`): of a
  * length a slip reaches, sharing its first or last letters, so one slip anywhere in it is found.
