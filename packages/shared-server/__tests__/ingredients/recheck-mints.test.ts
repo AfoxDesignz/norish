@@ -18,7 +18,7 @@ import {
   fileUndecidedMint,
   listSeededIngredientIds,
 } from "@norish/db/repositories/ingredient-seed";
-import { ingredients, serverConfig } from "@norish/db/schema";
+import { groceries, ingredients, serverConfig } from "@norish/db/schema";
 import { parentByAI } from "@norish/shared-server/ingredients/ai-changes";
 import { listIngredients, markDistinct } from "@norish/shared-server/ingredients/catalogue";
 import { withResolvedIngredients } from "@norish/shared-server/ingredients/recipe-lines";
@@ -126,6 +126,39 @@ describe("looking at old Flagged Ingredients again", () => {
       flagged: true,
       parent: { id: seeded.get("en:parsley") },
     });
+  });
+
+  it("leaves a grocery food alone: no parent from its words, no merge", async () => {
+    const grocery = async (text: string) => {
+      const minted = await mintTestFood(text, {
+        ownerId: actor.userId,
+        flagged: true,
+        flagReason: "upgrade",
+      });
+
+      await getTestDb().insert(groceries).values({
+        userId: actor.userId,
+        name: text,
+        ingredientAliasId: minted.aliasId,
+        ingredientId: minted.ingredientId,
+      });
+
+      return minted.ingredientId;
+    };
+    const parsley = await grocery("verse peterselie");
+    const salt = await grocery("salt to taste");
+
+    await expect(recheckUndecidedMintsOnRungChange()).resolves.toEqual({ merged: 0, filed: 0 });
+    const row = async (id: string) =>
+      (
+        await getTestDb()
+          .select({ parentId: ingredients.parentId })
+          .from(ingredients)
+          .where(eq(ingredients.id, id))
+      )[0];
+
+    await expect(row(parsley)).resolves.toEqual({ parentId: null });
+    await expect(row(salt)).resolves.toEqual({ parentId: null });
   });
 
   it("merges a legacy mint whose preparation was written without a comma", async () => {

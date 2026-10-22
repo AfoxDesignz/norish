@@ -353,7 +353,16 @@ describe("the ingredient catalogue seed", () => {
       const cajun = await resolve("cajun seasoning");
       const chicken = await resolve("chicken seasoning");
       const ranch = await resolve("ranch seasoning");
+      // Only a grocery names it: a hidden food keeps its parent, and so its aisle.
+      const bbq = await resolve("bbq seasoning");
 
+      await nameInATestRecipe(actor.userId, chicken.aliasId, "chicken seasoning");
+      await getTestDb().insert(groceries).values({
+        userId: actor.userId,
+        name: "bbq seasoning",
+        ingredientAliasId: bbq.aliasId,
+        ingredientId: bbq.ingredientId,
+      });
       await setParent(admin, ranch.ingredientId, coating.ingredientId);
       // AI's open unsure answer names coating, though the words are sure of it.
       await nameInATestRecipe(actor.userId, cajun.aliasId, "cajun seasoning");
@@ -370,6 +379,7 @@ describe("the ingredient catalogue seed", () => {
       await expect(parentOf(chicken.ingredientId)).resolves.toBe(mixed.ingredientId);
       // A parent a person chose stays.
       await expect(parentOf(ranch.ingredientId)).resolves.toBe(coating.ingredientId);
+      await expect(parentOf(bbq.ingredientId)).resolves.toBe(coating.ingredientId);
       // AI's stale answer went with the old parent.
       await expect(listAIChanges()).resolves.toEqual([]);
       await expect(ingredientNamed("cajun seasoning")).resolves.toMatchObject({ flagged: false });

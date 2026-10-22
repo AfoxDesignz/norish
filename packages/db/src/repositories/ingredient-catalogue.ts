@@ -144,9 +144,7 @@ export async function listCatalogueIngredients(query: {
     .where(
       and(
         query.id === undefined ? undefined : eq(ingredients.id, query.id),
-        query.listedOnly
-          ? listedFood({ id: sql`${ingredients}.id`, offId: sql`${ingredients}.off_id` })
-          : undefined,
+        query.listedOnly ? ingredientIsListed() : undefined,
         query.flaggedOnly ? eq(ingredients.flagged, true) : undefined,
         query.parentId === undefined
           ? undefined
@@ -234,6 +232,14 @@ function listedFood(food: { id: SQL; offId: SQL }): SQL {
 }
 
 /**
+ * `listedFood` for the `ingredients` row the outer statement is on. Built per call, as
+ * `ingredientIsNamed`.
+ */
+export function ingredientIsListed(): SQL {
+  return listedFood({ id: sql`${ingredients}.id`, offId: sql`${ingredients}.off_id` });
+}
+
+/**
  * Whether AI may ask about a food: an own one a recipe line names that no person kept, named or
  * parented (ADR-0037). Built per call, as `ingredientIsNamed`: importing runs no query builder.
  */
@@ -263,12 +269,7 @@ export async function findListedIngredientIds(ids: readonly string[]): Promise<S
   const rows = await db
     .select({ id: ingredients.id })
     .from(ingredients)
-    .where(
-      and(
-        inArray(ingredients.id, [...new Set(ids)]),
-        listedFood({ id: sql`${ingredients}.id`, offId: sql`${ingredients}.off_id` })
-      )
-    );
+    .where(and(inArray(ingredients.id, [...new Set(ids)]), ingredientIsListed()));
 
   return new Set(rows.map((row) => row.id));
 }

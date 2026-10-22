@@ -20,7 +20,7 @@ import {
   vouchForOpenAIChanges,
   wasParentUndone,
 } from "./ingredient-ai-changes";
-import { ingredientIsNamed } from "./ingredient-catalogue";
+import { ingredientIsListed, ingredientIsNamed } from "./ingredient-catalogue";
 import {
   findIngredientAncestors,
   lockIngredients,
@@ -447,7 +447,7 @@ export async function moveSeededSpelling(
   });
 }
 
-/** The own foods under `parentId` that no person filed there. */
+/** The listed own foods under `parentId` that no person filed there. */
 export async function listUnchosenOwnChildren(
   parentId: string
 ): Promise<Array<{ id: string; name: string }>> {
@@ -458,7 +458,9 @@ export async function listUnchosenOwnChildren(
       and(
         eq(ingredients.parentId, parentId),
         isNull(ingredients.offId),
-        eq(ingredients.parentChosen, false)
+        eq(ingredients.parentChosen, false),
+        // A hidden food (a grocery's) keeps its parent, and so its aisle.
+        ingredientIsListed()
       )
     );
 }
@@ -515,7 +517,7 @@ export interface UndecidedMint {
 }
 
 /**
- * The Flagged Ingredients Norish minted itself and no person has decided
+ * The listed Flagged Ingredients Norish minted itself and no person has decided
  * about: no taxonomy entry, not kept distinct, no parent a person chose (a
  * rename clears the flag, so a flagged one was not renamed since). What the
  * startup pass looks at again whenever the resolver's rules change.
@@ -536,7 +538,9 @@ export async function listUndecidedMints(): Promise<UndecidedMint[]> {
         eq(ingredients.flagged, true),
         isNull(ingredients.offId),
         eq(ingredients.keptDistinct, false),
-        eq(ingredients.parentChosen, false)
+        eq(ingredients.parentChosen, false),
+        // A hidden food (a grocery's) is left alone: its aisle walks its parent.
+        ingredientIsListed()
       )
     )
     .orderBy(ingredients.createdAt, ingredients.id, ingredientAliases.createdAt);
