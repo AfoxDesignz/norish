@@ -636,17 +636,11 @@ export async function readLineFoods(
 
 /** The spellings each of a removal's rows names now, by row id: what Undo may still point back. */
 async function namedNow(tx: Db, undo: ChangedSpelling): Promise<Map<string, string[]>> {
-  const pointing = (table: typeof groceries | typeof recurringGroceries, ids: string[]) =>
-    ids.length === 0
-      ? Promise.resolve([])
-      : tx
-          .select({ id: table.id, aliasId: table.ingredientAliasId })
-          .from(table)
-          .where(inArray(table.id, ids));
-  const rows = [
-    ...(await pointing(groceries, undo.groceries)),
-    ...(await pointing(recurringGroceries, undo.recurring)),
-  ];
+  const named = await findGroceryRows(tx, {
+    groceries: inArray(groceries.id, undo.groceries),
+    recurring: inArray(recurringGroceries.id, undo.recurring),
+  });
+  const rows = [...named.groceries, ...named.recurring];
 
   return new Map([
     ...(await readLineFoods(
