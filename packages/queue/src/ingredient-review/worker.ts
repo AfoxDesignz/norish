@@ -7,6 +7,7 @@ import type { Job } from "bullmq";
 
 import type { IngredientReviewJobData } from "@norish/queue/contracts/job-types";
 import type { ModelUse } from "@norish/shared-server/ai/runtime/model-use-ledger";
+import type { SpellingCheckOutcome } from "@norish/shared-server/ingredients/spelling-check";
 import type { ReviewOutcome } from "@norish/shared/contracts/ingredient-catalogue";
 import { SERVER_CONFIG } from "@norish/config/env-config-server";
 import {
@@ -18,6 +19,7 @@ import { getAutomaticIngredientsConfig } from "@norish/shared-server/config/serv
 import { announcingTogether } from "@norish/shared-server/ingredients/changes";
 import { listFoodsShowingNoIcon } from "@norish/shared-server/ingredients/icon-rounds";
 import { askAIAbout } from "@norish/shared-server/ingredients/review";
+import { checkSpellingsOf } from "@norish/shared-server/ingredients/spelling-check";
 import { createLogger } from "@norish/shared-server/logger";
 import { UNANSWERED_FLAG_REASONS } from "@norish/shared/contracts/ingredient-catalogue";
 
@@ -35,7 +37,7 @@ export const REVIEW_STEP = "asking-ai";
 
 /** What a food's step records: the answer made and what AI was asked, a skip, or what broke. */
 export type ReviewStepDetail = { ingredientId: string; name?: string } & (
-  ReviewOutcome | { outcome: "failed"; error: string }
+  ReviewOutcome | SpellingCheckOutcome | { outcome: "failed"; error: string }
 );
 
 /** An error's message, with the cause a wrapper hides: a failed query names the database's complaint. */
@@ -47,9 +49,14 @@ function describe(error: unknown): string {
 }
 
 /** The question, asked of one food; an error is recorded on its step, and the pass goes on. */
-async function ask(job: Job<IngredientReviewJobData>, ingredientId: string) {
+async function ask(
+  job: Job<IngredientReviewJobData>,
+  ingredientId: string
+): Promise<ReviewStepDetail> {
   try {
-    return { ingredientId, ...(await askAIAbout(ingredientId)) };
+    const question = job.data.check === "spellings" ? checkSpellingsOf : askAIAbout;
+
+    return { ingredientId, ...(await question(ingredientId)) };
   } catch (error) {
     log.error({ err: error, jobId: job.id, ingredientId }, "Asking AI about a food failed");
 
@@ -149,7 +156,10 @@ export async function processIngredientReviewJob(
   );
   await recording;
   signal?.throwIfAborted();
-  await queueIcons(foods.flatMap((food) => (done.has(food.id) ? [food.id] : [])));
+  // A spelling check is about seeded foods, which have their icons.
+  if (job.data.check !== "spellings") {
+    await queueIcons(foods.flatMap((food) => (done.has(food.id) ? [food.id] : [])));
+  }
 }
 
 export function startIngredientReviewWorker(): void {

@@ -27,6 +27,13 @@ export function changeMessage(t: Translate, change: AIChange, locale: string): s
       return t("changedByAI.plainName", { from: change.from ?? "" });
     case "not-a-food":
       return t("changedByAI.notAFood");
+    case "spelling":
+      return change.target
+        ? t("changedByAI.spellingMoved", {
+            from: change.from ?? "",
+            of: ingredientDisplayName(change.target, locale),
+          })
+        : t("changedByAI.spellingRemoved", { from: change.from ?? "" });
   }
 }
 

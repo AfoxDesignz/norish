@@ -525,11 +525,15 @@ export async function deleteIngredient(
 }
 
 /**
- * Point each row at what its own text resolves to, AI off, minting for its owner unless `mint` is
- * off; a Grocery naming several foods becomes one per food (`typedParts`).
+ * Point each row at what its own text resolves to, minting for its owner unless `mint` is off, a
+ * mint followed by AI's pass only with `ai`; a Grocery naming several foods becomes one per food
+ * (`typedParts`).
  */
-export async function resolveAgain(rows: NamingRows, { mint }: { mint: boolean }): Promise<void> {
-  const options = { ai: false, mint };
+export async function resolveAgain(
+  rows: NamingRows,
+  { mint, ai = false }: { mint: boolean; ai?: boolean }
+): Promise<void> {
+  const options = { ai, mint };
 
   await writeResolved(
     async () => {
@@ -545,8 +549,9 @@ export async function resolveAgain(rows: NamingRows, { mint }: { mint: boolean }
         return owned.flatMap((line, index) => {
           const resolved = foods[index];
 
-          // A line naming no food loses the one a removed spelling's heir gave it.
-          if (!texts[index]) return [{ id: line.id, aliasIds: [], joined: null }];
+          // A line naming no food, by its text or (minting) its junk, loses the heir's food.
+          if (!texts[index] || (mint && !resolved))
+            return [{ id: line.id, aliasIds: [], joined: null }];
 
           return resolved
             ? [

@@ -552,7 +552,9 @@
       "parent": "Sijoitettu kohtaan {of}",
       "parentDropped": "Ei enää kohdassa {of}",
       "plainName": "Nimetty uudelleen, oli {from}",
-      "notAFood": "Poistettu, koska se ei ole ainesosa. Reseptirivit ja ostokset säilyttävät tekstinsä."
+      "notAFood": "Poistettu, koska se ei ole ainesosa. Reseptirivit ja ostokset säilyttävät tekstinsä.",
+      "spellingRemoved": "Käännös {from} poistettu",
+      "spellingMoved": "Käännös {from} siirretty kohteeseen {of}"
     },
     "icon": {
       "change": "Vaihda kuvake",
@@ -1081,7 +1083,10 @@
       "ingredientIconStylePlaceholder": "Kehote ainesosakuvakkeiden tyylille...",
       "ingredientPlainName": "Ainesosien nimien siivouskehote",
       "ingredientPlainNameDescription": "Lähetetään kielimallille, kun tekoäly siivoaa ainesosan nimen, ja nimi sekä sen muut kirjoitusasut lisätään perään. Kertoo, mitä nimestä poistetaan ja mitä jätetään.",
-      "ingredientPlainNamePlaceholder": "Kehote ainesosien nimien siivoamiseen..."
+      "ingredientPlainNamePlaceholder": "Kehote ainesosien nimien siivoamiseen...",
+      "ingredientSpellingCheck": "Käännösten tarkistuskehote",
+      "ingredientSpellingCheckDescription": "Lähetetään kielimallille kerran, ensimmäisellä käynnistyksellä tekoäly päällä, jokaisesta luettelon ainesosasta, jolla on ihmisten, tuontien tai yhdistämisten lisäämiä käännöksiä, ja ainesosa sekä nuo käännökset lisätään perään. Kertoo, mitkä niistä nimeävät ainesosan, eivät mitään ainesosaa tai toisen ainesosan.",
+      "ingredientSpellingCheckPlaceholder": "Kehote ainesosien käännösten tarkistamiseen..."
     },
     "unsavedChanges": "Tallentamattomia muutoksia",
     "jsonEditor": {

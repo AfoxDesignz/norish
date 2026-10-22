@@ -242,22 +242,30 @@ export async function updateIngredientSeedState(
 /**
  * A startup pass run once per `version` of the seed state's `key`, recorded only once it is through,
  * so a failure is retried in full; open clients refetch where it `changed` anything. Null where run.
- * `pass` gets the version last run (0 for none), so a step can run only when coming from before it.
+ * `pass` gets the version last run (0 for none), so a step can run only when coming from before it;
+ * a pass answering null did not run, and is not recorded.
  */
 export async function oncePerVersion<T extends object>(
-  key: "rungVersion" | "cleanupVersion" | "correctionsVersion" | "junkSeedVersion",
+  key:
+    | "rungVersion"
+    | "cleanupVersion"
+    | "correctionsVersion"
+    | "junkSeedVersion"
+    | "spellingCheckVersion",
   version: number,
   {
     pass,
     changed,
     done,
-  }: { pass: (from: number) => Promise<T>; changed: (outcome: T) => boolean; done: string }
+  }: { pass: (from: number) => Promise<T | null>; changed: (outcome: T) => boolean; done: string }
 ): Promise<T | null> {
   const from = (await readIngredientSeedState())[key];
 
   if (from === version) return null;
 
   const outcome = await pass(from);
+
+  if (outcome === null) return null;
 
   const fields: Record<string, unknown> = { ...outcome, [key]: version };
 

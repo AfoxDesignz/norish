@@ -552,7 +552,9 @@
       "parent": "Umieszczono pod {of}",
       "parentDropped": "Już nie pod {of}",
       "plainName": "Zmieniono nazwę z {from}",
-      "notAFood": "Usunięto, bo to nie jest składnik. Wiersze przepisu i zakupy zachowują swój tekst."
+      "notAFood": "Usunięto, bo to nie jest składnik. Wiersze przepisu i zakupy zachowują swój tekst.",
+      "spellingRemoved": "Usunięto tłumaczenie {from}",
+      "spellingMoved": "Przeniesiono tłumaczenie {from} do {of}"
     },
     "icon": {
       "change": "Zmień ikonę",
@@ -1081,7 +1083,10 @@
       "ingredientIconStylePlaceholder": "Prompt dla stylu ikon składników...",
       "ingredientPlainName": "Prompt porządkowania nazw składników",
       "ingredientPlainNameDescription": "Wysyłany do modelu językowego, gdy AI porządkuje nazwę składnika; nazwa i jej inne zapisy są dołączane po nim. Mówi, co usunąć z nazwy, a co zostawić.",
-      "ingredientPlainNamePlaceholder": "Prompt porządkowania nazw składników..."
+      "ingredientPlainNamePlaceholder": "Prompt porządkowania nazw składników...",
+      "ingredientSpellingCheck": "Prompt sprawdzania tłumaczeń",
+      "ingredientSpellingCheckDescription": "Wysyłany raz do modelu językowego, przy pierwszym uruchomieniu z włączonym AI, dla każdego składnika z katalogu z tłumaczeniami dodanymi przez osoby, importy lub scalenia; składnik i te tłumaczenia są dołączane po nim. Mówi, które z nich nazywają składnik, żaden składnik lub inny składnik.",
+      "ingredientSpellingCheckPlaceholder": "Prompt do sprawdzania tłumaczeń składników..."
     },
     "unsavedChanges": "Niezapisane zmiany",
     "jsonEditor": {

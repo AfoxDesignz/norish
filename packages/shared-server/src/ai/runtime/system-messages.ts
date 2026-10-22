@@ -29,6 +29,8 @@ export const SYSTEM_MESSAGES = {
     "You keep a catalogue of foods and say what food a name is, which foods it names, or that it is no food.",
   "ingredient-plain-name":
     "You keep a catalogue of foods tidy, and give a name back with only the food left in it, in its own language.",
+  "ingredient-spelling-check":
+    "You keep a catalogue of foods and say which of a food's spellings name it, which name no food, and which name another food.",
   // English by instruction, not by system message alone: the brief is a model
   // instruction rather than recipe content, so ADR-0018's language care does
   // not apply to it.

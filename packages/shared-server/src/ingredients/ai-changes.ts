@@ -16,28 +16,34 @@ import {
   isInAnyPantry,
   listAIChanges,
   lockAIChange,
+  readChangedSpelling,
   readDeletedFood,
   readMergeUndo,
   recordAIChange,
   refreshAIFlag,
   restoreDeletedFood,
   restoreName,
+  restoreSpelling,
   settleAIChange,
   takeOpenParentChanges,
   wasDeletionUndone,
   wasMergeUndone,
   wasParentUndone,
+  wasSpellingUndone,
 } from "@norish/db/repositories/ingredient-ai-changes";
 import { findLocaleNames } from "@norish/db/repositories/ingredient-aliases";
 import {
+  deleteCatalogueAlias,
   deleteCatalogueIngredient,
   findCatalogueAliasOwner,
   isAskableByAI,
   keepIngredientDistinct,
   settleIngredientName,
 } from "@norish/db/repositories/ingredient-catalogue";
+import { findRowsNamingSpellings } from "@norish/db/repositories/ingredient-cleanup";
 import { addToJunkPile, takeJunkOfAIChange } from "@norish/db/repositories/ingredient-junk-pile";
 import {
+  countAliasesOf,
   findIngredientAncestors,
   insertCatalogueIngredient,
   lockIngredients,
@@ -58,6 +64,7 @@ import {
   mayEditOwnedRow,
   moveToFoodNamedFor,
   refusedOn,
+  resolveAgain,
 } from "./catalogue";
 import { ingredientChanges } from "./changes";
 import { announceMinted } from "./minted";
@@ -254,6 +261,92 @@ export async function deleteByAI(ingredientId: string): Promise<ApplyOutcome | "
   return outcome;
 }
 
+/**
+ * The spelling the food holds that the seed did not give it, locked with the food (and `targetId`),
+ * its Undo read; an outcome instead where it went, is seeded, was undone or is the food's last.
+ */
+async function lockAddedSpelling(
+  tx: DbTransaction,
+  ingredientId: string,
+  aliasId: string,
+  { targetId = null, withRows }: { targetId?: string | null; withRows: boolean }
+) {
+  const ids = targetId ? [ingredientId, targetId] : [ingredientId];
+
+  await lockTree(tx);
+  if ((await lockIngredients(tx, ids)) < ids.length) return "gone";
+  const read = await readChangedSpelling(tx, aliasId, { withRows });
+
+  if (!read || read.ingredientId !== ingredientId || read.seeded) return "gone";
+  if (await wasSpellingUndone(tx, aliasId)) return "undone";
+  if ((await countAliasesOf(tx, ingredientId)) <= 1) return "gone";
+  const { ingredientId: _on, seeded: _seeded, ...undo } = read;
+
+  return undo;
+}
+
+/**
+ * Take a spelling AI says does not name its food off it, onto the junk pile where it names no
+ * food; its rows are read again from their text, a mint followed by AI's pass.
+ */
+export async function removeSpellingByAI(
+  ingredientId: string,
+  aliasId: string,
+  { notAFood }: { notAFood: boolean }
+): Promise<ApplyOutcome> {
+  const done = await withTransaction(async (tx) => {
+    const undo = await lockAddedSpelling(tx, ingredientId, aliasId, { withRows: true });
+
+    if (typeof undo === "string") return undo;
+    const rows = await findRowsNamingSpellings(tx, [aliasId]);
+    const aiChangeId = await recordAIChange(tx, {
+      ingredientId,
+      sure: true,
+      undo: { kind: "spelling", ...undo },
+    });
+
+    await deleteCatalogueAlias(tx, aliasId);
+    if (notAFood) {
+      await addToJunkPile(tx, [undo.spelling.fold], { reason: "not-a-food", aiChangeId });
+    }
+
+    return rows;
+  });
+
+  if (typeof done === "string") return done;
+  if (notAFood) forgetSpellingRules();
+  await resolveAgain(done, { mint: true, ai: true });
+
+  return await announceIfApplied("applied", [ingredientId]);
+}
+
+/** Move a spelling AI says names another food to that food; its rows follow. */
+export async function moveSpellingByAI(
+  ingredientId: string,
+  aliasId: string,
+  targetId: string
+): Promise<ApplyOutcome> {
+  const outcome = await withTransaction(async (tx): Promise<ApplyOutcome> => {
+    const undo = await lockAddedSpelling(tx, ingredientId, aliasId, {
+      targetId,
+      withRows: false,
+    });
+
+    if (typeof undo === "string") return undo;
+    await recordAIChange(tx, {
+      ingredientId,
+      targetId,
+      sure: true,
+      undo: { kind: "spelling", ...undo },
+    });
+    await moveCatalogueAlias(tx, aliasId, targetId);
+
+    return "applied";
+  });
+
+  return await announceIfApplied(outcome, [ingredientId, targetId]);
+}
+
 /** Flag a food AI answered about without changing it, unless the answer was sure or a person decided meanwhile. */
 export async function flagByAnswer(
   ingredientId: string,
@@ -302,6 +395,8 @@ function subjectOf(change: StoredAIChange) {
       return { ownerId: change.ingredient?.ownerId ?? null, from: undo.formerName };
     case "not-a-food":
       return { ownerId: undo.food.ownerId, from: undo.food.name };
+    case "spelling":
+      return { ownerId: change.ingredient?.ownerId ?? null, from: undo.spelling.text };
   }
 }
 
@@ -454,5 +549,24 @@ async function reverseChange(tx: DbTransaction, change: StoredAIChange): Promise
       await restoreName(tx, foodId, undo);
 
       return [];
+    case "spelling": {
+      const movedTo = change.target?.id;
+
+      if (!movedTo) {
+        if (!(await restoreSpelling(tx, foodId, undo))) {
+          throw new CatalogueEditError("spelling-taken");
+        }
+
+        return [];
+      }
+      const alias = await findCatalogueAliasOwner(tx, undo.spelling.id);
+
+      // A spelling moved on since, or the moved-to food's last, stays.
+      if (alias?.ingredientId !== movedTo || (await lockIngredients(tx, [movedTo])) < 1) return [];
+      if ((await countAliasesOf(tx, movedTo)) <= 1) return [];
+      await moveCatalogueAlias(tx, undo.spelling.id, foodId);
+
+      return [movedTo];
+    }
   }
 }

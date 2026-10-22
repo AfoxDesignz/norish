@@ -17,6 +17,7 @@ import { ingredientChanges } from "@norish/shared-server/ingredients/changes";
 import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
 
 const reviewer = vi.hoisted(() => ({ askAIAbout: vi.fn() }));
+const spellings = vi.hoisted(() => ({ checkSpellingsOf: vi.fn() }));
 const realtime = vi.hoisted(() => ({ publish: vi.fn(async () => undefined) }));
 const config = vi.hoisted(() => ({
   getAutomaticIngredientsConfig: vi.fn(async () => ({ icon: false })),
@@ -29,6 +30,7 @@ const iconQueue = vi.hoisted(() => ({ add: vi.fn(async () => ({ id: "icons-1" })
 const sequence: string[] = [];
 
 vi.mock("@norish/shared-server/ingredients/review", () => reviewer);
+vi.mock("@norish/shared-server/ingredients/spelling-check", () => spellings);
 vi.mock("@norish/shared-server/ingredients/icon-rounds", () => icons);
 vi.mock("@norish/shared-server/config/server-config-loader", () => config);
 vi.mock("@norish/queue/registry", () => ({ getQueues: () => ({ ingredientIcons: iconQueue }) }));
@@ -47,7 +49,7 @@ vi.mock("@norish/shared-server/logger", () => ({
 }));
 
 /** A job as the processor sees it, keeping whatever progress it writes. */
-function fakeJob(ingredientIds: string[]) {
+function fakeJob(ingredientIds: string[], check?: "spellings") {
   const job = {
     id: "pass-1",
     attemptsMade: 0,
@@ -55,6 +57,7 @@ function fakeJob(ingredientIds: string[]) {
     // The producer names each food as the catalogue has it: "id!" here.
     data: {
       ingredients: ingredientIds.map((id) => ({ id, name: `${id}!` })),
+      ...(check ? { check } : {}),
     } satisfies IngredientReviewJobData,
     progress: {} as unknown,
     updateProgress: vi.fn(async (progress: unknown) => {
@@ -95,6 +98,32 @@ beforeEach(() => {
 });
 
 describe("processIngredientReviewJob", () => {
+  it("checks a seeded food's added spellings in a spelling check, and draws no icons", async () => {
+    config.getAutomaticIngredientsConfig.mockResolvedValue({ icon: true });
+    icons.listFoodsShowingNoIcon.mockResolvedValue([{ id: "chicken", name: "chicken breast" }]);
+    spellings.checkSpellingsOf.mockResolvedValueOnce({
+      outcome: "checked",
+      kept: ["kipfilet"],
+      removed: ["boneless"],
+      moved: [],
+    });
+    const job = fakeJob(["chicken"], "spellings");
+
+    await processIngredientReviewJob(job);
+
+    expect(spellings.checkSpellingsOf.mock.calls).toEqual([["chicken"]]);
+    expect(reviewer.askAIAbout).not.toHaveBeenCalled();
+    expect(readStepProgress(job.progress)!.attempts[0]!.timeline[0]!.detail).toEqual({
+      ingredientId: "chicken",
+      name: "chicken!",
+      outcome: "checked",
+      kept: ["kipfilet"],
+      removed: ["boneless"],
+      moved: [],
+    });
+    expect(iconQueue.add).not.toHaveBeenCalled();
+  });
+
   it("asks about each food in turn, and records what came of it and what was asked", async () => {
     answers(
       { outcome: "merge", into: "onion", sure: true, ...trace },

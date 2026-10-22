@@ -1,0 +1,112 @@
+/**
+ * AI checks the spellings people, merges and imports added to seeded foods (ADR-0037; ingredient-
+ * cleanup ticket 46), once, at the first start with AI on; each removal or move an AI Change.
+ */
+import {
+  findCatalogueIngredient,
+  listCatalogueAliasesOf,
+  listSeededFoodsWithOwnSpellings,
+} from "@norish/db/repositories/ingredient-catalogue";
+import { isAIEnabled } from "@norish/shared-server/config/server-config-loader";
+import { createLogger } from "@norish/shared-server/logger";
+import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
+
+import { findFoodNamed } from "../ai/resolution/ingredient-resolution";
+import { askWhatSpellingsName } from "../ai/resolution/spelling-check";
+import { moveSpellingByAI, removeSpellingByAI } from "./ai-changes";
+import { oncePerVersion } from "./seed/catalogue-seed";
+
+const log = createLogger("ingredients");
+
+/** Raised when a release needs the check to run again. */
+export const SPELLING_CHECK_VERSION = 1;
+
+interface Moved {
+  spelling: string;
+  to: string;
+}
+
+/** What checking a food's spellings came to, by spelling text. */
+export type SpellingCheckOutcome =
+  | { outcome: "skipped"; reason: "not-found" | "none" | "ai-off" }
+  | { outcome: "checked"; kept: string[]; removed: string[]; moved: Moved[] };
+
+/**
+ * Queue every seeded food holding a spelling the seed did not give it for the check, once per
+ * `SPELLING_CHECK_VERSION`; with AI off nothing is asked or recorded, so a later start asks.
+ */
+export async function checkSpellingsOnFirstStart(
+  queue: (ingredientIds: string[]) => Promise<void>
+): Promise<{ queued: number } | null> {
+  return await oncePerVersion("spellingCheckVersion", SPELLING_CHECK_VERSION, {
+    pass: async () => {
+      if (!(await isAIEnabled())) {
+        log.info("AI is off: the spellings added to seeded foods wait for a start with AI on");
+
+        return null;
+      }
+      const ids = await listSeededFoodsWithOwnSpellings();
+
+      await queue(ids);
+
+      return { queued: ids.length };
+    },
+    // The checks run in the queue, and announce what they change themselves.
+    changed: () => false,
+    done: "Spellings added to seeded foods queued for AI",
+  });
+}
+
+/** Ask AI which of the spellings added to a food name it, and take off or move the others. */
+export async function checkSpellingsOf(ingredientId: string): Promise<SpellingCheckOutcome> {
+  const food = await findCatalogueIngredient(ingredientId);
+
+  if (!food) return { outcome: "skipped", reason: "not-found" };
+  const own = ingredientAliasFold(food.name);
+  const spellings = (await listCatalogueAliasesOf(ingredientId)).filter(
+    (alias) => !alias.seeded && ingredientAliasFold(alias.text) !== own
+  );
+
+  if (spellings.length === 0) return { outcome: "skipped", reason: "none" };
+  if (!(await isAIEnabled())) return { outcome: "skipped", reason: "ai-off" };
+  const parent = food.parentId ? await findCatalogueIngredient(food.parentId) : null;
+  const verdicts = await askWhatSpellingsName(
+    { name: food.name, parent: parent?.name ?? null },
+    spellings.map((alias) => alias.text)
+  );
+  const checked = { kept: [] as string[], removed: [] as string[], moved: [] as Moved[] };
+
+  for (const [index, alias] of spellings.entries()) {
+    const verdict = verdicts[index]!;
+
+    if (verdict.kind === "this-food") {
+      checked.kept.push(alias.text);
+      continue;
+    }
+    const named =
+      verdict.kind === "other-food" && verdict.otherFood
+        ? await findFoodNamed(verdict.otherFood, ingredientId)
+        : { food: null };
+
+    // The second question about AI's name got no answer: the spelling stays.
+    if (!named) {
+      checked.kept.push(alias.text);
+      continue;
+    }
+    if (named.food) {
+      const to = await findCatalogueIngredient(named.food.ingredientId);
+
+      if (to && (await moveSpellingByAI(ingredientId, alias.id, to.id)) === "applied") {
+        checked.moved.push({ spelling: alias.text, to: to.name });
+      }
+      continue;
+    }
+    const notAFood = verdict.kind === "not-a-food";
+
+    if ((await removeSpellingByAI(ingredientId, alias.id, { notAFood })) === "applied") {
+      checked.removed.push(alias.text);
+    }
+  }
+
+  return { outcome: "checked", ...checked };
+}

@@ -552,7 +552,9 @@
       "parent": "Classificato sotto {of}",
       "parentDropped": "Non più sotto {of}",
       "plainName": "Rinominato da {from}",
-      "notAFood": "Eliminato, perché non è un alimento. Le righe della ricetta e la spesa mantengono il loro testo."
+      "notAFood": "Eliminato, perché non è un alimento. Le righe della ricetta e la spesa mantengono il loro testo.",
+      "spellingRemoved": "Traduzione {from} rimossa",
+      "spellingMoved": "Traduzione {from} spostata in {of}"
     },
     "icon": {
       "change": "Cambia icona",
@@ -1081,7 +1083,10 @@
       "ingredientIconStylePlaceholder": "Prompt per lo stile delle icone degli ingredienti...",
       "ingredientPlainName": "Prompt per pulire i nomi degli ingredienti",
       "ingredientPlainNameDescription": "Inviato al modello linguistico quando l’IA pulisce il nome di un ingrediente, con il nome e le sue altre grafie aggiunti dopo. Dice cosa togliere da un nome e cosa tenere.",
-      "ingredientPlainNamePlaceholder": "Prompt per pulire i nomi degli ingredienti..."
+      "ingredientPlainNamePlaceholder": "Prompt per pulire i nomi degli ingredienti...",
+      "ingredientSpellingCheck": "Prompt di controllo delle traduzioni",
+      "ingredientSpellingCheckDescription": "Inviato una volta al modello linguistico, al primo avvio con l’IA attiva, per ogni ingrediente del catalogo con traduzioni aggiunte da persone, importazioni o unioni, con l’ingrediente e quelle traduzioni aggiunti dopo. Dice quali indicano l’ingrediente, nessun alimento o un altro alimento.",
+      "ingredientSpellingCheckPlaceholder": "Prompt per controllare le traduzioni degli ingredienti..."
     },
     "unsavedChanges": "Modifiche non salvate",
     "jsonEditor": {

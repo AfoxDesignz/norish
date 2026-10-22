@@ -148,6 +148,7 @@ export const PromptsConfigSchema = z.object({
   imageGenerationStyle: z.string().optional(),
   ingredientIconStyle: z.string().optional(),
   ingredientPlainName: z.string().optional(),
+  ingredientSpellingCheck: z.string().optional(),
 });
 
 export type PromptsConfig = z.infer<typeof PromptsConfigSchema>;
@@ -854,6 +855,8 @@ export const IngredientSeedStateSchema = z.object({
   correctionsVersion: z.number().int().default(0),
   /** The junk pile seed's version last put on the pile (`JUNK_SEED`). */
   junkSeedVersion: z.number().int().default(0),
+  /** AI's check of the spellings added to seeded foods, `SPELLING_CHECK_VERSION`, last run with AI on. */
+  spellingCheckVersion: z.number().int().default(0),
 });
 
 export type IngredientSeedState = z.infer<typeof IngredientSeedStateSchema>;

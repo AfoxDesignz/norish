@@ -149,4 +149,6 @@ export interface IngredientIconsJobData {
  */
 export interface IngredientReviewJobData {
   ingredients: Array<{ id: string; name: string }>;
+  /** What is asked: what each food is, or which of a seeded food's added spellings name it. */
+  check?: "spellings";
 }

@@ -351,6 +351,17 @@ export async function listUnansweredIngredientIds(): Promise<string[]> {
   return rows.map((row) => row.id);
 }
 
+/** Every seeded food holding a spelling the seed did not give it: what AI's spelling check asks about. */
+export async function listSeededFoodsWithOwnSpellings(): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ id: ingredients.id })
+    .from(ingredients)
+    .innerJoin(ingredientAliases, eq(ingredientAliases.ingredientId, ingredients.id))
+    .where(and(isNotNull(ingredients.offId), eq(ingredientAliases.seeded, false)));
+
+  return rows.map((row) => row.id);
+}
+
 /** Every food AI may ask about: what the first start after the upgrade asks about. */
 export async function listAskableIngredientIds(): Promise<string[]> {
   const rows = await db.select({ id: ingredients.id }).from(ingredients).where(askableByAI());

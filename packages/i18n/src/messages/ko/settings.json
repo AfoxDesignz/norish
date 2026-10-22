@@ -552,7 +552,9 @@
       "parent": "{of} 아래에 분류됨",
       "parentDropped": "더 이상 {of} 아래에 없음",
       "plainName": "{from}에서 이름 변경됨",
-      "notAFood": "식재료가 아니어서 삭제했습니다. 레시피 줄과 장보기 항목은 텍스트를 유지합니다."
+      "notAFood": "식재료가 아니어서 삭제했습니다. 레시피 줄과 장보기 항목은 텍스트를 유지합니다.",
+      "spellingRemoved": "번역 {from}을(를) 삭제함",
+      "spellingMoved": "번역 {from}을(를) {of}(으)로 옮김"
     },
     "icon": {
       "change": "아이콘 변경",
@@ -1081,7 +1083,10 @@
       "ingredientIconStylePlaceholder": "재료 아이콘 스타일을 위한 프롬프트...",
       "ingredientPlainName": "재료 이름 정리 프롬프트",
       "ingredientPlainNameDescription": "AI가 재료 이름을 정리할 때 언어 모델에 보내며, 그 뒤에 이름과 다른 표기가 붙습니다. 이름에서 무엇을 지우고 무엇을 남길지 정합니다.",
-      "ingredientPlainNamePlaceholder": "재료 이름 정리 프롬프트..."
+      "ingredientPlainNamePlaceholder": "재료 이름 정리 프롬프트...",
+      "ingredientSpellingCheck": "번역 확인 프롬프트",
+      "ingredientSpellingCheckDescription": "AI가 켜진 첫 시작 때 한 번, 사람이나 가져오기, 병합이 추가한 번역이 있는 카탈로그 식재료마다 언어 모델에 보내며, 그 뒤에 식재료와 그 번역이 붙습니다. 어떤 번역이 그 식재료를 가리키는지, 식재료가 아닌지, 다른 식재료인지 정합니다.",
+      "ingredientSpellingCheckPlaceholder": "식재료 번역 확인 프롬프트..."
     },
     "unsavedChanges": "저장되지 않은 변경사항",
     "jsonEditor": {

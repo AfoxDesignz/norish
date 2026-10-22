@@ -367,6 +367,7 @@ type Lane = "chat" | "image" | "decision" | "ingredients";
 const INGREDIENT_SYSTEM_MESSAGES = [
   SYSTEM_MESSAGES["ingredient-resolution"],
   SYSTEM_MESSAGES["ingredient-plain-name"],
+  SYSTEM_MESSAGES["ingredient-spelling-check"],
 ];
 
 /** Whether a chat request asks an ingredient question, by its system message. */

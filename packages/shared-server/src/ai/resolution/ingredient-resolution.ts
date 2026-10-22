@@ -20,6 +20,7 @@ import {
   isDecisionUseEnabled,
 } from "@norish/shared-server/config/server-config-loader";
 import { aiLogger } from "@norish/shared-server/logger";
+import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import { distinctFoods } from "@norish/shared/lib/line-foods";
 
 import { findOtherFoodsNamed, isExact, refOf } from "../../ingredients/resolver";
@@ -92,7 +93,7 @@ export async function askWhatFoodThisIs(text: string, options: AskOptions): Prom
  * Requests to AI that, between them, are asked once more after the first that outlasts
  * `REQUEST_BUDGET_MS`; any other failure, or a second timeout, is thrown.
  */
-function onceMoreOnTimeout() {
+export function onceMoreOnTimeout() {
   let retried = false;
 
   return async <T>(request: () => Promise<T>): Promise<T> => {
@@ -195,6 +196,24 @@ async function readThenLookUp(
   return reading.sure && found.sure && (parent?.sure ?? true)
     ? { kind: "new", kindOf, flagged: false, reason: null }
     : flaggedNew("ai-unsure", kindOf);
+}
+
+/**
+ * The listed food other than `excludeId` a name AI gave finds, as any AI name is looked up
+ * (`findNamed`); null where the second question got no answer.
+ */
+export async function findFoodNamed(
+  name: string,
+  excludeId: string
+): Promise<{ food: IngredientRef | null } | null> {
+  const found = await findNamed(
+    { name, readAs: { englishName: null, parent: null, category: null } },
+    excludeId,
+    [name],
+    noTrace()
+  );
+
+  return "kind" in found ? null : { food: found.food };
 }
 
 /** A read food's names to look up: its English name and the other names a shop sells it under. */

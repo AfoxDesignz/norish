@@ -65,9 +65,9 @@ export function isFlagReason(value: unknown): value is FlagReason {
 
 /**
  * What an AI Change did: merged a food into another, filed it under a parent, gave it its Plain
- * Name, or deleted it as not a food.
+ * Name, deleted it as not a food, or removed or moved a spelling that does not name its food.
  */
-export const AI_CHANGE_KINDS = ["merge", "parent", "plain-name", "not-a-food"] as const;
+export const AI_CHANGE_KINDS = ["merge", "parent", "plain-name", "not-a-food", "spelling"] as const;
 
 export type AIChangeKind = (typeof AI_CHANGE_KINDS)[number];
 

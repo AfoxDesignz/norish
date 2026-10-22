@@ -1,5 +1,6 @@
 import { boolean, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
+import type { recipeIngredientJoinEnum } from "./recipe-ingredients";
 import { ingredients } from "./ingredients";
 
 /** A food AI deleted, its spellings and the rows that named it, for Undo to mint it again under its ids. */
@@ -20,6 +21,27 @@ export interface DeletedFood {
   recurring: Array<{ id: string; aliasId: string | null }>;
 }
 
+/**
+ * A spelling AI took off its food or moved to another, and for a removal the rows that named it:
+ * each line's foods in order, and the groceries pointing at it.
+ */
+export interface ChangedSpelling {
+  spelling: {
+    id: string;
+    text: string;
+    fold: string;
+    locale: string | null;
+    ownerId: string | null;
+  };
+  lines: Array<{
+    id: string;
+    aliasIds: string[];
+    joined: (typeof recipeIngredientJoinEnum.enumValues)[number] | null;
+  }>;
+  groceries: string[];
+  recurring: string[];
+}
+
 /** What Undo needs per kind of AI Change. */
 export type AIChangeUndo =
   | {
@@ -31,7 +53,8 @@ export type AIChangeUndo =
     }
   | { kind: "parent"; formerParentId: string | null }
   | { kind: "plain-name"; formerName: string; name: string }
-  | { kind: "not-a-food"; food: DeletedFood };
+  | { kind: "not-a-food"; food: DeletedFood }
+  | ({ kind: "spelling" } & ChangedSpelling);
 
 /**
  * AI Changes (CONTEXT.md): under `ingredientId` (naming `targetId`); a deleted food's food is in

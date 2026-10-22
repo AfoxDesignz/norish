@@ -552,7 +552,9 @@
       "parent": "Geplaatst onder {of}",
       "parentDropped": "Niet meer onder {of}",
       "plainName": "Hernoemd van {from}",
-      "notAFood": "Verwijderd, want het is geen ingrediënt. De receptregels en boodschappen houden hun tekst."
+      "notAFood": "Verwijderd, want het is geen ingrediënt. De receptregels en boodschappen houden hun tekst.",
+      "spellingRemoved": "Vertaling {from} verwijderd",
+      "spellingMoved": "Vertaling {from} verplaatst naar {of}"
     },
     "icon": {
       "change": "Icoon wijzigen",
@@ -1081,7 +1083,10 @@
       "ingredientIconStylePlaceholder": "Prompt voor de stijl van ingrediënticonen...",
       "ingredientPlainName": "Prompt voor het opschonen van ingrediëntnamen",
       "ingredientPlainNameDescription": "Wordt naar het taalmodel gestuurd als AI de naam van een ingrediënt opschoont, met de naam en de andere schrijfwijzen erachter. Zegt wat er van een naam af moet en wat blijft.",
-      "ingredientPlainNamePlaceholder": "Prompt voor het opschonen van ingrediëntnamen..."
+      "ingredientPlainNamePlaceholder": "Prompt voor het opschonen van ingrediëntnamen...",
+      "ingredientSpellingCheck": "Prompt voor het controleren van vertalingen",
+      "ingredientSpellingCheckDescription": "Wordt één keer naar het taalmodel gestuurd, bij de eerste start met AI aan, voor elk ingrediënt uit de catalogus met vertalingen die mensen, imports of samenvoegingen toevoegden, met het ingrediënt en die vertalingen erachter. Zegt welke het ingrediënt noemen, geen ingrediënt noemen of een ander ingrediënt noemen.",
+      "ingredientSpellingCheckPlaceholder": "Prompt voor het controleren van vertalingen..."
     },
     "unsavedChanges": "Niet-opgeslagen wijzigingen",
     "jsonEditor": {

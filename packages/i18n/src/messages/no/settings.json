@@ -552,7 +552,9 @@
       "parent": "Plassert under {of}",
       "parentDropped": "Ikke lenger under {of}",
       "plainName": "Fikk nytt navn, var {from}",
-      "notAFood": "Slettet, siden det ikke er en ingrediens. Oppskriftslinjene og innkjøpene beholder teksten sin."
+      "notAFood": "Slettet, siden det ikke er en ingrediens. Oppskriftslinjene og innkjøpene beholder teksten sin.",
+      "spellingRemoved": "Oversettelsen {from} fjernet",
+      "spellingMoved": "Oversettelsen {from} flyttet til {of}"
     },
     "icon": {
       "change": "Endre ikonet",
@@ -1081,7 +1083,10 @@
       "ingredientIconStylePlaceholder": "Prompt for stilen på ingrediensikoner...",
       "ingredientPlainName": "Prompt for opprydding i ingrediensnavn",
       "ingredientPlainNameDescription": "Sendes til språkmodellen når AI rydder opp i navnet på en ingrediens, med navnet og de andre skrivemåtene lagt til etter. Sier hva som skal fjernes fra et navn og hva som skal bli.",
-      "ingredientPlainNamePlaceholder": "Prompt for opprydding i ingrediensnavn..."
+      "ingredientPlainNamePlaceholder": "Prompt for opprydding i ingrediensnavn...",
+      "ingredientSpellingCheck": "Prompt for kontroll av oversettelser",
+      "ingredientSpellingCheckDescription": "Sendes én gang til språkmodellen, ved første oppstart med AI slått på, for hver ingrediens fra katalogen med oversettelser som personer, importer eller sammenslåinger har lagt til, med ingrediensen og de oversettelsene lagt til etter. Sier hvilke som navngir ingrediensen, ingen ingrediens eller en annen ingrediens.",
+      "ingredientSpellingCheckPlaceholder": "Prompt for kontroll av oversettelser..."
     },
     "unsavedChanges": "Ulagrede endringer",
     "jsonEditor": {

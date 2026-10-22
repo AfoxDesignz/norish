@@ -363,7 +363,7 @@ function panel(name: string) {
 /** What AI changed about the food `name`, sure or not, as Changed by AI lists it. */
 function change(
   id: string,
-  kind: "merge" | "parent" | "plain-name" | "not-a-food",
+  kind: "merge" | "parent" | "plain-name" | "not-a-food" | "spelling",
   name: string,
   {
     sure = true,
@@ -723,6 +723,23 @@ describe("IngredientsSettingsContent", () => {
     });
 
     expect(mutations.remove).toHaveBeenCalledWith({ ingredientId: "onion" });
+  });
+
+  it("says on Changed by AI that AI removed a translation, or moved it to another food", async () => {
+    changes = [
+      change("c1", "spelling", "chicken breast", { from: "boneless" }),
+      change("c2", "spelling", "chicken breast", { from: "kippendijen", target: "chicken thigh" }),
+    ];
+    render(<IngredientsSettingsContent />);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("ingredients-ai-changes-open"));
+    });
+    const [removed, moved] = within(
+      screen.getByRole("dialog", { name: "changedByAI.title" })
+    ).getAllByTestId("ingredient-ai-change");
+
+    expect(removed).toHaveTextContent("changedByAI.spellingRemoved");
+    expect(moved).toHaveTextContent("changedByAI.spellingMoved");
   });
 
   it("lists a food AI deleted as not a food by its name on Changed by AI, with Undo", async () => {
