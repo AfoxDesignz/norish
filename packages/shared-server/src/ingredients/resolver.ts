@@ -70,18 +70,8 @@ import { announceMinted, announcingAfter } from "./minted";
  */
 
 /**
- * Which rules the first two rungs and the parent from words follow. Raised
- * whenever they change, so the startup pass looks at old Flagged Ingredients
- * again under the new rules (`recheckUndecidedMints`). 3: the ingredient
- * words of every language, plurals and diminutives at rung 2, and a
- * quantity left at a name's start. 4: a social media mention names no food.
- * 5: a weight or a volume at a name's start, with or without its number.
- * 6: a joining word left at a name's start ("di farina"). 7: stray marks,
- * doubled brackets, prices and notes are no part of a name ("baking soda )").
- * 8: a parent found inside a name needs a spelling of four letters or more.
- * 9: a name is read up to a note, and a parent it starts with before its
- * cuts and forms alone is sure. 10: a spelling anywhere else in a name gives
- * no parent, so 8's four letters go with it.
+ * Which rules the first two rungs and the parent from words follow. Raised whenever they change, so
+ * the startup pass looks at old Flagged Ingredients again under the new rules (`recheckUndecidedMints`).
  */
 export const RUNG_VERSION = 10;
 
