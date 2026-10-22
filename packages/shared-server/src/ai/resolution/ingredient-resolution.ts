@@ -55,7 +55,7 @@ export type AIResolution =
   | { kind: "several"; parts: ReadPart[]; joined: LineJoin; sure: boolean }
   | { kind: "not-a-food"; sure: boolean };
 
-/** A part of several foods as written, and the food AI's names for it surely found, if any. */
+/** A part of several foods as written, and the food AI's names for it found or AI picked, if any. */
 export interface ReadPart {
   text: string;
   found: IngredientRef | null;
@@ -143,7 +143,7 @@ async function readThenLookUp(
       );
 
       if ("kind" in found) return found;
-      parts.push({ text: food.written, found: found.sure ? found.food : null });
+      parts.push({ text: food.written, found: found.food });
     }
 
     return { kind: "several", parts, joined: reading.joined, sure: true };

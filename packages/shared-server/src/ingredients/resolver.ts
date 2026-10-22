@@ -100,6 +100,8 @@ export interface ResolveOptions {
   ai?: boolean;
   /** Off, a text names only what rungs 1 and 2 or its joining words find: no slip, no mint. */
   mint?: boolean;
+  /** Off, a text rungs 1 and 2 miss is minted, never taken as a slip (a split part AI found nothing for). */
+  slips?: boolean;
 }
 
 /** One text as written, and the alias and Ingredient it resolved to. */
@@ -225,11 +227,13 @@ export async function resolveIngredients(
 /** A split's foods in order: a found part as is, a text resolved without a split of its own. */
 export async function resolveParts(
   parts: ReadonlyArray<string | ResolvedIngredient>,
-  actor: ResolveActor
+  actor: ResolveActor,
+  options: ResolveOptions = {}
 ): Promise<ResolvedIngredient[]> {
   const resolved = await resolveIngredients(
     parts.filter((part) => typeof part === "string"),
-    actor
+    actor,
+    options
   );
 
   return parts
@@ -406,7 +410,7 @@ async function resolveTexts(
   const unknown = spellings.filter(
     (spelling) => !matchKnown(spelling, known) && !byWords.has(spelling)
   );
-  const slips = await findSlips(options.mint === false ? [] : unknown);
+  const slips = await findSlips(options.mint === false || options.slips === false ? [] : unknown);
   let flagReason: Promise<FlagReason> | undefined;
   const resolved = new Map<Spelling, ResolvedFoods>();
   const minted = new Set<string>();

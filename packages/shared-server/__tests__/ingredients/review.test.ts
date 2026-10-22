@@ -1386,6 +1386,73 @@ describe("asking AI about an Ingredient", () => {
       expect(await exists(joined.ingredientId)).toBe(false);
     });
 
+    describe("a part AI's names find only a slip for", () => {
+      /** Barley, also spelled "garagar", which "agar agar" is a slip of. */
+      async function barley() {
+        const food = await kept("barley");
+
+        await getTestDb()
+          .insert(ingredientAliases)
+          .values({ text: "garagar", fold: "garagar", ingredientId: food.ingredientId });
+
+        return food;
+      }
+
+      it("mints the part where the second question answers none, never taking the slip", async () => {
+        const grain = await barley();
+        const joined = await flagged("vegatine of agar agar");
+        const named = await nameEverywhere(joined, "vegatine of agar agar", { pantry: false });
+        const minted: string[] = [];
+
+        splits(["vegatine", "agar agar"], "alternatives", true);
+        decides("Is none of these", 0.98);
+        onIngredientsMinted(async (ids) => void minted.push(...ids));
+        try {
+          await expect(askAIAbout(joined.ingredientId)).resolves.toMatchObject({
+            outcome: "split",
+            into: ["vegatine", "agar agar"],
+            considered: ["barley"],
+          });
+        } finally {
+          onIngredientsMinted(undefined);
+        }
+
+        const parts = await Promise.all(
+          (await lineFoods(named.line)).aliasIds.map((aliasId) => ingredientFor(aliasId!))
+        );
+
+        expect(parts).toMatchObject([
+          { name: "vegatine", flagReason: "ai-queued" },
+          { name: "agar agar", flagReason: "ai-queued" },
+        ]);
+        expect(minted).toContain(parts[1]!.id);
+        const barleySpellings = await getTestDb()
+          .select({ text: ingredientAliases.text })
+          .from(ingredientAliases)
+          .where(eq(ingredientAliases.ingredientId, grain.ingredientId));
+
+        expect(barleySpellings.map((row) => row.text).sort()).toEqual(["barley", "garagar"]);
+      });
+
+      it("splits the part onto the slip the second question picks", async () => {
+        const grain = await barley();
+        const joined = await flagged("vegatine of agar agar");
+        const named = await nameEverywhere(joined, "vegatine of agar agar", { pantry: false });
+
+        splits(["vegatine", "agar agar"], "alternatives", true);
+        decides("Is barley", 0.95);
+
+        await expect(askAIAbout(joined.ingredientId)).resolves.toMatchObject({
+          outcome: "split",
+        });
+        const [, part] = await Promise.all(
+          (await lineFoods(named.line)).aliasIds.map((aliasId) => ingredientFor(aliasId!))
+        );
+
+        expect(part).toMatchObject({ id: grain.ingredientId });
+      });
+    });
+
     describe("a joined food that holds one part's spelling", () => {
       async function joinedHoldingCream() {
         const cream = await flagged("light cooking cream");

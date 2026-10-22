@@ -88,8 +88,8 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
 }
 
 /**
- * Several foods: a part AI's names found is that food, the others resolve as an import would, and
- * the food's rows name them instead; a part spelled by the food moves to the food named for it.
+ * Several foods: a part AI found or picked is that food, the others rungs 1-2 or a mint (no slip),
+ * and the food's rows name them instead; a part spelled by the food moves to the food named for it.
  */
 async function split(
   food: { id: string; ownerId: string | null },
@@ -104,7 +104,8 @@ async function split(
 
   const read = await resolveParts(
     answer.parts.map((part) => (part.found ? { ...part.found, text: part.text } : part.text)),
-    { userId: food.ownerId }
+    { userId: food.ownerId },
+    { slips: false }
   );
   const parts = distinctFoods(read);
   const [first, ...rest] = parts;
