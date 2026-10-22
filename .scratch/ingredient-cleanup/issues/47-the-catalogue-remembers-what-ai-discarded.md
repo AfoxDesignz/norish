@@ -81,3 +81,10 @@ Left out from the copy's AI deletions because they are a recipe's own wording: "
 - The seed's translations are unchecked by a native speaker; a word that is a real food in some language would make that food's one-piece lines name nothing until someone adds it as a translation.
 - "boneless and skinless chicken" (a joining word, one part left that rungs 1-2 do not know) still mints the whole text.
 
+## Review fixes (2026-10-22)
+
+- **One part left.** The drop now happens in `spellingOf` itself (`withoutJunkPieces`): comma pieces, then joining-word parts, on the pile are cut, and a part left keeps the joining word before it (`JoinedParts.words` carry their `text`). The text is then read and minted on the pieces left, so "boneless and skinless chicken" mints "skinless chicken", and "boneless of salt or pepper" splits on "salt or pepper" (the old `words.slice` paired "of" with them and refused the split). `spelledParts` no longer drops anything.
+- **Cleanup.** The first-start cleanup reads names without the pile (`cleanupRules`, used by `cleanSpellingOf` and `partsByWordsOf`), so a later `CLEANUP_VERSION` never removes or renames a junk spelling without AI; that stays ticket 46's.
+- **Undo** takes the folds a change removed off the pile, whoever put them there (see ticket 46); `takeJunkOfAIChange` is gone.
+- `forgetSpellingRules()` runs only when the pile changed (`addToJunkPile`/`takeOffJunkPile` counts); `removeAliasIn` takes `{ of, junk }`.
+- The "For Mike" note on "boneless and skinless chicken" no longer holds.

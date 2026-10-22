@@ -30,3 +30,7 @@
 - The no-AI passes that skip a chosen parent: seed corrections (`listUnchosenOwnChildren`/`refileOwnFood`), the mint recheck (`listUndecidedMints`, `adoptPlainName`, `fileUndecidedMint`) and the seed's parent pass. On the upgrade boot the first two run before the cleanup (`apps/web/server/index.ts`), so none of them re-files an unmarked food without asking. The mint recheck also needs `flagged`, which 0.25's `setParent` cleared. After the upgrade, a later `SEED_CORRECTIONS_VERSION` or `RUNG_VERSION` bump treats these foods like any food AI filed, which they are by then.
 - Test: `first-start-cleanup.test.ts`, "lets AI ask about and re-file a food whose parent was confirmed in 0.25, not one chosen since". It also runs a later cleanup version (stored `CLEANUP_VERSION + 1`) to show the mark of a parent chosen since stays.
 - Docs: the 0.26 release notes get a Fixes line, and the upgrade note on the first-start cleanup now says that confirmed parents stop counting, that each change has Undo, and that the first pass costs about three times the requests and tokens. The Ingredients page sentence ("AI leaves alone an ingredient you ... gave a parent") still holds for parents chosen from now on, so it is unchanged.
+
+## Review fixes (2026-10-22)
+
+- Step 7 (`unmarkChosenParents(tx)`, which now takes the transaction) and step 6 (`unflagHiddenFoods`) run under the tree lock (`underTreeLock` in `first-start-cleanup.ts`), taken first as every catalogue write takes it.

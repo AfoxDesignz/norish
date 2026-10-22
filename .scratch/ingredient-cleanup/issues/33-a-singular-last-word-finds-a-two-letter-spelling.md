@@ -21,3 +21,7 @@
 - No `RUNG_VERSION` or `SEED_CORRECTIONS_VERSION` bump: an instance that already ran the pass keeps its filing (only rc/dev databases, Mike's no-legacy rule).
 - Tests: `recheck-mints.test.ts` "leaves a grocery food alone: no parent from its words, no merge" (red first: `{ merged: 1, filed: 1 }`); `catalogue-seed.test.ts` "moves seasoning off coating once..." now names "chicken seasoning" in a recipe and keeps a grocery food "bbq seasoning" under coating (red without the guard: `refiled: 3`).
 - Docs: the 0.26 release-notes line on hidden ingredients says the first start no longer files one again; `CONTEXT.md` (Ingredient) says no pass without AI touches a grocery food.
+
+## Review fixes (2026-10-22)
+
+- The first-start cleanup's step 5 now leaves a hidden food alone too: `listOwnFoods` (`packages/db/src/repositories/ingredient-cleanup.ts`) requires `ingredientIsListed()`, so a grocery food is neither split nor renamed. The "Left as they are" note above no longer holds for step 5. Test: `first-start-cleanup.test.ts` "neither splits nor renames a hidden food".

@@ -56,3 +56,13 @@
 - AI's spelling answers carry no `sure`; every removal or move is recorded sure (no flag on a seeded food), with Undo for a month.
 - A typed grocery on a removed spelling whose text is all junk keeps the heir spelling's food (only lines are cleared), as groceries never name "no food" through junk.
 - Not measured on the production copy; the "6 lines" checkbox holds in tests only.
+
+## Review fixes (2026-10-22)
+
+- **Undo and the pile.** Undo of a not-a-food deletion or of a spelling removal takes the folds it removed off the pile whoever put them there (`removedFolds` + `takeOffJunkPile` in `undoAIChange`), so a seed entry ("boneless") no longer keeps the restored spelling from matching. `takeJunkOfAIChange` is gone; `ai_change_id` is still written.
+- **Undo leaves later edits.** `removeSpellingByAI` notes after its `resolveAgain` what each row then names (`noteSpellingRemovalLeft`, `ChangedSpelling.left`, by row id). `restoreSpelling` points back only lines and groceries that name no food now or still that; the grocery loop is shared with `restoreDeletedFood` (`pointBack`). The rows are read once (`findRowsNamingSpellings`, `readLineFoods`); `readChangedSpelling` reads only the spelling.
+- **Groceries.** `resolveAgain` (with `mint`) keeps a typed grocery whose parts all name nothing and points it at no food, as a line; the "For Mike" note above on groceries keeping the heir no longer holds.
+- **Outcome.** `SpellingCheckOutcome.checked.unchanged` lists a spelling whose removal or move came back undone or gone, logged.
+- **Job.** A spelling check is the ingredient-review job (name `review`) with `check: "spellings"`; the worker picks its question once.
+- `onceMoreOnTimeout(feature)` now lives in `ai/runtime/timeout-retry.ts`.
+- **Open, not fixed:** Undo of a "not this food" removal whose lines minted the same text fails with `spelling-taken` (the mint holds the fold). Undo would have to merge the mint back; not built.

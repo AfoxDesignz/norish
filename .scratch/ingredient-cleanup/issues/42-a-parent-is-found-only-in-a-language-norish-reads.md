@@ -40,7 +40,10 @@ The second group exists because spellings are unique by fold and the first langu
 
 **For Mike.**
 
-- The upgrade boot now downloads the Open Food Facts file once more (a few MB, a full apply in one transaction, as a nightly refresh with a changed file does). No Upgrade note added; say if you want one.
+- (Superseded by the review fix below: the boot downloads nothing.)
 - The known cost holds: bell pepper's bare "paprika" is only `hr`, so a new "oranje paprika" gets no parent from its words with AI off, and AI's "paprika" finds the spice by name.
 - Sugar snaps and king prawns (English, from 0.25) are untouched by this rule; ticket 40's question covers them.
 
+## Review fixes (2026-10-22)
+
+- **No boot download.** `correctSeedOnce()` (no fetch argument) coming from below `NORISH_LANGUAGES_FIRST_IN` only clears the stored etag and last-modified and records the version; the nightly `refreshIngredientCatalogue` then fetches the file whole and its apply re-stamps the languages. An offline instance no longer throws every boot. Until that refresh, an instance seeded before keeps "kaas" as `af`, so a new "belegen kaas" gets no parent from its words with AI off (AI's pass files it). No upgrade note mentioned the download, so none changed. Test: `catalogue-seed.test.ts` "files a spelling an entry's languages share..." (a fetch that throws at boot is never called; the refresh after re-stamps).

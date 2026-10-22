@@ -37,3 +37,14 @@ AI writes each part whole ("sticky or sushi rice" became sticky rice and sushi r
 - No `RUNG_VERSION` or `CLEANUP_VERSION` bump, as the ticket says (stays 10 and 4): only rc/dev ran the old split, and re-running step 5 there would not undo a split already made, since the joined food is gone.
 - Tests: `resolver.test.ts` "reads the shorter part with the words the parts share, where that reading is known" (the ticket's cases plus "rode- en witte kool"), `first-start-cleanup.test.ts` "splits a joined food keeping the word its parts share, and leaves one that reading misses".
 - No docs or release-notes line became wrong ("every part is a known food" still holds).
+
+## Review fixes (2026-10-22)
+
+- **Measured** (read-only, on `m31c_post_on` and `norish_prod_pristine`, every recipe line text and own spelling the joining words split, with HEAD's borrowing): a borrow "fires" where rungs 1-2 know the borrowed reading.
+  - `m31c_post_on`: 3,792 texts, 104 split, 208 parts, 28 borrows fire; 24 land on the food the part names as written, 4 on another food, all 4 right (corn starch twice, cherry tomato, vegetable broth); 0 wrong. The hyphen refusal of "zonnebloem- of kokosolie" is right.
+  - `norish_prod_pristine`: 3,887 texts, 11 split, 3 borrows fire, all on the same food; 0 wrong.
+  - Against the seeded catalogue alone (a fresh instance, or 0.25's joined foods at step 5): 296 split, 53 fire, 27 on another food; 1 wrong, "butter or coconut oil" as butterfat. Every "together" borrow that changed a food was a hyphen one.
+  - Not in the data, but wrong today: "garlic and olive oil" (garlic oil) and "lemon and olive oil" (lemon oil), both seeded English spellings.
+- **Rule taken:** only alternatives ("or" words) borrow, and a hyphened part at any join (`sharedWordReadings(parts, joined)`). It keeps every right borrow and every case above, with no wrong read on the real set. Rules that also refuse a borrow where the shorter part is a known spelling, or a seeded single word, lose cherry, vegetable and chicken, and break this ticket's cases.
+- **Known miss:** "butter or coconut oil" still reads butterfat on a catalogue that knows only the seed; no lean rule separated it from cherry/vegetable/chicken.
+- Tests: `resolver.test.ts` "borrows no words between foods joined together: garlic and olive oil is not garlic oil" (red first), beside the right borrow "cherry or grape tomatoes".
