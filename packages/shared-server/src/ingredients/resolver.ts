@@ -151,11 +151,33 @@ function commaPieces(text: string): string[] {
   return pieces;
 }
 
-/** A text read on its comma pieces not on the junk pile: "boneless, skinless chicken" is "skinless chicken". */
-function spellingOf(text: string, rules: ResolverRules): Spelling {
+/**
+ * A text without its comma pieces and joining-word parts on the junk pile; a part left keeps the
+ * joining word before it.
+ */
+function withoutJunkPieces(text: string, rules: ResolverRules): string {
   const pieces = commaPieces(text);
   const kept = withoutJunk(pieces, rules);
-  const keys = spellingKeys(kept.length === pieces.length ? text : kept.join(","), rules);
+  const rest = kept.length === pieces.length ? text : kept.join(",");
+  const joined = joinedParts(rest, rules);
+
+  if (!joined) return rest;
+  const parts = new Set(withoutJunk(joined.parts, rules));
+  const left = joined.parts.flatMap((part, index) => (parts.has(part) ? [index] : []));
+
+  if (left.length === joined.parts.length) return rest;
+
+  return left
+    .flatMap((index, at) => [
+      ...(at > 0 ? [joined.words[index - 1]!.text] : []),
+      joined.parts[index]!,
+    ])
+    .join(" ");
+}
+
+/** A text read on its pieces not on the junk pile: "boneless, skinless chicken" is "skinless chicken". */
+function spellingOf(text: string, rules: ResolverRules): Spelling {
+  const keys = spellingKeys(withoutJunkPieces(text, rules), rules);
 
   return {
     text,
@@ -324,21 +346,17 @@ interface SpelledParts extends JoinedParts {
   readings: Spelling[][];
 }
 
-/** A part on the junk pile is dropped, so parts all on it name no food. */
 function spelledParts(clean: string, rules: ResolverRules): SpelledParts | null {
   const found = joinedParts(clean, rules);
 
-  if (!found) return null;
-  const parts = withoutJunk(found.parts, rules);
-
-  return {
-    ...found,
-    parts,
-    words: found.words.slice(0, Math.max(parts.length - 1, 0)),
-    readings: sharedWordReadings(parts, found.joined).map((texts) =>
-      texts.map((text) => spellingOf(text, rules))
-    ),
-  };
+  return (
+    found && {
+      ...found,
+      readings: sharedWordReadings(found.parts, found.joined).map((texts) =>
+        texts.map((text) => spellingOf(text, rules))
+      ),
+    }
+  );
 }
 
 /**
@@ -458,14 +476,11 @@ async function resolveTexts(
     const named = byWords.get(spelling);
 
     if (named) {
-      // Every part on the junk pile: the text names no food.
-      if (named.foods.length > 0) {
-        resolved.set(spelling, {
-          text: spelling.text,
-          foods: named.foods.map(refOf),
-          joined: named.joined,
-        });
-      }
+      resolved.set(spelling, {
+        text: spelling.text,
+        foods: named.foods.map(refOf),
+        joined: named.joined,
+      });
       continue;
     }
 

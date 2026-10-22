@@ -4,6 +4,7 @@
  * in, the alias it resolves to comes out, and an Ingredient is minted only
  * when nothing Norish knows matches.
  */
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import defaultUnits from "@norish/config/units.default.json";
@@ -989,6 +990,28 @@ describe("ingredient resolver", () => {
       }
       expect(minted).toEqual([]);
       await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(2);
+    });
+
+    it("reads the parts a joining word leaves once one is dropped, each joining word with its parts", async () => {
+      const salt = await mintTestFood("salt", { locale: "en" });
+      const pepper = await mintTestFood("pepper", { locale: "en" });
+
+      await pile("boneless");
+      const [unknown, middle] = await lines([
+        "boneless and skinless chicken",
+        "boneless of salt or pepper",
+      ]);
+      const [minted] = await getTestDb()
+        .select({ name: ingredients.name })
+        .from(ingredients)
+        .where(eq(ingredients.id, unknown!.ingredientId!));
+
+      expect(minted?.name).toBe("skinless chicken");
+      // English "of" joins a measure, so read beside "salt" and "pepper" it would split nothing.
+      expect(middle).toMatchObject({
+        joined: "alternatives",
+        foods: [{ ingredientId: salt.ingredientId }, { ingredientId: pepper.ingredientId }],
+      });
     });
 
     it("keeps a typed grocery on the pile, naming no food", async () => {

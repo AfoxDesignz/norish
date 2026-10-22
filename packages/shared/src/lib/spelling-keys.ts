@@ -526,8 +526,8 @@ export interface JoinedParts {
   /** Each part as written. */
   parts: string[];
   joined: LineJoin;
-  /** The joining words it was split at. */
-  words: JoiningWord[];
+  /** The joining words it was split at, each as written. */
+  words: Array<JoiningWord & { text: string }>;
 }
 
 /**
@@ -539,7 +539,7 @@ export function joinedParts(
   rules: SpellingRules = BASE_SPELLING_RULES
 ): JoinedParts | null {
   const parts: string[][] = [[]];
-  const words: JoiningWord[] = [];
+  const words: JoinedParts["words"] = [];
   let depth = 0;
 
   for (const token of cleanSpelling(text).split(" ")) {
@@ -549,7 +549,7 @@ export function joinedParts(
 
     for (const bracket of brackets) depth += "([{".includes(bracket) ? 1 : -1;
     if (word) {
-      words.push(word);
+      words.push({ ...word, text: token });
       parts.push([]);
     } else {
       parts.at(-1)!.push(token);
