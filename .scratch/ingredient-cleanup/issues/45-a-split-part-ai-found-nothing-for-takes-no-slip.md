@@ -18,8 +18,16 @@ So the slip AI had just refused was taken anyway, unasked. Ticket 26's rule is t
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] "vegatine of agar agar", whose "agar agar" only finds the slip "garagar" and the second question answers none, splits into vegatine and a new food "agar agar", which AI's pass is asked about. Barley is unchanged.
-- [ ] A part whose slip the second question picks is still split onto that food.
-- [ ] An import line that is a slip of a known food still takes that food (rung 3).
+- [x] "vegatine of agar agar", whose "agar agar" only finds the slip "garagar" and the second question answers none, splits into vegatine and a new food "agar agar", which AI's pass is asked about. Barley is unchanged.
+- [x] A part whose slip the second question picks is still split onto that food.
+- [x] An import line that is a slip of a known food still takes that food (rung 3).
+
+## Implemented (2026-10-22)
+
+- `ResolveOptions.slips?: boolean` (`resolver.ts`): off, `resolveTexts` passes no spelling to `findSlips`, so a text rungs 1-2 miss is minted. `resolveParts(parts, actor, options = {})` passes the options on; `split()` (`review.ts`) passes `{ slips: false }`. The import's `resolveParts` in `recipe-lines.ts` passes none and keeps rung 3 (covered by `resolver-ai.test.ts` "takes the known food a text is a slip of").
+- `readThenLookUp` (`ingredient-resolution.ts`) hands every part `found: found.food`, sure or not, so a part whose slip the second question picked lands on that pick (by the matched spelling's alias; the part's own text is not added as a spelling, as for an exact find). A part found nothing for, or answered none, goes to `resolveParts` as text and is minted, flagged `ai-queued` and announced, so AI's pass reads it next.
+- No version bump: `CLEANUP_VERSION` 4, `RUNG_VERSION` 10, `SEED_CORRECTIONS_VERSION` 3 unchanged (the split is AI's pass, not a startup step).
+- Tests: `review.test.ts` "a part AI's names find only a slip for" (red first: "agar agar" landed on barley via "garagar"): answered none mints "agar agar", announced, barley keeps only its spellings; a picked slip splits onto barley.
+- Release notes: the 0.26 slip line now says AI picks one or none "for a parent and each part of a split too".
