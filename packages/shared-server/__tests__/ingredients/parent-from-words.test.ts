@@ -17,7 +17,7 @@ import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 
 import { getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
-import { seedEntry } from "../helpers/seed-entries";
+import { seedEntry, seedEntryIn } from "../helpers/seed-entries";
 
 describe("a mint's parent from the words of its text", () => {
   const testBase = new RepositoryTestBase("test_parent_from_words");
@@ -190,6 +190,19 @@ describe("a mint's parent from the words of its text", () => {
     expect((await mintOne("cherries")).id).toBe(seeded.get("en:cherry"));
     expect((await mintOne("avocado's")).id).toBe(seeded.get("en:avocado"));
     expect(await mintOne("tomatoes soup")).toMatchObject({ parent: null });
+  });
+
+  it("files under a seeded spelling only in a language Norish reads", async () => {
+    await applyIngredientSeed([
+      seedEntryIn("en:pear", ["pear", "en"], ["bün", "vo"]),
+      seedEntryIn("en:cheese", ["cheese", "en"], ["kaas", "nl"]),
+    ]);
+    seeded = await listSeededIngredientIds();
+
+    expect(await mintOne("burger buns")).toMatchObject({ parent: null });
+    expect(await mintOne("belegen kaas")).toMatchObject({
+      parent: { id: seeded.get("en:cheese") },
+    });
   });
 
   it("reads a spelling a seeded food gained after the seed as the food's", async () => {

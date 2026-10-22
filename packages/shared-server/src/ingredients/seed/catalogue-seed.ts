@@ -23,6 +23,7 @@ import {
 import { getConfig, setConfig } from "@norish/db/repositories/server-config";
 import { createLogger } from "@norish/shared-server/logger";
 import { ingredients as ingredientsRealtime } from "@norish/shared-server/realtime/ingredients";
+import { norishReads } from "@norish/shared/lib/ingredient-names";
 import {
   ingredientAliasFold,
   stripPreparation,
@@ -63,7 +64,8 @@ export const SPELLING_MOVES: ReadonlyArray<{ from: string; to: string; spellings
   { from: "en:yam", to: "en:jam", spellings: ["jam"] },
 ];
 
-export const SEED_CORRECTIONS_VERSION = 2;
+/** 3: a spelling an entry's languages share is filed under one Norish reads (ingredient-cleanup 42). */
+export const SEED_CORRECTIONS_VERSION = 3;
 
 /** The entries with each move made where the file has its food: no other entry keeps the spelling. */
 function corrected(entries: readonly SeedEntry[]): SeedEntry[] {
@@ -110,7 +112,8 @@ function seedEntriesFrom(file: string): SeedEntry[] {
         nameFold: ingredientAliasFold(name),
         parentOffId: entry.parentIds[0] ?? null,
         nutrition: entry.nutrition,
-        aliases: entry.names.flatMap(({ text, locale }) => {
+        // A spelling the entry's languages share goes to the first: one Norish reads (kaas nl, not af).
+        aliases: norishFirst(entry.names).flatMap(({ text, locale }) => {
           const cleaned = seedText(text);
 
           return cleaned ? [{ text: cleaned, fold: ingredientAliasFold(cleaned), locale }] : [];
@@ -118,6 +121,10 @@ function seedEntriesFrom(file: string): SeedEntry[] {
       },
     ];
   });
+}
+
+function norishFirst<T extends { locale: string | null }>(names: readonly T[]): T[] {
+  return [...names].sort((a, b) => Number(norishReads(b.locale)) - Number(norishReads(a.locale)));
 }
 
 /**
@@ -332,7 +339,8 @@ export async function refreshIngredientCatalogue(
     appliedAt: new Date().toISOString(),
     entries: entries.length,
     mergedExisting: true,
-    ...(firstSeed ? { rungVersion: 0 } : {}),
+    // A first seed is read with every correction, so none is left to make.
+    ...(firstSeed ? { rungVersion: 0, correctionsVersion: SEED_CORRECTIONS_VERSION } : {}),
   });
 
   // Merges, parents and removals change which food lines mean: open clients

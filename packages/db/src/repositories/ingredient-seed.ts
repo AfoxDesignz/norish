@@ -103,16 +103,21 @@ function chunks<T>(items: readonly T[]): T[][] {
 async function holdersOf(
   tx: DbTransaction,
   folds: readonly string[]
-): Promise<Map<string, string>> {
-  const held = new Map<string, string>();
+): Promise<Map<string, { ingredientId: string; locale: string | null; seeded: boolean }>> {
+  const held = new Map<string, { ingredientId: string; locale: string | null; seeded: boolean }>();
 
   for (const part of chunks([...new Set(folds)])) {
     const rows = await tx
-      .select({ fold: ingredientAliases.fold, ingredientId: ingredientAliases.ingredientId })
+      .select({
+        fold: ingredientAliases.fold,
+        ingredientId: ingredientAliases.ingredientId,
+        locale: ingredientAliases.locale,
+        seeded: ingredientAliases.seeded,
+      })
       .from(ingredientAliases)
       .where(inArray(ingredientAliases.fold, part));
 
-    for (const row of rows) held.set(row.fold, row.ingredientId);
+    for (const { fold, ...holder } of rows) held.set(fold, holder);
   }
 
   return held;
@@ -142,7 +147,8 @@ function closesCycle(parents: ReadonlyMap<string, string | null>, id: string, pa
  *   One that carries another entry's id absorbed this entry in a merge, and
  *   the entry is left there.
  * - Every spelling of every entry is added as a seeded alias; a spelling
- *   another Ingredient already holds stays where it is, and is reported.
+ *   another Ingredient already holds stays where it is, and is reported. One
+ *   the entry's food holds takes the language the entry gives it first.
  * - An entry's first parent becomes its Ingredient's parent, unless a person
  *   set or cleared that Ingredient's parent, or the parent would close a
  *   cycle. An entry with no parent leaves its Ingredient's parent alone.
@@ -197,7 +203,8 @@ export async function applyIngredientSeed(entries: readonly SeedEntry[]): Promis
         continue;
       }
 
-      const holder = nameHolders.get(entry.nameFold) ?? byName.get(entry.name.toLowerCase());
+      const holder =
+        nameHolders.get(entry.nameFold)?.ingredientId ?? byName.get(entry.name.toLowerCase());
       const row = holder ? byId.get(holder) : undefined;
 
       if (!row) {
@@ -292,13 +299,30 @@ export async function applyIngredientSeed(entries: readonly SeedEntry[]): Promis
 
     const notAdded = [...wanted.keys()].filter((fold) => !added.has(fold));
     const holders = await holdersOf(tx, notAdded);
+    const restamps: Array<{ fold: string; locale: string | null }> = [];
 
     for (const fold of notAdded) {
       const claim = wanted.get(fold)!;
+      const holder = holders.get(fold);
 
-      if (holders.get(fold) !== claim.row.ingredientId) {
+      if (holder?.ingredientId !== claim.row.ingredientId) {
         outcome.aliasCollisions.push({ fold, offId: claim.offId });
+      } else if (holder.seeded && holder.locale !== (claim.row.locale ?? null)) {
+        restamps.push({ fold, locale: claim.row.locale ?? null });
       }
+    }
+
+    // A spelling the entry keeps takes the language the file now gives it first.
+    for (const part of chunks(restamps)) {
+      const values = sql.join(
+        part.map(({ fold, locale }) => sql`(${fold}, ${locale}::text)`),
+        sql`, `
+      );
+
+      await tx.execute(sql`
+        update ${ingredientAliases} set locale = v.locale
+        from (values ${values}) as v(fold, locale)
+        where ${ingredientAliases}.fold = v.fold`);
     }
 
     // Parents, where no person chose one.

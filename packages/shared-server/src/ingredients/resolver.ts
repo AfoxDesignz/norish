@@ -24,7 +24,7 @@ import {
 } from "@norish/shared-server/config/server-config-loader";
 import { dbLogger } from "@norish/shared-server/logger";
 import { stripHtmlTags } from "@norish/shared/lib/helpers";
-import { catalogueLanguagesFor } from "@norish/shared/lib/ingredient-names";
+import { catalogueLanguagesFor, norishReads } from "@norish/shared/lib/ingredient-names";
 import { namesNoFood } from "@norish/shared/lib/ingredient-text";
 import { distinctFoods, joinOf } from "@norish/shared/lib/line-foods";
 import { mayBeASlip, onlyNearest, slipsNear } from "@norish/shared/lib/name-slips";
@@ -481,7 +481,7 @@ function sameFoodKey(spelling: Spelling): string {
  */
 async function findSlips(
   spellings: readonly Spelling[],
-  excludeId: string | null = null
+  keep: (row: IngredientAliasRow) => boolean = () => true
 ): Promise<Map<string, FoundFood[]>> {
   const slips = new Map<string, FoundFood[]>();
   const questions = new Map(spellings.map((spelling) => [sameFoodKey(spelling), spelling]));
@@ -493,7 +493,7 @@ async function findSlips(
       if (!mayBeASlip(wanted)) return;
       const near = slipsNear(
         wanted,
-        (await findAliasesNearFold(wanted)).filter((row) => row.ingredientId !== excludeId),
+        (await findAliasesNearFold(wanted)).filter(keep),
         (row) => row.fold,
         (row) => row.ingredientId
       );
@@ -575,7 +575,9 @@ async function parentFromWords(spelling: Spelling): Promise<string | null> {
   if (windows.length === 0) return null;
 
   const seeded = new Map(
-    (await findSeededFoodSpellingsByFolds(windows)).map((row) => [row.fold, row.ingredientId])
+    (await findSeededFoodSpellingsByFolds(windows))
+      .filter((row) => norishReads(row.locale))
+      .map((row) => [row.fold, row.ingredientId])
   );
 
   for (const window of windows) {
@@ -699,7 +701,10 @@ export async function findOtherFoodsNamed(
   const spellings = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
   const readable = spellings.filter((spelling) => spelling.text && !spellingNamesNoFood(spelling));
   const all = await knownAliases(readable);
-  const known = new Map([...all].filter(([, row]) => row.ingredientId !== ingredientId));
+  // Only by a spelling in a language Norish reads: AI's "bun" is not pear's Volapük "bün".
+  const other = (row: IngredientAliasRow) =>
+    row.ingredientId !== ingredientId && norishReads(row.locale);
+  const known = new Map([...all].filter(([, row]) => other(row)));
   // A food's name beats another food's spelling (yam's Croatian "jam" is not the food jam); a
   // spelling the asked food holds stays its own, so a split moves it to the food named for it.
   const named = new Map(
@@ -719,7 +724,7 @@ export async function findOtherFoodsNamed(
   const slipped = slips
     ? await findSlips(
         readable.filter((spelling) => !matched.get(spelling)),
-        ingredientId
+        other
       )
     : new Map<string, FoundFood[]>();
 

@@ -61,7 +61,7 @@ import {
 } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 import { foodReading, noFoodReading, severalReading } from "../helpers/ingredient-readings";
-import { seedEntry } from "../helpers/seed-entries";
+import { seedEntry, seedEntryIn } from "../helpers/seed-entries";
 
 vi.mock("@norish/shared-server/ai/runtime/runtime", () => ({
   decide: vi.fn(),
@@ -896,6 +896,27 @@ describe("asking AI about an Ingredient", () => {
         sure: true,
       });
       expect(resolutionRequests()).toBe(1);
+    });
+  });
+
+  describe("a spelling in a language Norish does not read", () => {
+    it("finds no parent: AI's bun is not pear's Volapük bün, nor salam salami's Czech salám", async () => {
+      await applyIngredientSeed([
+        seedEntryIn("en:pear", ["pear", "en"], ["bün", "vo"]),
+        seedEntryIn("en:salami", ["salami", "en"], ["salám", "cs"]),
+      ]);
+      const buns = await flagged("burger buns");
+      const salam = await flagged("salam blaadjes");
+
+      reads({ englishName: "burger buns", parent: "bun", sure: true });
+      reads({ englishName: "salam leaves", parent: "salam", sure: true });
+      // Salam is a slip from salami's English name, so that is asked about, not taken.
+      picks(null, true);
+
+      await expect(askAIAbout(buns.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
+      await expect(askAIAbout(salam.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
+      await expect(parentOf(buns.ingredientId)).resolves.toBeNull();
+      await expect(parentOf(salam.ingredientId)).resolves.toBeNull();
     });
   });
 

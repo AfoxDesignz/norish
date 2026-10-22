@@ -30,6 +30,7 @@ import { buildCatalogueExport } from "@norish/shared-server/ingredients/seed/cat
 import {
   applySeedFile,
   refreshIngredientCatalogue,
+  updateIngredientSeedState,
 } from "@norish/shared-server/ingredients/seed/catalogue-seed";
 import { correctSeedOnce } from "@norish/shared-server/ingredients/seed/correct-seed";
 
@@ -48,6 +49,21 @@ function without(entryFirstLine: string, file = excerpt): string {
     .split(/\n\s*\n/)
     .filter((block) => !block.split("\n").some((line) => line === entryFirstLine))
     .join("\n\n");
+}
+
+/** A server for the file that answers 304 to a request for the `etag` it has. */
+function serving(file: string, etag: string) {
+  const asked: Array<Record<string, string>> = [];
+  const fetchImpl = (async (_url: string, init?: RequestInit) => {
+    const headers = (init?.headers ?? {}) as Record<string, string>;
+
+    asked.push(headers);
+    if (headers["If-None-Match"] === etag) return new Response(null, { status: 304 });
+
+    return new Response(file, { status: 200, headers: { etag } });
+  }) as typeof fetch;
+
+  return { fetchImpl, asked };
 }
 
 describe("the ingredient catalogue seed", () => {
@@ -351,6 +367,35 @@ describe("the ingredient catalogue seed", () => {
       });
     });
 
+    it("files a spelling an entry's languages share under the one Norish reads, also on an instance seeded before", async () => {
+      // Open Food Facts lists Afrikaans before Dutch, and the first claim kept the spelling.
+      const file = `${excerpt}\n\nen: cheese\naf: Kaas\nnl: kaas\n`;
+      const cheese = async () => (await ingredientNamed("cheese"))!.id;
+      const kaasIn = (locale: string) =>
+        getTestDb()
+          .update(ingredientAliases)
+          .set({ locale })
+          .where(eq(ingredientAliases.fold, "kaas"));
+
+      await refreshIngredientCatalogue(serving(file, '"v1"').fetchImpl);
+      await expect(parentOf((await resolve("belegen kaas")).ingredientId)).resolves.toBe(
+        await cheese()
+      );
+      // A first seed is made with every correction: nothing to read again.
+      await expect(correctSeedOnce(serving(file, '"v1"').fetchImpl)).resolves.toBeNull();
+
+      // As a seed from before the correction left it.
+      await kaasIn("af");
+      await updateIngredientSeedState({ correctionsVersion: 2 });
+      await expect(parentOf((await resolve("jonge kaas")).ingredientId)).resolves.toBeNull();
+
+      await correctSeedOnce(serving(file, '"v1"').fetchImpl);
+
+      await expect(parentOf((await resolve("oude kaas")).ingredientId)).resolves.toBe(
+        await cheese()
+      );
+    });
+
     it("moves seasoning off coating once on an instance seeded before, with the foods its words filed there", async () => {
       await applySeedFile(spices);
       const mixed = await resolve("mixed spices");
@@ -428,20 +473,6 @@ describe("the ingredient catalogue seed", () => {
   });
 
   describe("the nightly refresh", () => {
-    function serving(file: string, etag: string) {
-      const asked: Array<Record<string, string>> = [];
-      const fetchImpl = (async (_url: string, init?: RequestInit) => {
-        const headers = (init?.headers ?? {}) as Record<string, string>;
-
-        asked.push(headers);
-        if (headers["If-None-Match"] === etag) return new Response(null, { status: 304 });
-
-        return new Response(file, { status: 200, headers: { etag } });
-      }) as typeof fetch;
-
-      return { fetchImpl, asked };
-    }
-
     it("merges an existing Ingredient the seed knows into its entry, once", async () => {
       const onions = await resolve("onions");
       const sjalot = serving(excerpt, '"v1"');

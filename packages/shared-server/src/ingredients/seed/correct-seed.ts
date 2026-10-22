@@ -1,6 +1,7 @@
 /**
  * The seed's corrections (`SPELLING_MOVES`) made once on an instance seeded before them: the spelling
- * moves with its rows, and the own foods its words filed under the old food follow it.
+ * moves with its rows, and the own foods its words filed under the old food follow it. Then the file
+ * is applied again, for the languages its kept spellings are filed under.
  */
 import {
   listSeededIngredientIds,
@@ -11,7 +12,17 @@ import {
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import { parentFromWordsOf } from "../resolver";
-import { oncePerVersion, SEED_CORRECTIONS_VERSION, SPELLING_MOVES } from "./catalogue-seed";
+import {
+  oncePerVersion,
+  readIngredientSeedState,
+  refreshIngredientCatalogue,
+  SEED_CORRECTIONS_VERSION,
+  SPELLING_MOVES,
+  updateIngredientSeedState,
+} from "./catalogue-seed";
+
+/** The corrections version from which a seed files a shared spelling under a language Norish reads. */
+const NORISH_LANGUAGES_FIRST_IN = 3;
 
 export interface CorrectionOutcome {
   /** Seeded spellings moved to the food the seed now gives them. */
@@ -21,15 +32,17 @@ export interface CorrectionOutcome {
 }
 
 /** Make the corrections where this version of them has not been made; null where it has. */
-export async function correctSeedOnce(): Promise<CorrectionOutcome | null> {
+export async function correctSeedOnce(
+  fetchImpl: typeof fetch = fetch
+): Promise<CorrectionOutcome | null> {
   return await oncePerVersion("correctionsVersion", SEED_CORRECTIONS_VERSION, {
-    pass: correctSeed,
+    pass: (from) => correctSeed(from, fetchImpl),
     changed: (outcome) => outcome.moved + outcome.refiled > 0,
     done: "Seed corrections made",
   });
 }
 
-async function correctSeed(): Promise<CorrectionOutcome> {
+async function correctSeed(from: number, fetchImpl: typeof fetch): Promise<CorrectionOutcome> {
   const seeded = await listSeededIngredientIds();
   const outcome: CorrectionOutcome = { moved: 0, refiled: 0 };
 
@@ -49,6 +62,12 @@ async function correctSeed(): Promise<CorrectionOutcome> {
         outcome.refiled += 1;
       }
     }
+  }
+
+  // The seed re-stamps a kept spelling's language as it applies a file, so read the file again.
+  if (from < NORISH_LANGUAGES_FIRST_IN && (await readIngredientSeedState()).appliedAt) {
+    await updateIngredientSeedState({ etag: null, lastModified: null });
+    await refreshIngredientCatalogue(fetchImpl);
   }
 
   return outcome;
