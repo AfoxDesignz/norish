@@ -8,7 +8,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
@@ -30,7 +30,9 @@ import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredi
 import { buildCatalogueExport } from "@norish/shared-server/ingredients/seed/catalogue-export";
 import {
   applySeedFile,
+  readIngredientSeedState,
   refreshIngredientCatalogue,
+  SEED_CORRECTIONS_VERSION,
   updateIngredientSeedState,
 } from "@norish/shared-server/ingredients/seed/catalogue-seed";
 import { correctSeedOnce } from "@norish/shared-server/ingredients/seed/correct-seed";
@@ -391,14 +393,28 @@ describe("the ingredient catalogue seed", () => {
         await cheese()
       );
       // A first seed is made with every correction: nothing to read again.
-      await expect(correctSeedOnce(serving(file, '"v1"').fetchImpl)).resolves.toBeNull();
+      await expect(correctSeedOnce()).resolves.toBeNull();
 
       // As a seed from before the correction left it.
       await kaasIn("af");
       await updateIngredientSeedState({ correctionsVersion: 2 });
       await expect(parentOf((await resolve("jonge kaas")).ingredientId)).resolves.toBeNull();
 
-      await correctSeedOnce(serving(file, '"v1"').fetchImpl);
+      // The boot downloads nothing: it forgets the file's validators, so the nightly refresh applies it.
+      const offline = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+
+      try {
+        await expect(correctSeedOnce()).resolves.toEqual({ moved: 0, refiled: 0 });
+      } finally {
+        offline.mockRestore();
+      }
+      expect(offline).not.toHaveBeenCalled();
+      await expect(readIngredientSeedState()).resolves.toMatchObject({
+        etag: null,
+        lastModified: null,
+        correctionsVersion: SEED_CORRECTIONS_VERSION,
+      });
+      await refreshIngredientCatalogue(serving(file, '"v1"').fetchImpl);
 
       await expect(parentOf((await resolve("oude kaas")).ingredientId)).resolves.toBe(
         await cheese()

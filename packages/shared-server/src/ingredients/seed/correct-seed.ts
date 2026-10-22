@@ -1,7 +1,6 @@
 /**
  * The seed's corrections (`SPELLING_MOVES`) made once on an instance seeded before them: the spelling
- * moves with its rows, and the own foods its words filed under the old food follow it. Then the file
- * is applied again, for the languages its kept spellings are filed under.
+ * moves with its rows, and the own foods its words filed under the old food follow it.
  */
 import {
   listSeededIngredientIds,
@@ -15,7 +14,6 @@ import { parentFromWordsOf } from "../resolver";
 import {
   oncePerVersion,
   readIngredientSeedState,
-  refreshIngredientCatalogue,
   SEED_CORRECTIONS_VERSION,
   SPELLING_MOVES,
   updateIngredientSeedState,
@@ -32,17 +30,15 @@ export interface CorrectionOutcome {
 }
 
 /** Make the corrections where this version of them has not been made; null where it has. */
-export async function correctSeedOnce(
-  fetchImpl: typeof fetch = fetch
-): Promise<CorrectionOutcome | null> {
+export async function correctSeedOnce(): Promise<CorrectionOutcome | null> {
   return await oncePerVersion("correctionsVersion", SEED_CORRECTIONS_VERSION, {
-    pass: (from) => correctSeed(from, fetchImpl),
+    pass: correctSeed,
     changed: (outcome) => outcome.moved + outcome.refiled > 0,
     done: "Seed corrections made",
   });
 }
 
-async function correctSeed(from: number, fetchImpl: typeof fetch): Promise<CorrectionOutcome> {
+async function correctSeed(from: number): Promise<CorrectionOutcome> {
   const seeded = await listSeededIngredientIds();
   const outcome: CorrectionOutcome = { moved: 0, refiled: 0 };
 
@@ -64,10 +60,10 @@ async function correctSeed(from: number, fetchImpl: typeof fetch): Promise<Corre
     }
   }
 
-  // The seed re-stamps a kept spelling's language as it applies a file, so read the file again.
+  // The seed re-stamps a kept spelling's language as it applies a file: the nightly refresh,
+  // its validators forgotten, applies the file again. The boot downloads nothing.
   if (from < NORISH_LANGUAGES_FIRST_IN && (await readIngredientSeedState()).appliedAt) {
     await updateIngredientSeedState({ etag: null, lastModified: null });
-    await refreshIngredientCatalogue(fetchImpl);
   }
 
   return outcome;
