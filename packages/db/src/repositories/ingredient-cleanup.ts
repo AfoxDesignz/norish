@@ -14,7 +14,7 @@ import {
   recurringGroceries,
 } from "@norish/db/schema";
 
-import { findGroceryRows, nameIsFree, rowsNaming } from "./ingredient-catalogue";
+import { findGroceryRows, ingredientIsListed, nameIsFree, rowsNaming } from "./ingredient-catalogue";
 import { writeRecipeLineFoodsTx } from "./ingredients";
 
 /**
@@ -187,12 +187,12 @@ export async function repointLines(
   }
 }
 
-/** Every own Ingredient (no taxonomy entry) with its name, oldest first. */
+/** Every listed own Ingredient (no taxonomy entry, a recipe line names it), oldest first. */
 export async function listOwnFoods(): Promise<Array<{ id: string; name: string }>> {
   return await db
     .select({ id: ingredients.id, name: ingredients.name })
     .from(ingredients)
-    .where(isNull(ingredients.offId))
+    .where(and(isNull(ingredients.offId), ingredientIsListed()))
     .orderBy(asc(ingredients.createdAt), asc(ingredients.id));
 }
 

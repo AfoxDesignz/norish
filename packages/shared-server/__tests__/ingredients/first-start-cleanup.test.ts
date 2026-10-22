@@ -289,6 +289,23 @@ describe("the first-start cleanup", () => {
     expect(await exists(oils.ingredientId)).toBe(true);
   });
 
+  it("neither splits nor renames a hidden food", async () => {
+    const joined = await oldMint("zout en peper", ["zout en peper"]);
+    const dirty = await oldMint("baking soda )", ["baking soda"]);
+
+    await expect(cleanUpCatalogueOnFirstStart(askAI)).resolves.toMatchObject({
+      split: 0,
+      renamed: 0,
+    });
+    expect(await exists(joined.ingredientId)).toBe(true);
+    await expect(
+      getTestDb()
+        .select({ name: ingredients.name })
+        .from(ingredients)
+        .where(eq(ingredients.id, dirty.ingredientId))
+    ).resolves.toEqual([{ name: "baking soda )" }]);
+  });
+
   it("runs once: a second start does nothing", async () => {
     await oldMint("baking soda )", ["baking soda )"]);
 
@@ -308,6 +325,10 @@ describe("the first-start cleanup", () => {
   it("keeps the name a person gave a food, cleaning only its spelling", async () => {
     const named = await oldMint("Gyoza (ontdooid)", ["Gyoza (ontdooid) )"]);
 
+    await insertTestRecipeLine(
+      { recipeId: (await createTestRecipe(userId)).id, name: "Gyoza (ontdooid) )" },
+      named.aliasIds
+    );
     await getTestDb()
       .update(ingredients)
       .set({ nameChosen: true })
