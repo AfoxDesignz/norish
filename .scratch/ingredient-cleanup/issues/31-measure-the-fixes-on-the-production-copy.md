@@ -288,3 +288,12 @@
 | job time, s                                  |      – |        85 |    39 |
 | first start to last end, s                   |      – |        85 |    39 |
 | openai · gpt-image-1-mini, requests / tokens |      – |     9 / 0 | 4 / 0 |
+
+## Final run after tickets 34, 36 and 37 (2026-10-22)
+
+- **How:** HEAD 0dab43bd8, the same way: fresh clone `m31c_post_on` of `norish_prod_pristine` (129 Keep distinct marks cleared, clone only, left in place), booted once from a detached worktree with AI on (production config) and its own Redis, measured once the queues were idle a minute. Load average 4.0 at the start. Run files, `report-c.html` and a one-page `summary.html` are in `~/Documents/norish-ticket-31/`.
+- **First start:** ready in 5.1 s, cleanup 2.6 s; the cleanup cleared 1 colon line (34) and unflagged 1 hidden food.
+- **AI pass:** 164 requests (gpt-6-luna 150 / 239,919 tokens, Jev 14 / 6,845), 246,764 tokens, 84 s over 6 jobs, 0 failed, 0 timeouts; the log's 150 completions and 14 Decisions match the ledger (36). Icons: 6 images in 55 s.
+- **Counts:** flagged 7 (all ai-unsure; 0 hidden), colon lines with a food 0, no food 45, joined own foods 24. AI Changes: merge 31 sure / 2 unsure, not-a-food 13 sure, parent 32 sure / 2 unsure (of the parent changes, 5 remove a parent).
+- **Cases:** every case from 24 to 37 holds but two. One of ticket 26's two cases is merged again into the unrelated food, unsure: the second question picked the slip (38). "Denta tix" keeps tea, hidden, as before (not a ticket). Ticket 37: the one parent change onto an own food is AI's parent, not a category.
+- **New:** 38 (the second question picks an unrelated slip), 39 (an other name AI gives merges, sure, into a different seeded product: 1 food).
