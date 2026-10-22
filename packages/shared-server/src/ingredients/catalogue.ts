@@ -755,10 +755,15 @@ async function removeAliasIn(
   tx: DbTransaction,
   actor: CatalogueActor,
   aliasId: string,
-  /** The Ingredient the spelling must belong to, where the caller is editing one. */
-  of?: string,
-  /** The person says the spelling names no food: its fold goes on the junk pile. */
-  junk = false
+  {
+    of,
+    junk = false,
+  }: {
+    /** The Ingredient the spelling must belong to, where the caller is editing one. */
+    of?: string;
+    /** The person says the spelling names no food: its fold goes on the junk pile. */
+    junk?: boolean;
+  } = {}
 ): Promise<CatalogueEdit> {
   const alias = await assertMayEdit(actor, await findCatalogueAliasOwner(tx, aliasId));
 
@@ -812,7 +817,10 @@ export async function saveDraft(
       for (const id of parented.changed) changed.add(id);
     }
     for (const aliasId of draft.remove) {
-      await removeAliasIn(tx, actor, aliasId, ingredientId, draft.junk?.includes(aliasId));
+      await removeAliasIn(tx, actor, aliasId, {
+        of: ingredientId,
+        junk: draft.junk?.includes(aliasId),
+      });
     }
     for (const text of draft.add) await addAliasIn(tx, actor, ingredientId, text);
     if (draft.icon !== undefined) await setIconIn(tx, actor, ingredientId, draft.icon);
