@@ -16,8 +16,10 @@ import {
   isInAnyPantry,
   listAIChanges,
   lockAIChange,
+  noteSpellingRemovalLeft,
   readChangedSpelling,
   readDeletedFood,
+  readLineFoods,
   readMergeUndo,
   recordAIChange,
   refreshAIFlag,
@@ -262,27 +264,27 @@ export async function deleteByAI(ingredientId: string): Promise<ApplyOutcome | "
 }
 
 /**
- * The spelling the food holds that the seed did not give it, locked with the food (and `targetId`),
- * its Undo read; an outcome instead where it went, is seeded, was undone or is the food's last.
+ * The spelling the food holds that the seed did not give it, locked with the food (and `targetId`);
+ * an outcome instead where it went, is seeded, was undone or is the food's last.
  */
 async function lockAddedSpelling(
   tx: DbTransaction,
   ingredientId: string,
   aliasId: string,
-  { targetId = null, withRows }: { targetId?: string | null; withRows: boolean }
+  targetId: string | null = null
 ) {
   const ids = targetId ? [ingredientId, targetId] : [ingredientId];
 
   await lockTree(tx);
   if ((await lockIngredients(tx, ids)) < ids.length) return "gone";
-  const read = await readChangedSpelling(tx, aliasId, { withRows });
+  const read = await readChangedSpelling(tx, aliasId);
 
   if (!read || read.ingredientId !== ingredientId || read.seeded) return "gone";
   if (await wasSpellingUndone(tx, aliasId)) return "undone";
   if ((await countAliasesOf(tx, ingredientId)) <= 1) return "gone";
-  const { ingredientId: _on, seeded: _seeded, ...undo } = read;
+  const { ingredientId: _on, seeded: _seeded, ...spelling } = read;
 
-  return undo;
+  return spelling;
 }
 
 /**
@@ -295,27 +297,37 @@ export async function removeSpellingByAI(
   { notAFood }: { notAFood: boolean }
 ): Promise<ApplyOutcome> {
   const done = await withTransaction(async (tx) => {
-    const undo = await lockAddedSpelling(tx, ingredientId, aliasId, { withRows: true });
+    const spelling = await lockAddedSpelling(tx, ingredientId, aliasId);
 
-    if (typeof undo === "string") return undo;
+    if (typeof spelling === "string") return spelling;
     const rows = await findRowsNamingSpellings(tx, [aliasId]);
     const aiChangeId = await recordAIChange(tx, {
       ingredientId,
       sure: true,
-      undo: { kind: "spelling", ...undo },
+      undo: {
+        kind: "spelling",
+        spelling,
+        lines: await readLineFoods(
+          tx,
+          rows.lines.map((line) => line.id)
+        ),
+        groceries: rows.groceries.map((row) => row.id),
+        recurring: rows.recurring.map((row) => row.id),
+      },
     });
 
     await deleteCatalogueAlias(tx, aliasId);
     if (notAFood) {
-      await addToJunkPile(tx, [undo.spelling.fold], { reason: "not-a-food", aiChangeId });
+      await addToJunkPile(tx, [spelling.fold], { reason: "not-a-food", aiChangeId });
     }
 
-    return rows;
+    return { rows, aiChangeId };
   });
 
   if (typeof done === "string") return done;
   if (notAFood) forgetSpellingRules();
-  await resolveAgain(done, { mint: true, ai: true });
+  await resolveAgain(done.rows, { mint: true, ai: true });
+  await noteSpellingRemovalLeft(done.aiChangeId);
 
   return await announceIfApplied("applied", [ingredientId]);
 }
@@ -327,17 +339,14 @@ export async function moveSpellingByAI(
   targetId: string
 ): Promise<ApplyOutcome> {
   const outcome = await withTransaction(async (tx): Promise<ApplyOutcome> => {
-    const undo = await lockAddedSpelling(tx, ingredientId, aliasId, {
-      targetId,
-      withRows: false,
-    });
+    const spelling = await lockAddedSpelling(tx, ingredientId, aliasId, targetId);
 
-    if (typeof undo === "string") return undo;
+    if (typeof spelling === "string") return spelling;
     await recordAIChange(tx, {
       ingredientId,
       targetId,
       sure: true,
-      undo: { kind: "spelling", ...undo },
+      undo: { kind: "spelling", spelling, lines: [], groceries: [], recurring: [] },
     });
     await moveCatalogueAlias(tx, aliasId, targetId);
 

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import type { Db, DbTransaction } from "@norish/db/drizzle";
@@ -541,37 +541,52 @@ export async function restoreDeletedFood(tx: DbTransaction, food: DeletedFood): 
       select id, ${position}, ${aliasId} from ${recipeIngredients} where id = ${lineId}
       on conflict do nothing`);
   }
-  for (const [table, rows] of [
-    [groceries, food.groceries],
-    [recurringGroceries, food.recurring],
-  ] as const) {
-    for (const row of rows) {
-      if (row.aliasId !== null && !back.has(row.aliasId)) continue;
-      await tx
-        .update(table)
-        .set({
-          ingredientAliasId: row.aliasId,
-          ingredientId: food.ingredientId,
-          version: sql`${table.version} + 1`,
-        })
-        .where(
-          and(eq(table.id, row.id), isNull(table.ingredientAliasId), isNull(table.ingredientId))
-        );
-    }
-  }
+  const free = (row: { aliasId: string | null }) => row.aliasId === null || back.has(row.aliasId);
+
+  await pointBack(tx, food.ingredientId, [
+    [groceries, food.groceries.filter(free)],
+    [recurringGroceries, food.recurring.filter(free)],
+  ]);
 
   return true;
 }
 
-/**
- * A spelling as Undo of its removal or move would put it back, with the food it is on and whether
- * the seed gave it; the rows naming it only `withRows`. Null where it is gone.
- */
+/** A Grocery or recurring grocery to point back, and the spelling it may still name instead of none. */
+interface Pointer {
+  id: string;
+  aliasId: string | null;
+  left?: string;
+}
+
+/** Point rows back at a restored food where they name no food now, or still the `left` spelling. */
+async function pointBack(
+  tx: DbTransaction,
+  ingredientId: string,
+  tables: ReadonlyArray<readonly [typeof groceries | typeof recurringGroceries, Pointer[]]>
+): Promise<void> {
+  for (const [table, rows] of tables) {
+    for (const row of rows) {
+      await tx
+        .update(table)
+        .set({ ingredientAliasId: row.aliasId, ingredientId, version: sql`${table.version} + 1` })
+        .where(
+          and(
+            eq(table.id, row.id),
+            or(
+              and(isNull(table.ingredientAliasId), isNull(table.ingredientId)),
+              row.left ? eq(table.ingredientAliasId, row.left) : undefined
+            )
+          )
+        );
+    }
+  }
+}
+
+/** A spelling as Undo of its removal or move would put it back, with its food and whether seeded. */
 export async function readChangedSpelling(
   tx: DbTransaction,
-  aliasId: string,
-  { withRows }: { withRows: boolean }
-): Promise<(ChangedSpelling & { ingredientId: string; seeded: boolean }) | null> {
+  aliasId: string
+): Promise<(ChangedSpelling["spelling"] & { ingredientId: string; seeded: boolean }) | null> {
   const [row] = await tx
     .select({
       id: ingredientAliases.id,
@@ -585,15 +600,15 @@ export async function readChangedSpelling(
     .from(ingredientAliases)
     .where(eq(ingredientAliases.id, aliasId));
 
-  if (!row) return null;
-  const { ingredientId, seeded, ...spelling } = row;
-  const none = { ingredientId, seeded, spelling, lines: [], groceries: [], recurring: [] };
+  return row ?? null;
+}
 
-  if (!withRows) return none;
-  const naming = tx
-    .select({ id: recipeIngredientFoods.recipeIngredientId })
-    .from(recipeIngredientFoods)
-    .where(eq(recipeIngredientFoods.ingredientAliasId, aliasId));
+/** These lines' foods in order, with how they go together; a line naming none is left out. */
+export async function readLineFoods(
+  tx: Db,
+  lineIds: readonly string[]
+): Promise<ChangedSpelling["lines"]> {
+  if (lineIds.length === 0) return [];
   const foods = await tx
     .select({
       lineId: recipeIngredientFoods.recipeIngredientId,
@@ -605,7 +620,7 @@ export async function readChangedSpelling(
       recipeIngredients,
       eq(recipeIngredients.id, recipeIngredientFoods.recipeIngredientId)
     )
-    .where(inArray(recipeIngredientFoods.recipeIngredientId, naming))
+    .where(inArray(recipeIngredientFoods.recipeIngredientId, [...lineIds]))
     .orderBy(asc(recipeIngredientFoods.recipeIngredientId), asc(recipeIngredientFoods.position));
   const lines = new Map<string, ChangedSpelling["lines"][number]>();
 
@@ -615,17 +630,50 @@ export async function readChangedSpelling(
     line.aliasIds.push(food.aliasId);
     lines.set(food.lineId, line);
   }
-  const pointing = async (table: typeof groceries | typeof recurringGroceries) =>
-    (await tx.select({ id: table.id }).from(table).where(eq(table.ingredientAliasId, aliasId))).map(
-      (one) => one.id
-    );
 
-  return {
-    ...none,
-    lines: [...lines.values()],
-    groceries: await pointing(groceries),
-    recurring: await pointing(recurringGroceries),
-  };
+  return [...lines.values()];
+}
+
+/** The spellings each of a removal's rows names now, by row id: what Undo may still point back. */
+async function namedNow(tx: Db, undo: ChangedSpelling): Promise<Map<string, string[]>> {
+  const pointing = (table: typeof groceries | typeof recurringGroceries, ids: string[]) =>
+    ids.length === 0
+      ? Promise.resolve([])
+      : tx
+          .select({ id: table.id, aliasId: table.ingredientAliasId })
+          .from(table)
+          .where(inArray(table.id, ids));
+  const rows = [
+    ...(await pointing(groceries, undo.groceries)),
+    ...(await pointing(recurringGroceries, undo.recurring)),
+  ];
+
+  return new Map([
+    ...(await readLineFoods(
+      tx,
+      undo.lines.map((line) => line.id)
+    )).map((line) => [line.id, line.aliasIds] as const),
+    ...rows.map((row) => [row.id, row.aliasId ? [row.aliasId] : []] as const),
+  ]);
+}
+
+/** Note on a spelling's removal what its rows name once read again, for its Undo. */
+export async function noteSpellingRemovalLeft(changeId: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [change] = await tx
+      .select({ undo: ingredientAIChanges.undo })
+      .from(ingredientAIChanges)
+      .where(eq(ingredientAIChanges.id, changeId))
+      .for("update");
+
+    if (change?.undo.kind !== "spelling") return;
+    const left = Object.fromEntries(await namedNow(tx, change.undo));
+
+    await tx
+      .update(ingredientAIChanges)
+      .set({ undo: { ...change.undo, left } })
+      .where(eq(ingredientAIChanges.id, changeId));
+  });
 }
 
 /** Whether a person undid AI removing or moving this spelling. */
@@ -646,14 +694,15 @@ export async function wasSpellingUndone(tx: Db, aliasId: string): Promise<boolea
 }
 
 /**
- * Put a removed spelling back on its food under its id, pointing back the lines whose foods all
- * still exist and the groceries still there; false where its text is taken meanwhile.
+ * Put a removed spelling back on its food under its id, pointing back the rows that name no food now
+ * or still what the removal left them; false where its text is taken meanwhile.
  */
 export async function restoreSpelling(
   tx: DbTransaction,
   ingredientId: string,
-  { spelling, lines, groceries: groceryIds, recurring }: ChangedSpelling
+  undo: ChangedSpelling
 ): Promise<boolean> {
+  const { spelling, lines, left = {} } = undo;
   const restored = await tx
     .insert(ingredientAliases)
     .values({ ...spelling, ingredientId, ownerId: stillThere(users, spelling.ownerId) })
@@ -687,21 +736,28 @@ export async function restoreSpelling(
             )
         ).map((row) => row.id)
   );
+  const now = await namedNow(tx, undo);
+  const unchanged = (id: string) => {
+    const named = now.get(id) ?? [];
+
+    return named.length === 0 || named.join() === (left[id] ?? []).join();
+  };
+  const pointers = (ids: string[]) =>
+    ids.map((id) => ({ id, aliasId: spelling.id, left: left[id]?.[0] }));
 
   await repointLines(
     tx,
-    lines.filter((line) => present.has(line.id) && line.aliasIds.every((id) => aliases.has(id)))
+    lines.filter(
+      (line) =>
+        present.has(line.id) &&
+        line.aliasIds.every((id) => aliases.has(id)) &&
+        unchanged(line.id)
+    )
   );
-  for (const [table, ids] of [
-    [groceries, groceryIds],
-    [recurringGroceries, recurring],
-  ] as const) {
-    if (ids.length === 0) continue;
-    await tx
-      .update(table)
-      .set({ ingredientAliasId: spelling.id, ingredientId, version: sql`${table.version} + 1` })
-      .where(inArray(table.id, ids));
-  }
+  await pointBack(tx, ingredientId, [
+    [groceries, pointers(undo.groceries)],
+    [recurringGroceries, pointers(undo.recurring)],
+  ]);
 
   return true;
 }

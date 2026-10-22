@@ -40,6 +40,8 @@ export interface ChangedSpelling {
   }>;
   groceries: string[];
   recurring: string[];
+  /** For a removal, the spellings each row named once read again, by row id; Undo skips a row changed since. */
+  left?: Record<string, string[]>;
 }
 
 /** What Undo needs per kind of AI Change. */
