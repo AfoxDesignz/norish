@@ -157,3 +157,134 @@
 - Ticket 12's cases: "zout en peper", "boter of olie" and "water of kokosmelk" are split; "deegroller" (a tool) and "melted" are deleted, now that their Keep distinct marks are cleared, and their lines keep their text with no food. The 26 more lines with no food are those 16 deleted junk and tool lines and 10 colon lines.
 
 **Results that look wrong, each a ticket:** 32 (AI's parent "jam" found yam by its Croatian spelling), 33 (a singular last word found meat's Turkish "et"), 34 (a colon line on a clean spelling keeps its food), 35 (AI drops 6 parents that are categories: spice, mixed spices, sauce, herb), 36 (3 readings timed out at the 10 s budget, 1 food left flagged, and the ledger misses them).
+
+## Rerun after tickets 32, 33 and 35 (2026-10-22)
+
+- **How:** HEAD 095149606, the same way: fresh clone `m31b_post_on` of `norish_prod_pristine` (129 Keep distinct marks cleared, clone only, left in place), booted once from a detached worktree with AI on (production config) and its own Redis, measured once the queues were idle a minute. The ticket 12 and ticket 31 columns re-read `m12_post_on` and `m31_post_on` (counts unchanged), their AI use and first start copied from their runs. Before is identical to ticket 31's.
+- **Load:** average 6.4 to 7.2 during the first start (another process kept the Docker VM busy); ready in 5.1 s, cleanup 2.6 s.
+- **Script:** the case texts and lookups moved to a private file outside the repo (`MEASURE_CASES`, default `~/Documents/norish-ticket-31/cases.json`); the script keeps the checks. Page: `~/Documents/norish-ticket-31/report-b.html` (before, ticket 12, ticket 31, now).
+- **Cases:** every case from 24 to 30 that held still holds. "chinese 5 spice" keeps spice; Cajun seasoning, harissa kruiden and bagel everything kruiden are under mixed spices, ranch seasoning keeps mixed condiments, adobo sauce keeps sauce (35). bone-in short ribs, nut butter and 3 more still lose their wrong parent; Klop-Fix keeps fish because its reading timed out (36). "Hero Bosvruchtenjam" is under jam (32). "Nora reserve eten" is hidden, with no parent and untouched (33). 1 colon line still names a food (34, open). "Denta tix" keeps tea, hidden, as before.
+- **Timeouts (36, open):** 2 readings ran over the 10 s budget, 0 foods left flagged; the log has 147 gpt-6-luna completions, the ledger 145.
+- **New:** 37 (a category found a placeholder own food: 1 food filed under it).
+
+**Ingredients**
+
+|               | before | ticket 31 |  now |
+| ------------- | -----: | --------: | ---: |
+| all           |   6426 |      6331 | 6324 |
+| own           |    707 |       601 |  594 |
+| seeded        |   5719 |      5730 | 5730 |
+| flagged       |      4 |         7 |    6 |
+| keptDistinct  |      0 |         0 |    0 |
+| withParent    |   6002 |      5945 | 5954 |
+| ownWithParent |    586 |       519 |  528 |
+
+**Flagged, by reason**
+
+|                | before | ticket 31 | now |
+| -------------- | -----: | --------: | --: |
+| ai-unsure      |      4 |         6 |   6 |
+| ai-unavailable |      – |         1 |   – |
+
+**Spellings**
+
+|     | before | ticket 31 |   now |
+| --- | -----: | --------: | ----: |
+| all |  71608 |     71409 | 71409 |
+| own |   1904 |      1353 |  1353 |
+
+**Joined names still a food of their own**
+
+|           | before | ticket 31 | now |
+| --------- | -----: | --------: | --: |
+| own foods |     92 |        26 |  24 |
+
+**Recipe lines**
+
+|                         | before | ticket 31 |  now |
+| ----------------------- | -----: | --------: | ---: |
+| colon line, with a food |     11 |         1 |    1 |
+| heading                 |    164 |       164 |  164 |
+| no food                 |     19 |        45 |   44 |
+| one food                |   6033 |      5805 | 5804 |
+| several, alternatives   |      – |        68 |   71 |
+| several, together       |      – |       144 |  143 |
+
+**Rows that point at no food**
+
+|                    | before | ticket 31 | now |
+| ------------------ | -----: | --------: | --: |
+| groceries          |      0 |         0 |   0 |
+| recurringGroceries |      0 |         0 |   0 |
+| pantryIngredients  |      0 |         0 |   0 |
+
+**Rows**
+
+|                    | before | ticket 31 |  now |
+| ------------------ | -----: | --------: | ---: |
+| lines              |   6227 |      6227 | 6227 |
+| groceries          |     71 |        72 |   72 |
+| recurringGroceries |      8 |        11 |   11 |
+| pantryIngredients  |      7 |         7 |    7 |
+
+**Hidden (ticket 25)**
+
+|                     | before | ticket 31 | now |
+| ------------------- | -----: | --------: | --: |
+| grocery foods       |      9 |         7 |   7 |
+| foods nothing names |     77 |        77 |  77 |
+
+**AI Changes**
+
+|                  | before | ticket 31 | now |
+| ---------------- | -----: | --------: | --: |
+| merge, sure      |      – |        25 |  29 |
+| merge, unsure    |      – |         2 |   3 |
+| not-a-food, sure |      – |        13 |  13 |
+| parent, sure     |      – |        35 |  33 |
+| parent, unsure   |      – |         1 |   2 |
+
+**The first start**
+
+|                                         | before | ticket 31 |  now |
+| --------------------------------------- | -----: | --------: | ---: |
+| ready, ms                               |      – |     26559 | 5076 |
+| Seed corrections made, ms               |      – |       302 |   50 |
+| Undecided mints looked at again, ms     |      – |        62 |   35 |
+| Catalogue cleaned up, ms                |      – |     14964 | 2627 |
+| Seed corrections made: moved            |      – |         5 |    6 |
+| Seed corrections made: refiled          |      – |         1 |    1 |
+| Undecided mints looked at again: merged |      – |         0 |    0 |
+| Undecided mints looked at again: filed  |      – |         1 |    0 |
+| Catalogue cleaned up: seeded            |      – |         3 |    3 |
+| Catalogue cleaned up: cleaned           |      – |        77 |   77 |
+| Catalogue cleaned up: removed           |      – |       430 |  430 |
+| Catalogue cleaned up: split             |      – |        59 |   59 |
+| Catalogue cleaned up: renamed           |      – |         5 |    5 |
+| Catalogue cleaned up: asked             |      – |       134 |  134 |
+
+**AI use, ingredient-review queue**
+
+|                                          | before |    ticket 31 |          now |
+| ---------------------------------------- | -----: | -----------: | -----------: |
+| jobs                                     |      – |            6 |            6 |
+| requests                                 |      – |          163 |          162 |
+| failed                                   |      – |            0 |            0 |
+| tokens                                   |      – |       231791 |       240453 |
+| job time, s                              |      – |          112 |           88 |
+| first start to last end, s               |      – |          112 |           88 |
+| openai · gpt-6-luna, requests / tokens   |      – | 148 / 224544 | 145 / 231928 |
+| typesafe · jev-1.13.0, requests / tokens |      – |    15 / 7247 |            – |
+| typesafe · jev-1.14.0, requests / tokens |      – |            – |    17 / 8525 |
+
+**AI use, ingredient-icons queue**
+
+|                                              | before | ticket 31 |   now |
+| -------------------------------------------- | -----: | --------: | ----: |
+| jobs                                         |      – |         3 |     2 |
+| requests                                     |      – |         9 |     4 |
+| failed                                       |      – |         0 |     0 |
+| tokens                                       |      – |         0 |     0 |
+| job time, s                                  |      – |        85 |    39 |
+| first start to last end, s                   |      – |        85 |    39 |
+| openai · gpt-image-1-mini, requests / tokens |      – |     9 / 0 | 4 / 0 |
