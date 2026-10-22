@@ -11,6 +11,7 @@ import { isAIEnabled } from "@norish/shared-server/config/server-config-loader";
 import { createLogger } from "@norish/shared-server/logger";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
+import type { ApplyOutcome } from "./ai-changes";
 import { findFoodNamed } from "../ai/resolution/ingredient-resolution";
 import { askWhatSpellingsName } from "../ai/resolution/spelling-check";
 import { moveSpellingByAI, removeSpellingByAI } from "./ai-changes";
@@ -26,10 +27,22 @@ interface Moved {
   to: string;
 }
 
+/** A spelling AI's answer would remove or move, left as it is: undone before, or gone meanwhile. */
+interface Unchanged {
+  spelling: string;
+  because: Exclude<ApplyOutcome, "applied">;
+}
+
 /** What checking a food's spellings came to, by spelling text. */
 export type SpellingCheckOutcome =
   | { outcome: "skipped"; reason: "not-found" | "none" | "ai-off" }
-  | { outcome: "checked"; kept: string[]; removed: string[]; moved: Moved[] };
+  | {
+      outcome: "checked";
+      kept: string[];
+      removed: string[];
+      moved: Moved[];
+      unchanged: Unchanged[];
+    };
 
 /**
  * Queue every seeded food holding a spelling the seed did not give it for the check, once per
@@ -74,7 +87,20 @@ export async function checkSpellingsOf(ingredientId: string): Promise<SpellingCh
     { name: food.name, parent: parent?.name ?? null },
     spellings.map((alias) => alias.text)
   );
-  const checked = { kept: [] as string[], removed: [] as string[], moved: [] as Moved[] };
+  const checked = {
+    kept: [] as string[],
+    removed: [] as string[],
+    moved: [] as Moved[],
+    unchanged: [] as Unchanged[],
+  };
+  // A change that did not apply is counted, not dropped.
+  const applied = (spelling: string, outcome: ApplyOutcome) => {
+    if (outcome === "applied") return true;
+    checked.unchanged.push({ spelling, because: outcome });
+    log.info({ food: food.name, spelling, because: outcome }, "A spelling AI questioned stays");
+
+    return false;
+  };
 
   for (const [index, alias] of spellings.entries()) {
     const verdict = verdicts[index]!;
@@ -95,17 +121,16 @@ export async function checkSpellingsOf(ingredientId: string): Promise<SpellingCh
     }
     if (named.food) {
       const to = await findCatalogueIngredient(named.food.ingredientId);
+      const moved = to ? await moveSpellingByAI(ingredientId, alias.id, to.id) : "gone";
 
-      if (to && (await moveSpellingByAI(ingredientId, alias.id, to.id)) === "applied") {
+      if (applied(alias.text, moved) && to)
         checked.moved.push({ spelling: alias.text, to: to.name });
-      }
       continue;
     }
     const notAFood = verdict.kind === "not-a-food";
+    const removed = await removeSpellingByAI(ingredientId, alias.id, { notAFood });
 
-    if ((await removeSpellingByAI(ingredientId, alias.id, { notAFood })) === "applied") {
-      checked.removed.push(alias.text);
-    }
+    if (applied(alias.text, removed)) checked.removed.push(alias.text);
   }
 
   return { outcome: "checked", ...checked };

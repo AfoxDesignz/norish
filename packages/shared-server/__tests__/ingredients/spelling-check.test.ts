@@ -245,9 +245,12 @@ describe("AI checks the spellings added to a seeded food", () => {
     expect(await listJunkFolds()).not.toContain("boneless");
     expect(await listJunkFolds()).toContain("lbs boneless");
 
-    // An undone removal is never made again.
+    // An undone removal is never made again, and the check says so.
     answers({ boneless: "not-a-food" });
-    await checkSpellingsOf(chicken);
+    await expect(checkSpellingsOf(chicken)).resolves.toMatchObject({
+      removed: [],
+      unchanged: [{ spelling: "boneless", because: "undone" }],
+    });
     expect(await spellingsOf(chicken)).toContain("boneless");
   });
 
