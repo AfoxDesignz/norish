@@ -21,8 +21,9 @@ import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import { distinctFoods } from "@norish/shared/lib/line-foods";
 
 import { findOtherFoodsNamed, isExact, refOf } from "../../ingredients/resolver";
-import { isCredentialRejection, isTimedOut } from "../runtime/errors";
+import { isCredentialRejection } from "../runtime/errors";
 import { decide, generateStructured } from "../runtime/runtime";
+import { onceMoreOnTimeout } from "../runtime/timeout-retry";
 
 /**
  * At or above: the Decision's pick is acted on — a food it names as a known
@@ -84,26 +85,6 @@ export async function askWhatFoodThisIs(text: string, options: AskOptions): Prom
   if (!(await isAIEnabled())) return flaggedNew("ai-off");
 
   return await readThenLookUp(text, options);
-}
-
-/**
- * Requests to AI that, between them, are asked once more after the first that outlasts
- * `REQUEST_BUDGET_MS`; any other failure, or a second timeout, is thrown.
- */
-export function onceMoreOnTimeout() {
-  let retried = false;
-
-  return async <T>(request: () => Promise<T>): Promise<T> => {
-    try {
-      return await request();
-    } catch (error) {
-      if (retried || !isTimedOut(error)) throw error;
-      retried = true;
-      aiLogger.warn({ feature: "ingredient-resolution" }, "A request timed out, asking once more");
-
-      return await request();
-    }
-  };
 }
 
 /**
@@ -365,7 +346,7 @@ function asReading(answer: z.infer<typeof readingSchema>): Reading | null {
 /** What the language model reads a name as, asked once more where the answer breaks its shape. */
 async function readName(text: string, filedUnder: string | null): Promise<Reading | null> {
   const sections = [`Name: ${text}`, ...(filedUnder ? [`Parent: ${filedUnder}`] : [])];
-  const ask = onceMoreOnTimeout();
+  const ask = onceMoreOnTimeout("ingredient-resolution");
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     const answer = await ask(() =>
@@ -544,7 +525,7 @@ async function askLanguageModel(
 
     return `${index + 1}. ${candidate.name}${about.length > 0 ? ` (${about.join("; ")})` : ""}`;
   };
-  const answer = await onceMoreOnTimeout()(() =>
+  const answer = await onceMoreOnTimeout("ingredient-resolution")(() =>
     generateStructured({
       prompt: "ingredient-resolution",
       schema: pickSchema,

@@ -7,7 +7,8 @@ import { z } from "zod";
 import { aiLogger } from "@norish/shared-server/logger";
 
 import { generateStructured } from "../runtime/runtime";
-import { onceMoreOnTimeout, REQUEST_BUDGET_MS } from "./ingredient-resolution";
+import { onceMoreOnTimeout } from "../runtime/timeout-retry";
+import { REQUEST_BUDGET_MS } from "./ingredient-resolution";
 
 /** What a spelling names: its food, no food, or another food (by AI's name, null where AI can't tell). */
 export type SpellingVerdict =
@@ -39,7 +40,7 @@ export async function askWhatSpellingsName(
   food: { name: string; parent: string | null },
   spellings: readonly string[]
 ): Promise<SpellingVerdict[]> {
-  const answer = await onceMoreOnTimeout()(() =>
+  const answer = await onceMoreOnTimeout("ingredient-spelling-check")(() =>
     generateStructured({
       prompt: "ingredient-spelling-check",
       schema: verdictsSchema,
