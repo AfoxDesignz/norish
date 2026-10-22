@@ -51,11 +51,10 @@ function describe(error: unknown): string {
 /** The question, asked of one food; an error is recorded on its step, and the pass goes on. */
 async function ask(
   job: Job<IngredientReviewJobData>,
+  question: (ingredientId: string) => Promise<ReviewOutcome | SpellingCheckOutcome>,
   ingredientId: string
 ): Promise<ReviewStepDetail> {
   try {
-    const question = job.data.check === "spellings" ? checkSpellingsOf : askAIAbout;
-
     return { ingredientId, ...(await question(ingredientId)) };
   } catch (error) {
     log.error({ err: error, jobId: job.id, ingredientId }, "Asking AI about a food failed");
@@ -96,6 +95,11 @@ export async function processIngredientReviewJob(
   signal?: AbortSignal
 ): Promise<void> {
   const { ingredients: foods } = job.data;
+  // A spelling check is about seeded foods, which have their icons.
+  const { question, drawsIcons } =
+    job.data.check === "spellings"
+      ? { question: checkSpellingsOf, drawsIcons: false }
+      : { question: askAIAbout, drawsIcons: true };
   const writeEvery = Math.max(1, Math.ceil(foods.length / PASS_WRITES));
   let next = 0;
   let settled = 0;
@@ -141,7 +145,7 @@ export async function processIngredientReviewJob(
       // The food's own requests, so the monitor says what each food took; the
       // attempt's ledger gets them too.
       const own = createModelUseLedger();
-      const detail = await runWithModelUseLedger(own, () => ask(job, food.id));
+      const detail = await runWithModelUseLedger(own, () => ask(job, question, food.id));
 
       for (const use of own.uses) recordModelUse(use);
       await record(food, startedAt, detail, own.uses);
@@ -156,10 +160,7 @@ export async function processIngredientReviewJob(
   );
   await recording;
   signal?.throwIfAborted();
-  // A spelling check is about seeded foods, which have their icons.
-  if (job.data.check !== "spellings") {
-    await queueIcons(foods.flatMap((food) => (done.has(food.id) ? [food.id] : [])));
-  }
+  if (drawsIcons) await queueIcons(foods.flatMap((food) => (done.has(food.id) ? [food.id] : [])));
 }
 
 export function startIngredientReviewWorker(): void {
