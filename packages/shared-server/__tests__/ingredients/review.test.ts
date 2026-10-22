@@ -120,7 +120,10 @@ function decides(pick: string, p: number, offered: string[] = []) {
  */
 const modelAnswers: Record<string, unknown[]> = {};
 
-function answers(prompt: "ingredient-resolution" | "ingredient-plain-name", answer: unknown) {
+function answers(
+  prompt: "ingredient-resolution" | "ingredient-match" | "ingredient-plain-name",
+  answer: unknown
+) {
   (modelAnswers[prompt] ??= []).push(answer);
 }
 
@@ -143,16 +146,18 @@ function readsNoFood(sure: boolean) {
   answers("ingredient-resolution", noFoodReading(sure));
 }
 
-/** The language model's pick among the foods a reading found: the `food`th, or none. */
-function picks(food: number | null, sure: boolean) {
-  answers("ingredient-resolution", { food, sure });
+/** The language model's pick among the foods a reading found: the one named `food`, or none. */
+function picks(food: string | null, sure: boolean) {
+  answers("ingredient-match", { food, sure });
 }
 
 /** How many questions went to AI about what a name is, the Decision's included. */
 function resolutionRequests() {
   const asked = vi
     .mocked(generateStructured)
-    .mock.calls.filter(([request]) => request.prompt === "ingredient-resolution");
+    .mock.calls.filter(([request]) =>
+      ["ingredient-resolution", "ingredient-match"].includes(request.prompt)
+    );
 
   return asked.length + vi.mocked(decide).mock.calls.length;
 }
@@ -646,7 +651,7 @@ describe("asking AI about an Ingredient", () => {
       const { tomato, plum, tomaat } = await twoFound();
 
       decides("Is tomato", RESOLUTION_THRESHOLD - 0.01);
-      picks(2, true);
+      picks("plum tomato", true);
       await askAIAbout(tomaat.ingredientId);
       await expect(ingredientFor(tomaat.aliasId)).resolves.toMatchObject({ id: plum.ingredientId });
 
@@ -655,7 +660,7 @@ describe("asking AI about an Ingredient", () => {
       vi.mocked(decide).mockClear();
       vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
       reads({ englishName: "tomato", parent: null, otherNames: ["plum tomato"], sure: true });
-      picks(1, false);
+      picks("tomato", false);
       await expect(askAIAbout(pomodoro.ingredientId)).resolves.toMatchObject({
         outcome: "merge",
         into: "tomato",
@@ -700,11 +705,11 @@ describe("asking AI about an Ingredient", () => {
   });
 
   describe("a reading only a slip of the fingers finds", () => {
-    /** The numbered foods the language model's second question listed. */
+    /** The foods the language model's second question listed. */
     function listed() {
-      const [, second] = vi
+      const [second] = vi
         .mocked(generateStructured)
-        .mock.calls.filter(([request]) => request.prompt === "ingredient-resolution");
+        .mock.calls.filter(([request]) => request.prompt === "ingredient-match");
 
       return second?.[0].sections?.find((section) => section.startsWith("Foods in the catalogue"));
     }
@@ -745,17 +750,23 @@ describe("asking AI about an Ingredient", () => {
       await expect(askAIAbout(pesto.ingredientId)).resolves.toMatchObject({
         outcome: "distinct",
       });
-      const [, second] = vi
+      const [second] = vi
         .mocked(generateStructured)
-        .mock.calls.filter(([request]) => request.prompt === "ingredient-resolution");
+        .mock.calls.filter(([request]) => request.prompt === "ingredient-match");
 
       expect(second?.[0].sections).toEqual([
         "Name: rode pesto",
         "English name: red pesto",
         "Parent: pesto",
         "Category: sauce",
-        "Foods in the catalogue it may be:\n1. red port (parent: port; matched: porto rosso; also: rode port)",
+        "Foods in the catalogue it may be:\n- red port (parent: port; matched: porto rosso; also: rode port)",
       ]);
+      // The answer is a listed food's name or none: anything else breaks the schema.
+      const schema = second?.[0].schema;
+
+      expect(schema?.safeParse({ food: "red port", sure: true }).success).toBe(true);
+      expect(schema?.safeParse({ food: null, sure: true }).success).toBe(true);
+      expect(schema?.safeParse({ food: "red pesto", sure: true }).success).toBe(false);
     });
 
     it("gives the Decision AI's reading and the spelling that found each food", async () => {
@@ -790,7 +801,7 @@ describe("asking AI about an Ingredient", () => {
         outcome: "distinct",
         considered: ["porto rosso"],
       });
-      expect(listed()).toBe("Foods in the catalogue it may be:\n1. porto rosso");
+      expect(listed()).toBe("Foods in the catalogue it may be:\n- porto rosso");
       await expect(ingredientFor(pesto.aliasId)).resolves.toMatchObject({
         id: pesto.ingredientId,
         flagged: false,
@@ -810,7 +821,7 @@ describe("asking AI about an Ingredient", () => {
       await expect(askAIAbout(sauce.ingredientId)).resolves.toMatchObject({
         outcome: "distinct",
       });
-      expect(listed()).toBe("Foods in the catalogue it may be:\n1. sambal oelek\n2. sambal olie");
+      expect(listed()).toBe("Foods in the catalogue it may be:\n- sambal oelek\n- sambal olie");
     });
 
     it("merges into a slip the Decision picks at 90% or more, sure", async () => {
@@ -855,7 +866,7 @@ describe("asking AI about an Ingredient", () => {
 
       vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
       reads({ englishName: "tortila", parent: null, sure: true });
-      picks(1, true);
+      picks("tortilla", true);
 
       await expect(askAIAbout(tortillas.ingredientId)).resolves.toMatchObject({
         outcome: "merge",
@@ -895,13 +906,13 @@ describe("asking AI about an Ingredient", () => {
       reads({ englishName: "corn wrap", parent: "tortila", sure: true });
       picks(null, true);
       await expect(askAIAbout(wrap.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
-      expect(listed()).toBe("Foods in the catalogue it may be:\n1. tortilla");
+      expect(listed()).toBe("Foods in the catalogue it may be:\n- tortilla");
       await expect(parentOf(wrap.ingredientId)).resolves.toBeNull();
 
       const flour = await flagged("bloemwrap");
 
       reads({ englishName: "flour wrap", parent: "tortila", sure: true });
-      picks(1, false);
+      picks("tortilla", false);
       await expect(askAIAbout(flour.ingredientId)).resolves.toMatchObject({
         outcome: "parent",
         of: "tortilla",
@@ -1381,8 +1392,8 @@ describe("asking AI about an Ingredient", () => {
 
       reads({ englishName: "tomato", parent: null, otherNames: ["plum tomato"], sure: true });
       vi.mocked(decide).mockRejectedValueOnce(timedOut());
-      answers("ingredient-resolution", timedOut());
-      picks(1, true);
+      answers("ingredient-match", timedOut());
+      picks("tomato", true);
 
       await expect(askAIAbout(tomaat.ingredientId)).resolves.toMatchObject({
         outcome: "merge",

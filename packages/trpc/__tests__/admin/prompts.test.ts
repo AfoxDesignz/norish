@@ -40,6 +40,7 @@ const DEFAULTS: PromptValues = {
   recipeProvenance: "Default recipe provenance prompt",
   ingredientLinking: "Default ingredient linking prompt",
   ingredientResolution: "Default ingredient resolution prompt",
+  ingredientMatch: "Default ingredient match prompt",
   imageGenerationBrief: "Default image generation brief prompt",
   imageGenerationStyle: "Default image generation style prompt",
   ingredientIconStyle: "Default ingredient icon style prompt",

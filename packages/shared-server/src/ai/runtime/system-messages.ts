@@ -27,6 +27,8 @@ export const SYSTEM_MESSAGES = {
     "You are a careful recipe reader who says which ingredient lines each step uses, and only what the text supports.",
   "ingredient-resolution":
     "You keep a catalogue of foods and say what food a name is, which foods it names, or that it is no food.",
+  "ingredient-match":
+    "You keep a catalogue of foods and say which listed food a name is, or that it is none of them.",
   "ingredient-plain-name":
     "You keep a catalogue of foods tidy, and give a name back with only the food left in it, in its own language.",
   "ingredient-spelling-check":

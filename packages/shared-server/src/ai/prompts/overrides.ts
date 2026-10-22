@@ -24,6 +24,7 @@ export const PROMPT_CONFIG_FIELDS = [
   "recipeProvenance",
   "ingredientLinking",
   "ingredientResolution",
+  "ingredientMatch",
   "imageGenerationBrief",
   "imageGenerationStyle",
   "ingredientIconStyle",

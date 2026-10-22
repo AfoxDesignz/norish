@@ -26,6 +26,7 @@ const DEFAULTS: PromptValues = {
   recipeProvenance: "Infer the provenance.",
   ingredientLinking: "Link the ingredients.",
   ingredientResolution: "Recognise the ingredient.",
+  ingredientMatch: "Match the ingredient.",
   imageGenerationBrief: "Write the visual brief.",
   imageGenerationStyle: "Draw the dish.",
   ingredientIconStyle: "Draw the food.",

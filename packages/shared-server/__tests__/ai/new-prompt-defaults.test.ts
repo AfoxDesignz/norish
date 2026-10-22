@@ -44,27 +44,33 @@ describe("the shipped allergy-detection prompt", () => {
 });
 
 describe("the shipped ingredient-resolution prompt", () => {
-  it("asks what a name is, which numbered food when several are found, and for doubt to be said", () => {
+  it("asks whether a name is one food, several or none, and for doubt to be said", () => {
     const prompt = shipped("ingredient-resolution");
-
-    for (const verdict of ["food", "several", "not-a-food"])
-      expect(prompt).toContain(`"${verdict}"`);
-    expect(prompt).toMatch(/numbered list/);
-    expect(prompt).toMatch(/sure/i);
-    // The lookup takes AI's names whole, so a narrower product keeps what makes it one.
     const oneLine = prompt.replace(/\s+/g, " ");
 
+    expect(oneLine).toContain("A name identifies several foods");
+    expect(oneLine).toContain("is not a food");
+    expect(oneLine).toMatch(/"sure" to false/);
     expect(oneLine).toContain("based on Open Food Facts' ingredient names");
-    expect(oneLine).toContain(
-      'but with what makes it another product ("pumpkin puree", "baby potatoes")'
-    );
-    // The name and the known foods are appended by the resolver.
+    // The name and the parent it is filed under are appended by the resolver.
+    expect(prompt).not.toMatch(/\{\{/);
+  });
+});
+
+describe("the shipped ingredient-match prompt", () => {
+  it("asks which listed food the name is exactly, and for none when in doubt", () => {
+    const prompt = shipped("ingredient-match");
+    const oneLine = prompt.replace(/\s+/g, " ");
+
+    expect(oneLine).toContain("exactly the item the name asks for");
+    expect(oneLine).toContain("When in doubt, match none");
+    // The name and the found foods are appended by the resolver.
     expect(prompt).not.toMatch(/\{\{/);
   });
 });
 
 describe("loadDefaultPrompts", () => {
-  it("ships a default for all fifteen administrator-editable prompts", () => {
+  it("ships a default for all sixteen administrator-editable prompts", () => {
     const defaults = loadDefaultPrompts();
 
     expect(Object.keys(defaults).sort()).toEqual(
@@ -79,6 +85,7 @@ describe("loadDefaultPrompts", () => {
         "ingredientPlainName",
         "ingredientSpellingCheck",
         "ingredientLinking",
+        "ingredientMatch",
         "ingredientResolution",
         "nutritionEstimation",
         "recipeExtraction",

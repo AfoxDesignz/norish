@@ -366,6 +366,7 @@ type Lane = "chat" | "image" | "decision" | "ingredients";
 /** The system messages the ingredient questions are sent with; a JSON-mode request appends to one. */
 const INGREDIENT_SYSTEM_MESSAGES = [
   SYSTEM_MESSAGES["ingredient-resolution"],
+  SYSTEM_MESSAGES["ingredient-match"],
   SYSTEM_MESSAGES["ingredient-plain-name"],
   SYSTEM_MESSAGES["ingredient-spelling-check"],
 ];

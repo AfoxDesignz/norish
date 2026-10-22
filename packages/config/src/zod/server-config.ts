@@ -141,6 +141,7 @@ export const PromptsConfigSchema = z.object({
   recipeProvenance: z.string().optional(),
   ingredientLinking: z.string().optional(),
   ingredientResolution: z.string().optional(),
+  ingredientMatch: z.string().optional(),
   imageExtraction: z.string().optional(),
   autoCategorization: z.string().optional(),
   allergyDetection: z.string().optional(),

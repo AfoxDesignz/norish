@@ -26,6 +26,7 @@ const PROMPT_FIELDS = [
   { key: "recipeProvenance", rows: 6 },
   { key: "ingredientLinking", rows: 6 },
   { key: "ingredientResolution", rows: 6 },
+  { key: "ingredientMatch", rows: 6 },
   { key: "imageGenerationBrief", rows: 6 },
   { key: "imageGenerationStyle", rows: 4 },
   { key: "ingredientIconStyle", rows: 4 },

@@ -283,46 +283,62 @@ type Reading =
 
 const readFoodSchema = z
   .object({
-    written: z.string().describe("The food as the name writes it, in the language written."),
+    written: z
+      .string()
+      .describe("This food's part of the name, as written and in the name's language."),
     englishName: z
       .string()
       .describe(
-        "Its English name without a preparation the cook does, but with what makes it another product."
+        'Its English name, without what the cook does to it ("tomatoes, chopped" is "tomato") but with what makes it another product ("pumpkin puree", "baby potatoes").'
       ),
     parent: z
       .string()
       .nullable()
       .describe(
-        "The plain food a shopper buys that it is made of or sold as; null when there is none."
+        'The plain food a shopper buys that this is made of or sold as ("chocolate whey" is "whey", "rode uien" is "onion"). Not a food that only shares a word: "onion powder" is not "onion", "salted butter" is not "salt", "coconut milk" is not "milk". Null when there is none, or when the name is that plain food itself.'
       ),
     category: z
       .string()
       .nullable()
-      .describe("The general group it belongs under, such as spice or sauce; null when none."),
+      .describe(
+        'The general group it belongs under ("spice", "sauce", "dog food"), used only when the catalogue has no food named its parent. Null when no group fits.'
+      ),
     otherNames: z
       .array(z.string())
       .nullable()
-      .describe("Two or three other names a shop might sell it under; null when none."),
+      .describe(
+        'Two or three other names shops sell exactly this product under ("hot dog sausage" and "wiener" for "frankfurter"). Null when there are none.'
+      ),
   })
   .strict();
 
 /** One flat object, since OpenAI's strict mode refuses a choice of schemas at the top. */
 const readingSchema = z
   .object({
-    sure: z.boolean(),
+    sure: z
+      .boolean()
+      .describe(
+        "True only when a cook would not hesitate. False when you hesitate between two answers, do not know the name, or guess at a translation."
+      ),
     action: z
       .object({
-        kind: z.enum(["food", "several", "not-a-food"]),
+        kind: z
+          .enum(["food", "several", "not-a-food"])
+          .describe(
+            "food: the name is one food. several: it names more than one. not-a-food: it names none."
+          ),
         joined: z
           .enum(["together", "alternatives"])
           .nullable()
           .describe(
-            "For several: together when all are needed, alternatives when any one will do."
+            "For several: together when the recipe needs all of them, alternatives when any one will do. Null otherwise."
           ),
         reason: z
           .enum(["equipment", "preparation", "note", "gibberish"])
           .nullable()
-          .describe("For not-a-food: what the name is instead."),
+          .describe(
+            "For not-a-food: equipment the cook already owns, a preparation or fragment on its own line, a note, or gibberish. Null otherwise."
+          ),
       })
       .strict(),
     foods: z
@@ -478,7 +494,7 @@ function foodChoice({ name, readAs }: Asked, candidates: readonly Candidate[]) {
       food: {
         type: "choice" as const,
         instructions:
-          "Which food in the catalogue is this name, if any? A food's matched is its spelling that the name came close to. A name that only shares a word with a food, or is only spelled like one, is a different food.",
+          "Which food in the catalogue is exactly the item this name asks for, if any? A food's matched is its spelling the name came close to. A similar spelling, a shared word, a related product or a substitute is a different food, but a brand's product is its plain food. When in doubt, none of these.",
         criteria,
       },
     },
@@ -514,16 +530,20 @@ async function decideFood(asked: Asked, candidates: readonly Candidate[]): Promi
   };
 }
 
-const pickSchema = z
-  .object({
-    food: z
-      .number()
-      .int()
-      .nullable()
-      .describe("The number of the listed food the name is; null when it is none of them."),
-    sure: z.boolean(),
-  })
-  .strict();
+/** The language model's answer over these candidates: one of their names exactly, or none. */
+function matchSchema(candidates: readonly Candidate[]) {
+  return z
+    .object({
+      food: z
+        .enum(candidates.map((candidate) => candidate.name))
+        .nullable()
+        .describe(
+          "The listed food's name, exactly as listed, when the name is that item. Null when it is none of them."
+        ),
+      sure: z.boolean().describe("True only when a cook would not hesitate over the match."),
+    })
+    .strict();
+}
 
 /** The language model's pick among the found foods, under the administrator's Prompt. */
 async function askLanguageModel(
@@ -535,7 +555,7 @@ async function askLanguageModel(
     readAs.parent ? `Parent: ${readAs.parent}` : null,
     readAs.category ? `Category: ${readAs.category}` : null,
   ].filter((line) => line !== null);
-  const foodLine = (candidate: Candidate, index: number) => {
+  const foodLine = (candidate: Candidate) => {
     const { matched, others } = spellingsOf(candidate);
     const about = [
       candidate.parent ? `parent: ${candidate.parent}` : null,
@@ -543,12 +563,12 @@ async function askLanguageModel(
       others.length > 0 ? `also: ${others.join(", ")}` : null,
     ].filter((part) => part !== null);
 
-    return `${index + 1}. ${candidate.name}${about.length > 0 ? ` (${about.join("; ")})` : ""}`;
+    return `- ${candidate.name}${about.length > 0 ? ` (${about.join("; ")})` : ""}`;
   };
-  const answer = await onceMoreOnTimeout("ingredient-resolution")(() =>
+  const answer = await onceMoreOnTimeout("ingredient-match")(() =>
     generateStructured({
-      prompt: "ingredient-resolution",
-      schema: pickSchema,
+      prompt: "ingredient-match",
+      schema: matchSchema(candidates),
       timeoutMs: REQUEST_BUDGET_MS,
       sections: [
         `Name: ${text}`,
@@ -557,12 +577,12 @@ async function askLanguageModel(
       ],
     })
   );
-  const food = answer.food === null ? undefined : candidates[answer.food - 1];
+  // Names are unique ignoring case (uqidx_ingredients_name_lower), so the name is the id.
+  const food = candidates.find((candidate) => candidate.name === answer.food);
 
   aiLogger.info({ text, ...answer }, "Language model picked which food a name is");
 
-  // A number off the list is no pick AI can be sure of.
   return food
     ? { ingredientId: food.id, sure: answer.sure, sureOfSlip: answer.sure }
-    : { ingredientId: null, sure: answer.sure && answer.food === null, sureOfSlip: false };
+    : { ingredientId: null, sure: answer.sure, sureOfSlip: false };
 }
