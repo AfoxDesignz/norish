@@ -1090,6 +1090,28 @@ describe("asking AI about an Ingredient", () => {
       await expect(landed(puree)).resolves.toEqual({ same: true, parent: pumpkin.ingredientId });
       expect(resolutionRequests()).toBe(1);
     });
+
+    it("merges kippendijen into chicken thigh, the parent AI gives being its English name", async () => {
+      await applyIngredientSeed([seedEntry("en:chicken-thigh", "chicken thigh")]);
+      const thigh = (await findIngredientFor("chicken thigh"))!;
+      const dijen = await flagged("kippendijen");
+
+      reads({
+        englishName: "Chicken thigh",
+        parent: "chicken thigh",
+        otherNames: ["chicken thighs"],
+        sure: true,
+      });
+
+      await expect(askAIAbout(dijen.ingredientId)).resolves.toMatchObject({
+        outcome: "merge",
+        into: "chicken thigh",
+        sure: true,
+      });
+      await expect(ingredientFor(dijen.aliasId)).resolves.toMatchObject({
+        id: thigh.ingredientId,
+      });
+    });
   });
 
   describe("a spelling in a language Norish does not read", () => {

@@ -19,6 +19,7 @@ import {
 import { aiLogger } from "@norish/shared-server/logger";
 import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import { distinctFoods } from "@norish/shared/lib/line-foods";
+import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import { findOtherFoodsNamed, isExact, refOf } from "../../ingredients/resolver";
 import { isCredentialRejection } from "../runtime/errors";
@@ -144,9 +145,12 @@ async function readThenLookUp(
 
   if ("kind" in found) return found;
 
-  // The parent AI gave is never the food itself: names that find it file the food under it.
+  // The parent AI gave is never the food itself, so names that find it file the food under it;
+  // unless the English name is that parent, the name then being that food.
   const ownParent =
-    found.food && food.parent ? await findByName(food.parent, excludeId, trace) : null;
+    found.food && food.parent && !namesTheSame(food.englishName, food.parent)
+      ? await findByName(food.parent, excludeId, trace)
+      : null;
 
   if (ownParent && "kind" in ownParent) return ownParent;
   if (found.food && ownParent?.food?.ingredientId !== found.food.ingredientId) {
@@ -202,6 +206,11 @@ function findByName(
   const readAs = { englishName: null, parent: null, category: null };
 
   return findNamed({ name, readAs }, excludeId, [name], trace, options);
+}
+
+/** Two of AI's names that fold alike, as names are compared. */
+function namesTheSame(one: string | null, other: string): boolean {
+  return one !== null && ingredientAliasFold(one) === ingredientAliasFold(other);
 }
 
 /** A read food's names to look up: its English name and the other names a shop sells it under. */
