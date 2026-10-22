@@ -90,12 +90,24 @@ async function announceIfApplied(
   return outcome;
 }
 
+/**
+ * Take the tree lock, then the foods' rows: "gone" where one of `ids` went, "decided" where a person
+ * decided about the first meanwhile, else null.
+ */
+async function lockForAI(tx: DbTransaction, ids: readonly string[]) {
+  await lockTree(tx);
+  if ((await lockIngredients(tx, ids)) < ids.length) return "gone";
+  if (!(await isAskableByAI(tx, ids[0]!))) return "decided";
+
+  return null;
+}
+
 /** Merge `sourceId` into `targetId`, keeping the target's own flag; an unsure merge flags it. */
 export async function mergeByAI(sourceId: string, targetId: string, sure: boolean) {
   const outcome = await withTransaction(async (tx): Promise<ApplyOutcome> => {
-    await lockTree(tx);
-    if ((await lockIngredients(tx, [sourceId, targetId])) < 2) return "gone";
-    if (!(await isAskableByAI(tx, sourceId))) return "decided";
+    const locked = await lockForAI(tx, [sourceId, targetId]);
+
+    if (locked) return locked;
     const undo = await readMergeUndo(tx, sourceId);
 
     if (!undo) return "gone";
@@ -118,9 +130,9 @@ export async function parentByAI(ingredientId: string, parentId: string | null, 
   let previous: string | null = null;
   const ids = parentId ? [ingredientId, parentId] : [ingredientId];
   const outcome = await withTransaction(async (tx): Promise<ApplyOutcome> => {
-    await lockTree(tx);
-    if ((await lockIngredients(tx, ids)) < ids.length) return "gone";
-    if (!(await isAskableByAI(tx, ingredientId))) return "decided";
+    const locked = await lockForAI(tx, ids);
+
+    if (locked) return locked;
     if (await wasParentUndone(tx, ingredientId, parentId)) return "undone";
 
     const ancestors = await findIngredientAncestors(ids, tx);
@@ -157,8 +169,7 @@ export async function renameByAI(ingredientId: string, formerName: string, name:
   const renamed = await withTransaction(async (tx) => {
     const plain = { text: name, fold: ingredientAliasFold(name) };
 
-    if ((await lockIngredients(tx, [ingredientId])) < 1) return false;
-    if (!(await isAskableByAI(tx, ingredientId))) return false;
+    if (await lockForAI(tx, [ingredientId])) return false;
     if (!(await settleIngredientName(ingredientId, plain, tx))) return false;
     await recordAIChange(tx, {
       ingredientId,
@@ -183,13 +194,13 @@ export async function splitByAI(
   parts: readonly [SplitPart, ...SplitPart[]],
   joined: LineJoin
 ) {
-  const ids = [ingredientId, ...parts.map((part) => part.ingredientId)];
+  const ids = [...new Set([ingredientId, ...parts.map((part) => part.ingredientId)])];
   const { outcome, movedTo } = await withTransaction(async (tx) => {
     const none = (outcome: ApplyOutcome | "refused") => ({ outcome, movedTo: null });
 
-    await lockTree(tx);
-    if ((await lockIngredients(tx, ids)) < new Set(ids).size) return none("gone");
-    if (!(await isAskableByAI(tx, ingredientId))) return none("decided");
+    const locked = await lockForAI(tx, ids);
+
+    if (locked) return none(locked);
     const spelledByFood = parts.find((part) => part.ingredientId === ingredientId);
     let movedTo: { id: string; minted: boolean } | null = null;
 
@@ -229,12 +240,12 @@ export async function splitByAI(
 export async function deleteByAI(ingredientId: string): Promise<ApplyOutcome | "kept"> {
   let piled = 0;
   const outcome = await withTransaction(async (tx): Promise<ApplyOutcome | "kept"> => {
-    await lockTree(tx);
-    if ((await lockIngredients(tx, [ingredientId])) < 1) return "gone";
+    const locked = await lockForAI(tx, [ingredientId]);
+
+    if (locked) return locked;
     const food = await readDeletedFood(tx, ingredientId);
 
     if (!food) return "gone";
-    if (!(await isAskableByAI(tx, ingredientId))) return "decided";
     if (await wasDeletionUndone(tx, ingredientId)) return "undone";
     if (await isInAnyPantry(tx, ingredientId)) {
       await refreshAIFlag(tx, ingredientId, { unsure: true, reason: "ai-junk" });
@@ -364,8 +375,7 @@ export async function flagByAnswer(
   reason: FlagReason = "ai-unsure"
 ): Promise<void> {
   const flagged = await withTransaction(async (tx) => {
-    if ((await lockIngredients(tx, [ingredientId])) < 1) return false;
-    if (!(await isAskableByAI(tx, ingredientId))) return false;
+    if (await lockForAI(tx, [ingredientId])) return false;
     await refreshAIFlag(tx, ingredientId, { unsure: !sure, reason });
 
     return true;
