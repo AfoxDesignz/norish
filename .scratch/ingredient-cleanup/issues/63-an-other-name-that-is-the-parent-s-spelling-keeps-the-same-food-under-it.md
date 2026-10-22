@@ -8,4 +8,15 @@ To decide: is an other name that is the parent's own spelling, with nothing in t
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** done
+
+## Decided (Mike, 2026-10-22)
+
+"build all 4". An other name that is the parent AI gives is AI saying the food is that food, so it merges, as the English name finding it does. The run's case bears it out: "guajillo peppers" read as englishName "guajillo pepper", parent "guajillo chili", otherNames ["guajillo chile", "guajillo chili"], sure.
+
+## Implemented (2026-10-22)
+
+- In `readThenLookUp` (`ai/resolution/ingredient-resolution.ts`) the merge before the parent lookup also fires when one of AI's other names folds (`foldName`) equal to the parent AI gave: then the name is the food the names found, and the parent is not looked up. No new query. An other name that only finds the parent by another of its spellings ("salsiccia" for sausage, "pureed pumpkin" for pumpkin) still files the name under it, so tickets 56/57 hold.
+- Compared as text, not by the lookup: an other name that is a plural of the parent ("guajillo chilies" for parent "guajillo chili") does not count.
+- Test: `review.test.ts` "merges guajillo peppers into guajillo chili, an other name AI gives being the parent it gives".
+- The release-notes line on ticket 56's rule and an ADR-0037 amendment say so.

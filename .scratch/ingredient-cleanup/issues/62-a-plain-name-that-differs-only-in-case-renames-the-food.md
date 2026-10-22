@@ -8,4 +8,15 @@ To decide: does a plain name equal to the name but for case settle the name (as 
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** done
+
+## Decided (Mike, 2026-10-22)
+
+"build all 4". A plain name equal to the name but for case settles the name as it is, compared with the fold spellings are compared with.
+
+## Implemented (2026-10-22)
+
+- `giveItsPlainName` (`ingredients/plain-names.ts`) compares `foldName(plain) === foldName(row.name)` (`@norish/shared/lib/fold-name`), so a plain name that differs only in case, accents or punctuation settles the name with its casing kept: no rename, no lookup. The plain-name request itself is still sent, since its answer is what is compared.
+- Test: `plain-names.test.ts` "settles a name the plain name differs from only in case, keeping its casing" (Tortilla Chips).
+- CONTEXT.md's Plain Name entry says so. No release-notes line: the rename was never in a release.
+- For Mike: a name in capitals only ("TONIJN UIT BLIK") now keeps its capitals, though CONTEXT.md says a food is lower case. Say if a name all in capitals should still be lowered.

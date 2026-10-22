@@ -12,4 +12,15 @@ The prompt text stays word for word (Mike, ticket 58), so the levers left are th
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** done
+
+## Decided (Mike, 2026-10-22)
+
+"build all 4". One line in the reading prompt, wording approved: "Give two or three other names a shop might sell the same food under; Norish finds the food by them." The rest of the prompt stays word for word.
+
+## Implemented (2026-10-22)
+
+- `ai/prompts/ingredient-resolution.txt`: the line is its own paragraph before the closing "Return the required JSON fields…" paragraph; nothing else changed.
+- `new-prompt-defaults.test.ts` checks the shipped prompt carries the line.
+- The 0.26 upgrade note on the Ingredient resolution prompt says the default now asks for those other names (an administrator who edited the prompt restores or compares it).
+- The next ticket 31 run shows whether other names come back above ticket 58's 46%.
