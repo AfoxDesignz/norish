@@ -7,6 +7,10 @@
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** wontfix
 
 - [ ] A food is not merged, sure, into a different product found only by one of AI's other names.
+
+## Closed (Mike, 2026-10-22)
+
+"I think the soy sauce case is not that bad and might be right actually." No code.
