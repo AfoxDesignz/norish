@@ -343,6 +343,14 @@ describe("the ingredient catalogue seed", () => {
       await expect(listAIChanges()).resolves.toEqual([]);
     });
 
+    it("gives jam to the food jam, though yam's Croatian spelling comes first in the file", async () => {
+      await applySeedFile(`${excerpt}\n\nen: yam\nhr: jam\n\nen: jam, confiture\n`);
+
+      await expect(resolve("jam")).resolves.toMatchObject({
+        ingredientId: (await ingredientNamed("jam"))!.id,
+      });
+    });
+
     it("moves seasoning off coating once on an instance seeded before, with the foods its words filed there", async () => {
       await applySeedFile(spices);
       const mixed = await resolve("mixed spices");

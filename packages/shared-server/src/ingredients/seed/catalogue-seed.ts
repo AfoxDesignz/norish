@@ -59,9 +59,11 @@ export const SPELLING_MOVES: ReadonlyArray<{ from: string; to: string; spellings
     to: "en:mixed-spices",
     spellings: ["seasoning", "sazonador", "fűszerezés", "ochucující", "シーズニング"],
   },
+  // Yam comes first in the file, so its Croatian "jam" took jam's own name (ingredient-cleanup 32).
+  { from: "en:yam", to: "en:jam", spellings: ["jam"] },
 ];
 
-export const SEED_CORRECTIONS_VERSION = 1;
+export const SEED_CORRECTIONS_VERSION = 2;
 
 /** The entries with each move made where the file has its food: no other entry keeps the spelling. */
 function corrected(entries: readonly SeedEntry[]): SeedEntry[] {
