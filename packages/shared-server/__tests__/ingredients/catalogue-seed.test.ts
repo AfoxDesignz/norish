@@ -103,7 +103,7 @@ describe("the ingredient catalogue seed", () => {
   });
 
   async function resolve(text: string) {
-    const [resolved] = await resolveIngredients([text], { userId: actor.userId }, { ai: false });
+    const [resolved] = await resolveIngredients([text], { userId: actor.userId }, "upgrade");
 
     return resolved!;
   }

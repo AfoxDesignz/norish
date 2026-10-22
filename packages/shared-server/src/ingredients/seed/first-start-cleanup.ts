@@ -150,7 +150,7 @@ async function cleanUpCatalogue(
     lineNamesNoFood({ text: line.name ?? "", amount: line.amount })
   );
 
-  await resolveAgain({ lines: cleared, groceries: [], recurring: [] }, { mint: false });
+  await resolveAgain({ lines: cleared, groceries: [], recurring: [] }, "repoint");
   outcome.cleared = cleared.length;
 
   // 5. An own food whose name is joined ("zout en peper") is split, even one kept distinct; a mix
@@ -212,7 +212,9 @@ async function removeVariants(variants: readonly Variant[]): Promise<number> {
 
       if (!beside) continue;
       if (beside.others === 0) {
-        const target = variant.clean.fold ? await findIngredientIdByFold(tx, variant.clean.fold) : null;
+        const target = variant.clean.fold
+          ? await findIngredientIdByFold(tx, variant.clean.fold)
+          : null;
 
         // A colon spelling's fold may be its clean one, so the food holding it is its own.
         if (!target || target === beside.ingredientId) {
@@ -229,7 +231,7 @@ async function removeVariants(variants: readonly Variant[]): Promise<number> {
     return rows;
   });
 
-  await resolveAgain(named, { mint: true });
+  await resolveAgain(named, "upgrade");
 
   return removed;
 }

@@ -327,7 +327,7 @@ export async function removeSpellingByAI(
 
   if (typeof done === "string") return done;
   if (done.piled > 0) forgetSpellingRules();
-  await resolveAgain(done.rows, { mint: true, ai: true });
+  await resolveAgain(done.rows, "person");
   await noteSpellingRemovalLeft(done.aiChangeId);
 
   return await announceIfApplied("applied", [ingredientId]);

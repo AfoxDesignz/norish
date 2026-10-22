@@ -91,7 +91,7 @@ describe("ingredient resolver", () => {
       expect(again!.ingredientId).toBe(first!.ingredientId);
 
       await resolveOne("paprikapoeder");
-      await resolveIngredients(["kerriepoeder"], { userId }, { ai: false });
+      await resolveIngredients(["kerriepoeder"], { userId }, "upgrade");
       expect(minted).toHaveLength(1);
     } finally {
       onIngredientsMinted(undefined);

@@ -80,6 +80,7 @@ import { lineFoodText, lineNamesNoFood } from "@norish/shared/lib/ingredient-tex
 import { cleanSpelling, ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import type { IngredientIcon } from "./icons";
+import type { ResolveMode } from "./resolver";
 import { ingredientChanges } from "./changes";
 import { ingredientIcons } from "./icons";
 import {
@@ -518,7 +519,7 @@ export async function deleteIngredient(
   });
 
   try {
-    await resolveAgain(naming, { mint: false });
+    await resolveAgain(naming, "repoint");
   } finally {
     // The delete went through either way.
     await ingredientChanges().changed([ingredientId]);
@@ -528,14 +529,14 @@ export async function deleteIngredient(
 }
 
 /**
- * Point each row at what its text resolves to, minting for its owner with `mint` (AI's pass
- * following only with `ai`); a Grocery naming several foods becomes one per food (`typedParts`).
+ * Point each row at what its text resolves to in `mode`, minting for its owner unless repointing;
+ * a Grocery naming several foods becomes one per food (`typedParts`).
  */
 export async function resolveAgain(
   rows: NamingRows,
-  { mint, ai = false }: { mint: boolean; ai?: boolean }
+  mode: Exclude<ResolveMode, "split">
 ): Promise<void> {
-  const options = { ai, mint };
+  const mint = mode !== "repoint";
 
   await writeResolved(
     async () => {
@@ -546,7 +547,7 @@ export async function resolveAgain(
             ? ""
             : lineFoodText({ text: name ?? "", amount, unit }, units)
         );
-        const foods = await resolveLineFoods(texts, { userId }, options);
+        const foods = await resolveLineFoods(texts, { userId }, mode);
 
         return owned.flatMap((line, index) => {
           const resolved = foods[index];
@@ -572,7 +573,7 @@ export async function resolveAgain(
           const foods = await resolveIngredients(
             split.flat().map((part) => part.name ?? ""),
             { userId },
-            options
+            mode
           );
           let partIndex = 0;
 

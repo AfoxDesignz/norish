@@ -97,14 +97,12 @@ export interface ResolveActor {
   locale?: string | null;
 }
 
-export interface ResolveOptions {
-  /** Whether AI's pass follows a mint; off, a mint is flagged as the upgrade's (the startup passes). */
-  ai?: boolean;
-  /** Off, a text names only what rungs 1 and 2 or its joining words find: no slip, no mint. */
-  mint?: boolean;
-  /** Off, a text rungs 1 and 2 miss is minted, never taken as a slip (a split part AI found nothing for). */
-  slips?: boolean;
-}
+/**
+ * Who resolves and why: "person", a write for someone (AI's pass follows a mint); "upgrade", a
+ * startup pass (a mint is flagged the upgrade's); "repoint", rows whose food went (rungs 1 and 2 or
+ * joining words only: no slip, no mint); "split", a part of AI's split it found nothing for (no slip).
+ */
+export type ResolveMode = "person" | "upgrade" | "repoint" | "split";
 
 /** One text as written, and the alias and Ingredient it resolved to. */
 export interface ResolvedIngredient extends IngredientRef {
@@ -276,9 +274,9 @@ function spellingNamesNoFood(spelling: Spelling): boolean {
 export async function resolveIngredients(
   texts: readonly string[],
   actor: ResolveActor,
-  options: ResolveOptions = {}
+  mode: ResolveMode = "person"
 ): Promise<Array<ResolvedIngredient | null>> {
-  const resolved = await resolveTexts(texts, actor, options, false);
+  const resolved = await resolveTexts(texts, actor, mode, false);
 
   return resolved.map((one) => (one?.foods[0] ? { text: one.text, ...one.foods[0] } : null));
 }
@@ -287,12 +285,12 @@ export async function resolveIngredients(
 export async function resolveParts(
   parts: ReadonlyArray<string | ResolvedIngredient>,
   actor: ResolveActor,
-  options: ResolveOptions = {}
+  mode: ResolveMode = "person"
 ): Promise<ResolvedIngredient[]> {
   const resolved = await resolveIngredients(
     parts.filter((part) => typeof part === "string"),
     actor,
-    options
+    mode
   );
 
   return parts
@@ -309,9 +307,9 @@ export interface ResolvedFoods extends LineResolution {
 export async function resolveLineFoods(
   texts: readonly string[],
   actor: ResolveActor,
-  options: ResolveOptions = {}
+  mode: ResolveMode = "person"
 ): Promise<Array<ResolvedFoods | null>> {
-  return await resolveTexts(texts, actor, options, true);
+  return await resolveTexts(texts, actor, mode, true);
 }
 
 /**
@@ -462,7 +460,7 @@ async function readByWords(
 async function resolveTexts(
   texts: readonly string[],
   actor: ResolveActor,
-  options: ResolveOptions,
+  mode: ResolveMode,
   splitJoined: boolean
 ): Promise<Array<ResolvedFoods | null>> {
   const rules = await currentRules();
@@ -471,7 +469,7 @@ async function resolveTexts(
   const unknown = spellings.filter(
     (spelling) => !matchKnown(spelling, known) && !byWords.has(spelling)
   );
-  const slips = await findSlips(options.mint === false || options.slips === false ? [] : unknown);
+  const slips = await findSlips(mode === "person" || mode === "upgrade" ? unknown : []);
   let flagReason: Promise<FlagReason> | undefined;
   const resolved = new Map<Spelling, ResolvedFoods>();
   const minted = new Set<string>();
@@ -490,7 +488,7 @@ async function resolveTexts(
 
     const match = matchKnown(spelling, known);
 
-    if (!match && options.mint === false) continue;
+    if (!match && mode === "repoint") continue;
     if (!match) {
       const slip = onlyNearest(slips.get(spelling.key) ?? []);
       // The food a slip names may have been merged away since it was found; the text is then minted.
@@ -505,7 +503,7 @@ async function resolveTexts(
       const rows =
         joined ??
         (await mint(spelling, actor, {
-          flagReason: slip ? "food-gone" : await (flagReason ??= mintFlag(options)),
+          flagReason: slip ? "food-gone" : await (flagReason ??= mintFlag(mode)),
           parent: await parentFromWords(spelling),
         }));
 
@@ -522,15 +520,15 @@ async function resolveTexts(
     });
   }
 
-  // AI's pass follows a mint for someone's action, never one made with AI off.
-  if (options.ai !== false) await announceMinted([...minted]);
+  // AI's pass follows a mint for someone's action, never a startup pass's.
+  if (mode !== "upgrade") await announceMinted([...minted]);
 
   return asWritten.map((spelling) => resolved.get(spelling) ?? null);
 }
 
 /** Why a mint is flagged: AI's pass is about to look at it, unless AI or the pass is off. */
-async function mintFlag(options: ResolveOptions): Promise<FlagReason> {
-  if (options.ai === false) return "upgrade";
+async function mintFlag(mode: ResolveMode): Promise<FlagReason> {
+  if (mode === "upgrade") return "upgrade";
 
   return (await isAIEnabled()) ? "ai-queued" : "ai-off";
 }
@@ -575,9 +573,9 @@ async function findSlips(
 export async function resolveIngredient(
   text: string,
   actor: ResolveActor,
-  options: ResolveOptions = {}
+  mode: ResolveMode = "person"
 ): Promise<ResolvedIngredient | null> {
-  const [resolved] = await resolveIngredients([text], actor, options);
+  const [resolved] = await resolveIngredients([text], actor, mode);
 
   return resolved ?? null;
 }

@@ -105,7 +105,7 @@ async function split(
   const read = await resolveParts(
     answer.parts.map((part) => (part.found ? { ...part.found, text: part.text } : part.text)),
     { userId: food.ownerId },
-    { slips: false }
+    "split"
   );
   const parts = distinctFoods(read);
   const [first, ...rest] = parts;

@@ -62,7 +62,7 @@ describe("a mint's parent from the words of its text", () => {
   });
 
   async function mintOne(text: string) {
-    const [resolved] = await resolveIngredients([text], { userId: actor.userId }, { ai: false });
+    const [resolved] = await resolveIngredients([text], { userId: actor.userId }, "upgrade");
     const page = await listIngredients(actor, { id: resolved!.ingredientId });
 
     return page.items[0]!;
@@ -94,7 +94,7 @@ describe("a mint's parent from the words of its text", () => {
   });
 
   it("files nothing where the text ends in no seeded spelling, or in one a person minted", async () => {
-    await resolveIngredients(["saffron"], { userId: actor.userId }, { ai: false });
+    await resolveIngredients(["saffron"], { userId: actor.userId }, "upgrade");
 
     expect(await mintOne("dragon fruit")).toMatchObject({ flagged: true, parent: null });
     expect(await mintOne("ground saffron")).toMatchObject({ flagged: true, parent: null });
