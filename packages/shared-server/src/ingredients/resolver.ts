@@ -645,54 +645,47 @@ async function parentFromWords(spelling: Spelling): Promise<string | null> {
   return null;
 }
 
-/** The parent a text would be filed under from its words, for the startup pass over old mints. */
-export async function parentFromWordsOf(text: string): Promise<string | null> {
-  return await parentFromWords(spellingOf(cleanIngredientText(text), await currentRules()));
+/** A name read again under today's rules, for the startup passes over what earlier versions left. */
+export interface NameRead {
+  /** The plain name it would be minted under today, where that differs from the name itself. */
+  plain: { text: string; fold: string } | null;
+  /** The clean spelling it reduces to, as a mint or a join adds it, read with junk kept. */
+  clean: { text: string; fold: string };
+  /** The parent its words would file it under. */
+  parent: () => Promise<string | null>;
+  /** Where joined ("zout en peper") and every part is a known food but `ownId`: those and the join. */
+  parts: (ownId: string) => Promise<{ parts: ResolvedIngredient[]; joined: LineJoin } | null>;
 }
 
-/**
- * The plain name a text would be minted under today, where it differs from
- * the text itself, for the startup pass over old mints: null where the text
- * is its own plain name already.
- */
-export async function plainNameOf(text: string): Promise<{ text: string; fold: string } | null> {
-  const spelling = spellingOf(cleanIngredientText(text), await currentRules());
+export async function readName(text: string): Promise<NameRead> {
+  const rules = await currentRules();
+  const cleaned = cleanIngredientText(text);
+  const spelling = spellingOf(cleaned, rules);
+  // The first-start cleanup reads without the junk pile: junk is left to AI's spelling check.
+  const junkKept = { ...rules, junk: new Set<string>() };
+  const withJunk = spellingOf(cleaned, junkKept);
 
-  return spelling.plainFold && spelling.plainFold !== spelling.fold
-    ? { text: spelling.plain, fold: spelling.plainFold }
-    : null;
-}
+  return {
+    plain:
+      spelling.plainFold && spelling.plainFold !== spelling.fold
+        ? { text: spelling.plain, fold: spelling.plainFold }
+        : null,
+    clean: cleanAlias(withJunk),
+    parent: () => parentFromWords(spelling),
+    parts: async (ownId) => {
+      const spelled = spelledParts(withJunk.clean, junkKept);
 
-/** The rules without the junk pile: the first-start cleanup leaves junk to AI's spelling check. */
-async function cleanupRules(): Promise<ResolverRules> {
-  return { ...(await currentRules()), junk: new Set() };
-}
+      if (!spelled) return null;
+      const known = new Map(
+        [...(await knownAliases(spelled.readings.flat()))].filter(
+          ([, row]) => row.ingredientId !== ownId
+        )
+      );
+      const named = foodsByWords(spelled, known);
 
-/** The clean spelling a text reduces to, as a mint or a join adds it, for the first-start cleanup. */
-export async function cleanSpellingOf(text: string): Promise<{ text: string; fold: string }> {
-  return cleanAlias(spellingOf(cleanIngredientText(text), await cleanupRules()));
-}
-
-/**
- * Where a food's name is joined ("zout en peper") and every part is another known food, those
- * foods and the join, for the first-start cleanup; else null.
- */
-export async function partsByWordsOf(
-  ingredientId: string,
-  name: string
-): Promise<{ parts: ResolvedIngredient[]; joined: LineJoin } | null> {
-  const rules = await cleanupRules();
-  const spelled = spelledParts(spellingOf(cleanIngredientText(name), rules).clean, rules);
-
-  if (!spelled) return null;
-  const known = new Map(
-    [...(await knownAliases(spelled.readings.flat()))].filter(
-      ([, row]) => row.ingredientId !== ingredientId
-    )
-  );
-  const named = foodsByWords(spelled, known);
-
-  return named?.joined ? { parts: named.foods, joined: named.joined } : null;
+      return named?.joined ? { parts: named.foods, joined: named.joined } : null;
+    },
+  };
 }
 
 /** The one alias a spelling gives its food: its plain name, else its words ("(salt)" is "salt"). */

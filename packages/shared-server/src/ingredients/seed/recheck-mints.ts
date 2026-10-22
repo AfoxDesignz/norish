@@ -10,7 +10,7 @@ import {
   listUndecidedMints,
 } from "@norish/db/repositories/ingredient-seed";
 
-import { findOtherFoodsSpelled, parentFromWordsOf, plainNameOf, RUNG_VERSION } from "../resolver";
+import { findOtherFoodsSpelled, readName, RUNG_VERSION } from "../resolver";
 import { oncePerVersion } from "./catalogue-seed";
 
 export interface RecheckOutcome {
@@ -40,13 +40,13 @@ export async function recheckUndecidedMints(): Promise<RecheckOutcome> {
     }
     if (targets.size > 1) continue;
 
-    const plain = await plainNameOf(mint.name);
+    const read = await readName(mint.name);
 
-    if (plain) await adoptPlainName(mint.id, plain);
+    if (read.plain) await adoptPlainName(mint.id, read.plain);
     // A parent AI gave or took is AI's to change.
     if (mint.answered || mint.parentId !== null) continue;
 
-    const parentId = await parentFromWordsOf(mint.name);
+    const parentId = await read.parent();
 
     if (parentId && (await fileUndecidedMint(mint.id, parentId))) outcome.filed += 1;
   }

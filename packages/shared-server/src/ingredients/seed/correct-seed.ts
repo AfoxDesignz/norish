@@ -10,7 +10,7 @@ import {
 } from "@norish/db/repositories/ingredient-seed";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
-import { parentFromWordsOf } from "../resolver";
+import { readName } from "../resolver";
 import {
   oncePerVersion,
   readIngredientSeedState,
@@ -52,7 +52,7 @@ async function correctSeed(from: number): Promise<CorrectionOutcome> {
     }
     for (const child of await listUnchosenOwnChildren(fromId)) {
       if (
-        (await parentFromWordsOf(child.name)) === toId &&
+        (await (await readName(child.name)).parent()) === toId &&
         (await refileOwnFood(child.id, fromId, toId))
       ) {
         outcome.refiled += 1;

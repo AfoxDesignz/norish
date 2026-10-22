@@ -34,7 +34,7 @@ import { ingredientAliasFold, withoutStrayMarks } from "@norish/shared/lib/spell
 
 import type { ResolvedIngredient } from "../resolver";
 import { resolveAgain } from "../catalogue";
-import { cleanSpellingOf, partsByWordsOf } from "../resolver";
+import { readName } from "../resolver";
 import { oncePerVersion } from "./catalogue-seed";
 
 /** Raised when a release needs the cleanup to run again. */
@@ -116,7 +116,7 @@ async function cleanUpCatalogue(
       continue;
     }
 
-    const clean = await cleanSpellingOf(spelling.text);
+    const { clean } = await readName(spelling.text);
 
     if (clean.text !== spelling.text || clean.fold !== spelling.fold) {
       variants.push({ ...spelling, clean });
@@ -156,13 +156,14 @@ async function cleanUpCatalogue(
   // 5. An own food whose name is joined ("zout en peper") is split, even one kept distinct; a mix
   // holding a joined spelling stays. Any other takes the clean name its name reduces to.
   for (const food of await listOwnFoods()) {
-    const split = await partsByWordsOf(food.id, food.name);
+    const read = await readName(food.name);
+    const split = await read.parts(food.id);
 
     if (split) {
       if (await splitFood(food.id, split.parts, split.joined)) outcome.split += 1;
       continue;
     }
-    const clean = await cleanSpellingOf(food.name);
+    const { clean } = read;
 
     if (clean.fold && clean.text !== food.name && (await renameFood(food.id, clean.text))) {
       outcome.renamed += 1;
