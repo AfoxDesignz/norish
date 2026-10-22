@@ -10,7 +10,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
 import { addIngredientAliases } from "@norish/db/repositories/ingredient-aliases";
-import { listJunkFolds } from "@norish/db/repositories/ingredient-junk-pile";
+import { withTransaction } from "@norish/db/drizzle";
+import { addToJunkPile, listJunkFolds } from "@norish/db/repositories/ingredient-junk-pile";
 import {
   applyIngredientSeed,
   listSeededIngredientIds,
@@ -29,6 +30,7 @@ import {
 } from "@norish/shared-server/config/server-config-loader";
 import { listAIChangesFor, undoAIChange } from "@norish/shared-server/ingredients/ai-changes";
 import { onIngredientsMinted } from "@norish/shared-server/ingredients/minted";
+import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 import { readIngredientSeedState } from "@norish/shared-server/ingredients/seed/catalogue-seed";
 import {
   checkSpellingsOf,
@@ -247,6 +249,24 @@ describe("AI checks the spellings added to a seeded food", () => {
     answers({ boneless: "not-a-food" });
     await checkSpellingsOf(chicken);
     expect(await spellingsOf(chicken)).toContain("boneless");
+  });
+
+  it("takes a fold the seed piled off the pile on Undo, so the next line finds the spelling", async () => {
+    const chicken = seeded.get("en:chicken-breast")!;
+    const spelled = await added("en:chicken-breast", "boneless");
+
+    await withTransaction((tx) => addToJunkPile(tx, ["boneless"], { reason: "seed" }));
+    answers({ boneless: "not-a-food" });
+    await checkSpellingsOf(chicken);
+    const [change] = await listAIChangesFor(actor);
+
+    await undoAIChange(actor, change!.id);
+
+    expect(await spellingsOf(chicken)).toContain("boneless");
+    expect(await listJunkFolds()).not.toContain("boneless");
+    const [found] = await resolveIngredients(["boneless"], { userId });
+
+    expect(found?.aliasId).toBe(spelled.get("boneless"));
   });
 
   it("moves a spelling AI says names another food there, with its rows", async () => {

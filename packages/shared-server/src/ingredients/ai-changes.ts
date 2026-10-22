@@ -41,7 +41,7 @@ import {
   settleIngredientName,
 } from "@norish/db/repositories/ingredient-catalogue";
 import { findRowsNamingSpellings } from "@norish/db/repositories/ingredient-cleanup";
-import { addToJunkPile, takeJunkOfAIChange } from "@norish/db/repositories/ingredient-junk-pile";
+import { addToJunkPile, takeOffJunkPile } from "@norish/db/repositories/ingredient-junk-pile";
 import {
   countAliasesOf,
   findIngredientAncestors,
@@ -487,13 +487,21 @@ export async function undoAIChange(
     const foodId = change.ingredient?.id;
     const changed = await reverseChange(tx, change);
 
-    await takeJunkOfAIChange(tx, changeId);
+    // An Undo says the text names a food, so it leaves the pile whoever put it there.
+    await takeOffJunkPile(tx, removedFolds(change));
     await settleAIChange(tx, changeId, "undone");
     // A sure change raised no flag, so undoing it lifts none.
     if (!change.sure && foodId) await clearAIFlagUnlessOpen(tx, foodId);
 
     return { changed: foodId ? [foodId, ...changed] : changed };
   }).finally(forgetSpellingRules);
+}
+
+/** The folds a change took out of the catalogue: a deleted food's spellings, or a removed one. */
+function removedFolds({ undo, target }: StoredAIChange): string[] {
+  if (undo.kind === "not-a-food") return undo.food.aliases.map((alias) => alias.fold);
+
+  return undo.kind === "spelling" && !target ? [undo.spelling.fold] : [];
 }
 
 /** Put back what one change took, through `tx`; returns the other foods it touched. */

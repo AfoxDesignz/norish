@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 
 import type { Db } from "@norish/db/drizzle";
 import { db } from "@norish/db/drizzle";
@@ -38,22 +38,12 @@ export async function addToJunkPile(
   return added.length;
 }
 
-/** Take folds off the pile, a person's spelling having said they name a food. How many went. */
+/** Take folds off the pile, a person having said they name a food (a spelling added, an Undo). */
 export async function takeOffJunkPile(tx: Db, folds: readonly string[]): Promise<number> {
   if (folds.length === 0) return 0;
   const taken = await tx
     .delete(ingredientJunkPile)
     .where(inArray(ingredientJunkPile.fold, [...folds]))
-    .returning({ id: ingredientJunkPile.id });
-
-  return taken.length;
-}
-
-/** Take off what one AI Change put on the pile, for its Undo. How many went. */
-export async function takeJunkOfAIChange(tx: Db, aiChangeId: string): Promise<number> {
-  const taken = await tx
-    .delete(ingredientJunkPile)
-    .where(eq(ingredientJunkPile.aiChangeId, aiChangeId))
     .returning({ id: ingredientJunkPile.id });
 
   return taken.length;
