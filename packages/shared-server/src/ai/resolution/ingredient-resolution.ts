@@ -91,7 +91,7 @@ export async function askWhatFoodThisIs(text: string, options: AskOptions): Prom
 
 /**
  * The reading, looked up: a food the names find is the one, several found are asked about; else
- * the parent AI named, else its category, found, is its parent. Flagged unless AI was sure; a slip's find only when AI was sure of it.
+ * the parent AI named, else its category, found, is its parent. Flagged unless AI was sure.
  */
 async function readThenLookUp(
   text: string,
@@ -142,41 +142,32 @@ async function readThenLookUp(
   const found = await findNamed({ name: text, readAs: food }, excludeId, namesOf(food), trace);
 
   if ("kind" in found) return found;
+  const same = (ingredientId: string): AIResolution => ({
+    kind: "same",
+    ingredientId,
+    sure: reading.sure && found.sure,
+  });
 
+  // The English name finding a food exactly says the name is that food, its parent or not.
+  if (found.food && food.englishName && found.byFirstName) return same(found.food.ingredientId);
+  const parent = food.parent ? await findByName(food.parent, excludeId, trace) : null;
+
+  if (parent && "kind" in parent) return parent;
   // A food only AI's other names (or a slip) find is never the parent AI gave: filed under it.
-  // The English name finding it exactly says the name is that food.
-  const ownParent =
-    found.food && food.parent && !(food.englishName && found.byFirstName)
-      ? await findByName(food.parent, excludeId, trace)
-      : null;
-
-  if (ownParent && "kind" in ownParent) return ownParent;
-  if (found.food && ownParent?.food?.ingredientId !== found.food.ingredientId) {
-    return {
-      kind: "same",
-      ingredientId: found.food.ingredientId,
-      sure: reading.sure && found.sure,
-    };
+  if (found.food && parent?.food?.ingredientId !== found.food.ingredientId) {
+    return same(found.food.ingredientId);
   }
 
-  let parent: { food: IngredientRef | null; sure: boolean } | null = null;
+  // The category only where the catalogue has no parent of that name.
+  const filed =
+    parent?.food || !food.category
+      ? parent
+      : await findByName(food.category, excludeId, trace, { seeded: true });
 
-  // The parent first, the category only where the catalogue has no parent of that name.
-  for (const [name, seeded] of [
-    [food.parent, false],
-    [food.category, true],
-  ] as const) {
-    if (!name) continue;
-    const named =
-      !seeded && ownParent ? ownParent : await findByName(name, excludeId, trace, { seeded });
+  if (filed && "kind" in filed) return filed;
+  const kindOf = filed?.food?.ingredientId ?? null;
 
-    if ("kind" in named) return named;
-    parent = named;
-    if (named.food) break;
-  }
-  const kindOf = parent?.food?.ingredientId ?? null;
-
-  return reading.sure && found.sure && (parent?.sure ?? true)
+  return reading.sure && found.sure && (filed?.sure ?? true)
     ? { kind: "new", kindOf, flagged: false, reason: null }
     : flaggedNew("ai-unsure", kindOf);
 }
