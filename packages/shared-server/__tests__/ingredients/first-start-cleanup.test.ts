@@ -41,6 +41,7 @@ import {
   getSpellingTexts,
   getTestDb,
   insertTestRecipeLine,
+  mintTestFood,
 } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 import { seedEntry } from "../helpers/seed-entries";
@@ -268,6 +269,25 @@ describe("the first-start cleanup", () => {
       expect(await lineSpellings(joinedLine.id)).toEqual([joinedText]);
     }
   );
+
+  it("splits a joined food keeping the word its parts share, and leaves one that reading misses", async () => {
+    for (const text of ["cherry", "grape", "cherry tomato", "grape tomatoes", "zonnebloem"]) {
+      await mintTestFood(text, { locale: "en" });
+    }
+    await mintTestFood("kokosolie", { locale: "nl" });
+    const tomatoes = await oldMint("cherry or grape tomatoes", ["cherry or grape tomatoes"]);
+    const oils = await oldMint("zonnebloem- of kokosolie", ["zonnebloem- of kokosolie"]);
+    const recipe = await createTestRecipe(userId);
+    const tomatoLine = await insertTestRecipeLine(
+      { recipeId: recipe.id, name: "cherry or grape tomatoes", order: "0" },
+      [tomatoes.aliasIds[0]!]
+    );
+
+    await expect(cleanUpCatalogueOnFirstStart(askAI)).resolves.toMatchObject({ split: 1 });
+    expect(await exists(tomatoes.ingredientId)).toBe(false);
+    expect(await lineSpellings(tomatoLine.id)).toEqual(["cherry tomato", "grape tomatoes"]);
+    expect(await exists(oils.ingredientId)).toBe(true);
+  });
 
   it("runs once: a second start does nothing", async () => {
     await oldMint("baking soda )", ["baking soda )"]);

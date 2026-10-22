@@ -282,15 +282,45 @@ export async function typedParts<T extends { id?: string | null; name: string | 
   });
 }
 
-/** A text split at its joining words (`joinedParts`), each part read as a spelling. */
+/** A text split at its joining words (`joinedParts`), each part's readings as spellings, in order. */
 interface SpelledParts extends JoinedParts {
-  spellings: Spelling[];
+  readings: Spelling[][];
 }
 
 function spelledParts(clean: string, rules: SpellingRules): SpelledParts | null {
   const found = joinedParts(clean, rules);
 
-  return found && { ...found, spellings: found.parts.map((part) => spellingOf(part, rules)) };
+  return (
+    found && {
+      ...found,
+      readings: sharedWordReadings(found.parts).map((texts) =>
+        texts.map((text) => spellingOf(text, rules))
+      ),
+    }
+  );
+}
+
+/**
+ * Each part's readings: a part shorter than the last (the first) first takes its extra last (first)
+ * words ("cherry or grape tomatoes": "cherry tomatoes"); a part ending in a hyphen only that way.
+ */
+function sharedWordReadings(parts: readonly string[]): string[][] {
+  const words = parts.map((part) => part.split(" "));
+
+  return words.map((own, index) => {
+    const last = index === words.length - 1;
+    const other = last ? words[0]! : words.at(-1)!;
+    const hyphen = !last && own.at(-1)!.endsWith("-");
+    const extra = Math.max(other.length - own.length, hyphen ? 1 : 0);
+    const asWritten = parts[index]!;
+
+    if (!extra) return [asWritten];
+    const borrowed = last
+      ? [...other.slice(0, extra), asWritten].join(" ")
+      : [hyphen ? asWritten.slice(0, -1) : asWritten, ...other.slice(-extra)].join(" ");
+
+    return hyphen ? [borrowed] : [borrowed, asWritten];
+  });
 }
 
 /**
@@ -301,9 +331,18 @@ function foodsByWords(
   parts: SpelledParts,
   known: ReadonlyMap<string, IngredientAliasRow>
 ): { foods: ResolvedIngredient[]; joined: LineJoin | null } | undefined {
-  const aliases = parts.spellings.map((part) => matchKnown(part, known));
+  const matched = parts.readings.map((readings) =>
+    readings
+      .flatMap((reading) => {
+        const alias = matchKnown(reading, known);
 
-  if (!aliases.every((alias) => alias !== undefined)) return undefined;
+        return alias ? [{ reading, alias }] : [];
+      })
+      .at(0)
+  );
+
+  if (!matched.every((match) => match !== undefined)) return undefined;
+  const aliases = matched.map((match) => match.alias);
 
   // A word that joins a measure somewhere ("of") splits no name whose every part is spelled there.
   const spelledIn = (languages: ReadonlySet<string>) => (alias: IngredientAliasRow) =>
@@ -315,7 +354,7 @@ function foodsByWords(
     aliases.map(({ aliasId, ingredientId }, index) => ({
       aliasId,
       ingredientId,
-      text: parts.parts[index]!,
+      text: matched[index]!.reading.text,
     }))
   );
 
@@ -341,7 +380,7 @@ async function readByWords(
   );
   const known = await knownAliases([
     ...spellings,
-    ...[...splits.values()].flatMap((found) => found.spellings),
+    ...[...splits.values()].flatMap((found) => found.readings.flat()),
   ]);
   const byWords = new Map(
     [...splits].flatMap(([spelling, found]) => {
@@ -584,7 +623,7 @@ export async function partsByWordsOf(
 
   if (!spelled) return null;
   const known = new Map(
-    [...(await knownAliases(spelled.spellings))].filter(
+    [...(await knownAliases(spelled.readings.flat()))].filter(
       ([, row]) => row.ingredientId !== ingredientId
     )
   );

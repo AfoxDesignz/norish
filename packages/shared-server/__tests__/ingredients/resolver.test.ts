@@ -799,6 +799,43 @@ describe("ingredient resolver", () => {
       ]);
     });
 
+    it("reads the shorter part with the words the parts share, where that reading is known", async () => {
+      for (const text of ["cherry", "grape", "chicken", "vegetable", "salt"]) {
+        await food(text, "en");
+      }
+      const sunflower = await food("zonnebloem", "nl");
+      const cherryTomato = await food("cherry tomato", "en");
+      const grapeTomato = await food("grape tomatoes", "en");
+      const chickenBroth = await food("chicken stock", "en");
+      const vegetableBroth = await food("vegetable stock", "en");
+      const breast = await food("chicken breast", "en");
+      const thigh = await food("chicken thigh", "en");
+      const pepper = await food("black pepper", "en");
+      const coconutOil = await food("kokosolie", "nl");
+      const redCabbage = await food("rode kool", "nl");
+      const whiteCabbage = await food("witte kool", "nl");
+
+      await food("rode", "nl");
+      const lines = await saved([
+        "cherry or grape tomatoes",
+        "chicken or vegetable stock",
+        "chicken breast or thigh",
+        "salt and black pepper",
+        "zonnebloem- of kokosolie",
+        "rode- en witte kool",
+      ]);
+
+      expect(lines).toMatchObject([
+        { foods: [{ ingredientId: cherryTomato }, { ingredientId: grapeTomato }] },
+        { foods: [{ ingredientId: chickenBroth }, { ingredientId: vegetableBroth }] },
+        { foods: [{ ingredientId: breast }, { ingredientId: thigh }] },
+        { foods: [{ name: "salt" }, { ingredientId: pepper }] },
+        { joined: null, foods: [{}] },
+        { foods: [{ ingredientId: redCabbage }, { ingredientId: whiteCabbage }] },
+      ]);
+      expect([sunflower, coconutOil]).not.toContain(lines[4]?.ingredientId);
+    });
+
     it("names one food where every part is a spelling of it", async () => {
       const [row] = await mintIngredientWithAliases({
         name: "spring onion",
