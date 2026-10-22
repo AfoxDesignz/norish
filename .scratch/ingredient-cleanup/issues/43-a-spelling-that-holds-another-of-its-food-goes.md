@@ -29,7 +29,15 @@ So `cleanSpellingOf` hands back the spelling unchanged, and it stays.
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** wontfix
 
 - [ ] After the first start, "garlic powder to taste for the coating" and "null zout" are no spellings, and their lines still name garlic powder and salt.
 - [ ] A food's name spelling and seeded spellings ("paprika (vrucht)") are kept.
+
+## Closed (2026-10-22, Mike: wontfix)
+
+These spellings are not wrong. "snuf komijn" on cumin and "fresh parsley" on parsley let the next identical line find its food at rung 1, with no AI and no word list.
+
+- The import's parser (`parseIngredientWithDefaults`, parse-ingredient) only takes a number and a known unit off, so running it again cleans about 2 of the 167.
+- Removing them makes duplicates later (AI off: each new line mints) or AI requests (AI on: the pass merges each back).
+- The spellings that are wrong are the ones that do not name their food at all, such as "boneless" and "lbs boneless" on chicken breast. Those go to ticket 46.
