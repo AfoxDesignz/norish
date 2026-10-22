@@ -19,7 +19,6 @@ import {
 import { aiLogger } from "@norish/shared-server/logger";
 import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import { distinctFoods } from "@norish/shared/lib/line-foods";
-import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import { findOtherFoodsNamed, isExact, refOf } from "../../ingredients/resolver";
 import { isCredentialRejection } from "../runtime/errors";
@@ -145,10 +144,10 @@ async function readThenLookUp(
 
   if ("kind" in found) return found;
 
-  // The parent AI gave is never the food itself, so names that find it file the food under it;
-  // unless the English name is that parent, the name then being that food.
+  // A food only AI's other names (or a slip) find is never the parent AI gave: filed under it.
+  // The English name finding it exactly says the name is that food.
   const ownParent =
-    found.food && food.parent && !namesTheSame(food.englishName, food.parent)
+    found.food && food.parent && !(food.englishName && found.byFirstName)
       ? await findByName(food.parent, excludeId, trace)
       : null;
 
@@ -208,11 +207,6 @@ function findByName(
   return findNamed({ name, readAs }, excludeId, [name], trace, options);
 }
 
-/** Two of AI's names that fold alike, as names are compared. */
-function namesTheSame(one: string | null, other: string): boolean {
-  return one !== null && ingredientAliasFold(one) === ingredientAliasFold(other);
-}
-
 /** A read food's names to look up: its English name and the other names a shop sells it under. */
 function namesOf(food: ReadFood): string[] {
   return [food.englishName, ...food.otherNames].filter((name) => name !== null);
@@ -222,6 +216,13 @@ function namesOf(food: ReadFood): string[] {
 interface Asked {
   name: string;
   readAs: { englishName: string | null; parent: string | null; category: string | null };
+}
+
+/** The food names found, and whether the first name found it by its own spelling. */
+interface Found {
+  food: IngredientRef | null;
+  sure: boolean;
+  byFirstName: boolean;
 }
 
 /** A found food as the second question shows it, with the spelling of it that matched. */
@@ -238,9 +239,10 @@ async function findNamed(
   names: readonly string[],
   trace: ReviewTrace,
   { seeded = false }: { seeded?: boolean } = {}
-): Promise<{ food: IngredientRef | null; sure: boolean } | AIResolution> {
+): Promise<Found | AIResolution> {
   // AI's names are its own words, so none is shortened to a general food's spelling.
-  const named = (await findOtherFoodsNamed(excludeId, names, { asWritten: true })).flat();
+  const byName = await findOtherFoodsNamed(excludeId, names, { asWritten: true });
+  const named = byName.flat();
   const ids = named.map((one) => one.ingredientId);
   // A hidden food is never AI's answer: no merge into it, no parent, no split part. A category is
   // a seeded food: an own one may be a placeholder ("toppings") whose lines leave the choice open.
@@ -272,6 +274,9 @@ async function findNamed(
   return {
     food: picked ? refOf(picked) : null,
     sure: pick.sure && (!picked || isExact(picked) || pick.sureOfSlip),
+    byFirstName: !!byName[0]?.some(
+      (one) => isExact(one) && one.ingredientId === picked?.ingredientId
+    ),
   };
 }
 

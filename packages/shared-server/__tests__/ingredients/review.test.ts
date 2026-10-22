@@ -1112,6 +1112,28 @@ describe("asking AI about an Ingredient", () => {
         id: thigh.ingredientId,
       });
     });
+
+    it("merges edamame bonen into edamame, its English name edamame beans being edamame's spelling", async () => {
+      await applyIngredientSeed([seedEntry("en:edamame", "edamame", "edamame beans")]);
+      const edamame = (await findIngredientFor("edamame"))!;
+      const bonen = await flagged("edamame bonen");
+
+      reads({
+        englishName: "edamame beans",
+        parent: "edamame",
+        otherNames: ["young soybeans"],
+        sure: true,
+      });
+
+      await expect(askAIAbout(bonen.ingredientId)).resolves.toMatchObject({
+        outcome: "merge",
+        into: "edamame",
+        sure: true,
+      });
+      await expect(ingredientFor(bonen.aliasId)).resolves.toMatchObject({
+        id: edamame.ingredientId,
+      });
+    });
   });
 
   describe("a spelling in a language Norish does not read", () => {
