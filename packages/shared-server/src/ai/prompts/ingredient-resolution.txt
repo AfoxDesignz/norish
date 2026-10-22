@@ -22,6 +22,9 @@ any other answer. Keep it as the parent if correct; otherwise give the correct
 parent or null. If there is no parent, give the category when appropriate, or
 null.
 
+Give two or three other names a shop might sell the same food under; Norish
+finds the food by them.
+
 Return the required JSON fields and follow the output schema exactly. Set "sure"
 to false whenever you are uncertain about the identity, translation,
 classification, parent or category.

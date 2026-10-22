@@ -50,6 +50,9 @@ describe("the shipped ingredient-resolution prompt", () => {
 
     expect(oneLine).toContain("A name identifies several foods");
     expect(oneLine).toContain("is not a food");
+    expect(oneLine).toContain(
+      "Give two or three other names a shop might sell the same food under; Norish finds the food by them."
+    );
     expect(oneLine).toMatch(/"sure" to false/);
     expect(oneLine).toContain("based on Open Food Facts' ingredient names");
     // The name and the parent it is filed under are appended by the resolver.
