@@ -358,10 +358,8 @@ export async function assertMayEditFood(
 }
 
 /**
- * Add a spelling to any Ingredient, a seeded one included: open to everyone,
- * so a household's own words are understood. It is stored clean, as a recipe text is read
- * (`cleanSpelling`), and taken off the junk pile. One another Ingredient holds is refused; one this
- * Ingredient holds is a no-op.
+ * Add a spelling to any Ingredient, seeded too, stored clean (`cleanSpelling`) and taken off the
+ * junk pile; one another Ingredient holds is refused, one this Ingredient holds is a no-op.
  */
 export async function addAlias(
   actor: CatalogueActor,
@@ -526,9 +524,8 @@ export async function deleteIngredient(
 }
 
 /**
- * Point each row at what its own text resolves to, minting for its owner unless `mint` is off, a
- * mint followed by AI's pass only with `ai`; a Grocery naming several foods becomes one per food
- * (`typedParts`).
+ * Point each row at what its text resolves to, minting for its owner with `mint` (AI's pass
+ * following only with `ai`); a Grocery naming several foods becomes one per food (`typedParts`).
  */
 export async function resolveAgain(
   rows: NamingRows,
@@ -797,11 +794,8 @@ export interface IngredientDraft {
 }
 
 /**
- * Save an Ingredient's draft as one edit: the rename, the parent, the
- * spellings removed (onto the junk pile where marked) and those added, and its
- * icon, each under its own rule, in one transaction. A refusal anywhere changes nothing. The icon follows
- * `edit` on the Ingredient, and must be a file an upload or a generation
- * stored; removing the food's own brings back what it showed before.
+ * Save a draft (name, parent, spellings removed, piled where marked, and added, a stored icon) as
+ * one edit in one transaction, each under its own rule; a refusal anywhere changes nothing.
  */
 export async function saveDraft(
   actor: CatalogueActor,

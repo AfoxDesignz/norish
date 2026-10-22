@@ -1,22 +1,21 @@
 // @vitest-environment node
 /**
- * AI checks the spellings a person, a merge or an import added to a seeded food (ticket 46),
- * against a real database: once, at the first start with AI on, a request per seeded food listing
- * only those spellings. The language model is mocked at `generateStructured`.
+ * AI checks the spellings added to seeded foods (ticket 46) against a real database, once, at the
+ * first start with AI on; the language model is mocked at `generateStructured`.
  */
 import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
-import { addIngredientAliases } from "@norish/db/repositories/ingredient-aliases";
-import { writeRecipeLineFoodsTx } from "@norish/db/repositories/ingredients";
 import { withTransaction } from "@norish/db/drizzle";
+import { addIngredientAliases } from "@norish/db/repositories/ingredient-aliases";
 import { addToJunkPile, listJunkFolds } from "@norish/db/repositories/ingredient-junk-pile";
 import {
   applyIngredientSeed,
   listSeededIngredientIds,
 } from "@norish/db/repositories/ingredient-seed";
+import { writeRecipeLineFoodsTx } from "@norish/db/repositories/ingredients";
 import {
   groceries,
   ingredientAliases,

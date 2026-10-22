@@ -369,9 +369,8 @@ function IngredientPanelContent({
   };
 
   /**
-   * One spelling the food goes by. One the viewer may edit is a button: the
-   * chip itself moves the spelling to another food, the cross asks whether it
-   * names no food (no other food can hold the text, folds being unique) and removes it.
+   * One spelling the food goes by; one the viewer may edit is a button moving it to another food,
+   * and its cross asks whether it names no food before removing it (folds are unique).
    */
   const spellingChip = (spelling: Spelling) => {
     const pendingRemoval = removed.has(spelling.id);

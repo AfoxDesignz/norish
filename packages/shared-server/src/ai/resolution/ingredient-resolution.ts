@@ -229,9 +229,8 @@ interface Asked {
 type Candidate = IngredientCandidate & { matched: string };
 
 /**
- * The listed food other than `excludeId` these names find (a seeded one where `seeded`): an exact
- * spelling wins, else several or slips alone are asked about, best first. Sure only where AI is and
- * the pick is no slip.
+ * The listed (`seeded`: seeded) food other than `excludeId` these names find: an exact spelling
+ * wins, else several or slips alone are asked about. Sure only where AI is and the pick is no slip.
  */
 async function findNamed(
   asked: Asked,

@@ -355,11 +355,8 @@ const drawIcons = authedProcedure
 const iconRound = authedProcedure.query(() => findRunningIconRound(getQueues().ingredientIcons));
 
 /**
- * Save an Ingredient's draft from its panel as one edit: a new name, a new
- * parent (null clears it), spellings removed (onto the junk pile where
- * marked) and added, and its icon (a stored file, or null to remove its
- * own), each under its own rule. A refusal anywhere changes nothing, and
- * says why.
+ * Save an Ingredient panel's draft as one edit (`saveDraft`); a refusal anywhere changes nothing,
+ * and says why.
  */
 const saveDraft = authedProcedure
   .input(

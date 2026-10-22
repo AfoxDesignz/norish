@@ -734,9 +734,8 @@ export function ingredientIsNamed(): SQL {
 }
 
 /**
- * Clear the mark on own Ingredients named again, delete those unnamed for 90 nights and no
- * one's parent, mark the rest, and unflag hidden ones; seeded ones (an `off_id`) are never touched.
- * The caller holds the tree lock.
+ * Clear the mark on own Ingredients named again, delete those unnamed 90 nights and no one's
+ * parent, mark the rest and unflag hidden ones; seeded ones never. The caller holds the tree lock.
  */
 export async function sweepUnusedCatalogueIngredients(tx: DbTransaction): Promise<string[]> {
   const own = isNull(ingredients.offId);

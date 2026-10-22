@@ -222,9 +222,8 @@ export async function splitByAI(
 }
 
 /**
- * Delete a food AI says is not a food; its rows keep their text and name no food, and its spellings
- * go on the junk pile. A Pantry Ingredient naming it keeps it, flagged, and a person's Undo of the
- * same deletion keeps it as is.
+ * Delete a food AI says is not a food, its rows keeping their text and its spellings piled; one a
+ * Pantry Ingredient names is kept flagged, and one whose deletion a person undid is kept.
  */
 export async function deleteByAI(ingredientId: string): Promise<ApplyOutcome | "kept"> {
   const outcome = await withTransaction(async (tx): Promise<ApplyOutcome | "kept"> => {
