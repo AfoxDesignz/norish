@@ -506,18 +506,18 @@ describe("asking AI about an Ingredient", () => {
     });
   });
 
+  /** A mint its words filed under the seeded `parent`. */
+  async function under(parent: string, text: string) {
+    await applyIngredientSeed([seedEntry(`en:${parent}`, parent)]);
+    const food = await flagged(text);
+    const filed = await parentOf(food.ingredientId);
+
+    expect(filed).not.toBeNull();
+
+    return { food, filed };
+  }
+
   describe("a food whose words filed it under a plain food it does share", () => {
-    /** A mint its words filed under the seeded `parent`. */
-    async function under(parent: string, text: string) {
-      await applyIngredientSeed([seedEntry(`en:${parent}`, parent)]);
-      const food = await flagged(text);
-      const filed = await parentOf(food.ingredientId);
-
-      expect(filed).not.toBeNull();
-
-      return { food, filed };
-    }
-
     it("shows AI the parent the food is filed under, and keeps it when AI names it", async () => {
       const { food, filed } = await under("whey", "chocolate whey");
 
@@ -545,6 +545,45 @@ describe("asking AI about an Ingredient", () => {
         of: "mixed spices",
       });
       await expect(parentOf(food.ingredientId)).resolves.toBe(mixed.ingredientId);
+    });
+  });
+
+  describe("a food whose parent is a category", () => {
+    it("keeps the category it is filed under when AI names it as the category", async () => {
+      const { food, filed } = await under("spice", "chinese 5 spice");
+
+      reads({ englishName: "five spice powder", parent: null, category: "spice", sure: true });
+
+      await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({ category: "spice" });
+      await expect(parentOf(food.ingredientId)).resolves.toBe(filed);
+      expect(await changes()).toEqual([]);
+    });
+
+    it("files it under the category when the catalogue lacks the parent AI names", async () => {
+      const food = await flagged("Cajun seasoning");
+      const mixed = await kept("mixed spices");
+
+      reads({
+        englishName: "Cajun seasoning",
+        parent: "Cajun spice",
+        category: "mixed spices",
+        sure: true,
+      });
+      await askAIAbout(food.ingredientId);
+
+      await expect(parentOf(food.ingredientId)).resolves.toBe(mixed.ingredientId);
+    });
+
+    it("drops the parent when the catalogue lacks the category too", async () => {
+      const { food } = await under("fish", "Klop-Fix fish");
+
+      reads({ englishName: "fish batter mix", parent: null, category: "baking mix", sure: true });
+
+      await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
+        outcome: "no-parent",
+        from: "fish",
+      });
+      await expect(parentOf(food.ingredientId)).resolves.toBeNull();
     });
   });
 

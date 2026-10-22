@@ -90,7 +90,7 @@ function inTime<T>(request: () => Promise<T>): Promise<T> {
 
 /**
  * The reading, looked up: a food the names find is the one, several found are asked about; else
- * the parent AI named, found, is its parent. Flagged unless AI was sure; a slip's find never is.
+ * the parent AI named, else its category, found, is its parent. Flagged unless AI was sure; a slip's find never is.
  */
 async function readThenLookUp(
   text: string,
@@ -129,6 +129,7 @@ async function readThenLookUp(
   Object.assign(trace, {
     englishName: food.englishName,
     parent: food.parent,
+    category: food.category,
     otherNames: food.otherNames,
   });
 
@@ -144,9 +145,17 @@ async function readThenLookUp(
     };
   }
 
-  const parent = food.parent ? await findNamed(food.parent, excludeId, [food.parent], trace) : null;
+  let parent: { food: IngredientRef | null; sure: boolean } | null = null;
 
-  if (parent && "kind" in parent) return parent;
+  // The parent first, the category only where the catalogue has no parent of that name.
+  for (const name of [food.parent, food.category]) {
+    if (!name) continue;
+    const named = await findNamed(name, excludeId, [name], trace);
+
+    if ("kind" in named) return named;
+    parent = named;
+    if (named.food) break;
+  }
   const kindOf = parent?.food?.ingredientId ?? null;
 
   return reading.sure && found.sure && (parent?.sure ?? true)
@@ -206,6 +215,7 @@ interface ReadFood {
   written: string;
   englishName: string | null;
   parent: string | null;
+  category: string | null;
   otherNames: string[];
 }
 
@@ -223,8 +233,12 @@ const readFoodSchema = z
       .string()
       .nullable()
       .describe(
-        "The plain food a shopper buys that it is made of or sold as, never a category; null when there is none."
+        "The plain food a shopper buys that it is made of or sold as; null when there is none."
       ),
+    category: z
+      .string()
+      .nullable()
+      .describe("The general group it belongs under, such as spice or sauce; null when none."),
     otherNames: z
       .array(z.string())
       .nullable()
@@ -267,6 +281,7 @@ function asReading(answer: z.infer<typeof readingSchema>): Reading | null {
     written: food.written.trim(),
     englishName: plain(food.englishName),
     parent: plain(food.parent),
+    category: plain(food.category),
     otherNames: (food.otherNames ?? []).map(plain).filter((name) => name !== null),
   }));
   const { kind, joined, reason } = answer.action;

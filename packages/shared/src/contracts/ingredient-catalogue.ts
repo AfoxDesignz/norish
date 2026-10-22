@@ -93,6 +93,8 @@ export interface ReviewTrace {
   englishName: string | null;
   /** The plain food AI said it is made of or sold as, its parent. */
   parent: string | null;
+  /** The general group AI said it belongs under, filed under where no parent is found. */
+  category: string | null;
   /** The other names AI said a shop sells it under. */
   otherNames: string[];
   /** The foods AI read the name as several of, when it did. */
@@ -103,7 +105,14 @@ export interface ReviewTrace {
 
 /** A trace before AI said anything. */
 export function noTrace(): ReviewTrace {
-  return { englishName: null, parent: null, otherNames: [], parts: null, considered: [] };
+  return {
+    englishName: null,
+    parent: null,
+    category: null,
+    otherNames: [],
+    parts: null,
+    considered: [],
+  };
 }
 
 /**

@@ -275,7 +275,13 @@ test("AI merges a food a recipe mints by itself, Changed by AI lists the merge, 
       sure: true,
       action: { kind: "food", joined: null, reason: null },
       foods: [
-        { written: "knoflookteentjes", englishName: "garlic", parent: null, otherNames: null },
+        {
+          written: "knoflookteentjes",
+          englishName: "garlic",
+          parent: null,
+          category: null,
+          otherNames: null,
+        },
       ],
     }),
   });
@@ -322,7 +328,15 @@ test("AI gives a food a recipe mints its plain name by itself, listed on Changed
       content: JSON.stringify({
         sure: true,
         action: { kind: "food", joined: null, reason: null },
-        foods: [{ written: "zalmmoot", englishName: "zalmmoot", parent: null, otherNames: null }],
+        foods: [
+          {
+            written: "zalmmoot",
+            englishName: "zalmmoot",
+            parent: null,
+            category: null,
+            otherNames: null,
+          },
+        ],
       }),
     },
     { kind: "success", content: JSON.stringify({ plainName: "zalmmoot" }) }

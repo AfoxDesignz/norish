@@ -44,7 +44,8 @@ recipe, grocery or pantry item adds it. It then does one of these:
 
 - merges it into the food it is ("uien" into "onion"). A food only spelled
   like it, a letter or two apart, is merged only when AI picks it
-- files it under a parent ("cherry tomatoes" under "tomato"), or takes away
+- files it under a parent ("cherry tomatoes" under "tomato"), a blend under
+  its group ("Cajun seasoning" under "mixed spices"), or takes away
   one its name gave it that it is no kind of ("peanut butter" under "butter")
 - gives it a clean name ("GR OF CANNED TUNA" becomes "Canned Tuna")
 - splits a name that is several foods ("Dijon or yellow mustard", or "salt

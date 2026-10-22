@@ -3,11 +3,18 @@ interface ReadFood {
   written?: string;
   englishName: string;
   parent?: string | null;
+  category?: string | null;
   otherNames?: string[];
 }
 
-function food({ written, englishName, parent = null, otherNames }: ReadFood) {
-  return { written: written ?? englishName, englishName, parent, otherNames: otherNames ?? null };
+function food({ written, englishName, parent = null, category = null, otherNames }: ReadFood) {
+  return {
+    written: written ?? englishName,
+    englishName,
+    parent,
+    category,
+    otherNames: otherNames ?? null,
+  };
 }
 
 /** A name read as one food. */
