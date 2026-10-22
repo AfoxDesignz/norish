@@ -366,17 +366,22 @@ export async function addAlias(
   ingredientId: string,
   text: string
 ): Promise<CatalogueEdit> {
-  return await inEdit((tx) => addAliasIn(tx, actor, ingredientId, text)).finally(
-    forgetSpellingRules
-  );
+  const { piled, ...edit } = await inEdit((tx) => addAliasIn(tx, actor, ingredientId, text));
+
+  if (piled > 0) forgetSpellingRules();
+
+  return edit;
 }
+
+/** A spelling edit, and how many folds it put on or took off the junk pile. */
+type PileEdit = CatalogueEdit & { piled: number };
 
 async function addAliasIn(
   tx: DbTransaction,
   actor: CatalogueActor,
   ingredientId: string,
   text: string
-): Promise<CatalogueEdit> {
+): Promise<PileEdit> {
   const cleaned = cleanSpelling(cleanIngredientText(text));
 
   if (!cleaned) throw new CatalogueEditError("empty");
@@ -395,9 +400,7 @@ async function addAliasIn(
   if (!alias && (await findIngredientIdByFold(tx, fold)) !== ingredientId) {
     throw new CatalogueEditError("spelling-taken");
   }
-  await takeOffJunkPile(tx, [fold]);
-
-  return { changed: [ingredientId] };
+  return { changed: [ingredientId], piled: await takeOffJunkPile(tx, [fold]) };
 }
 
 /**
@@ -748,7 +751,9 @@ export async function moveToFoodNamedFor(
  * of the food's spellings.
  */
 export async function removeAlias(actor: CatalogueActor, aliasId: string): Promise<CatalogueEdit> {
-  return await inEdit((tx) => removeAliasIn(tx, actor, aliasId));
+  const { piled: _piled, ...edit } = await inEdit((tx) => removeAliasIn(tx, actor, aliasId));
+
+  return edit;
 }
 
 async function removeAliasIn(
@@ -764,7 +769,7 @@ async function removeAliasIn(
     /** The person says the spelling names no food: its fold goes on the junk pile. */
     junk?: boolean;
   } = {}
-): Promise<CatalogueEdit> {
+): Promise<PileEdit> {
   const alias = await assertMayEdit(actor, await findCatalogueAliasOwner(tx, aliasId));
 
   if (of !== undefined && alias.ingredientId !== of) throw new CatalogueEditError("not-found");
@@ -779,9 +784,9 @@ async function removeAliasIn(
   }
   await deleteCatalogueAlias(tx, aliasId);
   // Folds are unique, so no other food still holds the text.
-  if (junk) await addToJunkPile(tx, [alias.fold], { reason: "person" });
+  const piled = junk ? await addToJunkPile(tx, [alias.fold], { reason: "person" }) : 0;
 
-  return { changed: [alias.ingredientId] };
+  return { changed: [alias.ingredientId], piled };
 }
 
 /** An Ingredient's draft as the panel holds it until Save: only what differs is sent. */
@@ -807,8 +812,9 @@ export async function saveDraft(
   ingredientId: string,
   draft: IngredientDraft
 ): Promise<CatalogueEdit> {
-  return await inEdit(async (tx) => {
+  const { piled, ...edit } = await inEdit(async (tx) => {
     const changed = new Set([ingredientId]);
+    let piled = 0;
 
     if (draft.name !== undefined) await renameIngredientIn(tx, actor, ingredientId, draft.name);
     if (draft.parentId !== undefined) {
@@ -817,16 +823,22 @@ export async function saveDraft(
       for (const id of parented.changed) changed.add(id);
     }
     for (const aliasId of draft.remove) {
-      await removeAliasIn(tx, actor, aliasId, {
-        of: ingredientId,
-        junk: draft.junk?.includes(aliasId),
-      });
+      piled += (
+        await removeAliasIn(tx, actor, aliasId, {
+          of: ingredientId,
+          junk: draft.junk?.includes(aliasId),
+        })
+      ).piled;
     }
-    for (const text of draft.add) await addAliasIn(tx, actor, ingredientId, text);
+    for (const text of draft.add) piled += (await addAliasIn(tx, actor, ingredientId, text)).piled;
     if (draft.icon !== undefined) await setIconIn(tx, actor, ingredientId, draft.icon);
 
-    return { changed: [...changed] };
-  }).finally(forgetSpellingRules);
+    return { changed: [...changed], piled };
+  });
+
+  if (piled > 0) forgetSpellingRules();
+
+  return edit;
 }
 
 async function setIconIn(

@@ -378,7 +378,7 @@ export async function seedJunkPileOnce(
     }
   );
 
-  if (outcome) forgetSpellingRules();
+  if (outcome?.added) forgetSpellingRules();
 
   return outcome;
 }

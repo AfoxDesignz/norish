@@ -226,6 +226,7 @@ export async function splitByAI(
  * Pantry Ingredient names is kept flagged, and one whose deletion a person undid is kept.
  */
 export async function deleteByAI(ingredientId: string): Promise<ApplyOutcome | "kept"> {
+  let piled = 0;
   const outcome = await withTransaction(async (tx): Promise<ApplyOutcome | "kept"> => {
     await lockTree(tx);
     if ((await lockIngredients(tx, [ingredientId])) < 1) return "gone";
@@ -245,7 +246,7 @@ export async function deleteByAI(ingredientId: string): Promise<ApplyOutcome | "
     });
 
     await deleteCatalogueIngredient(tx, ingredientId);
-    await addToJunkPile(
+    piled = await addToJunkPile(
       tx,
       food.aliases.map((alias) => alias.fold),
       { reason: "not-a-food", aiChangeId }
@@ -254,7 +255,7 @@ export async function deleteByAI(ingredientId: string): Promise<ApplyOutcome | "
     return "applied";
   });
 
-  if (outcome === "applied") forgetSpellingRules();
+  if (piled > 0) forgetSpellingRules();
   if (outcome === "applied" || outcome === "kept") {
     await ingredientChanges().changed([ingredientId]);
   }
@@ -316,15 +317,15 @@ export async function removeSpellingByAI(
     });
 
     await deleteCatalogueAlias(tx, aliasId);
-    if (notAFood) {
-      await addToJunkPile(tx, [spelling.fold], { reason: "not-a-food", aiChangeId });
-    }
+    const piled = notAFood
+      ? await addToJunkPile(tx, [spelling.fold], { reason: "not-a-food", aiChangeId })
+      : 0;
 
-    return { rows, aiChangeId };
+    return { rows, aiChangeId, piled };
   });
 
   if (typeof done === "string") return done;
-  if (notAFood) forgetSpellingRules();
+  if (done.piled > 0) forgetSpellingRules();
   await resolveAgain(done.rows, { mint: true, ai: true });
   await noteSpellingRemovalLeft(done.aiChangeId);
 
@@ -490,19 +491,23 @@ export async function undoAIChange(
   actor: CatalogueActor,
   changeId: string
 ): Promise<CatalogueEdit> {
-  return await inEdit(async (tx) => {
+  const { piled, ...edit } = await inEdit(async (tx) => {
     const change = await lockChangeFor(tx, actor, changeId);
     const foodId = change.ingredient?.id;
     const changed = await reverseChange(tx, change);
-
     // An Undo says the text names a food, so it leaves the pile whoever put it there.
-    await takeOffJunkPile(tx, removedFolds(change));
+    const piled = await takeOffJunkPile(tx, removedFolds(change));
+
     await settleAIChange(tx, changeId, "undone");
     // A sure change raised no flag, so undoing it lifts none.
     if (!change.sure && foodId) await clearAIFlagUnlessOpen(tx, foodId);
 
-    return { changed: foodId ? [foodId, ...changed] : changed };
-  }).finally(forgetSpellingRules);
+    return { changed: foodId ? [foodId, ...changed] : changed, piled };
+  });
+
+  if (piled > 0) forgetSpellingRules();
+
+  return edit;
 }
 
 /** The folds a change took out of the catalogue: a deleted food's spellings, or a removed one. */
