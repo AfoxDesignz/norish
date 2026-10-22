@@ -10,7 +10,10 @@ import type {
 } from "@norish/db/repositories/ingredient-aliases";
 import type { FlagReason, ReviewTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
-import { findIngredientCandidatesByIds } from "@norish/db/repositories/ingredient-aliases";
+import {
+  findIngredientCandidatesByIds,
+  findSeededIngredientIds,
+} from "@norish/db/repositories/ingredient-aliases";
 import { findListedIngredientIds } from "@norish/db/repositories/ingredient-catalogue";
 import {
   isAIEnabled,
@@ -148,9 +151,12 @@ async function readThenLookUp(
   let parent: { food: IngredientRef | null; sure: boolean } | null = null;
 
   // The parent first, the category only where the catalogue has no parent of that name.
-  for (const name of [food.parent, food.category]) {
+  for (const [name, seeded] of [
+    [food.parent, false],
+    [food.category, true],
+  ] as const) {
     if (!name) continue;
-    const named = await findNamed(name, excludeId, [name], trace);
+    const named = await findNamed(name, excludeId, [name], trace, { seeded });
 
     if ("kind" in named) return named;
     parent = named;
@@ -169,18 +175,22 @@ function namesOf(food: ReadFood): string[] {
 }
 
 /**
- * The listed food other than `excludeId` these names find: an exact spelling wins, else several or
- * slips alone are asked about, best first. Sure only where AI is and the pick is no slip.
+ * The listed food other than `excludeId` these names find (a seeded one where `seeded`): an exact
+ * spelling wins, else several or slips alone are asked about, best first. Sure only where AI is and
+ * the pick is no slip.
  */
 async function findNamed(
   text: string,
   excludeId: string,
   names: readonly string[],
-  trace: ReviewTrace
+  trace: ReviewTrace,
+  { seeded = false }: { seeded?: boolean } = {}
 ): Promise<{ food: IngredientRef | null; sure: boolean } | AIResolution> {
   const named = (await findOtherFoodsNamed(excludeId, names)).flat();
-  const listed = await findListedIngredientIds(named.map((one) => one.ingredientId));
-  // A hidden food is never AI's answer: no merge into it, no parent, no split part.
+  const ids = named.map((one) => one.ingredientId);
+  // A hidden food is never AI's answer: no merge into it, no parent, no split part. A category is
+  // a seeded food: an own one may be a placeholder ("toppings") whose lines leave the choice open.
+  const listed = await (seeded ? findSeededIngredientIds(ids) : findListedIngredientIds(ids));
   const found = named.filter((one) => listed.has(one.ingredientId));
   const exact = found.filter(isExact);
   const ranked = distinctFoods(

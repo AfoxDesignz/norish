@@ -561,7 +561,12 @@ describe("asking AI about an Ingredient", () => {
 
     it("files it under the category when the catalogue lacks the parent AI names", async () => {
       const food = await flagged("Cajun seasoning");
-      const mixed = await kept("mixed spices");
+
+      await applyIngredientSeed([seedEntry("en:mixed-spices", "mixed spices")]);
+      const [mixed] = await getTestDb()
+        .select({ id: ingredients.id })
+        .from(ingredients)
+        .where(eq(ingredients.name, "mixed spices"));
 
       reads({
         englishName: "Cajun seasoning",
@@ -571,7 +576,17 @@ describe("asking AI about an Ingredient", () => {
       });
       await askAIAbout(food.ingredientId);
 
-      await expect(parentOf(food.ingredientId)).resolves.toBe(mixed.ingredientId);
+      await expect(parentOf(food.ingredientId)).resolves.toBe(mixed!.id);
+    });
+
+    it("never files it under an own food the category names, a placeholder whose lines leave the choice to the cook", async () => {
+      await kept("toppings");
+      const food = await flagged("whipped topping");
+
+      reads({ englishName: "whipped topping", parent: null, category: "toppings", sure: true });
+      await askAIAbout(food.ingredientId);
+
+      await expect(parentOf(food.ingredientId)).resolves.toBeNull();
     });
 
     it("drops the parent when the catalogue lacks the category too", async () => {
