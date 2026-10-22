@@ -9,8 +9,10 @@ import {
   deleteCatalogueAlias,
   deleteCatalogueIngredient,
   listAskableIngredientIds,
+  unflagHiddenFoods,
 } from "@norish/db/repositories/ingredient-catalogue";
 import {
+  findLinesNamingAFood,
   findRowsNamingSpellings,
   foodSpelled,
   listOwnFoods,
@@ -34,7 +36,7 @@ import { cleanSpellingOf, partsByWordsOf } from "../resolver";
 import { oncePerVersion } from "./catalogue-seed";
 
 /** Raised when a release needs the cleanup to run again. */
-export const CLEANUP_VERSION = 2;
+export const CLEANUP_VERSION = 3;
 
 /** How many variants one round removes; each round commits, so a boot cut short resumes. */
 // ponytail: ~2 ms a variant, ~2.5 min for production's 71k; set-based if ticket 12 finds it slow.
@@ -47,11 +49,15 @@ export interface CleanupOutcome {
   cleaned: number;
   /** Own spellings removed, their rows resolved again (3, and 2's that name no food). */
   removed: number;
-  /** Joined foods split and removed (4). */
+  /** Lines naming no food by their own text that lost the food they named (4). */
+  cleared: number;
+  /** Joined foods split and removed (5). */
   split: number;
-  /** Own foods given the clean name their name reduces to (4). */
+  /** Own foods given the clean name their name reduces to (5). */
   renamed: number;
-  /** Foods the AI pass was asked about (5). */
+  /** Hidden foods whose flag went (6). */
+  unflagged: number;
+  /** Foods the AI pass was asked about (7). */
   asked: number;
 }
 
@@ -66,9 +72,8 @@ export async function cleanUpCatalogueOnFirstStart(
 ): Promise<CleanupOutcome | null> {
   return await oncePerVersion("cleanupVersion", CLEANUP_VERSION, {
     pass: () => cleanUpCatalogue(askAI),
-    // Removed spellings, splits and merges change which food rows mean.
-    changed: (outcome) =>
-      outcome.seeded + outcome.cleaned + outcome.removed + outcome.split + outcome.renamed > 0,
+    // Every step but the AI pass changes which food rows mean, or a food's flag.
+    changed: ({ asked: _asked, ...steps }) => Object.values(steps).some((n) => n > 0),
     done: "Catalogue cleaned up",
   });
 }
@@ -81,8 +86,10 @@ async function cleanUpCatalogue(
     seeded: 0,
     cleaned: 0,
     removed: 0,
+    cleared: 0,
     split: 0,
     renamed: 0,
+    unflagged: 0,
     asked: 0,
   };
   const spellings = await listSpellingsForCleanup();
@@ -128,7 +135,16 @@ async function cleanUpCatalogue(
     outcome.removed += await removeVariants(removing.slice(start, start + REMOVED_PER_ROUND));
   }
 
-  // 4. An own food whose name is joined ("zout en peper") is split, even one kept distinct; a mix
+  // 4. A line whose own text names no food loses the food it names, as a new import gives it none
+  // ("Peri peri kruiden:" on the clean "peri peri kruiden"); a food nothing names is the sweep's.
+  const cleared = (await findLinesNamingAFood()).filter((line) =>
+    lineNamesNoFood({ text: line.name ?? "", amount: line.amount })
+  );
+
+  await resolveAgain({ lines: cleared, groceries: [], recurring: [] }, { mint: false });
+  outcome.cleared = cleared.length;
+
+  // 5. An own food whose name is joined ("zout en peper") is split, even one kept distinct; a mix
   // holding a joined spelling stays. Any other takes the clean name its name reduces to.
   for (const food of await listOwnFoods()) {
     const split = await partsByWordsOf(food.id, food.name);
@@ -144,7 +160,10 @@ async function cleanUpCatalogue(
     }
   }
 
-  // 5. The AI pass, over every own food no person decided about.
+  // 6. A hidden food has no flag (`unflagHiddenFoods`).
+  outcome.unflagged = await unflagHiddenFoods();
+
+  // 7. The AI pass, over every own food no person decided about.
   const askable = await listAskableIngredientIds();
 
   await askAI(askable);

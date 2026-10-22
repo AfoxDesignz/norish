@@ -1,7 +1,7 @@
 import type { SQL } from "drizzle-orm";
 import { and, asc, count, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 
-import type { DbTransaction } from "@norish/db/drizzle";
+import type { Db, DbTransaction } from "@norish/db/drizzle";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
 import { db } from "@norish/db/drizzle";
 import {
@@ -141,7 +141,22 @@ async function findNamingRows(
     recurringGroceries: SQL | undefined;
   }
 ): Promise<NamingRows> {
-  const lines = await tx
+  const lines = await findLines(tx, where.lineFoods);
+  const named = await findGroceryRows(tx, {
+    groceries: where.groceries,
+    recurring: where.recurringGroceries,
+  });
+
+  return { lines, ...named };
+}
+
+/** Every recipe line naming a food, so the cleanup can read each line's own text again. */
+export async function findLinesNamingAFood(): Promise<NamingRows["lines"]> {
+  return await findLines(db, undefined);
+}
+
+async function findLines(tx: Db, lineFoods: SQL | undefined): Promise<NamingRows["lines"]> {
+  return await tx
     .selectDistinct({
       id: recipeIngredients.id,
       name: recipeIngredients.name,
@@ -155,13 +170,7 @@ async function findNamingRows(
       eq(recipeIngredients.id, recipeIngredientFoods.recipeIngredientId)
     )
     .innerJoin(recipes, eq(recipes.id, recipeIngredients.recipeId))
-    .where(where.lineFoods);
-  const named = await findGroceryRows(tx, {
-    groceries: where.groceries,
-    recurring: where.recurringGroceries,
-  });
-
-  return { lines, ...named };
+    .where(lineFoods);
 }
 
 /** Point recipe lines at the foods their text resolved to, over the ones they had. */

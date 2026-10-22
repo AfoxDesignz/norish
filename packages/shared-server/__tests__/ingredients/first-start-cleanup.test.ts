@@ -5,7 +5,7 @@
  * ((ontdooid))", "zout en peper" kept distinct, and an undecided own food for the AI pass. It runs
  * once.
  */
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, isNull } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
@@ -178,8 +178,11 @@ describe("the first-start cleanup", () => {
       seeded: 1,
       cleaned: 1,
       removed: 1,
+      cleared: 0,
       split: 1,
       renamed: 1,
+      // The grocery food's "upgrade" flag.
+      unflagged: 1,
       asked: 2,
     });
 
@@ -211,7 +214,7 @@ describe("the first-start cleanup", () => {
 
     expect(gyozaFoods).toHaveLength(1);
 
-    // 4. The joined food is split and removed, though a person kept it distinct.
+    // 5. The joined food is split and removed, though a person kept it distinct.
     expect(await exists(joined.ingredientId)).toBe(false);
     expect(await lineSpellings(joinedLine.id)).toEqual(["zout", "peper"]);
     await expect(
@@ -229,7 +232,7 @@ describe("the first-start cleanup", () => {
       { name: "zout", food: seeded.get("en:salt") },
     ]);
 
-    // 5. AI is asked only about the own foods a recipe names that no person decided about.
+    // 7. AI is asked only about the own foods a recipe names that no person decided about.
     expect(askAI).toHaveBeenCalledTimes(1);
     expect(askAI.mock.calls[0]![0].sort()).toEqual(
       [gyoza.ingredientId, undecided.ingredientId].sort()
@@ -325,6 +328,64 @@ describe("the first-start cleanup", () => {
     await expect(
       getTestDb().select({ name: groceries.name, food: groceries.ingredientId }).from(groceries)
     ).resolves.toEqual([{ name: ")", food: null }]);
+  });
+
+  it("takes the food from a line naming none, though it names a clean spelling; the line keeps its text", async () => {
+    const peri = await oldMint("peri peri kruiden", ["peri peri kruiden"]);
+    const recipe = await createTestRecipe(userId);
+    const heading = await insertTestRecipeLine(
+      { recipeId: recipe.id, name: "Peri peri kruiden:", order: "0" },
+      [peri.aliasIds[0]!]
+    );
+    const measured = await insertTestRecipeLine(
+      { recipeId: recipe.id, name: "peri peri kruiden", amount: "1", order: "1" },
+      [peri.aliasIds[0]!]
+    );
+
+    await expect(cleanUpCatalogueOnFirstStart(askAI)).resolves.toMatchObject({ cleared: 1 });
+    expect(await lineSpellings(heading.id)).toEqual([]);
+    expect(await lineSpellings(measured.id)).toEqual(["peri peri kruiden"]);
+    expect((await getRecipeIngredients(recipe.id)).map((line) => line.name).sort()).toEqual([
+      "Peri peri kruiden:",
+      "peri peri kruiden",
+    ]);
+  });
+
+  it("clears the flag of a hidden food, but keeps a listed food's and a pass still owed", async () => {
+    const reserve = await oldMint("Nora reserve eten", ["Nora reserve eten"]);
+    const queued = await oldMint("Nora brokken", ["Nora brokken"]);
+    const listed = await oldMint("kokosbloesemsuiker", ["kokosbloesemsuiker"]);
+    const recipe = await createTestRecipe(userId);
+
+    await insertTestRecipeLine({ recipeId: recipe.id, name: "kokosbloesemsuiker" }, [
+      listed.aliasIds[0]!,
+    ]);
+    for (const [food, flagReason] of [
+      [reserve, "ai-unsure"],
+      [queued, "ai-queued"],
+      [listed, "ai-unsure"],
+    ] as const) {
+      await getTestDb()
+        .update(ingredients)
+        .set({ flagReason })
+        .where(eq(ingredients.id, food.ingredientId));
+    }
+
+    await expect(cleanUpCatalogueOnFirstStart(askAI)).resolves.toMatchObject({ unflagged: 1 });
+    const flags = await getTestDb()
+      .select({
+        name: ingredients.name,
+        flagged: ingredients.flagged,
+        reason: ingredients.flagReason,
+      })
+      .from(ingredients)
+      .where(isNull(ingredients.offId));
+
+    expect(flags.sort((a, b) => a.name.localeCompare(b.name))).toEqual([
+      { name: "kokosbloesemsuiker", flagged: true, reason: "ai-unsure" },
+      { name: "Nora brokken", flagged: true, reason: "ai-queued" },
+      { name: "Nora reserve eten", flagged: false, reason: null },
+    ]);
   });
 
   it("removes a spelling ending in a colon, so its line names no food and keeps its text", async () => {

@@ -781,6 +781,33 @@ describe("the ingredient catalogue", () => {
       await expect(ingredientFor(food.aliasId)).resolves.not.toBeNull();
     });
 
+    it("clears the flag of a food its last recipe line no longer names", async () => {
+      const tin = await mint("bakvorm");
+      const recipe = await createTestRecipe(actor.userId);
+      const line = await insertTestRecipeLine({ recipeId: recipe.id, name: "bakvorm" }, [
+        tin.aliasId,
+      ]);
+      const flagOf = async () =>
+        (
+          await getTestDb()
+            .select({ flagged: ingredients.flagged, reason: ingredients.flagReason })
+            .from(ingredients)
+            .where(eq(ingredients.id, tin.ingredientId))
+        )[0];
+
+      await getTestDb()
+        .update(ingredients)
+        .set({ flagged: true, flagReason: "ai-unsure" })
+        .where(eq(ingredients.id, tin.ingredientId));
+      await sweepUnusedIngredients();
+      await expect(flagOf()).resolves.toEqual({ flagged: true, reason: "ai-unsure" });
+
+      await getTestDb().delete(recipeIngredients).where(eq(recipeIngredients.id, line.id));
+      await sweepUnusedIngredients();
+
+      await expect(flagOf()).resolves.toEqual({ flagged: false, reason: null });
+    });
+
     it("clears the mark once something names the food again", async () => {
       const salt = await mint("vaatwaszout");
 

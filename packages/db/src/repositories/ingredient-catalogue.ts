@@ -11,6 +11,7 @@ import {
   isNull,
   lte,
   ne,
+  notInArray,
   or,
   sql,
 } from "drizzle-orm";
@@ -357,6 +358,29 @@ export async function listAskableIngredientIds(): Promise<string[]> {
   return rows.map((row) => row.id);
 }
 
+/**
+ * Lift the flag of every hidden food: no one sees it there and AI never asks. A retried reason
+ * stays, so the nightly retry asks once a recipe line names the food. Answers how many.
+ */
+export async function unflagHiddenFoods(tx: Db = db): Promise<number> {
+  const unflagged = await tx
+    .update(ingredients)
+    .set({ flagged: false, flagReason: null, version: sql`${ingredients.version} + 1` })
+    .where(
+      and(
+        eq(ingredients.flagged, true),
+        or(
+          isNull(ingredients.flagReason),
+          notInArray(ingredients.flagReason, [...RETRIED_FLAG_REASONS])
+        ),
+        sql`not ${ingredientIsListed()}`
+      )
+    )
+    .returning({ id: ingredients.id });
+
+  return unflagged.length;
+}
+
 /** Say anew why a Flagged Ingredient is one: AI was asked again and is still not sure. */
 export async function setIngredientFlagReason(id: string, flagReason: string): Promise<void> {
   await db
@@ -680,7 +704,8 @@ export function ingredientIsNamed(): SQL {
 
 /**
  * Clear the mark on own Ingredients named again, delete those unnamed for 90 nights and no
- * one's parent, mark the rest; seeded ones (an `off_id`) are never touched. The caller holds the tree lock.
+ * one's parent, mark the rest, and unflag hidden ones; seeded ones (an `off_id`) are never touched.
+ * The caller holds the tree lock.
  */
 export async function sweepUnusedCatalogueIngredients(tx: DbTransaction): Promise<string[]> {
   const own = isNull(ingredients.offId);
@@ -709,6 +734,8 @@ export async function sweepUnusedCatalogueIngredients(tx: DbTransaction): Promis
     .update(ingredients)
     .set({ unusedSince: sql`now()` })
     .where(and(own, isNull(ingredients.unusedSince), sql`not ${ingredientIsNamed()}`));
+  // A food whose last recipe line went is hidden now.
+  await unflagHiddenFoods(tx);
 
   return deleted.map((row) => row.id);
 }
