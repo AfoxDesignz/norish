@@ -64,6 +64,14 @@ recipe, grocery or pantry item adds it. It then does one of these:
 AI leaves alone an ingredient you marked distinct, renamed or gave a parent,
 every ingredient from the catalogue source, and one no recipe uses, which it
 also never merges another into or files another under.
+
+Once, on the first start with AI set up, AI also checks the translations that
+people, imports and merges added to ingredients from the catalogue source. A
+translation that names no food, like "boneless" on chicken breast, is removed
+and goes on the list of texts that are not a food. One that names another food,
+like "kippendijen" on chicken breast, moves to that food. Recipe lines and
+groceries that used a removed translation are read again from their text. Each
+change is on Changed by AI with Undo.
 Ingredients AI could not reach are tried again every night.
 
 ### Changed by AI
