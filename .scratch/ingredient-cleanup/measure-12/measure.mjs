@@ -95,6 +95,7 @@ const KINDS = {
   parent: (want) => [`under ${want}`, (n, food) => lc(named(n, food)?.parent) === want],
   notParent: (want) => [`not under ${want}`, (n, food) => lc(named(n, food)?.parent) !== want],
   hasParent: () => ["keeps a parent", (n, food) => Boolean(named(n, food)?.parent)],
+  notFlagged: () => ["no food flagged", (n) => n.foods.every((f) => !f.flagged)],
   // Every line names a food matching each pattern / none named `want`.
   linesName: (wants) => [
     `every line names ${wants.join(" and ")}`,
