@@ -21,10 +21,9 @@ import {
 } from "@norish/shared-server/config/server-config-loader";
 import { aiLogger } from "@norish/shared-server/logger";
 import { distinctFoods } from "@norish/shared/lib/line-foods";
-import { withTimeout } from "@norish/shared/lib/with-timeout";
 
 import { findOtherFoodsNamed, isExact, refOf } from "../../ingredients/resolver";
-import { isCredentialRejection } from "../runtime/errors";
+import { isCredentialRejection, isTimedOut } from "../runtime/errors";
 import { decide, generateStructured } from "../runtime/runtime";
 
 /**
@@ -36,8 +35,11 @@ import { decide, generateStructured } from "../runtime/runtime";
  */
 export const RESOLUTION_THRESHOLD = 0.8;
 
-/** How long one request to AI may take: a pass makes one per question, a split's parts included. */
-export const REQUEST_BUDGET_MS = 10_000;
+/**
+ * How long one request to AI may take: a pass makes one per question, a split's parts included.
+ * A request past it is asked once more.
+ */
+export const REQUEST_BUDGET_MS = 30_000;
 
 /** How many of a candidate's other names one question shows. */
 const SHOWN_ALIASES = 5;
@@ -86,9 +88,24 @@ export async function askWhatFoodThisIs(text: string, options: AskOptions): Prom
   return await readThenLookUp(text, options);
 }
 
-/** One request to AI, given up on as failed past `REQUEST_BUDGET_MS`. */
-function inTime<T>(request: () => Promise<T>): Promise<T> {
-  return withTimeout(request, REQUEST_BUDGET_MS, "Ingredient resolution");
+/**
+ * Requests to AI that, between them, are asked once more after the first that outlasts
+ * `REQUEST_BUDGET_MS`; any other failure, or a second timeout, is thrown.
+ */
+function onceMoreOnTimeout() {
+  let retried = false;
+
+  return async <T>(request: () => Promise<T>): Promise<T> => {
+    try {
+      return await request();
+    } catch (error) {
+      if (retried || !isTimedOut(error)) throw error;
+      retried = true;
+      aiLogger.warn({ feature: "ingredient-resolution" }, "A request timed out, asking once more");
+
+      return await request();
+    }
+  };
 }
 
 /**
@@ -311,10 +328,16 @@ function asReading(answer: z.infer<typeof readingSchema>): Reading | null {
 /** What the language model reads a name as, asked once more where the answer breaks its shape. */
 async function readName(text: string, filedUnder: string | null): Promise<Reading | null> {
   const sections = [`Name: ${text}`, ...(filedUnder ? [`Filed under: ${filedUnder}`] : [])];
+  const ask = onceMoreOnTimeout();
 
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const answer = await inTime(() =>
-      generateStructured({ prompt: "ingredient-resolution", schema: readingSchema, sections })
+    const answer = await ask(() =>
+      generateStructured({
+        prompt: "ingredient-resolution",
+        schema: readingSchema,
+        sections,
+        timeoutMs: REQUEST_BUDGET_MS,
+      })
     );
     const reading = asReading(answer);
 
@@ -407,9 +430,13 @@ async function decideFood(
   candidates: readonly IngredientCandidate[]
 ): Promise<Pick | null> {
   const { state, questions, options } = foodChoice(text, candidates);
-  const { answers } = await inTime(() =>
-    decide({ feature: "ingredient-resolution", state, questions })
-  );
+  // No second Decision: one that times out falls back to the language model.
+  const { answers } = await decide({
+    feature: "ingredient-resolution",
+    state,
+    questions,
+    timeoutMs: REQUEST_BUDGET_MS,
+  });
   const { choice, probabilities } = answers.food;
   const probability = probabilities[choice] ?? 0;
 
@@ -439,10 +466,11 @@ async function askLanguageModel(
   text: string,
   candidates: readonly IngredientCandidate[]
 ): Promise<Pick> {
-  const answer = await inTime(() =>
+  const answer = await onceMoreOnTimeout()(() =>
     generateStructured({
       prompt: "ingredient-resolution",
       schema: pickSchema,
+      timeoutMs: REQUEST_BUDGET_MS,
       sections: [
         `Name: ${text}`,
         [

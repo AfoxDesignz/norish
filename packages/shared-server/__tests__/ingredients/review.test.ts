@@ -1060,43 +1060,83 @@ describe("asking AI about an Ingredient", () => {
     });
   });
 
-  it("flags a food as unanswered rather than wait past the budget on AI", async () => {
-    await kept("garlic");
-    const cloves = await flagged("garlic cloves");
+  describe("a request that runs out of time", () => {
+    /** What the runtime throws when a request outlasts its `timeoutMs`. */
+    const timedOut = () =>
+      new AIProviderError("The AI request timed out.", {
+        retryable: true,
+        cause: new DOMException("The operation timed out.", "TimeoutError"),
+      });
 
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    try {
-      answers("ingredient-resolution", new Promise(() => undefined));
-      const pending = askAIAbout(cloves.ingredientId);
+    it("gives each request its own budget, and asks a reading once more after it timed out", async () => {
+      const garlic = await kept("garlic");
+      const cloves = await flagged("garlic cloves");
 
-      await vi.waitFor(() => expect(vi.mocked(generateStructured)).toHaveBeenCalled());
-      await vi.advanceTimersByTimeAsync(REQUEST_BUDGET_MS);
-      await expect(pending).resolves.toMatchObject({ outcome: "unsure", reason: "ai-unavailable" });
-    } finally {
-      vi.useRealTimers();
-    }
-  });
+      answers("ingredient-resolution", timedOut());
+      reads({ englishName: "garlic", sure: true });
 
-  it("gives each request its own budget, so a Decision that never answers falls back to the language model", async () => {
-    const tomato = await kept("tomato");
+      await expect(askAIAbout(cloves.ingredientId)).resolves.toMatchObject({ outcome: "merge" });
+      expect(resolutionRequests()).toBe(2);
+      expect(vi.mocked(generateStructured)).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: "ingredient-resolution", timeoutMs: REQUEST_BUDGET_MS })
+      );
+      await expect(ingredientFor(cloves.aliasId)).resolves.toMatchObject({
+        id: garlic.ingredientId,
+      });
+    });
 
-    await kept("plum tomato");
-    const tomaat = await flagged("tomaat");
+    it("flags a food as unanswered when the reading times out twice", async () => {
+      await kept("garlic");
+      const cloves = await flagged("garlic cloves");
 
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    try {
+      answers("ingredient-resolution", timedOut());
+      answers("ingredient-resolution", timedOut());
+
+      await expect(askAIAbout(cloves.ingredientId)).resolves.toMatchObject({
+        outcome: "unsure",
+        reason: "ai-unavailable",
+      });
+      expect(resolutionRequests()).toBe(2);
+    });
+
+    it("asks once more for a timeout and once more for a broken shape, never more", async () => {
+      await kept("onion");
+      const uien = await flagged("uien");
+
+      answers("ingredient-resolution", timedOut());
+      answers("ingredient-resolution", severalReading(["onion"], "together", true));
+      answers("ingredient-resolution", timedOut());
+
+      await expect(askAIAbout(uien.ingredientId)).resolves.toMatchObject({
+        outcome: "unsure",
+        reason: "ai-unavailable",
+      });
+      expect(resolutionRequests()).toBe(3);
+    });
+
+    it("falls back to the language model when the Decision times out, which is asked once more too", async () => {
+      const tomato = await kept("tomato");
+
+      await kept("plum tomato");
+      const tomaat = await flagged("tomaat");
+
       reads({ englishName: "tomato", parent: null, otherNames: ["plum tomato"], sure: true });
-      vi.mocked(decide).mockReturnValueOnce(new Promise(() => undefined));
+      vi.mocked(decide).mockRejectedValueOnce(timedOut());
+      answers("ingredient-resolution", timedOut());
       picks(1, true);
-      const pending = askAIAbout(tomaat.ingredientId);
 
-      await vi.waitFor(() => expect(vi.mocked(decide)).toHaveBeenCalled());
-      await vi.advanceTimersByTimeAsync(REQUEST_BUDGET_MS);
-      await expect(pending).resolves.toMatchObject({ outcome: "merge", into: "tomato" });
-    } finally {
-      vi.useRealTimers();
-    }
-    await expect(ingredientFor(tomaat.aliasId)).resolves.toMatchObject({ id: tomato.ingredientId });
+      await expect(askAIAbout(tomaat.ingredientId)).resolves.toMatchObject({
+        outcome: "merge",
+        into: "tomato",
+      });
+      expect(vi.mocked(decide)).toHaveBeenCalledWith(
+        expect.objectContaining({ timeoutMs: REQUEST_BUDGET_MS })
+      );
+      expect(resolutionRequests()).toBe(4);
+      await expect(ingredientFor(tomaat.aliasId)).resolves.toMatchObject({
+        id: tomato.ingredientId,
+      });
+    });
   });
 
   describe("several foods, and not a food", () => {
