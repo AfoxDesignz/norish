@@ -528,7 +528,7 @@ describe("asking AI about an Ingredient", () => {
       });
       expect(vi.mocked(generateStructured).mock.calls[0]![0].sections).toEqual([
         "Name: chocolate whey",
-        "Filed under: whey",
+        "Parent: whey",
       ]);
       await expect(parentOf(food.ingredientId)).resolves.toBe(filed);
       await expect(ingredientFor(food.aliasId)).resolves.toMatchObject({ flagged: false });

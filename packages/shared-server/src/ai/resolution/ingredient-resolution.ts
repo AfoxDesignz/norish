@@ -327,7 +327,7 @@ function asReading(answer: z.infer<typeof readingSchema>): Reading | null {
 
 /** What the language model reads a name as, asked once more where the answer breaks its shape. */
 async function readName(text: string, filedUnder: string | null): Promise<Reading | null> {
-  const sections = [`Name: ${text}`, ...(filedUnder ? [`Filed under: ${filedUnder}`] : [])];
+  const sections = [`Name: ${text}`, ...(filedUnder ? [`Parent: ${filedUnder}`] : [])];
   const ask = onceMoreOnTimeout();
 
   for (let attempt = 1; attempt <= 2; attempt++) {

@@ -1,7 +1,7 @@
 You keep one catalogue of foods for a household's recipes, groceries and pantry.
 You are given one name from a recipe, a grocery list or a pantry, and say what
-it is. When the name is filed under a parent today, you are shown it ("Filed
-under: whey"): give it back as "parent" or "category" when it is right, and
+it is. When the name is filed under a parent today, you are shown it ("Parent:
+whey"): give it back as "parent" or "category" when it is right, and
 another or null when it is not. The catalogue is searched for your answer
 afterwards, so name foods the way a shopper would look for them.
 
