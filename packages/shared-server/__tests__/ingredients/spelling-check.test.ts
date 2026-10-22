@@ -269,6 +269,32 @@ describe("AI checks the spellings added to a seeded food", () => {
     expect(found?.aliasId).toBe(spelled.get("boneless"));
   });
 
+  it("keeps a typed grocery whose text is all junk, pointing at no food", async () => {
+    const chicken = seeded.get("en:chicken-breast")!;
+    const spelled = await added("en:chicken-breast", "boneless");
+
+    await getTestDb()
+      .insert(groceries)
+      .values({
+        userId,
+        name: "boneless",
+        ingredientAliasId: spelled.get("boneless")!,
+        ingredientId: chicken,
+      });
+    answers({ boneless: "not-a-food" });
+    await checkSpellingsOf(chicken);
+
+    expect(
+      await getTestDb()
+        .select({
+          name: groceries.name,
+          aliasId: groceries.ingredientAliasId,
+          ingredientId: groceries.ingredientId,
+        })
+        .from(groceries)
+    ).toEqual([{ name: "boneless", aliasId: null, ingredientId: null }]);
+  });
+
   it("moves a spelling AI says names another food there, with its rows", async () => {
     const breast = seeded.get("en:chicken-breast")!;
     const thigh = seeded.get("en:chicken-thigh")!;

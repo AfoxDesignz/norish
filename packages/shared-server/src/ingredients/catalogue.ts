@@ -27,6 +27,7 @@ import type {
   CatalogueOwner,
 } from "@norish/db/repositories/ingredient-catalogue";
 import type { NamingRow, NamingRows } from "@norish/db/repositories/ingredient-cleanup";
+import type { GroceryPart } from "@norish/db/repositories/ingredient-relocation";
 import type { CatalogueRefusal, FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LocaleNames, NamedFood } from "@norish/shared/lib/ingredient-names";
 import type {
@@ -575,7 +576,7 @@ export async function resolveAgain(
           let partIndex = 0;
 
           return owned.flatMap((row, index) => {
-            const parts = split[index]!.flatMap((part) => {
+            const parts = split[index]!.flatMap((part): GroceryPart[] => {
               const food = foods[partIndex++];
 
               return food
@@ -588,6 +589,11 @@ export async function resolveAgain(
                   ]
                 : [];
             });
+
+            // A row naming no food (minting) is kept and points at none, as a line does.
+            if (parts.length === 0 && mint && row.name !== null) {
+              parts.push({ name: row.name, aliasId: null, ingredientId: null });
+            }
 
             return parts.length > 0 ? [{ id: row.id, name: row.name, parts }] : [];
           });
