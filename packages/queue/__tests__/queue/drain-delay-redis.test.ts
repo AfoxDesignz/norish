@@ -4,6 +4,7 @@
  * blocks on Redis that long per wait. Each wait shows up as a BZPOPMIN, so a
  * second one within a few seconds proves the first one ended.
  */
+import { once } from "node:events";
 import type { StartedRedisContainer } from "@testcontainers/redis";
 import { RedisContainer } from "@testcontainers/redis";
 import { Worker } from "bullmq";
@@ -26,7 +27,11 @@ afterAll(async () => {
 
 it("ends an idle worker's blocking wait within seconds", async () => {
   const connection = getBullConnectionOptions(redis.getConnectionUrl());
-  const monitor = await new Redis(connection).monitor();
+  // A lone monitor client: ioredis reads another client's command landing before its
+  // MONITOR reply settles as a reply to nothing, and `redis.monitor()` adds that client.
+  const monitor = new Redis({ ...connection, monitor: true });
+
+  await once(monitor, "monitoring");
   const waits: number[] = [];
 
   monitor.on("monitor", (_time: string, args: string[]) => {
