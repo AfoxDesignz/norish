@@ -229,8 +229,7 @@ type Candidate = IngredientCandidate & { matched: string };
 
 /**
  * The listed (`seeded`: seeded) food other than `excludeId` these names find: an exact spelling
- * wins, else several or slips alone are asked about. Sure where AI is; a slip only where the
- * Decision reached `SURE_SLIP_THRESHOLD` or the language model was sure.
+ * wins, else several or slips alone are asked about. Sure where the answer is.
  */
 async function findNamed(
   asked: Asked,
@@ -245,7 +244,7 @@ async function findNamed(
   const ranked = distinctFoods(
     exact.length > 0 ? exact : [...found].sort((a, b) => b.score - a.score)
   );
-  let pick: Pick = { ingredientId: ranked[0]?.ingredientId ?? null, sure: true, sureOfSlip: false };
+  let pick: Pick = { ingredientId: ranked[0]?.ingredientId ?? null, sure: true };
 
   // One exact food is the answer; slips alone are asked about even when only one was found.
   if (ranked.length > (exact.length > 0 ? 1 : 0)) {
@@ -256,7 +255,7 @@ async function findNamed(
       .map((candidate) => ({ ...candidate, matched: matched.get(candidate.id) ?? candidate.name }));
 
     trace.considered.push(...candidates.map((candidate) => candidate.name));
-    const answer = await askWhich(asked, candidates);
+    const answer = await askWhich(asked, candidates, exact.length === 0);
 
     if ("kind" in answer) return answer;
     pick = answer;
@@ -266,7 +265,7 @@ async function findNamed(
 
   return {
     food: picked ? refOf(picked) : null,
-    sure: pick.sure && (!picked || isExact(picked) || pick.sureOfSlip),
+    sure: pick.sure,
     byFirstName: !!byName[0]?.some(
       (one) => isExact(one) && one.ingredientId === picked?.ingredientId
     ),
@@ -408,11 +407,10 @@ async function readName(text: string, filedUnder: string | null): Promise<Readin
   return null;
 }
 
-/** Which of the found foods the name is, or none (null), whether AI was sure, and sure enough for a slip. */
+/** Which of the found foods the name is, or none (null), and whether AI was sure. */
 interface Pick {
   ingredientId: string | null;
   sure: boolean;
-  sureOfSlip: boolean;
 }
 
 /**
@@ -421,13 +419,14 @@ interface Pick {
  */
 async function askWhich(
   asked: Asked,
-  candidates: readonly Candidate[]
+  candidates: readonly Candidate[],
+  slips: boolean
 ): Promise<Pick | AIResolution> {
   const text = asked.name;
 
   if (await isDecisionUseEnabled("ingredientResolution")) {
     // A Decision failure of any retryability is a warn log and the fallback.
-    const decided = await decideFood(asked, candidates).catch((error: unknown) => {
+    const decided = await decideFood(asked, candidates, slips).catch((error: unknown) => {
       aiLogger.warn(
         { err: error, feature: "ingredient-resolution", text },
         "Decision failed, falling back to the language model"
@@ -509,8 +508,15 @@ function foodChoice({ name, readAs }: Asked, candidates: readonly Candidate[]) {
   };
 }
 
-/** The Decision's sure pick among the found foods; null where it is below the threshold. */
-async function decideFood(asked: Asked, candidates: readonly Candidate[]): Promise<Pick | null> {
+/**
+ * The Decision's pick among the found foods; null where it is below the threshold. A slip it picks
+ * is sure only at `SURE_SLIP_THRESHOLD`.
+ */
+async function decideFood(
+  asked: Asked,
+  candidates: readonly Candidate[],
+  slips: boolean
+): Promise<Pick | null> {
   const text = asked.name;
   const { state, questions, options } = foodChoice(asked, candidates);
   // No second Decision: one that times out falls back to the language model.
@@ -530,11 +536,9 @@ async function decideFood(asked: Asked, candidates: readonly Candidate[]): Promi
 
   if (probability < RESOLUTION_THRESHOLD || !options.has(choice)) return null;
 
-  return {
-    ingredientId: options.get(choice) ?? null,
-    sure: true,
-    sureOfSlip: probability >= SURE_SLIP_THRESHOLD,
-  };
+  const ingredientId = options.get(choice) ?? null;
+
+  return { ingredientId, sure: !slips || !ingredientId || probability >= SURE_SLIP_THRESHOLD };
 }
 
 /** The language model's answer over these candidates: one of their names exactly, or none. */
@@ -589,7 +593,5 @@ async function askLanguageModel(
 
   aiLogger.info({ text, ...answer }, "Language model picked which food a name is");
 
-  return food
-    ? { ingredientId: food.id, sure: answer.sure, sureOfSlip: answer.sure }
-    : { ingredientId: null, sure: answer.sure, sureOfSlip: false };
+  return { ingredientId: food?.id ?? null, sure: answer.sure };
 }
