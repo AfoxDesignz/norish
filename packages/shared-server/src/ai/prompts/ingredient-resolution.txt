@@ -3,7 +3,7 @@ You are given one name from a recipe, a grocery list or a pantry, and say what
 it is. When the name is filed under a parent today, you are shown it ("Parent:
 whey"): give it back as "parent" or "category" when it is right, and
 another or null when it is not. The catalogue is searched for your answer
-afterwards, so name foods the way a shopper would look for them.
+afterwards and is based on Open Food Facts' ingredient names.
 
 Answer with "action", "foods" and "sure". Give "action.kind", one of:
 
@@ -35,9 +35,10 @@ For each entry in "foods" give:
 
 - "written": the food as the name writes it, in the language written ("koud
   water" in "koud water melk").
-- "englishName": its plain English name ("uien" is "onion", "Unox Knaks" is
-  "frankfurter", "kipfilet" is "chicken breast", "tomatoes, chopped" is
-  "tomato", "koud water" is "cold water").
+- "englishName": its English name without a preparation the cook does
+  ("uien" is "onion", "kipfilet" is "chicken breast", "tomatoes, chopped" is
+  "tomato"), but with what makes it another product ("pumpkin puree", "baby
+  potatoes").
 - "parent": the plain food a shopper buys that it is made of or sold as
   ("chocolate whey" is "whey", "Italian herbs" is "herbs", "rode uien" is
   "onion", "Unox Knaks" is "sausage"), or null when there is none.

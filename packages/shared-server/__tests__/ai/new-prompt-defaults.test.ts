@@ -51,6 +51,13 @@ describe("the shipped ingredient-resolution prompt", () => {
       expect(prompt).toContain(`"${verdict}"`);
     expect(prompt).toMatch(/numbered list/);
     expect(prompt).toMatch(/sure/i);
+    // The lookup takes AI's names whole, so a narrower product keeps what makes it one.
+    const oneLine = prompt.replace(/\s+/g, " ");
+
+    expect(oneLine).toContain("based on Open Food Facts' ingredient names");
+    expect(oneLine).toContain(
+      'but with what makes it another product ("pumpkin puree", "baby potatoes")'
+    );
     // The name and the known foods are appended by the resolver.
     expect(prompt).not.toMatch(/\{\{/);
   });
