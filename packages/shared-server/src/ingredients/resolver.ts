@@ -754,17 +754,34 @@ export function refOf({ aliasId, ingredientId }: IngredientRef): IngredientRef {
   return { aliasId, ingredientId };
 }
 
+/** A spelling read whole: no size or preparation word stripped ("petite potatoes" is not "potatoes"). */
+function asWritten(spelling: Spelling): Spelling {
+  const plainFold = spelling.bareFold || spelling.fold;
+
+  return {
+    ...spelling,
+    plain: spelling.bare,
+    plainFold,
+    inflected: inflectedReadings(plainFold, spelling.rules, true),
+  };
+}
+
 /**
  * The foods other than `ingredientId` each text names: the food named it, else the one food rungs
- * 1–2 find, else (with `slips`) every food a slip of the fingers away, best first. Mints nothing.
+ * 1–2 find (with `asWritten`, by its whole spelling only), else (with `slips`) every food a slip of
+ * the fingers away, best first. Mints nothing.
  */
 export async function findOtherFoodsNamed(
   ingredientId: string,
   texts: readonly string[],
-  { slips = true }: { slips?: boolean } = {}
+  { slips = true, asWritten: whole = false }: { slips?: boolean; asWritten?: boolean } = {}
 ): Promise<FoundFood[][]> {
   const rules = await currentRules();
-  const spellings = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
+  const spellings = texts.map((text) => {
+    const spelling = spellingOf(cleanIngredientText(text), rules);
+
+    return whole ? asWritten(spelling) : spelling;
+  });
   const readable = spellings.filter((spelling) => spelling.text && !spellingNamesNoFood(spelling));
   const all = await knownAliases(readable);
   // Only by a spelling in a language Norish reads: AI's "bun" is not pear's Volapük "bün".

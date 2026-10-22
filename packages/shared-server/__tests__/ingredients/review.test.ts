@@ -50,7 +50,11 @@ import {
   setParent,
 } from "@norish/shared-server/ingredients/catalogue";
 import { onIngredientsMinted } from "@norish/shared-server/ingredients/minted";
-import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
+import {
+  findIngredientFor,
+  ingredientFor,
+  resolveIngredients,
+} from "@norish/shared-server/ingredients/resolver";
 import { askAIAbout } from "@norish/shared-server/ingredients/review";
 
 import {
@@ -933,6 +937,111 @@ describe("asking AI about an Ingredient", () => {
         sure: true,
       });
       expect(resolutionRequests()).toBe(1);
+    });
+  });
+
+  describe("AI's names, looked up as written", () => {
+    /** The food a recipe line's text now means, and its parent's id. */
+    async function landed(food: { aliasId: string; ingredientId: string }) {
+      const row = await ingredientFor(food.aliasId);
+
+      return { same: row?.id === food.ingredientId, parent: await parentOf(food.ingredientId) };
+    }
+
+    it("keeps baby potatoes its own food under potato: petite potatoes is not potatoes", async () => {
+      await applyIngredientSeed([seedEntry("en:potato", "potato", "potatoes")]);
+      const potato = (await findIngredientFor("potatoes"))!;
+      const baby = await flagged("baby potatoes");
+
+      reads({
+        englishName: "baby potatoes",
+        parent: "potato",
+        otherNames: ["mini potatoes", "petite potatoes"],
+        sure: true,
+      });
+
+      await askAIAbout(baby.ingredientId);
+      await expect(landed(baby)).resolves.toEqual({ same: true, parent: potato.ingredientId });
+      expect(resolutionRequests()).toBe(1);
+    });
+
+    it("merges mini-krieltjes into the own food baby potatoes its English name is", async () => {
+      await applyIngredientSeed([seedEntry("en:potato", "potato", "potatoes")]);
+      const baby = await kept("baby potatoes");
+      const krieltjes = await flagged("mini-krieltjes");
+
+      reads({
+        englishName: "baby potatoes",
+        parent: "potato",
+        otherNames: ["small potatoes", "petite potatoes"],
+        sure: true,
+      });
+
+      await expect(askAIAbout(krieltjes.ingredientId)).resolves.toMatchObject({
+        outcome: "merge",
+        into: "baby potatoes",
+        sure: true,
+      });
+      await expect(ingredientFor(krieltjes.aliasId)).resolves.toMatchObject({
+        id: baby.ingredientId,
+      });
+      expect(resolutionRequests()).toBe(1);
+    });
+
+    it("files red pepper flakes under chili pepper: crushed red pepper is not red bell pepper's red pepper", async () => {
+      await applyIngredientSeed([
+        seedEntry("en:red-bell-pepper", "red bell pepper", "red pepper"),
+        seedEntry("en:chili-pepper", "chili pepper"),
+      ]);
+      const chili = (await findIngredientFor("chili pepper"))!;
+      const flakes = await flagged("red pepper flakes");
+
+      reads({
+        englishName: "red pepper flakes",
+        parent: "chili pepper",
+        otherNames: ["crushed red pepper", "red chili flakes"],
+        sure: true,
+      });
+
+      await expect(askAIAbout(flakes.ingredientId)).resolves.toMatchObject({
+        outcome: "parent",
+        of: "chili pepper",
+      });
+      await expect(landed(flakes)).resolves.toEqual({ same: true, parent: chili.ingredientId });
+    });
+
+    it("keeps deli ham its own food under ham: sliced ham is not ham", async () => {
+      await applyIngredientSeed([seedEntry("en:ham", "ham")]);
+      const ham = (await findIngredientFor("ham"))!;
+      const deli = await flagged("deli ham");
+
+      reads({
+        englishName: "deli ham",
+        parent: "ham",
+        otherNames: ["sliced ham", "lunch meat ham"],
+        sure: true,
+      });
+
+      await askAIAbout(deli.ingredientId);
+      await expect(landed(deli)).resolves.toEqual({ same: true, parent: ham.ingredientId });
+    });
+
+    it("still merges italian sausage into sausage, whose own spelling salsiccia AI names", async () => {
+      await applyIngredientSeed([seedEntry("en:sausage", "sausage", "salsiccia")]);
+      const italian = await flagged("italian sausage");
+
+      reads({
+        englishName: "Italian sausage",
+        parent: "sausage",
+        otherNames: ["Italian-style sausage", "salsiccia"],
+        sure: true,
+      });
+
+      await expect(askAIAbout(italian.ingredientId)).resolves.toMatchObject({
+        outcome: "merge",
+        into: "sausage",
+        sure: true,
+      });
     });
   });
 

@@ -224,7 +224,8 @@ async function findNamed(
   trace: ReviewTrace,
   { seeded = false }: { seeded?: boolean } = {}
 ): Promise<{ food: IngredientRef | null; sure: boolean } | AIResolution> {
-  const named = (await findOtherFoodsNamed(excludeId, names)).flat();
+  // AI's names are its own words, so none is shortened to a general food's spelling.
+  const named = (await findOtherFoodsNamed(excludeId, names, { asWritten: true })).flat();
   const ids = named.map((one) => one.ingredientId);
   // A hidden food is never AI's answer: no merge into it, no parent, no split part. A category is
   // a seeded food: an own one may be a placeholder ("toppings") whose lines leave the choice open.
