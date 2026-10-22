@@ -278,7 +278,11 @@ type Reading =
 const readFoodSchema = z
   .object({
     written: z.string().describe("The food as the name writes it, in the language written."),
-    englishName: z.string().describe("Its plain English name, as a shopper would look for it."),
+    englishName: z
+      .string()
+      .describe(
+        "Its English name without a preparation the cook does, but with what makes it another product."
+      ),
     parent: z
       .string()
       .nullable()
