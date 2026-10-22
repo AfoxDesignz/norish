@@ -95,12 +95,33 @@ const KINDS = {
   parent: (want) => [`under ${want}`, (n, food) => lc(named(n, food)?.parent) === want],
   notParent: (want) => [`not under ${want}`, (n, food) => lc(named(n, food)?.parent) !== want],
   hasParent: () => ["keeps a parent", (n, food) => Boolean(named(n, food)?.parent)],
+  // Every line names a food matching each pattern / none named `want`.
+  linesName: (wants) => [
+    `every line names ${wants.join(" and ")}`,
+    (n) => everyLineNames(n, (foods) => wants.every((w) => foods.some((f) => new RegExp(w).test(f)))),
+  ],
+  linesNot: (want) => [`no line on ${want}`, (n) => n.lines.every((l) => !l.foods.map(lc).includes(want))],
+  noSpelling: (texts) => [
+    `no spelling ${texts.join(", ")}`,
+    (n) => !n.spellings.some((s) => texts.includes(lc(s.text))),
+  ],
+  // The lookups' own spellings all name one food.
+  sameFood: () => [
+    "the copies are one food",
+    (n, _food, lookups) =>
+      new Set(n.spellings.filter((s) => lookups.includes(lc(s.text))).map((s) => s.food)).size === 1,
+  ],
 };
 const CASES = Object.fromEntries(
   Object.entries(JSON.parse(readFileSync(casesFile, "utf8"))).map(([text, c]) => {
-    const [[kind, arg] = []] = Object.entries(c.check ?? {});
-    const [expect, test] = kind ? KINDS[kind](arg) : [];
-    const check = test ? { expect, holds: (n) => test(n, lc(c.lookups[0])) } : CHECKS[text];
+    const tests = Object.entries(c.check ?? {}).map(([kind, arg]) => KINDS[kind](arg));
+    const lookups = c.lookups.map(lc);
+    const check = tests.length
+      ? {
+          expect: tests.map(([e]) => e).join("; "),
+          holds: (n) => tests.every(([, test]) => test(n, lookups[0], lookups)),
+        }
+      : CHECKS[text];
 
     return [text, { ...c, ...check }];
   })
@@ -219,23 +240,29 @@ async function measure(databaseUrl, redisUrl, serverLog) {
     aiChanges: [],
   };
 
+  const pile = await hasTable("ingredient_junk_pile");
+
   if (await hasTable("ingredient_ai_changes")) {
     counts.aiChanges =
-      await tally(`select kind || ', ' || case when sure then 'sure' else 'unsure' end as k, count(*)::int as n
+      await tally(`select case when kind = 'spelling' then 'spelling ' || case when target_id is null then 'removed' else 'moved' end else kind end
+        || ', ' || case when sure then 'sure' else 'unsure' end as k, count(*)::int as n
       from ingredient_ai_changes group by 1 order by 1`);
     // Each change as the food it was and what it became (merge: the food's name went into the target).
     names.aiChanges = await rows(`select c.kind, c.sure,
         case when c.undone_at is not null then 'undone' when c.kept_at is not null then 'kept' else 'open' end as state,
         case c.kind when 'merge' then c.undo->>'name' when 'not-a-food' then c.undo->'food'->>'name'
                     when 'plain-name' then c.undo->>'formerName' else i.name end as food,
+        ${pile ? "c.kind = 'spelling' and exists (select 1 from ingredient_junk_pile j where j.ai_change_id = c.id)" : "false"} as junk,
         case c.kind when 'merge' then 'merged into ' || i.name when 'not-a-food' then 'deleted'
                     when 'plain-name' then 'renamed ' || (c.undo->>'name')
                     when 'parent' then coalesce('under ' || t.name, 'no parent') || coalesce(' (was ' || fp.name || ')', '')
+                    when 'spelling' then coalesce('moved "' || (c.undo->'spelling'->>'text') || '" to ' || t.name,
+                                                  'removed "' || (c.undo->'spelling'->>'text') || '"')
                     else c.kind end as became
       from ingredient_ai_changes c left join ingredients i on i.id = c.ingredient_id
       left join ingredients t on t.id = c.target_id
       left join ingredients fp on fp.id = (c.undo->>'formerParentId')::uuid
-      order by c.kind, c.sure desc, 4`);
+      order by c.kind, c.sure desc, 4, 6`);
   }
   if (await hasTable("ingredient_suggestions")) {
     counts.suggestions = await tally(
@@ -520,7 +547,8 @@ function report(runs) {
       runs.map((r) =>
         list(
           (r.names?.aiChanges ?? []).map(
-            (c) => `${c.kind}, ${c.sure ? "sure" : "unsure"}, ${c.state}: ${c.food} → ${c.became}`
+            (c) =>
+              `${c.kind}, ${c.sure ? "sure" : "unsure"}, ${c.state}: ${c.food} → ${c.became}${c.junk ? " (not a food)" : ""}`
           )
         )
       ),
