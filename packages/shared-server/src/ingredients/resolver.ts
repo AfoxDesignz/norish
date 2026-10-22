@@ -17,6 +17,7 @@ import {
   findSeededFoodSpellingsByFolds,
   mintIngredientWithAliases,
 } from "@norish/db/repositories/ingredient-aliases";
+import { findIngredientIdsAmong } from "@norish/db/repositories/ingredient-catalogue";
 import { listJunkFolds } from "@norish/db/repositories/ingredient-junk-pile";
 import {
   getIngredientWords,
@@ -750,17 +751,10 @@ export function refOf({ aliasId, ingredientId }: IngredientRef): IngredientRef {
 }
 
 /**
- * The foods other than `ingredientId` each text names: the food named it, else the one food rungs
- * 1–2 find (with `asWritten`, by its whole spelling only), else (with `slips`) every food a slip of
- * the fingers away, best first. Mints nothing.
+ * Each readable spelling's food other than `ingredientId`: the food named it, else the one food
+ * rungs 1–2 find in a language Norish reads; and that filter, for slips.
  */
-export async function findOtherFoodsNamed(
-  ingredientId: string,
-  texts: readonly string[],
-  { slips = true, asWritten: whole = false }: { slips?: boolean; asWritten?: boolean } = {}
-): Promise<FoundFood[][]> {
-  const rules = await currentRules();
-  const spellings = texts.map((text) => spellingOf(cleanIngredientText(text), rules, whole));
+async function otherFoodsSpelled(ingredientId: string, spellings: readonly Spelling[]) {
   const readable = spellings.filter((spelling) => spelling.text && !spellingNamesNoFood(spelling));
   const all = await knownAliases(readable);
   // Only by a spelling in a language Norish reads: AI's "bun" is not pear's Volapük "bün".
@@ -783,20 +777,52 @@ export async function findOtherFoodsNamed(
   const matched = new Map(
     readable.map((spelling) => [spelling, byName(spelling) ?? matchKnown(spelling, known)])
   );
-  const slipped = slips
-    ? await findSlips(
-        readable.filter((spelling) => !matched.get(spelling)),
-        other
-      )
-    : new Map<string, FoundFood[]>();
 
-  return spellings.map((spelling) => {
+  return { matched, other };
+}
+
+/** The foods other than `ingredientId` rungs 1–2 find for a mint's spellings, for the recheck. */
+export async function findOtherFoodsSpelled(
+  ingredientId: string,
+  texts: readonly string[]
+): Promise<Set<string>> {
+  const rules = await currentRules();
+  const spellings = texts.map((text) => spellingOf(cleanIngredientText(text), rules));
+  const { matched } = await otherFoodsSpelled(ingredientId, spellings);
+
+  return new Set([...matched.values()].flatMap((match) => (match ? [match.ingredientId] : [])));
+}
+
+/**
+ * The listed (or seeded) foods other than `except` each of AI's names finds, as written: the food
+ * named it, else the one rungs 1–2 find, else every food a slip of the fingers away, best first.
+ */
+export async function findFood(
+  names: readonly string[],
+  { except, among }: { except: string; among: "listed" | "seeded" }
+): Promise<FoundFood[][]> {
+  const rules = await currentRules();
+  const spellings = names.map((name) => spellingOf(cleanIngredientText(name), rules, true));
+  const { matched, other } = await otherFoodsSpelled(except, spellings);
+  const slipped = await findSlips(
+    [...matched].flatMap(([spelling, match]) => (match ? [] : [spelling])),
+    other
+  );
+  const found = spellings.map((spelling): FoundFood[] => {
     const match = matched.get(spelling);
 
     if (match) return [{ ...refOf(match), score: EXACT, matched: match.text }];
 
     return (matched.has(spelling) && slipped.get(spelling.key)) || [];
   });
+  // A hidden food is never AI's answer: no merge into it, no parent, no split part. A category is
+  // a seeded food: an own one may be a placeholder ("toppings") whose lines leave the choice open.
+  const kept = await findIngredientIdsAmong(
+    found.flat().map((one) => one.ingredientId),
+    among
+  );
+
+  return found.map((foods) => foods.filter((one) => kept.has(one.ingredientId)));
 }
 
 /**

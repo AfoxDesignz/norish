@@ -10,7 +10,7 @@ import {
   listUndecidedMints,
 } from "@norish/db/repositories/ingredient-seed";
 
-import { findOtherFoodsNamed, parentFromWordsOf, plainNameOf, RUNG_VERSION } from "../resolver";
+import { findOtherFoodsSpelled, parentFromWordsOf, plainNameOf, RUNG_VERSION } from "../resolver";
 import { oncePerVersion } from "./catalogue-seed";
 
 export interface RecheckOutcome {
@@ -23,8 +23,7 @@ export async function recheckUndecidedMints(): Promise<RecheckOutcome> {
   const outcome: RecheckOutcome = { merged: 0, filed: 0 };
 
   for (const mint of await listUndecidedMints()) {
-    const found = await findOtherFoodsNamed(mint.id, mint.aliases, { slips: false });
-    const targets = new Set(found.flat().map((food) => food.ingredientId));
+    const targets = await findOtherFoodsSpelled(mint.id, mint.aliases);
 
     if (targets.size === 1) {
       const [target] = targets;

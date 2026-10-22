@@ -11,7 +11,6 @@ import type {
 import type { FlagReason, ReviewTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
 import { findIngredientCandidatesByIds } from "@norish/db/repositories/ingredient-aliases";
-import { findIngredientIdsAmong } from "@norish/db/repositories/ingredient-catalogue";
 import {
   isAIEnabled,
   isDecisionUseEnabled,
@@ -20,7 +19,7 @@ import { aiLogger } from "@norish/shared-server/logger";
 import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import { distinctFoods } from "@norish/shared/lib/line-foods";
 
-import { findOtherFoodsNamed, isExact, refOf } from "../../ingredients/resolver";
+import { findFood, isExact, refOf } from "../../ingredients/resolver";
 import { isCredentialRejection } from "../runtime/errors";
 import { decide, generateStructured } from "../runtime/runtime";
 import { onceMoreOnTimeout } from "../runtime/timeout-retry";
@@ -240,14 +239,8 @@ async function findNamed(
   trace: ReviewTrace,
   { seeded = false }: { seeded?: boolean } = {}
 ): Promise<Found | AIResolution> {
-  // AI's names are its own words, so none is shortened to a general food's spelling.
-  const byName = await findOtherFoodsNamed(excludeId, names, { asWritten: true });
-  const named = byName.flat();
-  const ids = named.map((one) => one.ingredientId);
-  // A hidden food is never AI's answer: no merge into it, no parent, no split part. A category is
-  // a seeded food: an own one may be a placeholder ("toppings") whose lines leave the choice open.
-  const listed = await findIngredientIdsAmong(ids, seeded ? "seeded" : "listed");
-  const found = named.filter((one) => listed.has(one.ingredientId));
+  const byName = await findFood(names, { except: excludeId, among: seeded ? "seeded" : "listed" });
+  const found = byName.flat();
   const exact = found.filter(isExact);
   const ranked = distinctFoods(
     exact.length > 0 ? exact : [...found].sort((a, b) => b.score - a.score)
