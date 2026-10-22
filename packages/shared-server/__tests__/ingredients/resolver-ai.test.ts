@@ -11,6 +11,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
 import { withTransaction } from "@norish/db/drizzle";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
+import { findIngredientByAliasId } from "@norish/db/repositories/ingredient-aliases";
 import { deleteCatalogueIngredient } from "@norish/db/repositories/ingredient-catalogue";
 import { listJunkFolds } from "@norish/db/repositories/ingredient-junk-pile";
 import { findIngredientAncestors } from "@norish/db/repositories/ingredient-relocation";
@@ -27,7 +28,7 @@ import {
   updateResolvedRecipe,
   withResolvedIngredients,
 } from "@norish/shared-server/ingredients/recipe-lines";
-import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
+import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 import { askAIAbout } from "@norish/shared-server/ingredients/review";
 
 import { getTestDb } from "../../../db/__tests__/helpers/db-test-helpers";
@@ -214,7 +215,7 @@ describe("ingredient resolver with AI on", () => {
     const [typed] = await resolveGroceryNames([{ name: "Unox Knaks" }], { userId });
 
     expectNoAIRequest();
-    await expect(ingredientFor(typed!.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(typed!.aliasId)).resolves.toMatchObject({
       name: "Unox Knaks",
       flagReason: "ai-queued",
     });
@@ -225,7 +226,7 @@ describe("ingredient resolver with AI on", () => {
     const cloves = await resolveOne("garlic cloves");
 
     expectNoAIRequest();
-    await expect(ingredientFor(cloves.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(cloves.aliasId)).resolves.toMatchObject({
       flagged: true,
       flagReason: "ai-off",
     });

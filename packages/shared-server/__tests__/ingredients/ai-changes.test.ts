@@ -16,6 +16,7 @@ import {
   sweepAIChanges,
   takeOpenParentChanges,
 } from "@norish/db/repositories/ingredient-ai-changes";
+import { findIngredientByAliasId } from "@norish/db/repositories/ingredient-aliases";
 import { listUnansweredIngredientIds } from "@norish/db/repositories/ingredient-catalogue";
 import { findIngredientAncestors, lockTree } from "@norish/db/repositories/ingredient-relocation";
 import { ingredientAIChanges, ingredients } from "@norish/db/schema";
@@ -35,7 +36,7 @@ import {
   markDistinct,
   mergeIngredients,
 } from "@norish/shared-server/ingredients/catalogue";
-import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
+import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 
 import {
   createTestRecipe,
@@ -105,18 +106,18 @@ describe("keeping and undoing AI Changes", () => {
     await insertTestRecipeLine({ recipeId: recipe.id, name: "uien" }, [uien.aliasId]);
 
     await expect(mergeByAI(uien.ingredientId, onion.ingredientId, false)).resolves.toBe("applied");
-    await expect(ingredientFor(onion.aliasId)).resolves.toMatchObject({ flagged: true });
+    await expect(findIngredientByAliasId(onion.aliasId)).resolves.toMatchObject({ flagged: true });
 
     await undoAIChange(actor, (await onlyChange()).id);
 
-    const restored = (await ingredientFor(uien.aliasId))!;
+    const restored = (await findIngredientByAliasId(uien.aliasId))!;
 
     expect(restored).toMatchObject({ name: "uien", flagged: false });
     expect(restored.id).not.toBe(onion.ingredientId);
     await expect(getRecipeIngredients(recipe.id)).resolves.toMatchObject([
       { name: "uien", ingredientId: restored.id },
     ]);
-    await expect(ingredientFor(onion.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(onion.aliasId)).resolves.toMatchObject({
       id: onion.ingredientId,
       flagged: false,
     });
@@ -140,7 +141,7 @@ describe("keeping and undoing AI Changes", () => {
     await undoAIChange(actor, (await onlyChange()).id);
 
     await expect(parentOf(red.ingredientId)).resolves.toBe(vegetable.ingredientId);
-    await expect(ingredientFor(red.aliasId)).resolves.toMatchObject({ flagged: false });
+    await expect(findIngredientByAliasId(red.aliasId)).resolves.toMatchObject({ flagged: false });
   });
 
   it("goes back past every parent AI replaced, to where the food was before AI", async () => {
@@ -203,9 +204,9 @@ describe("keeping and undoing AI Changes", () => {
     const [first, second] = await listAIChanges();
 
     await keepAIChange(actor, first!.id);
-    await expect(ingredientFor(onion.aliasId)).resolves.toMatchObject({ flagged: true });
+    await expect(findIngredientByAliasId(onion.aliasId)).resolves.toMatchObject({ flagged: true });
     await keepAIChange(actor, second!.id);
-    await expect(ingredientFor(onion.aliasId)).resolves.toMatchObject({ flagged: false });
+    await expect(findIngredientByAliasId(onion.aliasId)).resolves.toMatchObject({ flagged: false });
     expect((await listAIChanges()).map((change) => change.kept)).toEqual([true, true]);
   });
 
@@ -243,7 +244,7 @@ describe("keeping and undoing AI Changes", () => {
       { kind: "merge", from: "prei", ingredient: { name: "leek" }, canAct: true },
     ]);
     await undoAIChange(actor, change.id);
-    await expect(ingredientFor(prei.aliasId)).resolves.toMatchObject({ name: "prei" });
+    await expect(findIngredientByAliasId(prei.aliasId)).resolves.toMatchObject({ name: "prei" });
   });
 
   it("lets only who may edit a food AI deleted as not a food bring it back with its lines", async () => {
@@ -290,7 +291,7 @@ describe("keeping and undoing AI Changes", () => {
     await renameByAI(tonijn.ingredientId, "GR TONIJN UIT BLIK", "tonijn uit blik");
     await undoAIChange(actor, (await onlyChange()).id);
 
-    await expect(ingredientFor(tonijn.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(tonijn.aliasId)).resolves.toMatchObject({
       flagged: true,
       flagReason: "ai-unsure",
     });
@@ -363,7 +364,7 @@ describe("keeping and undoing AI Changes", () => {
     await expect(renameByAI(uien.ingredientId, "uien", "ui")).resolves.toBe(false);
     await flagByAnswer(uien.ingredientId, false);
 
-    await expect(ingredientFor(uien.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(uien.aliasId)).resolves.toMatchObject({
       id: uien.ingredientId,
       name: "uien",
       flagged: false,
@@ -382,12 +383,12 @@ describe("keeping and undoing AI Changes", () => {
       .where(eq(ingredients.id, onion.ingredientId));
     await mergeByAI(uien.ingredientId, onion.ingredientId, false);
 
-    await expect(ingredientFor(onion.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(onion.aliasId)).resolves.toMatchObject({
       flagged: true,
       flagReason: "ai-unavailable",
     });
     await undoAIChange(actor, (await onlyChange()).id);
-    await expect(ingredientFor(onion.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(onion.aliasId)).resolves.toMatchObject({
       flagged: true,
       flagReason: "ai-unavailable",
     });

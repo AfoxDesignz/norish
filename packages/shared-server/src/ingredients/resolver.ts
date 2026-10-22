@@ -1,8 +1,4 @@
-import type {
-  IngredientAliasRow,
-  IngredientRef,
-  IngredientRow,
-} from "@norish/db/repositories/ingredient-aliases";
+import type { IngredientAliasRow, IngredientRef } from "@norish/db/repositories/ingredient-aliases";
 import type { LineResolution } from "@norish/db/repositories/ingredients";
 import type { FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
@@ -12,7 +8,6 @@ import {
   addIngredientAliases,
   findAliasesNearFold,
   findIngredientAliasesByFolds,
-  findIngredientByAliasId,
   findIngredientsNamed,
   findSeededFoodSpellingsByFolds,
   mintIngredientWithAliases,
@@ -699,11 +694,6 @@ function cleanAlias({ clean, fold, plain, plainFold }: Spelling) {
       .trim(),
     fold,
   };
-}
-
-/** The Ingredient an alias points at. */
-export async function ingredientFor(aliasId: string): Promise<IngredientRow | null> {
-  return await findIngredientByAliasId(aliasId);
 }
 
 /**

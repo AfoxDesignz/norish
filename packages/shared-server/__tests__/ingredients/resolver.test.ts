@@ -11,7 +11,10 @@ import defaultUnits from "@norish/config/units.default.json";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
 import { createRecipeWithRefs, getRecipeFull, updateRecipeWithRefs } from "@norish/db";
 import { withTransaction } from "@norish/db/drizzle";
-import { mintIngredientWithAliases } from "@norish/db/repositories/ingredient-aliases";
+import {
+  findIngredientByAliasId,
+  mintIngredientWithAliases,
+} from "@norish/db/repositories/ingredient-aliases";
 import { addToJunkPile } from "@norish/db/repositories/ingredient-junk-pile";
 import { mergeCatalogueIngredients } from "@norish/db/repositories/ingredient-relocation";
 import { addPantryIngredients } from "@norish/db/repositories/pantry";
@@ -24,7 +27,6 @@ import {
   cleanIngredientText,
   findIngredientFor,
   forgetSpellingRules,
-  ingredientFor,
   resolveIngredient,
   resolveIngredients,
   writeResolved,
@@ -69,7 +71,7 @@ describe("ingredient resolver", () => {
   it("mints a flagged Ingredient, owned by the actor, for a text Norish has never seen", async () => {
     const onion = await resolveOne("Onion");
 
-    await expect(ingredientFor(onion.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(onion.aliasId)).resolves.toMatchObject({
       id: onion.ingredientId,
       name: "Onion",
       flagged: true,
@@ -149,7 +151,7 @@ describe("ingredient resolver", () => {
   it("names a new food for its text without the preparation, so later spellings join it", async () => {
     const diced = await resolveOne("onions, diced");
 
-    await expect(ingredientFor(diced.aliasId)).resolves.toMatchObject({ name: "onions" });
+    await expect(findIngredientByAliasId(diced.aliasId)).resolves.toMatchObject({ name: "onions" });
     expect((await resolveOne("onions")).ingredientId).toBe(diced.ingredientId);
     expect((await resolveOne("onions, sliced")).ingredientId).toBe(diced.ingredientId);
   });
@@ -293,7 +295,9 @@ describe("ingredient resolver", () => {
   it("names a new food for its text without such preparation, and keeps the text as a spelling", async () => {
     const minted = await resolveOne("Fresh coconut grated");
 
-    await expect(ingredientFor(minted.aliasId)).resolves.toMatchObject({ name: "Fresh coconut" });
+    await expect(findIngredientByAliasId(minted.aliasId)).resolves.toMatchObject({
+      name: "Fresh coconut",
+    });
     expect((await resolveOne("fresh coconut")).ingredientId).toBe(minted.ingredientId);
     expect((await resolveOne("fresh coconut, grated")).ingredientId).toBe(minted.ingredientId);
   });
@@ -360,7 +364,7 @@ describe("ingredient resolver", () => {
 
     expect(new Set(resolved.map((row) => row.aliasId)).size).toBe(1);
     await expect(getSpellingTexts(resolved[0]!.ingredientId)).resolves.toEqual(["gyoza vellen"]);
-    await expect(ingredientFor(resolved[0]!.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(resolved[0]!.aliasId)).resolves.toMatchObject({
       name: "gyoza vellen",
     });
   });
@@ -606,7 +610,7 @@ describe("ingredient resolver", () => {
       const [, beef] = (await getRecipeFull(recipeId))!.recipeIngredients;
 
       await expect(
-        ingredientFor((await resolveOne("rundergehakt")).aliasId)
+        findIngredientByAliasId((await resolveOne("rundergehakt")).aliasId)
       ).resolves.toMatchObject({ id: beef!.ingredientId, name: "RUNDERGEHAKT" });
     });
 

@@ -15,6 +15,7 @@ import {
   listAisleLinksByStoreIds,
   saveStoreAisles,
 } from "@norish/db/repositories/aisles";
+import { findIngredientByAliasId } from "@norish/db/repositories/ingredient-aliases";
 import { renameCatalogueIngredient } from "@norish/db/repositories/ingredient-catalogue";
 import { listPantryIngredientsByUserIds } from "@norish/db/repositories/pantry";
 import { resolveProductLink, upsertProductLink } from "@norish/db/repositories/store-products";
@@ -33,7 +34,7 @@ import {
 } from "@norish/shared-server/ingredients/catalogue";
 import { resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
 import { addToPantry } from "@norish/shared-server/ingredients/pantry";
-import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
+import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 
 import {
   createTestHousehold,
@@ -162,7 +163,7 @@ describe("merging Ingredients and moving aliases", () => {
         { name: "uien", ingredientId: onion.ingredientId },
       ]);
       await expect(groceryFood(grocery)).resolves.toBe(onion.ingredientId);
-      await expect(ingredientFor(uien.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(uien.aliasId)).resolves.toMatchObject({
         id: onion.ingredientId,
       });
 
@@ -254,10 +255,12 @@ describe("merging Ingredients and moving aliases", () => {
       const knaks = await mint("Unox Knaks");
       const frankfurter = await mint("frankfurter");
 
-      await expect(ingredientFor(knaks.aliasId)).resolves.toMatchObject({ flagged: true });
+      await expect(findIngredientByAliasId(knaks.aliasId)).resolves.toMatchObject({
+        flagged: true,
+      });
       await mergeIngredients(actor, frankfurter.ingredientId, knaks.ingredientId);
 
-      await expect(ingredientFor(knaks.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(knaks.aliasId)).resolves.toMatchObject({
         flagged: false,
         flagReason: null,
       });
@@ -300,7 +303,7 @@ describe("merging Ingredients and moving aliases", () => {
       await expect(
         refusal(mergeIngredients(actor, mine.ingredientId, theirs!.ingredientId))
       ).resolves.toBe("forbidden");
-      await expect(ingredientFor(theirs!.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(theirs!.aliasId)).resolves.toMatchObject({
         id: theirs!.ingredientId,
       });
     });
@@ -345,7 +348,9 @@ describe("merging Ingredients and moving aliases", () => {
 
       await moveAlias(actor, ui!.aliasId, null);
 
-      await expect(ingredientFor(onion.aliasId)).resolves.toMatchObject({ flagged: true });
+      await expect(findIngredientByAliasId(onion.aliasId)).resolves.toMatchObject({
+        flagged: true,
+      });
     });
 
     it("mints the new Ingredient unflagged: a person chose it", async () => {
@@ -357,7 +362,7 @@ describe("merging Ingredients and moving aliases", () => {
 
       const moved = await moveAlias(actor, ui!.aliasId, null);
 
-      await expect(ingredientFor(ui!.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(ui!.aliasId)).resolves.toMatchObject({
         id: moved.ingredientId,
         name: "ui",
         flagged: false,

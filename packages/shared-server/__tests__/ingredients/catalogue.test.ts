@@ -11,6 +11,7 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
+import { findIngredientByAliasId } from "@norish/db/repositories/ingredient-aliases";
 import { listJunkFolds } from "@norish/db/repositories/ingredient-junk-pile";
 import { writeGroceryParts } from "@norish/db/repositories/ingredient-relocation";
 import {
@@ -39,7 +40,7 @@ import {
 } from "@norish/shared-server/ingredients/catalogue";
 import { publishIngredientChangesTo } from "@norish/shared-server/ingredients/changes";
 import { resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
-import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
+import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 
 import {
   createTestRecipe,
@@ -222,7 +223,9 @@ describe("the ingredient catalogue", () => {
 
     expect(kept).toMatchObject({ name: "onion", parent: null });
     expect(kept!.aliases.map((alias) => alias.text)).toEqual(["onion"]);
-    await expect(ingredientFor(garlic.aliasId)).resolves.toMatchObject({ name: "garlic" });
+    await expect(findIngredientByAliasId(garlic.aliasId)).resolves.toMatchObject({
+      name: "garlic",
+    });
     expect(announced).toEqual([]);
   });
 
@@ -272,7 +275,7 @@ describe("the ingredient catalogue", () => {
 
     await renameIngredient(actor, onion.ingredientId, "Onion");
 
-    await expect(ingredientFor(onion.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(onion.aliasId)).resolves.toMatchObject({
       name: "Onion",
       flagged: false,
     });
@@ -283,7 +286,7 @@ describe("the ingredient catalogue", () => {
 
     await markDistinct(actor, powder.ingredientId);
 
-    await expect(ingredientFor(powder.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(powder.aliasId)).resolves.toMatchObject({
       name: "onion powder",
       flagged: false,
     });
@@ -305,7 +308,7 @@ describe("the ingredient catalogue", () => {
     await addAlias(actor, saffron.ingredientId, "zafraan");
     await deleteIngredient(actor, saffron.ingredientId);
 
-    await expect(ingredientFor(saffron.aliasId)).resolves.toBeNull();
+    await expect(findIngredientByAliasId(saffron.aliasId)).resolves.toBeNull();
 
     const [again] = await resolveIngredients(["zafraan"], { userId: actor.userId });
 
@@ -320,7 +323,7 @@ describe("the ingredient catalogue", () => {
 
     await deleteIngredient(actor, roller.ingredientId);
 
-    await expect(ingredientFor(roller.aliasId)).resolves.toBeNull();
+    await expect(findIngredientByAliasId(roller.aliasId)).resolves.toBeNull();
     await expect(namedBy(rows)).resolves.toEqual({
       line: { name: "1 deegroller", aliasId: null },
       grocery: { name: "1 deegroller", aliasId: null, ingredientId: null },
@@ -457,7 +460,7 @@ describe("the ingredient catalogue", () => {
       await db.execute(sql`drop function refuse_alias()`);
     }
 
-    await expect(ingredientFor(leek.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(leek.aliasId)).resolves.toMatchObject({
       name: "leek",
       flagged: true,
     });
@@ -722,8 +725,8 @@ describe("the ingredient catalogue", () => {
       announced = [];
       await sweepUnusedIngredients();
 
-      await expect(ingredientFor(box.aliasId)).resolves.toBeNull();
-      await expect(ingredientFor(lights.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(box.aliasId)).resolves.toBeNull();
+      await expect(findIngredientByAliasId(lights.aliasId)).resolves.toMatchObject({
         name: "kerstverlichting",
       });
       expect(announced).toEqual([[box.ingredientId]]);
@@ -736,7 +739,7 @@ describe("the ingredient catalogue", () => {
       await unusedFor(tin.ingredientId, 90, 1);
       await sweepUnusedIngredients();
 
-      await expect(ingredientFor(tin.aliasId)).resolves.toBeNull();
+      await expect(findIngredientByAliasId(tin.aliasId)).resolves.toBeNull();
     });
 
     it("keeps a parent while it has a child, and deletes it the night after its last child goes", async () => {
@@ -758,13 +761,13 @@ describe("the ingredient catalogue", () => {
 
       // The child something uses keeps its parent; an unused child goes before its parent.
       await sweepUnusedIngredients();
-      await expect(ingredientFor(fries.aliasId)).resolves.not.toBeNull();
-      await expect(ingredientFor(treats.aliasId)).resolves.toBeNull();
-      await expect(ingredientFor(nora.aliasId)).resolves.not.toBeNull();
+      await expect(findIngredientByAliasId(fries.aliasId)).resolves.not.toBeNull();
+      await expect(findIngredientByAliasId(treats.aliasId)).resolves.toBeNull();
+      await expect(findIngredientByAliasId(nora.aliasId)).resolves.not.toBeNull();
 
       await sweepUnusedIngredients();
-      await expect(ingredientFor(nora.aliasId)).resolves.toBeNull();
-      await expect(ingredientFor(fries.aliasId)).resolves.not.toBeNull();
+      await expect(findIngredientByAliasId(nora.aliasId)).resolves.toBeNull();
+      await expect(findIngredientByAliasId(fries.aliasId)).resolves.not.toBeNull();
     });
 
     it.each([
@@ -808,7 +811,7 @@ describe("the ingredient catalogue", () => {
       await sweepUnusedIngredients();
 
       await expect(unusedSince(food.ingredientId)).resolves.toBeNull();
-      await expect(ingredientFor(food.aliasId)).resolves.not.toBeNull();
+      await expect(findIngredientByAliasId(food.aliasId)).resolves.not.toBeNull();
     });
 
     it("clears the flag of a food its last recipe line no longer names", async () => {
@@ -854,7 +857,9 @@ describe("the ingredient catalogue", () => {
       await sweepUnusedIngredients();
 
       await expect(unusedSince(salt.ingredientId)).resolves.toBeNull();
-      await expect(ingredientFor(salt.aliasId)).resolves.toMatchObject({ name: "vaatwaszout" });
+      await expect(findIngredientByAliasId(salt.aliasId)).resolves.toMatchObject({
+        name: "vaatwaszout",
+      });
     });
 
     it("keeps a food only a recurring grocery names, and never deletes a seeded one", async () => {
@@ -890,7 +895,9 @@ describe("the ingredient catalogue", () => {
         .where(inArray(ingredients.id, [filter.ingredientId, seeded!.id]));
 
       expect(left).toHaveLength(2);
-      await expect(ingredientFor(seededAlias!.id)).resolves.toMatchObject({ name: "amaranth" });
+      await expect(findIngredientByAliasId(seededAlias!.id)).resolves.toMatchObject({
+        name: "amaranth",
+      });
     });
   });
 });

@@ -16,6 +16,7 @@ import type { DecisionQuestions } from "@norish/shared-server/ai/runtime/runtime
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { withTransaction } from "@norish/db/drizzle";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
+import { findIngredientByAliasId } from "@norish/db/repositories/ingredient-aliases";
 import {
   findIngredientAncestors,
   mergeCatalogueIngredients,
@@ -51,11 +52,7 @@ import {
   setParent,
 } from "@norish/shared-server/ingredients/catalogue";
 import { onIngredientsMinted } from "@norish/shared-server/ingredients/minted";
-import {
-  findIngredientFor,
-  ingredientFor,
-  resolveIngredients,
-} from "@norish/shared-server/ingredients/resolver";
+import { findIngredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 import { askAIAbout } from "@norish/shared-server/ingredients/review";
 
 import {
@@ -254,7 +251,7 @@ describe("asking AI about an Ingredient", () => {
       parent: "sausage",
       considered: [],
     });
-    await expect(ingredientFor(knaks.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(knaks.aliasId)).resolves.toMatchObject({
       id: frankfurter.ingredientId,
       flagged: false,
     });
@@ -276,10 +273,10 @@ describe("asking AI about an Ingredient", () => {
     decides("Is zucchini", 0.95);
     await expect(askAIAbout(courgette.ingredientId)).resolves.toMatchObject({ outcome: "merge" });
 
-    await expect(ingredientFor(tomaat.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(tomaat.aliasId)).resolves.toMatchObject({
       id: tomatoes.ingredientId,
     });
-    await expect(ingredientFor(courgette.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(courgette.aliasId)).resolves.toMatchObject({
       id: zucchini.ingredientId,
     });
   });
@@ -324,7 +321,7 @@ describe("asking AI about an Ingredient", () => {
       into: "onion",
       sure: false,
     });
-    await expect(ingredientFor(rings.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(rings.aliasId)).resolves.toMatchObject({
       id: onion.ingredientId,
       flagged: true,
       flagReason: "ai-unsure",
@@ -345,7 +342,7 @@ describe("asking AI about an Ingredient", () => {
       englishName: "red onion",
     });
     await expect(parentOf(red.ingredientId)).resolves.toBe(onion.ingredientId);
-    await expect(ingredientFor(red.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(red.aliasId)).resolves.toMatchObject({
       id: red.ingredientId,
       flagged: false,
     });
@@ -367,7 +364,7 @@ describe("asking AI about an Ingredient", () => {
       sure: false,
     });
     await expect(parentOf(red.ingredientId)).resolves.toBe(onion.ingredientId);
-    await expect(ingredientFor(red.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(red.aliasId)).resolves.toMatchObject({
       flagged: true,
       flagReason: "ai-unsure",
     });
@@ -388,7 +385,7 @@ describe("asking AI about an Ingredient", () => {
       outcome: "rename",
       to: "spring onions",
     });
-    await expect(ingredientFor(spring.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(spring.aliasId)).resolves.toMatchObject({
       name: "spring onions",
       flagged: false,
     });
@@ -406,7 +403,7 @@ describe("asking AI about an Ingredient", () => {
       reason: "ai-unsure",
       englishName: "multitool",
     });
-    await expect(ingredientFor(thing.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(thing.aliasId)).resolves.toMatchObject({
       flagged: true,
       flagReason: "ai-unsure",
     });
@@ -436,7 +433,9 @@ describe("asking AI about an Ingredient", () => {
         sure: true,
       });
       await expect(parentOf(food.ingredientId)).resolves.toBeNull();
-      await expect(ingredientFor(food.aliasId)).resolves.toMatchObject({ flagged: false });
+      await expect(findIngredientByAliasId(food.aliasId)).resolves.toMatchObject({
+        flagged: false,
+      });
       expect(await changes()).toEqual([
         { kind: "parent", food: "peanut butter", target: null, sure: true, kept: false },
       ]);
@@ -471,7 +470,7 @@ describe("asking AI about an Ingredient", () => {
         sure: false,
       });
       await expect(parentOf(food.ingredientId)).resolves.toBeNull();
-      await expect(ingredientFor(food.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(food.aliasId)).resolves.toMatchObject({
         flagged: true,
         flagReason: "ai-unsure",
       });
@@ -553,7 +552,9 @@ describe("asking AI about an Ingredient", () => {
         "Parent: whey",
       ]);
       await expect(parentOf(food.ingredientId)).resolves.toBe(filed);
-      await expect(ingredientFor(food.aliasId)).resolves.toMatchObject({ flagged: false });
+      await expect(findIngredientByAliasId(food.aliasId)).resolves.toMatchObject({
+        flagged: false,
+      });
     });
 
     it("moves it to the plain food AI names when the catalogue has that food", async () => {
@@ -654,7 +655,7 @@ describe("asking AI about an Ingredient", () => {
         considered: expect.arrayContaining(["tomato", "plum tomato"]),
       });
       expect(offered.sort()).toEqual(["Is none of these", "Is plum tomato", "Is tomato"]);
-      await expect(ingredientFor(tomaat.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(tomaat.aliasId)).resolves.toMatchObject({
         id: tomato.ingredientId,
       });
       expect(resolutionRequests()).toBe(2);
@@ -666,7 +667,9 @@ describe("asking AI about an Ingredient", () => {
       decides("Is tomato", RESOLUTION_THRESHOLD - 0.01);
       picks("plum tomato", true);
       await askAIAbout(tomaat.ingredientId);
-      await expect(ingredientFor(tomaat.aliasId)).resolves.toMatchObject({ id: plum.ingredientId });
+      await expect(findIngredientByAliasId(tomaat.aliasId)).resolves.toMatchObject({
+        id: plum.ingredientId,
+      });
 
       const pomodoro = await flagged("pomodoro");
 
@@ -680,7 +683,7 @@ describe("asking AI about an Ingredient", () => {
         sure: false,
       });
       expect(vi.mocked(decide)).not.toHaveBeenCalled();
-      await expect(ingredientFor(pomodoro.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(pomodoro.aliasId)).resolves.toMatchObject({
         id: tomato.ingredientId,
         flagged: true,
       });
@@ -694,7 +697,7 @@ describe("asking AI about an Ingredient", () => {
       await expect(askAIAbout(tomaat.ingredientId)).resolves.toMatchObject({
         outcome: "distinct",
       });
-      await expect(ingredientFor(tomaat.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(tomaat.aliasId)).resolves.toMatchObject({
         id: tomaat.ingredientId,
         flagged: false,
       });
@@ -710,7 +713,7 @@ describe("asking AI about an Ingredient", () => {
         outcome: "unsure",
         reason: "ai-unsure",
       });
-      await expect(ingredientFor(tomaat.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(tomaat.aliasId)).resolves.toMatchObject({
         id: tomaat.ingredientId,
         flagged: true,
       });
@@ -815,7 +818,7 @@ describe("asking AI about an Ingredient", () => {
         considered: ["porto rosso"],
       });
       expect(listed()).toBe("Foods in the catalogue it may be:\n- porto rosso");
-      await expect(ingredientFor(pesto.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(pesto.aliasId)).resolves.toMatchObject({
         id: pesto.ingredientId,
         flagged: false,
       });
@@ -849,7 +852,7 @@ describe("asking AI about an Ingredient", () => {
         into: "tortilla",
         sure: true,
       });
-      await expect(ingredientFor(tortillas.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(tortillas.aliasId)).resolves.toMatchObject({
         id: tortilla.ingredientId,
         flagged: false,
       });
@@ -867,7 +870,7 @@ describe("asking AI about an Ingredient", () => {
         into: "tortilla",
         sure: false,
       });
-      await expect(ingredientFor(tortillas.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(tortillas.aliasId)).resolves.toMatchObject({
         id: tortilla.ingredientId,
         flagged: true,
       });
@@ -886,7 +889,7 @@ describe("asking AI about an Ingredient", () => {
         into: "tortilla",
         sure: true,
       });
-      await expect(ingredientFor(tortillas.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(tortillas.aliasId)).resolves.toMatchObject({
         id: tortilla.ingredientId,
         flagged: false,
       });
@@ -906,7 +909,7 @@ describe("asking AI about an Ingredient", () => {
         sure: true,
       });
       expect(resolutionRequests()).toBe(1);
-      await expect(ingredientFor(rode.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(rode.aliasId)).resolves.toMatchObject({
         id: pesto.ingredientId,
       });
     });
@@ -967,7 +970,7 @@ describe("asking AI about an Ingredient", () => {
   describe("AI's names, looked up as written", () => {
     /** The food a recipe line's text now means, and its parent's id. */
     async function landed(food: { aliasId: string; ingredientId: string }) {
-      const row = await ingredientFor(food.aliasId);
+      const row = await findIngredientByAliasId(food.aliasId);
 
       return { same: row?.id === food.ingredientId, parent: await parentOf(food.ingredientId) };
     }
@@ -1006,7 +1009,7 @@ describe("asking AI about an Ingredient", () => {
         into: "baby potatoes",
         sure: true,
       });
-      await expect(ingredientFor(krieltjes.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(krieltjes.aliasId)).resolves.toMatchObject({
         id: baby.ingredientId,
       });
       expect(resolutionRequests()).toBe(1);
@@ -1108,7 +1111,7 @@ describe("asking AI about an Ingredient", () => {
         into: "chicken thigh",
         sure: true,
       });
-      await expect(ingredientFor(dijen.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(dijen.aliasId)).resolves.toMatchObject({
         id: thigh.ingredientId,
       });
     });
@@ -1130,7 +1133,7 @@ describe("asking AI about an Ingredient", () => {
         into: "edamame",
         sure: true,
       });
-      await expect(ingredientFor(bonen.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(bonen.aliasId)).resolves.toMatchObject({
         id: edamame.ingredientId,
       });
     });
@@ -1170,7 +1173,7 @@ describe("asking AI about an Ingredient", () => {
 
       await expect(askAIAbout(uien.ingredientId)).resolves.toMatchObject({ outcome: "merge" });
       expect(resolutionRequests()).toBe(2);
-      await expect(ingredientFor(uien.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(uien.aliasId)).resolves.toMatchObject({
         id: onion.ingredientId,
       });
     });
@@ -1190,7 +1193,7 @@ describe("asking AI about an Ingredient", () => {
         reason: "ai-unavailable",
       });
       expect(resolutionRequests()).toBe(2);
-      await expect(ingredientFor(uien.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(uien.aliasId)).resolves.toMatchObject({
         id: uien.ingredientId,
         flagged: true,
         flagReason: "ai-unavailable",
@@ -1210,7 +1213,7 @@ describe("asking AI about an Ingredient", () => {
       outcome: "unsure",
       reason: "ai-unavailable",
     });
-    await expect(ingredientFor(red.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(red.aliasId)).resolves.toMatchObject({
       flagReason: "ai-unavailable",
     });
     expect(await changes()).toMatchObject([{ kind: "parent", sure: false }]);
@@ -1230,7 +1233,7 @@ describe("asking AI about an Ingredient", () => {
       reason: "ai-off",
     });
     // Still one the nightly pass asks again once AI is back.
-    await expect(ingredientFor(red.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(red.aliasId)).resolves.toMatchObject({
       flagReason: "ai-unavailable",
     });
   });
@@ -1245,7 +1248,9 @@ describe("asking AI about an Ingredient", () => {
     vi.mocked(isAIEnabled).mockResolvedValue(false);
 
     await askAIAbout(red.ingredientId);
-    await expect(ingredientFor(red.aliasId)).resolves.toMatchObject({ flagReason: "ai-off" });
+    await expect(findIngredientByAliasId(red.aliasId)).resolves.toMatchObject({
+      flagReason: "ai-off",
+    });
   });
 
   it("asks nothing about a food a person kept distinct, named or parented, nor a seeded one", async () => {
@@ -1302,7 +1307,9 @@ describe("asking AI about an Ingredient", () => {
 
     reads({ englishName: "rye bread", parent: null, sure: true });
     await expect(askAIAbout(rogge.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
-    await expect(ingredientFor(rogge.aliasId)).resolves.toMatchObject({ id: rogge.ingredientId });
+    await expect(findIngredientByAliasId(rogge.aliasId)).resolves.toMatchObject({
+      id: rogge.ingredientId,
+    });
   });
 
   it("never makes a merge or a parent a person undid again", async () => {
@@ -1316,7 +1323,7 @@ describe("asking AI about an Ingredient", () => {
     await askAIAbout(red.ingredientId);
     for (const change of await listAIChanges()) await undoAIChange(actor, change.id);
 
-    const restored = (await ingredientFor(bulbs.aliasId))!;
+    const restored = (await findIngredientByAliasId(bulbs.aliasId))!;
 
     reads({ englishName: "onion", parent: null, sure: true });
     await expect(askAIAbout(restored.id)).resolves.toMatchObject({
@@ -1328,7 +1335,7 @@ describe("asking AI about an Ingredient", () => {
       outcome: "skipped",
       reason: "undone",
     });
-    await expect(ingredientFor(bulbs.aliasId)).resolves.not.toMatchObject({
+    await expect(findIngredientByAliasId(bulbs.aliasId)).resolves.not.toMatchObject({
       id: onion.ingredientId,
     });
     await expect(parentOf(red.ingredientId)).resolves.toBeNull();
@@ -1343,7 +1350,7 @@ describe("asking AI about an Ingredient", () => {
     await askAIAbout(red.ingredientId);
     await keepAIChange(actor, (await listAIChanges())[0]!.id);
 
-    await expect(ingredientFor(red.aliasId)).resolves.toMatchObject({ flagged: false });
+    await expect(findIngredientByAliasId(red.aliasId)).resolves.toMatchObject({ flagged: false });
     await expect(askAIAbout(red.ingredientId)).resolves.toMatchObject({
       outcome: "skipped",
       reason: "decided",
@@ -1382,7 +1389,7 @@ describe("asking AI about an Ingredient", () => {
       outcome: "unsure",
       reason: "ai-key-rejected",
     });
-    await expect(ingredientFor(cloves.aliasId)).resolves.toMatchObject({
+    await expect(findIngredientByAliasId(cloves.aliasId)).resolves.toMatchObject({
       flagReason: "ai-key-rejected",
     });
   });
@@ -1407,7 +1414,7 @@ describe("asking AI about an Ingredient", () => {
       expect(vi.mocked(generateStructured)).toHaveBeenCalledWith(
         expect.objectContaining({ prompt: "ingredient-resolution", timeoutMs: REQUEST_BUDGET_MS })
       );
-      await expect(ingredientFor(cloves.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(cloves.aliasId)).resolves.toMatchObject({
         id: garlic.ingredientId,
       });
     });
@@ -1460,7 +1467,7 @@ describe("asking AI about an Ingredient", () => {
         expect.objectContaining({ timeoutMs: REQUEST_BUDGET_MS })
       );
       expect(resolutionRequests()).toBe(4);
-      await expect(ingredientFor(tomaat.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(tomaat.aliasId)).resolves.toMatchObject({
         id: tomato.ingredientId,
       });
     });
@@ -1612,7 +1619,7 @@ describe("asking AI about an Ingredient", () => {
       }
 
       const { joined: how, aliasIds } = await lineFoods(named.line);
-      const parts = await Promise.all(aliasIds.map((aliasId) => ingredientFor(aliasId!)));
+      const parts = await Promise.all(aliasIds.map((aliasId) => findIngredientByAliasId(aliasId!)));
 
       expect(how).toBe("alternatives");
       expect(parts).toMatchObject([
@@ -1655,7 +1662,7 @@ describe("asking AI about an Ingredient", () => {
         }
 
         const parts = await Promise.all(
-          (await lineFoods(named.line)).aliasIds.map((aliasId) => ingredientFor(aliasId!))
+          (await lineFoods(named.line)).aliasIds.map((aliasId) => findIngredientByAliasId(aliasId!))
         );
 
         expect(parts).toMatchObject([
@@ -1683,7 +1690,7 @@ describe("asking AI about an Ingredient", () => {
           outcome: "split",
         });
         const [, part] = await Promise.all(
-          (await lineFoods(named.line)).aliasIds.map((aliasId) => ingredientFor(aliasId!))
+          (await lineFoods(named.line)).aliasIds.map((aliasId) => findIngredientByAliasId(aliasId!))
         );
 
         expect(part).toMatchObject({ id: grain.ingredientId });
@@ -1730,7 +1737,7 @@ describe("asking AI about an Ingredient", () => {
           onIngredientsMinted(undefined);
         }
 
-        const creamFood = await ingredientFor(cream.aliasId);
+        const creamFood = await findIngredientByAliasId(cream.aliasId);
 
         expect(creamFood).toMatchObject({
           name: "light cooking cream",
@@ -1765,7 +1772,7 @@ describe("asking AI about an Ingredient", () => {
         splits(reading, "alternatives", true);
 
         await expect(askAIAbout(joined.ingredientId)).resolves.toMatchObject({ outcome: "split" });
-        await expect(ingredientFor(cream.aliasId)).resolves.toMatchObject({
+        await expect(findIngredientByAliasId(cream.aliasId)).resolves.toMatchObject({
           id: named.ingredientId,
         });
         expect(await exists(joined.ingredientId)).toBe(false);
@@ -1787,7 +1794,7 @@ describe("asking AI about an Ingredient", () => {
         });
         expect(await exists(joined.ingredientId)).toBe(true);
         expect(await lineFoods(line.line)).toEqual({ joined: null, aliasIds: [cream.aliasId] });
-        await expect(ingredientFor(cream.aliasId)).resolves.toMatchObject({
+        await expect(findIngredientByAliasId(cream.aliasId)).resolves.toMatchObject({
           id: joined.ingredientId,
           flagged: true,
         });
@@ -1806,7 +1813,7 @@ describe("asking AI about an Ingredient", () => {
         splits(reading, "together", true);
 
         await expect(askAIAbout(joined.ingredientId)).resolves.toMatchObject({ outcome: "split" });
-        await expect(ingredientFor(cream.aliasId)).resolves.toMatchObject({
+        await expect(findIngredientByAliasId(cream.aliasId)).resolves.toMatchObject({
           id: yogurt.ingredientId,
         });
         expect(await rowsOf(groceries)).toEqual([
@@ -1821,7 +1828,7 @@ describe("asking AI about an Ingredient", () => {
         await expect(askAIAbout(joined.ingredientId)).resolves.toMatchObject({
           outcome: "unsure",
         });
-        await expect(ingredientFor(cream.aliasId)).resolves.toMatchObject({
+        await expect(findIngredientByAliasId(cream.aliasId)).resolves.toMatchObject({
           id: joined.ingredientId,
         });
       });
@@ -1862,7 +1869,7 @@ describe("asking AI about an Ingredient", () => {
         parts: ["Dijon mustard", "yellow mustard"],
       });
       expect(resolutionRequests()).toBe(1);
-      await expect(ingredientFor(joined.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(joined.aliasId)).resolves.toMatchObject({
         id: joined.ingredientId,
         flagged: true,
         flagReason: "ai-unsure",
@@ -1894,7 +1901,7 @@ describe("asking AI about an Ingredient", () => {
       });
 
       await undoAIChange(actor, change!.id);
-      await expect(ingredientFor(roller.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(roller.aliasId)).resolves.toMatchObject({
         id: roller.ingredientId,
         name: "deegroller",
       });
@@ -2008,7 +2015,7 @@ describe("asking AI about an Ingredient", () => {
           outcome: "unsure",
           reason: "ai-junk",
         });
-        await expect(ingredientFor(food.aliasId)).resolves.toMatchObject({
+        await expect(findIngredientByAliasId(food.aliasId)).resolves.toMatchObject({
           flagged: true,
           flagReason: "ai-junk",
         });

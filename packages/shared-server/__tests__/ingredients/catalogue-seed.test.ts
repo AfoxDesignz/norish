@@ -13,6 +13,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
+import { findIngredientByAliasId } from "@norish/db/repositories/ingredient-aliases";
 import { listJunkFolds } from "@norish/db/repositories/ingredient-junk-pile";
 import { findIngredientAncestors } from "@norish/db/repositories/ingredient-relocation";
 import { listPantryIngredientsByUserIds } from "@norish/db/repositories/pantry";
@@ -26,7 +27,7 @@ import {
   setParent,
 } from "@norish/shared-server/ingredients/catalogue";
 import { addToPantry } from "@norish/shared-server/ingredients/pantry";
-import { ingredientFor, resolveIngredients } from "@norish/shared-server/ingredients/resolver";
+import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 import { buildCatalogueExport } from "@norish/shared-server/ingredients/seed/catalogue-export";
 import {
   applySeedFile,
@@ -132,7 +133,7 @@ describe("the ingredient catalogue seed", () => {
       await expect(resolve("oignons")).resolves.toMatchObject({
         ingredientId: onion.ingredientId,
       });
-      await expect(ingredientFor(onion.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(onion.aliasId)).resolves.toMatchObject({
         name: "onion",
         ownerId: null,
         flagged: false,
@@ -240,7 +241,7 @@ describe("the ingredient catalogue seed", () => {
       await mergeByAI(rings.ingredientId, mine.ingredientId, false);
       await applySeedFile(excerpt);
 
-      await expect(ingredientFor(rings.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(rings.aliasId)).resolves.toMatchObject({
         id: mine.ingredientId,
         flagged: false,
       });
@@ -546,7 +547,7 @@ describe("the ingredient catalogue seed", () => {
 
       expect(onion.ingredientId).not.toBe(onions.ingredientId);
       // Merged: the old spelling now names the seeded food.
-      await expect(ingredientFor(onions.aliasId)).resolves.toMatchObject({
+      await expect(findIngredientByAliasId(onions.aliasId)).resolves.toMatchObject({
         id: onion.ingredientId,
       });
 
