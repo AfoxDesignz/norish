@@ -264,13 +264,21 @@ export async function isAskableByAI(tx: Db, id: string): Promise<boolean> {
   return row?.askable ?? false;
 }
 
-/** Which of these foods the Ingredients page lists (`listedFood`), the only ones AI names. */
-export async function findListedIngredientIds(ids: readonly string[]): Promise<Set<string>> {
+/** Which of these foods are listed (seeded, or a recipe line names it), or only the seeded ones. */
+export async function findIngredientIdsAmong(
+  ids: readonly string[],
+  which: "listed" | "seeded"
+): Promise<Set<string>> {
   if (ids.length === 0) return new Set();
   const rows = await db
     .select({ id: ingredients.id })
     .from(ingredients)
-    .where(and(inArray(ingredients.id, [...new Set(ids)]), ingredientIsListed()));
+    .where(
+      and(
+        inArray(ingredients.id, [...new Set(ids)]),
+        which === "seeded" ? isNotNull(ingredients.offId) : ingredientIsListed()
+      )
+    );
 
   return new Set(rows.map((row) => row.id));
 }

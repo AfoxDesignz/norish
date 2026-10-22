@@ -10,11 +10,8 @@ import type {
 } from "@norish/db/repositories/ingredient-aliases";
 import type { FlagReason, ReviewTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
-import {
-  findIngredientCandidatesByIds,
-  findSeededIngredientIds,
-} from "@norish/db/repositories/ingredient-aliases";
-import { findListedIngredientIds } from "@norish/db/repositories/ingredient-catalogue";
+import { findIngredientCandidatesByIds } from "@norish/db/repositories/ingredient-aliases";
+import { findIngredientIdsAmong } from "@norish/db/repositories/ingredient-catalogue";
 import {
   isAIEnabled,
   isDecisionUseEnabled,
@@ -246,7 +243,7 @@ async function findNamed(
   const ids = named.map((one) => one.ingredientId);
   // A hidden food is never AI's answer: no merge into it, no parent, no split part. A category is
   // a seeded food: an own one may be a placeholder ("toppings") whose lines leave the choice open.
-  const listed = await (seeded ? findSeededIngredientIds(ids) : findListedIngredientIds(ids));
+  const listed = await findIngredientIdsAmong(ids, seeded ? "seeded" : "listed");
   const found = named.filter((one) => listed.has(one.ingredientId));
   const exact = found.filter(isExact);
   const ranked = distinctFoods(

@@ -140,17 +140,6 @@ export async function findSeededFoodSpellingsByFolds(
     .where(and(inArray(ingredientAliases.fold, unique), isNotNull(ingredients.offId)));
 }
 
-/** The seeded foods among these ids: the catalogue seed wrote them, so each is a food. */
-export async function findSeededIngredientIds(ids: readonly string[]): Promise<Set<string>> {
-  if (ids.length === 0) return new Set();
-  const rows = await db
-    .select({ id: ingredients.id })
-    .from(ingredients)
-    .where(and(inArray(ingredients.id, [...new Set(ids)]), isNotNull(ingredients.offId)));
-
-  return new Set(rows.map((row) => row.id));
-}
-
 export async function findIngredientByAliasId(aliasId: string): Promise<IngredientRow | null> {
   const [row] = await db
     .select({
