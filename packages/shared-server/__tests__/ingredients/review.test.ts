@@ -809,12 +809,30 @@ describe("asking AI about an Ingredient", () => {
       expect(listed()).toBe("Foods in the catalogue it may be:\n1. sambal oelek\n2. sambal olie");
     });
 
-    it("merges into the slip AI picks, unsure, so a person checks it", async () => {
+    it("merges into a slip the Decision picks at 90% or more, sure", async () => {
       const tortilla = await kept("tortilla");
       const tortillas = await flagged("maïstortilla");
 
       reads({ englishName: "tortila", parent: null, sure: true });
-      decides("Is tortilla", 0.95);
+      decides("Is tortilla", 0.97);
+
+      await expect(askAIAbout(tortillas.ingredientId)).resolves.toMatchObject({
+        outcome: "merge",
+        into: "tortilla",
+        sure: true,
+      });
+      await expect(ingredientFor(tortillas.aliasId)).resolves.toMatchObject({
+        id: tortilla.ingredientId,
+        flagged: false,
+      });
+    });
+
+    it("merges into a slip the Decision picks below 90%, unsure, so a person checks it", async () => {
+      const tortilla = await kept("tortilla");
+      const tortillas = await flagged("maïstortilla");
+
+      reads({ englishName: "tortila", parent: null, sure: true });
+      decides("Is tortilla", 0.85);
 
       await expect(askAIAbout(tortillas.ingredientId)).resolves.toMatchObject({
         outcome: "merge",
@@ -824,6 +842,25 @@ describe("asking AI about an Ingredient", () => {
       await expect(ingredientFor(tortillas.aliasId)).resolves.toMatchObject({
         id: tortilla.ingredientId,
         flagged: true,
+      });
+    });
+
+    it("merges into a slip the language model picks sure, sure", async () => {
+      const tortilla = await kept("tortilla");
+      const tortillas = await flagged("maïstortilla");
+
+      vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
+      reads({ englishName: "tortila", parent: null, sure: true });
+      picks(1, true);
+
+      await expect(askAIAbout(tortillas.ingredientId)).resolves.toMatchObject({
+        outcome: "merge",
+        into: "tortilla",
+        sure: true,
+      });
+      await expect(ingredientFor(tortillas.aliasId)).resolves.toMatchObject({
+        id: tortilla.ingredientId,
+        flagged: false,
       });
     });
 
@@ -846,7 +883,7 @@ describe("asking AI about an Ingredient", () => {
       });
     });
 
-    it("asks about a parent only a slip finds, and files it unsure under the one AI picks", async () => {
+    it("asks about a parent only a slip finds, and files it under the one AI picks, unsure as AI is", async () => {
       const tortilla = await kept("tortilla");
       const wrap = await flagged("maïswrap");
 
@@ -860,7 +897,7 @@ describe("asking AI about an Ingredient", () => {
       const flour = await flagged("bloemwrap");
 
       reads({ englishName: "flour wrap", parent: "tortila", sure: true });
-      picks(1, true);
+      picks(1, false);
       await expect(askAIAbout(flour.ingredientId)).resolves.toMatchObject({
         outcome: "parent",
         of: "tortilla",

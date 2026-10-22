@@ -34,6 +34,9 @@ import { onceMoreOnTimeout } from "../runtime/timeout-retry";
  */
 export const RESOLUTION_THRESHOLD = 0.8;
 
+/** At or above: a slip of the fingers the Decision picks is sure, so it is not flagged. */
+export const SURE_SLIP_THRESHOLD = 0.9;
+
 /**
  * How long one request to AI may take: a pass makes one per question, a split's parts included.
  * A request past it is asked once more.
@@ -89,7 +92,7 @@ export async function askWhatFoodThisIs(text: string, options: AskOptions): Prom
 
 /**
  * The reading, looked up: a food the names find is the one, several found are asked about; else
- * the parent AI named, else its category, found, is its parent. Flagged unless AI was sure; a slip's find never is.
+ * the parent AI named, else its category, found, is its parent. Flagged unless AI was sure; a slip's find only when AI was sure of it.
  */
 async function readThenLookUp(
   text: string,
@@ -211,7 +214,8 @@ type Candidate = IngredientCandidate & { matched: string };
 
 /**
  * The listed (`seeded`: seeded) food other than `excludeId` these names find: an exact spelling
- * wins, else several or slips alone are asked about. Sure only where AI is and the pick is no slip.
+ * wins, else several or slips alone are asked about. Sure where AI is; a slip only where the
+ * Decision reached `SURE_SLIP_THRESHOLD` or the language model was sure.
  */
 async function findNamed(
   asked: Asked,
@@ -230,7 +234,7 @@ async function findNamed(
   const ranked = distinctFoods(
     exact.length > 0 ? exact : [...found].sort((a, b) => b.score - a.score)
   );
-  let pick: Pick = { ingredientId: ranked[0]?.ingredientId ?? null, sure: true };
+  let pick: Pick = { ingredientId: ranked[0]?.ingredientId ?? null, sure: true, sureOfSlip: false };
 
   // One exact food is the answer; slips alone are asked about even when only one was found.
   if (ranked.length > (exact.length > 0 ? 1 : 0)) {
@@ -251,7 +255,7 @@ async function findNamed(
 
   return {
     food: picked ? refOf(picked) : null,
-    sure: pick.sure && (!picked || isExact(picked)),
+    sure: pick.sure && (!picked || isExact(picked) || pick.sureOfSlip),
   };
 }
 
@@ -370,10 +374,11 @@ async function readName(text: string, filedUnder: string | null): Promise<Readin
   return null;
 }
 
-/** Which of the found foods the name is, or none (null), and whether AI was sure. */
+/** Which of the found foods the name is, or none (null), whether AI was sure, and sure enough for a slip. */
 interface Pick {
   ingredientId: string | null;
   sure: boolean;
+  sureOfSlip: boolean;
 }
 
 /**
@@ -491,7 +496,11 @@ async function decideFood(asked: Asked, candidates: readonly Candidate[]): Promi
 
   if (probability < RESOLUTION_THRESHOLD || !options.has(choice)) return null;
 
-  return { ingredientId: options.get(choice) ?? null, sure: true };
+  return {
+    ingredientId: options.get(choice) ?? null,
+    sure: true,
+    sureOfSlip: probability >= SURE_SLIP_THRESHOLD,
+  };
 }
 
 const pickSchema = z
@@ -543,6 +552,6 @@ async function askLanguageModel(
 
   // A number off the list is no pick AI can be sure of.
   return food
-    ? { ingredientId: food.id, sure: answer.sure }
-    : { ingredientId: null, sure: answer.sure && answer.food === null };
+    ? { ingredientId: food.id, sure: answer.sure, sureOfSlip: answer.sure }
+    : { ingredientId: null, sure: answer.sure && answer.food === null, sureOfSlip: false };
 }
