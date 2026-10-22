@@ -10,6 +10,7 @@ import {
 } from "@norish/db/repositories/ingredient-catalogue";
 import { createLogger } from "@norish/shared-server/logger";
 import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
+import { foldName } from "@norish/shared/lib/fold-name";
 
 import { readPlainName } from "../ai/resolution/plain-name";
 import { mergeByAI, renameByAI } from "./ai-changes";
@@ -41,7 +42,8 @@ export async function giveItsPlainName(ingredientId: string): Promise<PlainNameO
   const plain = read ? cleanIngredientText(read) : "";
 
   if (!plain) return { outcome: "unsure", reason: "no-food", ...noTrace() };
-  if (plain === row.name) {
+  // Folded as spellings are, so a name differing only in case keeps the casing it has.
+  if (foldName(plain) === foldName(row.name)) {
     if (await settleIngredientName(ingredientId)) await ingredientChanges().changed([ingredientId]);
 
     return { outcome: "plain" };

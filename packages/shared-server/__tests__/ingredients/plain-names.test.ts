@@ -126,6 +126,15 @@ describe("Plain Names", () => {
     });
   });
 
+  it("settles a name the plain name differs from only in case, keeping its casing", async () => {
+    const chips = await food("Tortilla Chips");
+
+    readsAs("tortilla chips");
+    await expect(giveItsPlainName(chips)).resolves.toEqual({ outcome: "plain" });
+    expect(await row(chips)).toMatchObject({ name: "Tortilla Chips", nameSettled: true });
+    expect(await listAIChanges()).toEqual([]);
+  });
+
   it("merges into the food that already spells the plain name", async () => {
     const onion = await food("onion");
     const messy = await food("Verse Onion Deluxe");
