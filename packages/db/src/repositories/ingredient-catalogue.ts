@@ -770,36 +770,6 @@ export async function sweepUnusedCatalogueIngredients(tx: DbTransaction): Promis
   return deleted.map((row) => row.id);
 }
 
-/**
- * The Ingredient a name already belongs to, other than `exceptId`: one of
- * its spellings folds the same, or it is named so.
- */
-export async function findIngredientHolding(
-  text: string,
-  fold: string,
-  exceptId: string
-): Promise<{ id: string; name: string } | null> {
-  const [row] = await db
-    .select({ id: ingredients.id, name: ingredients.name })
-    .from(ingredients)
-    .leftJoin(
-      ingredientAliases,
-      and(eq(ingredientAliases.ingredientId, ingredients.id), eq(ingredientAliases.fold, fold))
-    )
-    .where(
-      and(
-        sql`${ingredients.id} <> ${exceptId}`,
-        or(
-          sql`${ingredientAliases.id} is not null`,
-          sql`lower(${ingredients.name}) = lower(${text})`
-        )
-      )
-    )
-    .limit(1);
-
-  return row ?? null;
-}
-
 /** Whether no Ingredient but `ingredientId` goes by `name`, in any case. */
 export function nameIsFree(ingredientId: string, name: string): SQL {
   return sql`not exists (select 1 from ${ingredients} o where o.id <> ${ingredientId} and lower(o.name) = lower(${name}))`;

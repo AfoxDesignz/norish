@@ -5,18 +5,16 @@
 import type { ReviewTrace, ReviewVerdict } from "@norish/shared/contracts/ingredient-catalogue";
 import {
   findCatalogueIngredient,
-  findIngredientHolding,
   listCatalogueAliasesOf,
   settleIngredientName,
 } from "@norish/db/repositories/ingredient-catalogue";
 import { createLogger } from "@norish/shared-server/logger";
 import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
-import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import { readPlainName } from "../ai/resolution/plain-name";
 import { mergeByAI, renameByAI } from "./ai-changes";
 import { ingredientChanges } from "./changes";
-import { cleanIngredientText } from "./resolver";
+import { cleanIngredientText, findFood, isExact } from "./resolver";
 
 const log = createLogger("ingredients");
 
@@ -49,13 +47,17 @@ export async function giveItsPlainName(ingredientId: string): Promise<PlainNameO
     return { outcome: "plain" };
   }
 
-  const holder = await findIngredientHolding(plain, ingredientAliasFold(plain), ingredientId);
+  // Looked up as AI's names are; the name itself finding a food makes it that food, parent or not.
+  const [found] = await findFood([plain], { except: ingredientId, among: "listed" });
+  const holder = found?.find(isExact);
 
   if (holder) {
-    const merged = await mergeByAI(ingredientId, holder.id, true);
+    const merged = await mergeByAI(ingredientId, holder.ingredientId, true);
 
     if (merged === "applied") {
-      return { outcome: "merge", into: holder.name, sure: true, ...noTrace() };
+      const into = (await findCatalogueIngredient(holder.ingredientId))?.name ?? plain;
+
+      return { outcome: "merge", into, sure: true, ...noTrace() };
     }
 
     return {

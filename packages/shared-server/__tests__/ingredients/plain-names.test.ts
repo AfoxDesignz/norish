@@ -12,7 +12,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import { adoptPlainName } from "@norish/db/repositories/ingredient-seed";
-import { ingredients } from "@norish/db/schema";
+import { ingredientAliases, ingredients } from "@norish/db/schema";
 import { generateStructured } from "@norish/shared-server/ai/runtime/runtime";
 import { isAIEnabled } from "@norish/shared-server/config/server-config-loader";
 import { undoAIChange } from "@norish/shared-server/ingredients/ai-changes";
@@ -143,6 +143,49 @@ describe("Plain Names", () => {
         undo: { kind: "merge", name: "Verse Onion Deluxe" },
       },
     ]);
+  });
+
+  /** Give a food one more spelling, in `locale`. */
+  async function spell(ingredientId: string, text: string, locale: string | null = null) {
+    await getTestDb()
+      .insert(ingredientAliases)
+      .values({ ingredientId, text, fold: ingredientAliasFold(text), locale, ownerId: null });
+  }
+
+  it("merges into a food spelling the plain name only where a recipe line lists it", async () => {
+    const [hidden] = await resolveIngredients(["uien"], { userId: actor.userId });
+
+    await spell(hidden!.ingredientId, "onion", "en");
+    const messy = await food("Verse Onion Deluxe");
+
+    readsAs("onion");
+    await expect(giveItsPlainName(messy)).resolves.toEqual({ outcome: "rename", to: "onion" });
+    expect(await getSpellingTexts(hidden!.ingredientId)).not.toContain("Verse Onion Deluxe");
+  });
+
+  it("merges into a listed food by the spelling the plain name finds", async () => {
+    const onions = await food("uien");
+
+    await spell(onions, "onion", "en");
+    const messy = await food("Verse Onion Deluxe");
+
+    readsAs("onion");
+    await expect(giveItsPlainName(messy)).resolves.toMatchObject({
+      outcome: "merge",
+      into: "uien",
+    });
+  });
+
+  it("never merges into a food spelling the plain name only in a language Norish does not read", async () => {
+    const pear = await food("peer");
+
+    // Pear's Volapük "bün" is not the bun AI named.
+    await spell(pear, "bün", "vo");
+    const messy = await food("Verse Bün Deluxe");
+
+    readsAs("bün");
+    await expect(giveItsPlainName(messy)).resolves.toEqual({ outcome: "rename", to: "bün" });
+    expect(await getSpellingTexts(pear)).not.toContain("Verse Bün Deluxe");
   });
 
   it("merges the second of two foods AI reads the same into the first", async () => {
