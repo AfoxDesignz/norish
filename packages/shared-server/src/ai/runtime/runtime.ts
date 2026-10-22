@@ -137,6 +137,8 @@ export interface GenerateOptions<T> {
   fill?: Record<string, string>;
   /** Images to read. Their presence is what selects the vision model. */
   images?: readonly AIImage[];
+  /** How long this request may take, where the feature's budget is not the AI timeout. */
+  timeoutMs?: number;
 }
 
 /**
@@ -180,6 +182,8 @@ function reportedTokens(usage: {
 
 interface ObjectRequest<T> {
   config: AIConfig;
+  /** When the request is given up on; the transport keeps the AI timeout. */
+  deadlineMs: number;
   promptName: StructuredPromptName;
   prompt: string;
   schema: z.ZodType<T>;
@@ -194,6 +198,7 @@ interface ObjectRequest<T> {
 /** One model round trip, in whichever structured-output mode was asked for. */
 async function requestObject<T>({
   config,
+  deadlineMs,
   promptName,
   prompt,
   schema,
@@ -228,7 +233,7 @@ async function requestObject<T>({
     instructions,
     temperature: config.temperature,
     maxOutputTokens: config.maxTokens,
-    abortSignal: requestSignal(config.timeoutMs),
+    abortSignal: requestSignal(deadlineMs),
     ...(useVision
       ? {
           messages: [
@@ -292,7 +297,7 @@ function reportFailure(promptName: StructuredPromptName, error: unknown): never 
  * aggregator's guess, and not worth another queue attempt (#538).
  */
 export async function generateStructured<T>(options: GenerateOptions<T>): Promise<T> {
-  const { prompt: promptName, schema, sections = [], fill, images = [] } = options;
+  const { prompt: promptName, schema, sections = [], fill, images = [], timeoutMs } = options;
 
   const config = await getAIConfig(true);
 
@@ -313,6 +318,7 @@ export async function generateStructured<T>(options: GenerateOptions<T>): Promis
   try {
     const { output, tokens } = await requestStructured({
       config,
+      deadlineMs: timeoutMs ?? config.timeoutMs,
       promptName,
       prompt,
       schema,
@@ -350,6 +356,7 @@ function selectedModelId(config: AIConfig, useVision: boolean): string {
 /** The structured request itself: a strict schema first, a plain-JSON retry where that helps (#538). */
 async function requestStructured<T>(request: {
   config: AIConfig;
+  deadlineMs: number;
   promptName: StructuredPromptName;
   prompt: string;
   schema: z.ZodType<T>;
@@ -806,6 +813,8 @@ export interface DecideOptions<Q extends DecisionQuestions> {
   feature: string;
   state: DecisionState;
   questions: Q;
+  /** How long this Decision may take, where the feature's budget is not the AI timeout. */
+  timeoutMs?: number;
 }
 
 /** The answer shape the SDK hands back, before it is typed per question. */
@@ -845,6 +854,8 @@ interface DecisionRequest<Q extends DecisionQuestions> {
     endpoint: string;
   };
   timeoutMs: number;
+  /** When the request is given up on, where not at `timeoutMs`; the transport keeps that. */
+  deadlineMs?: number;
 }
 
 /** One Decision Model round trip: every question asked together, every answer typed. */
@@ -854,6 +865,7 @@ async function requestDecision<Q extends DecisionQuestions>({
   questions,
   settings,
   timeoutMs,
+  deadlineMs,
 }: DecisionRequest<Q>): Promise<Answered<DecisionResult<Q>>> {
   const decisionModel = createDecisionModelFromConfig({ ...settings, timeoutMs });
   const asked: DecisionQuestions = questions;
@@ -873,7 +885,7 @@ async function requestDecision<Q extends DecisionQuestions>({
     model: decisionModel.model,
     state,
     questions: asked,
-    abortSignal: requestSignal(timeoutMs),
+    abortSignal: requestSignal(deadlineMs ?? timeoutMs),
     // Like image generation, the SDK's silent in-call retries are off: the
     // queue's attempts are the one retry budget.
     maxRetries: 0,
@@ -958,7 +970,7 @@ async function requestDecision<Q extends DecisionQuestions>({
 export async function decide<const Q extends DecisionQuestions>(
   options: DecideOptions<Q>
 ): Promise<DecisionResult<Q>> {
-  const { feature, state, questions } = options;
+  const { feature, state, questions, timeoutMs } = options;
 
   const [aiConfig, decisionConfig] = await Promise.all([
     getAIConfig(true),
@@ -988,6 +1000,7 @@ export async function decide<const Q extends DecisionQuestions>(
       questions,
       settings,
       timeoutMs: aiConfig.timeoutMs,
+      deadlineMs: timeoutMs,
     });
 
     // The resolved id, so the job monitor shows the release behind jev-latest.

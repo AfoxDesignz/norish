@@ -39,7 +39,7 @@ vi.mock("@norish/shared-server/logger", () => {
 });
 
 const { generateStructured } = await import("@norish/shared-server/ai/runtime/runtime");
-const { AIProviderError } = await import("@norish/shared-server/ai/runtime/errors");
+const { AIProviderError, isTimedOut } = await import("@norish/shared-server/ai/runtime/errors");
 const { createModelUseLedger, runWithModelUseLedger } =
   await import("@norish/shared-server/ai/runtime/model-use-ledger");
 const { forgetKeyRejection, listKeyRejections } =
@@ -295,6 +295,19 @@ describe("the job's model ledger", () => {
     expect(captured).toHaveLength(0);
   });
 
+  it("ends a request past the feature's own deadline, recorded as a failed use with no tokens", async () => {
+    holdReplies = true;
+    const ledger = createModelUseLedger();
+    const failure = await runWithModelUseLedger(ledger, () =>
+      generateStructured({ prompt: "auto-tagging", schema, timeoutMs: 200 }).catch(
+        (error: unknown) => error
+      )
+    );
+
+    expect(isTimedOut(failure)).toBe(true);
+    expect(ledger.uses).toEqual([{ ...use, outcome: "failed" }]);
+  });
+
   it("records one failed use when both request shapes are refused", async () => {
     const ledger = createModelUseLedger();
 
@@ -350,7 +363,8 @@ describe("the job's abort signal", () => {
     await vi.waitFor(() => expect(captured).toHaveLength(1));
     job.abort("Cancelled by an administrator");
 
-    await expect(asked).rejects.toThrow();
+    // A stopped job is no timeout, so a feature does not ask again.
+    expect(isTimedOut(await asked.catch((error: unknown) => error))).toBe(false);
     await expect(runWithModelUseLedger(ledger, generate)).rejects.toThrow();
     expect(captured).toHaveLength(1);
   });

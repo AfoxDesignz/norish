@@ -37,7 +37,7 @@ vi.mock("@norish/shared-server/logger", () => ({
 }));
 
 const { decide, testDecisionModel } = await import("@norish/shared-server/ai/runtime/runtime");
-const { AIConfigurationError, AIDisabledError, AIProviderError, AIResponseError } =
+const { AIConfigurationError, AIDisabledError, AIProviderError, AIResponseError, isTimedOut } =
   await import("@norish/shared-server/ai/runtime/errors");
 const { createModelUseLedger, runWithModelUseLedger } =
   await import("@norish/shared-server/ai/runtime/model-use-ledger");
@@ -342,6 +342,19 @@ describe("the job's model ledger", () => {
       { provider: "typesafe", model: "jev-2026-09-01", outcome: "completed", tokens: 120 },
       { provider: "typesafe", model: "jev-latest", outcome: "failed" },
     ]);
+  });
+
+  it("ends a Decision past the feature's own deadline, recorded as a failed use", async () => {
+    holdResponses = true;
+    const ledger = createModelUseLedger();
+    const failure = await runWithModelUseLedger(ledger, () =>
+      decide({ feature: "runtime-test", state, questions, timeoutMs: 200 }).catch(
+        (error: unknown) => error
+      )
+    );
+
+    expect(isTimedOut(failure)).toBe(true);
+    expect(ledger.uses).toEqual([{ provider: "typesafe", model: "jev-latest", outcome: "failed" }]);
   });
 
   it("records nothing for a refusal that sent no request", async () => {
