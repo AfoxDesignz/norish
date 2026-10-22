@@ -393,8 +393,8 @@ export async function unflagHiddenFoods(tx: Db = db): Promise<number> {
 }
 
 /** Forget which own foods' parents a person chose, so AI may ask about them. Answers how many. */
-export async function unmarkChosenParents(): Promise<number> {
-  const unmarked = await db
+export async function unmarkChosenParents(tx: Db): Promise<number> {
+  const unmarked = await tx
     .update(ingredients)
     .set({ parentChosen: false, version: sql`${ingredients.version} + 1` })
     .where(and(eq(ingredients.parentChosen, true), isNull(ingredients.offId)))

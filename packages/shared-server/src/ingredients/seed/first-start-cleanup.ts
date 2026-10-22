@@ -2,6 +2,7 @@
  * The first start's cleanup of what earlier versions left (ADR-0037; ingredient-cleanup ticket 09),
  * once per `CLEANUP_VERSION`: each step's function says what it does.
  */
+import type { DbTransaction } from "@norish/db/drizzle";
 import type { CleanupSpelling } from "@norish/db/repositories/ingredient-cleanup";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
 import { withTransaction } from "@norish/db/drizzle";
@@ -169,11 +170,11 @@ async function cleanUpCatalogue(
   }
 
   // 6. A hidden food has no flag (`unflagHiddenFoods`).
-  outcome.unflagged = await unflagHiddenFoods();
+  outcome.unflagged = await underTreeLock(unflagHiddenFoods);
 
   // 7. 0.25 marked a confirmed suggestion as a person's parent, so its marks go once, after the
   // passes that file only unmarked foods (corrections, mints) ran this boot.
-  if (from < PARENTS_UNMARKED_IN) outcome.unmarked = await unmarkChosenParents();
+  if (from < PARENTS_UNMARKED_IN) outcome.unmarked = await underTreeLock(unmarkChosenParents);
 
   // 8. The AI pass, over every own food no person decided about.
   const askable = await listAskableIngredientIds();
@@ -182,6 +183,15 @@ async function cleanUpCatalogue(
   outcome.asked = askable.length;
 
   return outcome;
+}
+
+/** One write under the tree lock, taken first as every catalogue write takes it. */
+async function underTreeLock(write: (tx: DbTransaction) => Promise<number>): Promise<number> {
+  return await withTransaction(async (tx) => {
+    await lockTree(tx);
+
+    return await write(tx);
+  });
 }
 
 /**
