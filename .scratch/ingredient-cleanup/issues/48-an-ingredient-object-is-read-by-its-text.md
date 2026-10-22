@@ -12,7 +12,14 @@ A scratch check (not committed) confirmed it on today's code: `parseIngredients(
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A JSON-LD `recipeIngredient` entry `{ "@type": "HowToSupply", "name": "2 el sojasaus" }` imports as 2 el "sojasaus", and `{ "text": "1 komkommer" }` as 1 "komkommer".
-- [ ] An entry with neither field as a string is dropped, never stored as "[object Object]".
+- [x] A JSON-LD `recipeIngredient` entry `{ "@type": "HowToSupply", "name": "2 el sojasaus" }` imports as 2 el "sojasaus", and `{ "text": "1 komkommer" }` as 1 "komkommer".
+- [x] An entry with neither field as a string is dropped, never stored as "[object Object]".
+
+## Implemented (2026-10-22)
+
+- `ingredientEntryText` in `packages/api/src/parser/parsers/ingredients.ts`: a string entry as is, an object by its `text`, else its `name`, when that is a string; anything else (numbers, objects without either string) is `""` and dropped by `normalizeIngredientSource`. Commit b71cf929d.
+- Test: "reads an object entry by its text, else its name, and drops any other entry" in `packages/api/__tests__/server/parser/parsers/ingredients.test.ts` (2 el sojasaus → "sojasaus", 2, tablespoon).
+- Release-notes line under Fixes in `apps/docs/docs/release-notes/0.26.0-beta.md` (8f6c43f67).
+- Other coercions on the parser path checked: nutrition `toString()` runs on parsed numbers, steps/videos/jsonld `String()` only read `@type` values. `getName` in `parsers/metadata.ts` does `String(raw[0])` on an array `name`, the same shape, but a recipe name is not an ingredient and schema.org never gives an object there; left alone.
