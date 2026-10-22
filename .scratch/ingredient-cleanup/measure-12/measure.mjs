@@ -4,9 +4,11 @@
  *   node measure.mjs compare <label>=<run.json> ... > table.md    (counts only)
  *   node measure.mjs report <label>=<run.json> ... > report.html  (names and line texts too)
  * run.json and the report hold production text: keep them outside the repo, never publish them.
+ * The cases come from a private file (MEASURE_CASES, default ~/Documents/norish-ticket-31/cases.json).
  */
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,105 +20,63 @@ const named = (n, name) => n.foods.find((f) => lc(f.name) === name);
 const everyLineNames = (n, test) =>
   n.lines.length > 0 && n.lines.every((l) => test(l.foods.map(lc)));
 
-// The named cases, each with the texts it is looked up by and, from ticket 24 on, the ticket's check.
-const CASES = {
-  "gyoza vellen": {
-    ticket: 12,
-    lookups: ["gyoza vellen", "gyoza vellen )", "gyoza vellen ((ontdooid))"],
-  },
-  "3wu)": { ticket: 12, lookups: ["3wu)"] },
-  "paprika (vrucht)": { ticket: 12, lookups: ["paprika (vrucht)"] },
-  "zout en peper": { ticket: 12, lookups: ["zout en peper"] },
-  "boter of olie": { ticket: 12, lookups: ["boter of olie"] },
-  "water of kokosmelk": { ticket: 12, lookups: ["water of kokosmelk"] },
-  "juice of a lemon": { ticket: 12, lookups: ["juice of"] },
-  "mac and cheese": { ticket: 12, lookups: ["mac and cheese"] },
-  "toilet paper": { ticket: 12, lookups: ["toilet paper", "toiletpapier"] },
-  deegroller: { ticket: 12, lookups: ["deegroller"] },
-  melted: { ticket: 12, lookups: ["melted"] },
-  "Voor de salade:": { ticket: 12, lookups: ["Voor de salade:"] },
-  "taart- of springvorm": {
-    ticket: 12,
-    lookups: ["taart- of springvorm", "taart- of springvorm (doorsnede 26 cm)"],
-  },
+// The cases' texts and lookups are production text, so they live in a private file beside the run
+// files: { "<case>": { ticket, lookups, check? } }. The checks below are keyed by the ticket's words.
+const casesFile =
+  process.env.MEASURE_CASES ?? join(homedir(), "Documents/norish-ticket-31/cases.json");
+const CHECKS = {
   "salt cinnamon": {
-    ticket: 24,
-    lookups: ["salt cinnamon"],
     expect: "split into its foods, not deleted",
     holds: (n) => !named(n, "salt cinnamon") && everyLineNames(n, (foods) => foods.length >= 2),
   },
   "koud water melk": {
-    ticket: 24,
-    lookups: ["koud water melk", "koud water (of"],
     expect: "split into its foods, not deleted",
     holds: (n) => !named(n, "koud water melk") && everyLineNames(n, (foods) => foods.length >= 2),
   },
   "Nora reserve eten": {
-    ticket: "25, 28",
-    lookups: ["nora reserve eten"],
     expect: "kept, hidden, no parent",
     holds: (n) =>
       named(n, "nora reserve eten")?.hidden === true && !named(n, "nora reserve eten").parent,
   },
   "rode pesto": {
-    ticket: 26,
-    lookups: ["rode pesto"],
     expect: "not merged into red port",
     holds: (n) => everyLineNames(n, (foods) => foods.length > 0 && !foods.includes("red port")),
   },
   "sriracha sauce": {
-    ticket: 26,
-    lookups: ["sriracha sauce"],
     expect: "not merged into oyster sauce",
     holds: (n) => everyLineNames(n, (foods) => foods.length > 0 && !foods.includes("oyster sauce")),
   },
   "tortilla's": {
-    ticket: 26,
-    lookups: ["tortilla's"],
     expect: "on tortilla (or corn tortilla)",
     holds: (n) => everyLineNames(n, (foods) => foods.some((f) => f.endsWith("tortilla"))),
   },
   "chocolate whey": {
-    ticket: 27,
-    lookups: ["chocolate whey"],
     expect: "keeps whey",
     holds: (n) => lc(named(n, "chocolate whey")?.parent) === "whey",
   },
   "Italian herbs": {
-    ticket: 27,
-    lookups: ["italian herbs"],
     expect: "keeps herb",
     holds: (n) => ["herb", "herbs"].includes(lc(named(n, "italian herbs")?.parent)),
   },
   "chinese 5 spice": {
-    ticket: 27,
-    lookups: ["chinese 5 spice"],
     expect: "keeps spice",
     holds: (n) => lc(named(n, "chinese 5 spice")?.parent) === "spice",
   },
   "Denta tix": {
-    ticket: 27,
-    lookups: ["denta tix"],
     expect: "loses tea",
     holds: (n) => lc(named(n, "denta tix")?.parent) !== "tea",
   },
   "ground cumin": {
-    ticket: 28,
-    lookups: ["ground cumin"],
     expect: "under cumin",
     holds: (n) =>
       n.foods.length > 0 &&
       n.foods.every((f) => lc(f.name) === "cumin" || lc(f.parent) === "cumin"),
   },
   "mango blokjes": {
-    ticket: 28,
-    lookups: ["mango blokjes"],
     expect: "under mango",
     holds: (n) => lc(named(n, "mango blokjes")?.parent) === "mango",
   },
   "light cooking cream or non-fat Greek yogurt": {
-    ticket: 29,
-    lookups: ["light cooking cream"],
     // The new food may then be merged by AI's pass ("light cream"), so any cream food counts.
     expect: "split; the cream lines on a cream food of their own",
     holds: (n) =>
@@ -125,12 +85,26 @@ const CASES = {
       n.lines.every((l) => !/ or /i.test(l.text) || l.joined === "alternatives"),
   },
   "colon lines": {
-    ticket: 30,
-    lookups: [],
     expect: "no line ending in a colon names a food",
     holds: (_n, counts) => !counts.lines["colon line, with a food"],
   },
 };
+
+// A check the private file gives a case, on the food named its first lookup.
+const KINDS = {
+  parent: (want) => [`under ${want}`, (n, food) => lc(named(n, food)?.parent) === want],
+  notParent: (want) => [`not under ${want}`, (n, food) => lc(named(n, food)?.parent) !== want],
+  hasParent: () => ["keeps a parent", (n, food) => Boolean(named(n, food)?.parent)],
+};
+const CASES = Object.fromEntries(
+  Object.entries(JSON.parse(readFileSync(casesFile, "utf8"))).map(([text, c]) => {
+    const [[kind, arg] = []] = Object.entries(c.check ?? {});
+    const [expect, test] = kind ? KINDS[kind](arg) : [];
+    const check = test ? { expect, holds: (n) => test(n, lc(c.lookups[0])) } : CHECKS[text];
+
+    return [text, { ...c, ...check }];
+  })
+);
 
 const [command, ...args] = process.argv.slice(2);
 
