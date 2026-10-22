@@ -98,9 +98,13 @@ const KINDS = {
   // Every line names a food matching each pattern / none named `want`.
   linesName: (wants) => [
     `every line names ${wants.join(" and ")}`,
-    (n) => everyLineNames(n, (foods) => wants.every((w) => foods.some((f) => new RegExp(w).test(f)))),
+    (n) =>
+      everyLineNames(n, (foods) => wants.every((w) => foods.some((f) => new RegExp(w).test(f)))),
   ],
-  linesNot: (want) => [`no line on ${want}`, (n) => n.lines.every((l) => !l.foods.map(lc).includes(want))],
+  linesNot: (want) => [
+    `no line on ${want}`,
+    (n) => n.lines.every((l) => !l.foods.map(lc).includes(want)),
+  ],
   noSpelling: (texts) => [
     `no spelling ${texts.join(", ")}`,
     (n) => !n.spellings.some((s) => texts.includes(lc(s.text))),
@@ -109,7 +113,8 @@ const KINDS = {
   sameFood: () => [
     "the copies are one food",
     (n, _food, lookups) =>
-      new Set(n.spellings.filter((s) => lookups.includes(lc(s.text))).map((s) => s.food)).size === 1,
+      new Set(n.spellings.filter((s) => lookups.includes(lc(s.text))).map((s) => s.food)).size ===
+      1,
   ],
 };
 const CASES = Object.fromEntries(
