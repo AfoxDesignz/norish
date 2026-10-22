@@ -65,4 +65,4 @@
 - **Outcome.** `SpellingCheckOutcome.checked.unchanged` lists a spelling whose removal or move came back undone or gone, logged.
 - **Job.** A spelling check is the ingredient-review job (name `review`) with `check: "spellings"`; the worker picks its question once.
 - `onceMoreOnTimeout(feature)` now lives in `ai/runtime/timeout-retry.ts`.
-- **Open, not fixed:** Undo of a "not this food" removal whose lines minted the same text fails with `spelling-taken` (the mint holds the fold). Undo would have to merge the mint back; not built.
+- **Undo of a "not this food" removal** whose rows minted the same text: the own food holding the fold, minted after the change and not named, parented or kept distinct by a person (`findMintHolding`), is merged back into the food (`mergeCatalogueIngredients`), and `restoreSpelling` takes the text already on the food as restored, its rows pointed at that spelling. Where a person chose that food, the Undo still refuses with `spelling-taken`. Tests: `spelling-check.test.ts` "on Undo, merges back the food its lines minted from the text" and "refuses the Undo where a person chose ...".
