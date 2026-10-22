@@ -1,4 +1,5 @@
 import { and, asc, between, eq, inArray, isNotNull, like, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import type { FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LocaleNames } from "@norish/shared/lib/ingredient-names";
@@ -383,26 +384,31 @@ export async function addIngredientAliases(input: {
 export interface IngredientCandidate {
   id: string;
   name: string;
+  /** The name of the food it is filed under, if any. */
+  parent: string | null;
   aliases: string[];
 }
 
-/** These Ingredients as candidates for a question, each with its shortest other names. */
+/** These Ingredients as candidates for a question, each with its parent and shortest other names. */
 export async function findIngredientCandidatesByIds(
   ids: readonly string[]
 ): Promise<IngredientCandidate[]> {
   if (ids.length === 0) return [];
 
+  const parents = alias(ingredients, "parent");
+
   return await candidatesFor(
     await db
-      .select({ id: ingredients.id, name: ingredients.name })
+      .select({ id: ingredients.id, name: ingredients.name, parent: parents.name })
       .from(ingredients)
+      .leftJoin(parents, eq(parents.id, ingredients.parentId))
       .where(inArray(ingredients.id, [...ids]))
   );
 }
 
 /** Candidate rows for known Ingredients: each with its shortest other names. */
 async function candidatesFor(
-  rows: ReadonlyArray<{ id: string; name: string }>
+  rows: ReadonlyArray<{ id: string; name: string; parent: string | null }>
 ): Promise<IngredientCandidate[]> {
   if (rows.length === 0) return [];
 

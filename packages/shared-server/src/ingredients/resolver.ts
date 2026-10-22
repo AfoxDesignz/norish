@@ -462,7 +462,7 @@ async function findSlips(
       if (near.length > 0) {
         slips.set(
           key,
-          near.map(({ item, score }) => ({ ...refOf(item), score }))
+          near.map(({ item, score }) => ({ ...refOf(item), score, matched: item.text }))
         );
       }
     })
@@ -629,8 +629,11 @@ export async function findIngredientFor(text: string): Promise<IngredientRef | n
   return match ? refOf(match) : null;
 }
 
-/** A food a name finds, scored `EXACT` by its own spelling, less by a slip (`slipsNear`). */
-export type FoundFood = IngredientRef & { score: number };
+/**
+ * A food a name finds, scored `EXACT` by its own spelling, less by a slip (`slipsNear`), and the
+ * spelling of it that matched.
+ */
+export type FoundFood = IngredientRef & { score: number; matched: string };
 
 const EXACT = 1;
 
@@ -667,7 +670,7 @@ export async function findOtherFoodsNamed(
       )
     )
       .filter((row) => row.ingredientId !== ingredientId)
-      .map((row) => [ingredientAliasFold(row.name), refOf(row)])
+      .map((row) => [ingredientAliasFold(row.name), { ...refOf(row), text: row.name }])
   );
   const byName = (spelling: Spelling) =>
     all.get(spelling.fold)?.ingredientId === ingredientId ? undefined : named.get(spelling.fold);
@@ -684,7 +687,7 @@ export async function findOtherFoodsNamed(
   return spellings.map((spelling) => {
     const match = matched.get(spelling);
 
-    if (match) return [{ ...refOf(match), score: EXACT }];
+    if (match) return [{ ...refOf(match), score: EXACT, matched: match.text }];
 
     return (matched.has(spelling) && slipped.get(sameFoodKey(spelling))) || [];
   });

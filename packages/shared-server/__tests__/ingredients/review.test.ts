@@ -702,8 +702,77 @@ describe("asking AI about an Ingredient", () => {
         .mocked(generateStructured)
         .mock.calls.filter(([request]) => request.prompt === "ingredient-resolution");
 
-      return second?.[0].sections?.[1];
+      return second?.[0].sections?.find((section) => section.startsWith("Foods in the catalogue"));
     }
+
+    /** "red port", filed under "port", that a Dutch and an Italian spelling also name. */
+    async function redPort() {
+      const port = await kept("port");
+      const red = await kept("red port");
+
+      await setParent(actor, red.ingredientId, port.ingredientId);
+      await getTestDb()
+        .insert(ingredientAliases)
+        .values(
+          ["rode port", "porto rosso"].map((text) => ({
+            text,
+            fold: text,
+            ingredientId: red.ingredientId,
+          }))
+        );
+
+      return red;
+    }
+
+    it("asks the language model with AI's reading and the spelling that found each food", async () => {
+      await redPort();
+      const pesto = await flagged("rode pesto");
+
+      vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
+      reads({
+        englishName: "red pesto",
+        parent: "pesto",
+        category: "sauce",
+        otherNames: ["pesto rosso"],
+        sure: true,
+      });
+      picks(null, true);
+
+      await expect(askAIAbout(pesto.ingredientId)).resolves.toMatchObject({
+        outcome: "distinct",
+      });
+      const [, second] = vi
+        .mocked(generateStructured)
+        .mock.calls.filter(([request]) => request.prompt === "ingredient-resolution");
+
+      expect(second?.[0].sections).toEqual([
+        "Name: rode pesto",
+        "English name: red pesto",
+        "Parent: pesto",
+        "Category: sauce",
+        "Foods in the catalogue it may be:\n1. red port (parent: port; matched: porto rosso; also: rode port)",
+      ]);
+    });
+
+    it("gives the Decision AI's reading and the spelling that found each food", async () => {
+      await redPort();
+      const pesto = await flagged("rode pesto");
+
+      reads({ englishName: "red pesto", parent: "pesto", otherNames: ["pesto rosso"], sure: true });
+      decides("Is none of these", 0.9);
+
+      await expect(askAIAbout(pesto.ingredientId)).resolves.toMatchObject({
+        outcome: "distinct",
+      });
+      expect(vi.mocked(decide).mock.calls[0]?.[0].state).toEqual({
+        name: "rode pesto",
+        englishName: "red pesto",
+        parent: "pesto",
+        foods: [
+          { name: "red port", parent: "port", matched: "porto rosso", alsoKnownAs: ["rode port"] },
+        ],
+      });
+    });
 
     it("asks AI about the one food found, and keeps a food that is none of them its own", async () => {
       const port = await kept("porto rosso");

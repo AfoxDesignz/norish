@@ -45,8 +45,8 @@ export const REQUEST_BUDGET_MS = 30_000;
 const SHOWN_ALIASES = 5;
 
 /**
- * What rung 3 made of a name: a known food, a food of its own (flagged unless sure, under the food it
- * is a kind of), several foods with their parts, or not a food.
+ * What rung 3 made of a name: a known food, a food of its own (flagged unless sure, filed under its
+ * parent), several foods with their parts, or not a food.
  */
 export type AIResolution =
   | { kind: "same"; ingredientId: string; sure: boolean }
@@ -135,7 +135,12 @@ async function readThenLookUp(
     const parts: ReadPart[] = [];
 
     for (const food of reading.foods) {
-      const found = await findNamed(food.written, excludeId, namesOf(food), trace);
+      const found = await findNamed(
+        { name: food.written, readAs: food },
+        excludeId,
+        namesOf(food),
+        trace
+      );
 
       if ("kind" in found) return found;
       parts.push({ text: food.written, found: found.sure ? found.food : null });
@@ -153,7 +158,7 @@ async function readThenLookUp(
     otherNames: food.otherNames,
   });
 
-  const found = await findNamed(text, excludeId, namesOf(food), trace);
+  const found = await findNamed({ name: text, readAs: food }, excludeId, namesOf(food), trace);
 
   if ("kind" in found) return found;
 
@@ -173,7 +178,13 @@ async function readThenLookUp(
     [food.category, true],
   ] as const) {
     if (!name) continue;
-    const named = await findNamed(name, excludeId, [name], trace, { seeded });
+    const named = await findNamed(
+      { name, readAs: { englishName: null, parent: null, category: null } },
+      excludeId,
+      [name],
+      trace,
+      { seeded }
+    );
 
     if ("kind" in named) return named;
     parent = named;
@@ -191,13 +202,22 @@ function namesOf(food: ReadFood): string[] {
   return [food.englishName, ...food.otherNames].filter((name) => name !== null);
 }
 
+/** A name the second question is about: as written, and what AI read it as (nulls for a parent's name). */
+interface Asked {
+  name: string;
+  readAs: { englishName: string | null; parent: string | null; category: string | null };
+}
+
+/** A found food as the second question shows it, with the spelling of it that matched. */
+type Candidate = IngredientCandidate & { matched: string };
+
 /**
  * The listed food other than `excludeId` these names find (a seeded one where `seeded`): an exact
  * spelling wins, else several or slips alone are asked about, best first. Sure only where AI is and
  * the pick is no slip.
  */
 async function findNamed(
-  text: string,
+  asked: Asked,
   excludeId: string,
   names: readonly string[],
   trace: ReviewTrace,
@@ -217,16 +237,17 @@ async function findNamed(
 
   // One exact food is the answer; slips alone are asked about even when only one was found.
   if (ranked.length > (exact.length > 0 ? 1 : 0)) {
-    const ids = ranked.map((one) => one.ingredientId);
-    const candidates = (await findIngredientCandidatesByIds(ids)).sort(
-      (a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)
-    );
+    const matched = new Map(ranked.map((one) => [one.ingredientId, one.matched]));
+    const ids = [...matched.keys()];
+    const candidates = (await findIngredientCandidatesByIds(ids))
+      .sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id))
+      .map((candidate) => ({ ...candidate, matched: matched.get(candidate.id) ?? candidate.name }));
 
     trace.considered.push(...candidates.map((candidate) => candidate.name));
-    const asked = await askWhich(text, candidates);
+    const answer = await askWhich(asked, candidates);
 
-    if ("kind" in asked) return asked;
-    pick = asked;
+    if ("kind" in answer) return answer;
+    pick = answer;
   }
 
   const picked = ranked.find((one) => one.ingredientId === pick.ingredientId);
@@ -363,12 +384,14 @@ interface Pick {
  * A failed language model is a flagged answer.
  */
 async function askWhich(
-  text: string,
-  candidates: readonly IngredientCandidate[]
+  asked: Asked,
+  candidates: readonly Candidate[]
 ): Promise<Pick | AIResolution> {
+  const text = asked.name;
+
   if (await isDecisionUseEnabled("ingredientResolution")) {
     // A Decision failure of any retryability is a warn log and the fallback.
-    const decided = await decideFood(text, candidates).catch((error: unknown) => {
+    const decided = await decideFood(asked, candidates).catch((error: unknown) => {
       aiLogger.warn(
         { err: error, feature: "ingredient-resolution", text },
         "Decision failed, falling back to the language model"
@@ -380,7 +403,7 @@ async function askWhich(
     if (decided) return decided;
   }
 
-  return await askLanguageModel(text, candidates).catch((error: unknown) => {
+  return await askLanguageModel(asked, candidates).catch((error: unknown) => {
     aiLogger.warn(
       { err: error, feature: "ingredient-resolution", text },
       "Ingredient resolution failed, flagging the Ingredient"
@@ -392,8 +415,23 @@ async function askWhich(
 
 const NONE = "none";
 
+/** Just the fields that are set. */
+function present<T extends Record<string, unknown>>(fields: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(fields).filter(([, value]) => value !== null)
+  ) as Partial<T>;
+}
+
+/** The spelling that found a candidate, where it is not its name, and its other spellings, capped. */
+function spellingsOf({ name, matched, aliases }: Candidate) {
+  return {
+    matched: matched === name ? null : matched,
+    others: aliases.filter((alias) => alias !== matched).slice(0, SHOWN_ALIASES),
+  };
+}
+
 /** One Choice over the found foods, plus none of them. The descriptions are the option set, so a Decision has no Prompt. */
-function foodChoice(text: string, candidates: readonly IngredientCandidate[]) {
+function foodChoice({ name, readAs }: Asked, candidates: readonly Candidate[]) {
   const options = new Map<string, string | null>();
   const criteria: Record<string, string> = {};
 
@@ -406,17 +444,28 @@ function foodChoice(text: string, candidates: readonly IngredientCandidate[]) {
 
   return {
     state: {
-      name: text,
-      foods: candidates.map((candidate) => ({
-        name: candidate.name,
-        alsoKnownAs: candidate.aliases.slice(0, SHOWN_ALIASES),
-      })),
+      name,
+      ...present({
+        englishName: readAs.englishName,
+        parent: readAs.parent,
+        category: readAs.category,
+      }),
+      foods: candidates.map((candidate) => {
+        const { matched, others } = spellingsOf(candidate);
+
+        return present({
+          name: candidate.name,
+          parent: candidate.parent,
+          matched,
+          alsoKnownAs: others,
+        });
+      }),
     },
     questions: {
       food: {
         type: "choice" as const,
         instructions:
-          "Which food in the catalogue is this name, if any? A name that only shares a word with a food is a different food.",
+          "Which food in the catalogue is this name, if any? A food's matched is its spelling that the name came close to. A name that only shares a word with a food, or is only spelled like one, is a different food.",
         criteria,
       },
     },
@@ -425,11 +474,9 @@ function foodChoice(text: string, candidates: readonly IngredientCandidate[]) {
 }
 
 /** The Decision's sure pick among the found foods; null where it is below the threshold. */
-async function decideFood(
-  text: string,
-  candidates: readonly IngredientCandidate[]
-): Promise<Pick | null> {
-  const { state, questions, options } = foodChoice(text, candidates);
+async function decideFood(asked: Asked, candidates: readonly Candidate[]): Promise<Pick | null> {
+  const text = asked.name;
+  const { state, questions, options } = foodChoice(asked, candidates);
   // No second Decision: one that times out falls back to the language model.
   const { answers } = await decide({
     feature: "ingredient-resolution",
@@ -463,9 +510,24 @@ const pickSchema = z
 
 /** The language model's pick among the found foods, under the administrator's Prompt. */
 async function askLanguageModel(
-  text: string,
-  candidates: readonly IngredientCandidate[]
+  { name: text, readAs }: Asked,
+  candidates: readonly Candidate[]
 ): Promise<Pick> {
+  const reading = [
+    readAs.englishName ? `English name: ${readAs.englishName}` : null,
+    readAs.parent ? `Parent: ${readAs.parent}` : null,
+    readAs.category ? `Category: ${readAs.category}` : null,
+  ].filter((line) => line !== null);
+  const foodLine = (candidate: Candidate, index: number) => {
+    const { matched, others } = spellingsOf(candidate);
+    const about = [
+      candidate.parent ? `parent: ${candidate.parent}` : null,
+      matched ? `matched: ${matched}` : null,
+      others.length > 0 ? `also: ${others.join(", ")}` : null,
+    ].filter((part) => part !== null);
+
+    return `${index + 1}. ${candidate.name}${about.length > 0 ? ` (${about.join("; ")})` : ""}`;
+  };
   const answer = await onceMoreOnTimeout()(() =>
     generateStructured({
       prompt: "ingredient-resolution",
@@ -473,14 +535,8 @@ async function askLanguageModel(
       timeoutMs: REQUEST_BUDGET_MS,
       sections: [
         `Name: ${text}`,
-        [
-          "Foods in the catalogue it may be:",
-          ...candidates.map((candidate, index) =>
-            candidate.aliases.length > 0
-              ? `${index + 1}. ${candidate.name} (also: ${candidate.aliases.slice(0, SHOWN_ALIASES).join(", ")})`
-              : `${index + 1}. ${candidate.name}`
-          ),
-        ].join("\n"),
+        ...reading,
+        ["Foods in the catalogue it may be:", ...candidates.map(foodLine)].join("\n"),
       ],
     })
   );
