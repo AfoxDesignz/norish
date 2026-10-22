@@ -10,6 +10,7 @@
 import { APICallError } from "ai";
 import { asc, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import type { DecisionQuestions } from "@norish/shared-server/ai/runtime/runtime";
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
@@ -298,6 +299,18 @@ describe("asking AI about an Ingredient", () => {
       outcome: "merge",
       into: "hot dog sausage",
     });
+    // Mike's 2026-10-22 wording: "the same food" gets other names; the parent has no shared-word rule.
+    const [[request]] = vi
+      .mocked(generateStructured)
+      .mock.calls.filter(([asked]) => asked.prompt === "ingredient-resolution");
+    const sent = JSON.stringify(z.toJSONSchema(request!.schema));
+
+    expect(sent).toContain(
+      JSON.stringify(
+        'Two or three other names a shop might sell the same food under ("hot dog sausage" and "wiener" for "frankfurter"), or null when there are none.'
+      )
+    );
+    expect(sent).not.toContain("only shares a word");
   });
 
   it("merges a food AI is unsure is a known one too, and flags the food it joined", async () => {

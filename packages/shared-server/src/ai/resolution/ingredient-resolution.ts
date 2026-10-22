@@ -295,7 +295,7 @@ const readFoodSchema = z
       .string()
       .nullable()
       .describe(
-        'The plain food a shopper buys that this is made of or sold as ("chocolate whey" is "whey", "rode uien" is "onion"). Not a food that only shares a word: "onion powder" is not "onion", "salted butter" is not "salt", "coconut milk" is not "milk". Null when there is none, or when the name is that plain food itself.'
+        'The plain food a shopper buys that this is made of or sold as ("chocolate whey" is "whey", "rode uien" is "onion"). Null when there is none, or when the name is that plain food itself.'
       ),
     category: z
       .string()
@@ -307,7 +307,7 @@ const readFoodSchema = z
       .array(z.string())
       .nullable()
       .describe(
-        'Two or three other names shops sell exactly this product under ("hot dog sausage" and "wiener" for "frankfurter"). Null when there are none.'
+        'Two or three other names a shop might sell the same food under ("hot dog sausage" and "wiener" for "frankfurter"), or null when there are none.'
       ),
   })
   .strict();
