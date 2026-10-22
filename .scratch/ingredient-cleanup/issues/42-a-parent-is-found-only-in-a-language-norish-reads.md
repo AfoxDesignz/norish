@@ -22,8 +22,25 @@ The second group exists because spellings are unique by fold and the first langu
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] AI's parent "bun" does not file burger buns under pear.
-- [ ] A new food "salam blaadjes" is not filed under salami.
-- [ ] A new food "belegen kaas" is still filed under cheese, also on an instance seeded before this release.
+- [x] AI's parent "bun" does not file burger buns under pear.
+- [x] A new food "salam blaadjes" is not filed under salami.
+- [x] A new food "belegen kaas" is still filed under cheese, also on an instance seeded before this release.
+
+## Implemented (2026-10-22)
+
+- `norishReads(locale)` in `packages/shared/src/lib/ingredient-names.ts`: true for no locale (a seeded `xx:` spelling, or a person's), and for a locale whose `catalogueLanguagesFor` reaches `CATALOGUE_LANGUAGES`, so a person's spelling stamped with a Norish locale ("de-formal") always counts.
+- `findOtherFoodsNamed` (`resolver.ts`) drops another food's spelling outside those languages from rungs 1–2 and from slips (`findSlips` now takes a row filter instead of an excluded id). The name lookup of ticket 32 is untouched, so a food found by its own name still counts. `parentFromWords` filters `findSeededFoodSpellingsByFolds` the same way. Import (`resolveTexts`, ticket 41's borrowed readings) is unchanged, no `RUNG_VERSION` bump. The mint recheck goes through both, as ticket 32 noted.
+- Seed: `seedEntriesFrom` lists an entry's names Norish-language first (`norishFirst`, stable), so kaas is `nl`. `applyIngredientSeed` (`packages/db/src/repositories/ingredient-seed.ts`) now re-stamps a seeded spelling the entry's own food already holds to the language the file gives it first (`holdersOf` returns locale and `seeded`), on every apply. That also gives a moved spelling its target's language (jam's "jam" was still `hr` after ticket 32's move; the jam entry has `en: jam`).
+- Correction: `SEED_CORRECTIONS_VERSION` 3. `correctSeedOnce(fetchImpl = fetch)` passes the version last run to `correctSeed`; coming from below 3 (`NORISH_LANGUAGES_FIRST_IN`) on an instance with a seed applied, it clears the stored etag and last-modified and runs `refreshIngredientCatalogue`, so the file is applied once more at the upgrade boot, before the mint recheck and the first-start cleanup. A fetch that fails throws: the version is not recorded and the next boot retries (the cleared validators also make the nightly job re-apply).
+- A first seed now records `correctionsVersion: SEED_CORRECTIONS_VERSION` beside `rungVersion: 0`: it was read with every correction, so a new instance does not fetch the file twice on its first boot.
+- Tests (all red first): `review.test.ts` "finds no parent: AI's bun is not pear's Volapük bün, nor salam salami's Czech salám" (salam is then a slip from salami's English name, asked about, answered none); `parent-from-words.test.ts` "files under a seeded spelling only in a language Norish reads" (burger buns no parent, belegen kaas under cheese); `catalogue-seed.test.ts` "files a spelling an entry's languages share under the one Norish reads, also on an instance seeded before". Test helper `seedEntryIn` in `__tests__/helpers/seed-entries.ts`.
+- ADR-0037 amended (2026-10-22); release-notes line under Fixes in 0.26.0-beta.
+
+**For Mike.**
+
+- The upgrade boot now downloads the Open Food Facts file once more (a few MB, a full apply in one transaction, as a nightly refresh with a changed file does). No Upgrade note added; say if you want one.
+- The known cost holds: bell pepper's bare "paprika" is only `hr`, so a new "oranje paprika" gets no parent from its words with AI off, and AI's "paprika" finds the spice by name.
+- Sugar snaps and king prawns (English, from 0.25) are untouched by this rule; ticket 40's question covers them.
+
