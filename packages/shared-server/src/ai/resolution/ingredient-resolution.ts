@@ -144,7 +144,12 @@ async function readThenLookUp(
 
   if ("kind" in found) return found;
 
-  if (found.food) {
+  // The parent AI gave is never the food itself: names that find it file the food under it.
+  const ownParent =
+    found.food && food.parent ? await findByName(food.parent, excludeId, trace) : null;
+
+  if (ownParent && "kind" in ownParent) return ownParent;
+  if (found.food && ownParent?.food?.ingredientId !== found.food.ingredientId) {
     return {
       kind: "same",
       ingredientId: found.food.ingredientId,
@@ -160,7 +165,8 @@ async function readThenLookUp(
     [food.category, true],
   ] as const) {
     if (!name) continue;
-    const named = await findByName(name, excludeId, trace, { seeded });
+    const named =
+      !seeded && ownParent ? ownParent : await findByName(name, excludeId, trace, { seeded });
 
     if ("kind" in named) return named;
     parent = named;

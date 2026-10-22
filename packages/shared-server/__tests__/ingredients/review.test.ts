@@ -1026,8 +1026,9 @@ describe("asking AI about an Ingredient", () => {
       await expect(landed(deli)).resolves.toEqual({ same: true, parent: ham.ingredientId });
     });
 
-    it("still merges italian sausage into sausage, whose own spelling salsiccia AI names", async () => {
+    it("files italian sausage under sausage, though AI's other name salsiccia is sausage's own spelling", async () => {
       await applyIngredientSeed([seedEntry("en:sausage", "sausage", "salsiccia")]);
+      const sausage = (await findIngredientFor("sausage"))!;
       const italian = await flagged("italian sausage");
 
       reads({
@@ -1038,10 +1039,32 @@ describe("asking AI about an Ingredient", () => {
       });
 
       await expect(askAIAbout(italian.ingredientId)).resolves.toMatchObject({
-        outcome: "merge",
-        into: "sausage",
+        outcome: "parent",
+        of: "sausage",
         sure: true,
       });
+      await expect(landed(italian)).resolves.toEqual({ same: true, parent: sausage.ingredientId });
+    });
+
+    it("files pumpkin puree under pumpkin, though pumpkin holds the spelling pureed pumpkin", async () => {
+      await applyIngredientSeed([seedEntry("en:pumpkin", "pumpkin", "pureed pumpkin")]);
+      const pumpkin = (await findIngredientFor("pumpkin"))!;
+      const puree = await flagged("pompoenpuree");
+
+      reads({
+        englishName: "pumpkin puree",
+        parent: "pumpkin",
+        otherNames: ["pureed pumpkin"],
+        sure: true,
+      });
+
+      await expect(askAIAbout(puree.ingredientId)).resolves.toMatchObject({
+        outcome: "parent",
+        of: "pumpkin",
+        sure: true,
+      });
+      await expect(landed(puree)).resolves.toEqual({ same: true, parent: pumpkin.ingredientId });
+      expect(resolutionRequests()).toBe(1);
     });
   });
 
