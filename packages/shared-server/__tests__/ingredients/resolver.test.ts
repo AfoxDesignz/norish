@@ -838,6 +838,18 @@ describe("ingredient resolver", () => {
       expect([sunflower, coconutOil]).not.toContain(lines[4]?.ingredientId);
     });
 
+    it("borrows no words between foods joined together: garlic and olive oil is not garlic oil", async () => {
+      const garlic = await food("garlic", "en");
+      const oliveOil = await food("olive oil", "en");
+
+      await food("garlic oil", "en");
+      const [line] = await saved(["garlic and olive oil"]);
+
+      expect(line).toMatchObject({
+        foods: [{ ingredientId: garlic }, { ingredientId: oliveOil }],
+      });
+    });
+
     it("names one food where every part is a spelling of it", async () => {
       const [row] = await mintIngredientWithAliases({
         name: "spring onion",

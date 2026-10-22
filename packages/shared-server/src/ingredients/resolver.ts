@@ -335,24 +335,26 @@ function spelledParts(clean: string, rules: ResolverRules): SpelledParts | null 
     ...found,
     parts,
     words: found.words.slice(0, Math.max(parts.length - 1, 0)),
-    readings: sharedWordReadings(parts).map((texts) =>
+    readings: sharedWordReadings(parts, found.joined).map((texts) =>
       texts.map((text) => spellingOf(text, rules))
     ),
   };
 }
 
 /**
- * Each part's readings: a part shorter than the last (the first) first takes its extra last (first)
- * words ("cherry or grape tomatoes": "cherry tomatoes"); a part ending in a hyphen only that way.
+ * Each part's readings: an alternative shorter than the last (the first) first takes its extra last
+ * (first) words ("cherry or grape tomatoes": "cherry tomatoes"); a part ending in "-" only that way.
  */
-function sharedWordReadings(parts: readonly string[]): string[][] {
+function sharedWordReadings(parts: readonly string[], joined: LineJoin): string[][] {
   const words = parts.map((part) => part.split(" "));
 
   return words.map((own, index) => {
     const last = index === words.length - 1;
     const other = last ? words[0]! : words.at(-1)!;
     const hyphen = !last && own.at(-1)!.endsWith("-");
-    const extra = Math.max(other.length - own.length, hyphen ? 1 : 0);
+    // Foods joined together borrow only after a hyphen: "garlic and olive oil" is no garlic oil.
+    const shorter = joined === "alternatives" || hyphen ? other.length - own.length : 0;
+    const extra = Math.max(shorter, hyphen ? 1 : 0);
     const asWritten = parts[index]!;
 
     if (!extra) return [asWritten];
