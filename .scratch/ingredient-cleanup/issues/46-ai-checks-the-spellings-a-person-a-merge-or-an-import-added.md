@@ -26,9 +26,33 @@
 
 **Blocked by:** 47 (the junk pile and its piece rule)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] After the first start with AI on, "boneless" and "lbs boneless" are no spellings of chicken breast, and the 6 lines still name chicken breast (directly, or through a mint AI merges in).
-- [ ] Seed spellings are never listed or removed, and own foods are not asked.
-- [ ] Undo on Changed by AI puts the spelling and its lines back, and AI does not remove it again.
-- [ ] A first start with AI off asks nothing and leaves `spellingCheckVersion` unwritten; the next start with AI on runs the step once.
+- [x] After the first start with AI on, "boneless" and "lbs boneless" are no spellings of chicken breast, and the 6 lines still name chicken breast (directly, or through a mint AI merges in). (In tests; the comma lines name the mint "skinless chicken breast(s)", filed under chicken breast by its words and queued for AI's pass. Not measured on the copy.)
+- [x] Seed spellings are never listed or removed, and own foods are not asked.
+- [x] Undo on Changed by AI puts the spelling and its lines back, and AI does not remove it again.
+- [x] A first start with AI off asks nothing and leaves `spellingCheckVersion` unwritten; the next start with AI on runs the step once.
+
+## Implemented (2026-10-22)
+
+- **Once-step** `checkSpellingsOnFirstStart(queue)` (`packages/shared-server/src/ingredients/spelling-check.ts`), `SPELLING_CHECK_VERSION` 1, through `oncePerVersion("spellingCheckVersion", …)` (new `IngredientSeedStateSchema.spellingCheckVersion`). `oncePerVersion`'s `pass` may now answer null: nothing is recorded, so AI off leaves the version unwritten. With AI on it lists `listSeededFoodsWithOwnSpellings()` (catalogue repo: seeded foods with an alias `seeded = false`) and queues them. Boot step `checkSpellingsOnBoot` (`packages/api/src/startup/check-spellings.ts`) runs right after `seedJunkPileOnBoot`.
+- **Queue.** No new queue: `addSpellingCheckJob(ids)` (`queue/src/ingredient-review/producer.ts`) adds a `check-spellings` job to the ingredient-review queue with `IngredientReviewJobData.check: "spellings"`; the worker then calls `checkSpellingsOf` instead of `askAIAbout` per food (same `asking-ai:n/N` steps, detail `SpellingCheckOutcome`), and queues no icons.
+- **Per food** `checkSpellingsOf(id)`: the non-seeded spellings not folded as the food's name, one request (`askWhatSpellingsName`, `ai/resolution/spelling-check.ts`, prompt `ingredient-spelling-check`, sections `Name: …`, `Parent: …` when set, `Spellings:\n1. …`). Schema `{ spellings: [{ number, kind: this-food | not-a-food | other-food, otherFood }] }`, all fields present; a spelling the answer leaves out is kept. `REQUEST_BUDGET_MS` and `onceMoreOnTimeout()` (now exported) as ticket 36. A failed request throws and the worker records the step `failed`.
+  - not-a-food: `removeSpellingByAI(id, aliasId, { notAFood: true })`; other-food: `findFoodNamed(name, id)` (new export of `ingredient-resolution.ts`, `findNamed` with null readings), found → `moveSpellingByAI`, none → removed without the pile; a second question with no answer keeps the spelling.
+- **AI Change kind `spelling`** (`AI_CHANGE_KINDS`). Undo shape `ChangedSpelling` (db-schema): the alias (id, text, fold, locale, owner), and for a removal each naming line's whole food list + join and the groceries/recurring pointing at it (`readChangedSpelling`). Listed under the seeded food; a move has `targetId`. Both guard under the tree lock: alias still on the food, not seeded, not undone before (`wasSpellingUndone`, by alias id), not the food's last.
+  - Removal: one transaction records the change, `deleteCatalogueAlias`, and for not-a-food `addToJunkPile([fold], { reason: "not-a-food", aiChangeId })`; after commit `forgetSpellingRules()` and `resolveAgain(rows, { mint: true, ai: true })`, so a mint is flagged `ai-queued` and announced for AI's pass.
+  - Undo: a removal re-inserts the alias under its id (`restoreSpelling`; text taken meanwhile → `spelling-taken`) and rewrites the recorded lines whose foods all still exist, and points the groceries back; a move moves the alias back while it is still on the moved-to food and not its last. The pile entry goes through `takeJunkOfAIChange` as for every kind. A seed pile entry ("boneless" on a real instance) is not the change's, so it stays.
+- **`resolveAgain(rows, { mint, ai = false })`**: with `mint`, a line whose text resolves to null (all junk) now loses the heir's food. Only `removeVariants` (first-start cleanup) and this ticket pass `mint: true`; the delete and step 4 (`mint: false`) are unchanged.
+- **Prompt** `packages/shared-server/src/ai/prompts/ingredient-spelling-check.txt`, field `ingredientSpellingCheck`, system message `ingredient-spelling-check`, admin form row and three `admin.promptsConfig` keys in all 16 locales. The E2E fake provider routes it to the ingredients lane.
+- **Copy** `changedByAI.spellingRemoved` ("Removed the translation {from}") and `changedByAI.spellingMoved` ("Moved the translation {from} to {of}") in all 16 locales; not-a-food and not-this-food removals read the same.
+- **No other version bumps**: `CLEANUP_VERSION` 4, `RUNG_VERSION` 10, `SEED_CORRECTIONS_VERSION` 3.
+- **Gates run:** shared-server 1223, db 323, queue 329, trpc 615, api 524, shared 955, web 1335 unit tests green; `pnpm typecheck`, lint of the touched packages (no new warnings), `pnpm i18n:check` clean; `build:web` and the `ai` E2E project 183/183.
+- **Tests:** `spelling-check.test.ts` (shared-server: not-a-food ×2 + kept, pile, lines read again, a mint announced, Undo, not asked again; another food moves with its line and grocery, Undo moves back; an unfound other food mints; AI off then on, once, seeded only), worker test (a spelling-check job), web Changed by AI copy, prompt default/override fixtures.
+- **Docs:** release-notes Fixes line, upgrade note (cost 268 requests / ~410k tokens on the copy), the new prompt in the prompt note, Ingredients page paragraph, CONTEXT.md AI Change.
+
+**For Mike.**
+
+- A spelling-check request that fails (provider down, two timeouts) is not asked again: the step is marked done once queued, and the nightly sweep does not cover seeded foods. Say if you want a retry mark.
+- AI's spelling answers carry no `sure`; every removal or move is recorded sure (no flag on a seeded food), with Undo for a month.
+- A typed grocery on a removed spelling whose text is all junk keeps the heir spelling's food (only lines are cleared), as groceries never name "no food" through junk.
+- Not measured on the production copy; the "6 lines" checkbox holds in tests only.
