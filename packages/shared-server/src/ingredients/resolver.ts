@@ -112,12 +112,13 @@ export interface ResolvedIngredient extends IngredientRef {
 
 /**
  * A text as the first two rungs read it: as written, its keys (clean, its
- * fold, its folds with the preparation stripped), the other readings of its
- * plain name as the same food (its plurals and diminutives), and the rules
- * it was read by.
+ * fold, its folds with the preparation stripped), the one key texts the rungs
+ * read alike share (`foodKey`), its other readings as the same food (plurals
+ * and diminutives), and the rules it was read by.
  */
 interface Spelling extends SpellingKeys {
   text: string;
+  key: string;
   inflected: string[];
   rules: ResolverRules;
 }
@@ -175,16 +176,18 @@ function withoutJunkPieces(text: string, rules: ResolverRules): string {
     .join(" ");
 }
 
-/** A text read on its pieces not on the junk pile: "boneless, skinless chicken" is "skinless chicken". */
-function spellingOf(text: string, rules: ResolverRules): Spelling {
-  const keys = spellingKeys(withoutJunkPieces(text, rules), rules);
+/**
+ * A text read on its pieces not on the junk pile: "boneless, skinless chicken" is "skinless chicken".
+ * `whole` reads it with no size or preparation word stripped ("petite potatoes" is not "potatoes").
+ */
+function spellingOf(text: string, rules: ResolverRules, whole = false): Spelling {
+  const found = spellingKeys(withoutJunkPieces(text, rules), rules);
+  const keys = whole
+    ? { ...found, plain: found.bare, plainFold: found.bareFold || found.fold }
+    : found;
+  const key = keys.plainFold || keys.fold;
 
-  return {
-    text,
-    ...keys,
-    inflected: inflectedReadings(keys.plainFold || keys.bareFold || keys.fold, rules, true),
-    rules,
-  };
+  return { text, ...keys, key, inflected: inflectedReadings(key, rules, true), rules };
 }
 
 /** How long built rules are reused: a pass over an instance's history asks thousands of times a minute. */
@@ -488,7 +491,7 @@ async function resolveTexts(
 
     if (!match && options.mint === false) continue;
     if (!match) {
-      const slip = onlyNearest(slips.get(sameFoodKey(spelling)) ?? []);
+      const slip = onlyNearest(slips.get(spelling.key) ?? []);
       // The food a slip names may have been merged away since it was found; the text is then minted.
       const joined = slip
         ? await addIngredientAliases({
@@ -531,30 +534,23 @@ async function mintFlag(options: ResolveOptions): Promise<FlagReason> {
   return (await isAIEnabled()) ? "ai-queued" : "ai-off";
 }
 
-/** Spellings the first two rungs resolve alike: "onions, diced" and "onions (2)" are one slip (`foodKey`). */
-function sameFoodKey(spelling: Spelling): string {
-  return spelling.bareFold || spelling.fold;
-}
-
 /**
- * The known foods each spelling is a slip of the fingers from ("parmezan" for "parmezaan"), by
- * `sameFoodKey`, best first (`slipsNear`).
+ * The known foods each spelling is a slip of the fingers from ("parmezan" for "parmezaan"), by its
+ * key, best first (`slipsNear`).
  */
 async function findSlips(
   spellings: readonly Spelling[],
   keep: (row: IngredientAliasRow) => boolean = () => true
 ): Promise<Map<string, FoundFood[]>> {
   const slips = new Map<string, FoundFood[]>();
-  const questions = new Map(spellings.map((spelling) => [sameFoodKey(spelling), spelling]));
+  const keys = new Set(spellings.map((spelling) => spelling.key));
 
   await Promise.all(
-    [...questions].map(async ([key, spelling]) => {
-      const wanted = spelling.plainFold || spelling.bareFold || spelling.fold;
-
-      if (!mayBeASlip(wanted)) return;
+    [...keys].map(async (key) => {
+      if (!mayBeASlip(key)) return;
       const near = slipsNear(
-        wanted,
-        (await findAliasesNearFold(wanted)).filter(keep),
+        key,
+        (await findAliasesNearFold(key)).filter(keep),
         (row) => row.fold,
         (row) => row.ingredientId
       );
@@ -610,7 +606,7 @@ async function mint(
  */
 async function parentFromWords(spelling: Spelling): Promise<string | null> {
   const { rules } = spelling;
-  const all = (spelling.plainFold || spelling.bareFold || spelling.fold).split(" ");
+  const all = spelling.key.split(" ");
   const cut = all.findIndex((word, index) => index > 0 && rules.endsBefore.has(word));
   const words = cut > 0 ? all.slice(0, cut) : all;
   const windows: string[] = [];
@@ -700,10 +696,9 @@ export async function partsByWordsOf(
   return named?.joined ? { parts: named.foods, joined: named.joined } : null;
 }
 
-/** The one alias a spelling gives its food: its plain name, else its bare one, else its words ("(salt)" is "salt"). */
-function cleanAlias({ clean, fold, bare, bareFold, plain, plainFold }: Spelling) {
+/** The one alias a spelling gives its food: its plain name, else its words ("(salt)" is "salt"). */
+function cleanAlias({ clean, fold, plain, plainFold }: Spelling) {
   if (plainFold) return { text: plain, fold: plainFold };
-  if (bareFold) return { text: bare, fold: bareFold };
 
   return {
     text: clean
@@ -754,18 +749,6 @@ export function refOf({ aliasId, ingredientId }: IngredientRef): IngredientRef {
   return { aliasId, ingredientId };
 }
 
-/** A spelling read whole: no size or preparation word stripped ("petite potatoes" is not "potatoes"). */
-function asWritten(spelling: Spelling): Spelling {
-  const plainFold = spelling.bareFold || spelling.fold;
-
-  return {
-    ...spelling,
-    plain: spelling.bare,
-    plainFold,
-    inflected: inflectedReadings(plainFold, spelling.rules, true),
-  };
-}
-
 /**
  * The foods other than `ingredientId` each text names: the food named it, else the one food rungs
  * 1–2 find (with `asWritten`, by its whole spelling only), else (with `slips`) every food a slip of
@@ -777,11 +760,7 @@ export async function findOtherFoodsNamed(
   { slips = true, asWritten: whole = false }: { slips?: boolean; asWritten?: boolean } = {}
 ): Promise<FoundFood[][]> {
   const rules = await currentRules();
-  const spellings = texts.map((text) => {
-    const spelling = spellingOf(cleanIngredientText(text), rules);
-
-    return whole ? asWritten(spelling) : spelling;
-  });
+  const spellings = texts.map((text) => spellingOf(cleanIngredientText(text), rules, whole));
   const readable = spellings.filter((spelling) => spelling.text && !spellingNamesNoFood(spelling));
   const all = await knownAliases(readable);
   // Only by a spelling in a language Norish reads: AI's "bun" is not pear's Volapük "bün".
@@ -816,7 +795,7 @@ export async function findOtherFoodsNamed(
 
     if (match) return [{ ...refOf(match), score: EXACT, matched: match.text }];
 
-    return (matched.has(spelling) && slipped.get(sameFoodKey(spelling))) || [];
+    return (matched.has(spelling) && slipped.get(spelling.key)) || [];
   });
 }
 
