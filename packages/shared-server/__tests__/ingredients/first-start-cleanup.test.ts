@@ -26,8 +26,13 @@ import {
   recurringGroceries,
   serverConfig,
 } from "@norish/db/schema";
-import { markDistinct } from "@norish/shared-server/ingredients/catalogue";
-import { cleanUpCatalogueOnFirstStart } from "@norish/shared-server/ingredients/seed/first-start-cleanup";
+import { parentByAI } from "@norish/shared-server/ingredients/ai-changes";
+import { markDistinct, setParent } from "@norish/shared-server/ingredients/catalogue";
+import { updateIngredientSeedState } from "@norish/shared-server/ingredients/seed/catalogue-seed";
+import {
+  CLEANUP_VERSION,
+  cleanUpCatalogueOnFirstStart,
+} from "@norish/shared-server/ingredients/seed/first-start-cleanup";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import {
@@ -183,6 +188,7 @@ describe("the first-start cleanup", () => {
       renamed: 1,
       // The grocery food's "upgrade" flag.
       unflagged: 1,
+      unmarked: 0,
       asked: 2,
     });
 
@@ -232,7 +238,7 @@ describe("the first-start cleanup", () => {
       { name: "zout", food: seeded.get("en:salt") },
     ]);
 
-    // 7. AI is asked only about the own foods a recipe names that no person decided about.
+    // 8. AI is asked only about the own foods a recipe names that no person decided about.
     expect(askAI).toHaveBeenCalledTimes(1);
     expect(askAI.mock.calls[0]![0].sort()).toEqual(
       [gyoza.ingredientId, undecided.ingredientId].sort()
@@ -433,5 +439,40 @@ describe("the first-start cleanup", () => {
         .from(groceries)
         .innerJoin(ingredients, eq(ingredients.id, groceries.ingredientId))
     ).resolves.toEqual([{ name: "Voor de salade:", food: "Voor de salade" }]);
+  });
+
+  it("lets AI ask about and re-file a food whose parent was confirmed in 0.25, not one chosen since", async () => {
+    const actor = { userId, householdUserIds: null, isServerAdmin: false };
+    const prawns = await oldMint("king prawns", ["king prawns"]);
+    const recipe = await createTestRecipe(userId);
+    const parentOf = async () =>
+      (
+        await getTestDb()
+          .select({ parentId: ingredients.parentId })
+          .from(ingredients)
+          .where(eq(ingredients.id, prawns.ingredientId))
+      )[0]?.parentId;
+
+    await insertTestRecipeLine({ recipeId: recipe.id, name: "king prawns" }, [prawns.aliasIds[0]!]);
+    // 0.25 marked a confirmed suggestion as a person's parent.
+    await setParent(actor, prawns.ingredientId, seeded.get("en:honey")!);
+
+    await cleanUpCatalogueOnFirstStart(askAI);
+    expect(askAI.mock.calls[0]![0]).toContain(prawns.ingredientId);
+    await expect(parentByAI(prawns.ingredientId, seeded.get("en:salt")!, true)).resolves.toEqual(
+      expect.objectContaining({ outcome: "applied" })
+    );
+    expect(await parentOf()).toBe(seeded.get("en:salt"));
+
+    // A parent a person chooses after the upgrade keeps AI away, through a later release's cleanup.
+    await setParent(actor, prawns.ingredientId, seeded.get("en:pepper")!);
+    await updateIngredientSeedState({ cleanupVersion: CLEANUP_VERSION + 1 });
+    askAI.mockClear();
+    await cleanUpCatalogueOnFirstStart(askAI);
+    expect(askAI.mock.calls[0]![0]).not.toContain(prawns.ingredientId);
+    await expect(parentByAI(prawns.ingredientId, seeded.get("en:salt")!, true)).resolves.toEqual(
+      expect.objectContaining({ outcome: "decided" })
+    );
+    expect(await parentOf()).toBe(seeded.get("en:pepper"));
   });
 });

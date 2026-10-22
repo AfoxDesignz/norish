@@ -10,6 +10,7 @@ import {
   deleteCatalogueIngredient,
   listAskableIngredientIds,
   unflagHiddenFoods,
+  unmarkChosenParents,
 } from "@norish/db/repositories/ingredient-catalogue";
 import {
   findLinesNamingAFood,
@@ -36,7 +37,10 @@ import { cleanSpellingOf, partsByWordsOf } from "../resolver";
 import { oncePerVersion } from "./catalogue-seed";
 
 /** Raised when a release needs the cleanup to run again. */
-export const CLEANUP_VERSION = 3;
+export const CLEANUP_VERSION = 4;
+
+/** The cleanup version that forgets 0.25's chosen parents (7); one run from after it keeps them. */
+const PARENTS_UNMARKED_IN = 4;
 
 /** How many variants one round removes; each round commits, so a boot cut short resumes. */
 // ponytail: ~2 ms a variant, ~2.5 min for production's 71k; set-based if ticket 12 finds it slow.
@@ -57,7 +61,9 @@ export interface CleanupOutcome {
   renamed: number;
   /** Hidden foods whose flag went (6). */
   unflagged: number;
-  /** Foods the AI pass was asked about (7). */
+  /** Own foods whose parent no longer counts as a person's choice (7). */
+  unmarked: number;
+  /** Foods the AI pass was asked about (8). */
   asked: number;
 }
 
@@ -71,7 +77,7 @@ export async function cleanUpCatalogueOnFirstStart(
   askAI: (ingredientIds: string[]) => Promise<void>
 ): Promise<CleanupOutcome | null> {
   return await oncePerVersion("cleanupVersion", CLEANUP_VERSION, {
-    pass: () => cleanUpCatalogue(askAI),
+    pass: (from) => cleanUpCatalogue(askAI, from),
     // Every step but the AI pass changes which food rows mean, or a food's flag.
     changed: ({ asked: _asked, ...steps }) => Object.values(steps).some((n) => n > 0),
     done: "Catalogue cleaned up",
@@ -79,7 +85,8 @@ export async function cleanUpCatalogueOnFirstStart(
 }
 
 async function cleanUpCatalogue(
-  askAI: (ingredientIds: string[]) => Promise<void>
+  askAI: (ingredientIds: string[]) => Promise<void>,
+  from: number
 ): Promise<CleanupOutcome> {
   // 1. Seeded spellings lose their stray marks ("3wu)"); balanced brackets stay ("paprika (vrucht)").
   const outcome: CleanupOutcome = {
@@ -90,6 +97,7 @@ async function cleanUpCatalogue(
     split: 0,
     renamed: 0,
     unflagged: 0,
+    unmarked: 0,
     asked: 0,
   };
   const spellings = await listSpellingsForCleanup();
@@ -163,7 +171,11 @@ async function cleanUpCatalogue(
   // 6. A hidden food has no flag (`unflagHiddenFoods`).
   outcome.unflagged = await unflagHiddenFoods();
 
-  // 7. The AI pass, over every own food no person decided about.
+  // 7. 0.25 marked a confirmed suggestion as a person's parent, so its marks go once, after the
+  // passes that file only unmarked foods (corrections, mints) ran this boot.
+  if (from < PARENTS_UNMARKED_IN) outcome.unmarked = await unmarkChosenParents();
+
+  // 8. The AI pass, over every own food no person decided about.
   const askable = await listAskableIngredientIds();
 
   await askAI(askable);
