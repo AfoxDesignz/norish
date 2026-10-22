@@ -17,6 +17,7 @@ import {
 } from "@norish/shared-server/config/server-config-loader";
 import { aiLogger } from "@norish/shared-server/logger";
 import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
+import { foldName } from "@norish/shared/lib/fold-name";
 import { distinctFoods } from "@norish/shared/lib/line-foods";
 
 import { findFood, isExact, refOf } from "../../ingredients/resolver";
@@ -152,8 +153,14 @@ async function readThenLookUp(
     sure: reading.sure && found.sure,
   });
 
-  // The English name finding a food exactly says the name is that food, its parent or not.
-  if (found.food && food.englishName && found.byFirstName) return same(found.food.ingredientId);
+  // The English name finding a food exactly, or an other name that is AI's parent, says the name
+  // is that food, its parent or not.
+  const parentNamed =
+    !!food.parent && food.otherNames.some((name) => foldName(name) === foldName(food.parent));
+
+  if (found.food && ((food.englishName && found.byFirstName) || parentNamed)) {
+    return same(found.food.ingredientId);
+  }
   const parent = food.parent ? await findByName(food.parent, excludeId, trace) : null;
 
   // A food only AI's other names (or a slip) find is never the parent AI gave: filed under it.

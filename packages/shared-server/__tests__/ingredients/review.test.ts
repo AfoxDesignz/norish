@@ -1138,6 +1138,30 @@ describe("asking AI about an Ingredient", () => {
         id: edamame.ingredientId,
       });
     });
+
+    it("merges guajillo peppers into guajillo chili, an other name AI gives being the parent it gives", async () => {
+      await applyIngredientSeed([
+        seedEntry("en:guajillo-chili", "guajillo chili", "guajillo chile"),
+      ]);
+      const chili = (await findIngredientFor("guajillo chili"))!;
+      const peppers = await flagged("guajillo peppers");
+
+      reads({
+        englishName: "guajillo pepper",
+        parent: "guajillo chili",
+        otherNames: ["guajillo chile", "Guajillo chili"],
+        sure: true,
+      });
+
+      await expect(askAIAbout(peppers.ingredientId)).resolves.toMatchObject({
+        outcome: "merge",
+        into: "guajillo chili",
+        sure: true,
+      });
+      await expect(findIngredientByAliasId(peppers.aliasId)).resolves.toMatchObject({
+        id: chili.ingredientId,
+      });
+    });
   });
 
   describe("a spelling in a language Norish does not read", () => {
