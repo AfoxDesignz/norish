@@ -92,16 +92,6 @@ export async function spellingsBeside(
   return { ingredientId: spelling.ingredientId, others: row?.n ?? 0 };
 }
 
-/** The food the spelling with `fold` is on, if any. */
-export async function foodSpelled(tx: DbTransaction, fold: string): Promise<string | null> {
-  const [row] = await tx
-    .select({ ingredientId: ingredientAliases.ingredientId })
-    .from(ingredientAliases)
-    .where(eq(ingredientAliases.fold, fold));
-
-  return row?.ingredientId ?? null;
-}
-
 /** A row a spelling named, with its own text and whose it is. */
 export interface NamingRow {
   id: string;

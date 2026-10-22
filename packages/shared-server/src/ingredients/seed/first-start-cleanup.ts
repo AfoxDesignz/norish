@@ -9,6 +9,7 @@ import { withTransaction } from "@norish/db/drizzle";
 import {
   deleteCatalogueAlias,
   deleteCatalogueIngredient,
+  findIngredientIdByFold,
   listAskableIngredientIds,
   unflagHiddenFoods,
   unmarkChosenParents,
@@ -16,7 +17,6 @@ import {
 import {
   findLinesNamingAFood,
   findRowsNamingSpellings,
-  foodSpelled,
   listOwnFoods,
   listSpellingsForCleanup,
   renameFood,
@@ -212,7 +212,7 @@ async function removeVariants(variants: readonly Variant[]): Promise<number> {
 
       if (!beside) continue;
       if (beside.others === 0) {
-        const target = variant.clean.fold ? await foodSpelled(tx, variant.clean.fold) : null;
+        const target = variant.clean.fold ? await findIngredientIdByFold(tx, variant.clean.fold) : null;
 
         // A colon spelling's fold may be its clean one, so the food holding it is its own.
         if (!target || target === beside.ingredientId) {
