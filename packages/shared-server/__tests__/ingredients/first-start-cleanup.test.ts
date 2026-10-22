@@ -9,10 +9,12 @@ import { asc, eq, isNull } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
+import { withTransaction } from "@norish/db/drizzle";
 import {
   addIngredientAliases,
   mintIngredientWithAliases,
 } from "@norish/db/repositories/ingredient-aliases";
+import { addToJunkPile } from "@norish/db/repositories/ingredient-junk-pile";
 import {
   applyIngredientSeed,
   listSeededIngredientIds,
@@ -28,6 +30,7 @@ import {
 } from "@norish/db/schema";
 import { parentByAI } from "@norish/shared-server/ingredients/ai-changes";
 import { markDistinct, setParent } from "@norish/shared-server/ingredients/catalogue";
+import { forgetSpellingRules } from "@norish/shared-server/ingredients/resolver";
 import { updateIngredientSeedState } from "@norish/shared-server/ingredients/seed/catalogue-seed";
 import {
   CLEANUP_VERSION,
@@ -304,6 +307,25 @@ describe("the first-start cleanup", () => {
         .from(ingredients)
         .where(eq(ingredients.id, dirty.ingredientId))
     ).resolves.toEqual([{ name: "baking soda )" }]);
+  });
+
+  it("leaves a spelling on the junk pile to AI's spelling check", async () => {
+    const [boneless] = (await addIngredientAliases({
+      ingredientId: seeded.get("en:salt")!,
+      aliases: [{ text: "boneless", fold: "boneless" }],
+      ownerId: userId,
+      locale: null,
+    }))!;
+    const line = await insertTestRecipeLine(
+      { recipeId: (await createTestRecipe(userId)).id, name: "boneless" },
+      [boneless!.aliasId]
+    );
+
+    await withTransaction((tx) => addToJunkPile(tx, ["boneless"], { reason: "seed" }));
+    forgetSpellingRules();
+
+    await expect(cleanUpCatalogueOnFirstStart(askAI)).resolves.toMatchObject({ removed: 0 });
+    expect(await lineSpellings(line.id)).toEqual(["boneless"]);
   });
 
   it("runs once: a second start does nothing", async () => {

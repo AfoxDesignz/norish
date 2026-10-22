@@ -668,9 +668,14 @@ export async function plainNameOf(text: string): Promise<{ text: string; fold: s
     : null;
 }
 
+/** The rules without the junk pile: the first-start cleanup leaves junk to AI's spelling check. */
+async function cleanupRules(): Promise<ResolverRules> {
+  return { ...(await currentRules()), junk: new Set() };
+}
+
 /** The clean spelling a text reduces to, as a mint or a join adds it, for the first-start cleanup. */
 export async function cleanSpellingOf(text: string): Promise<{ text: string; fold: string }> {
-  return cleanAlias(spellingOf(cleanIngredientText(text), await currentRules()));
+  return cleanAlias(spellingOf(cleanIngredientText(text), await cleanupRules()));
 }
 
 /**
@@ -681,7 +686,7 @@ export async function partsByWordsOf(
   ingredientId: string,
   name: string
 ): Promise<{ parts: ResolvedIngredient[]; joined: LineJoin } | null> {
-  const rules = await currentRules();
+  const rules = await cleanupRules();
   const spelled = spelledParts(spellingOf(cleanIngredientText(name), rules).clean, rules);
 
   if (!spelled) return null;
