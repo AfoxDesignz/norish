@@ -83,9 +83,8 @@ export interface ResolveActor {
 }
 
 /**
- * Who resolves and why: "person", a write for someone (AI's pass follows a mint); "upgrade", a
- * startup pass (a mint is flagged the upgrade's); "repoint", rows whose food went (rungs 1 and 2 or
- * joining words only: no slip, no mint); "split", a part of AI's split it found nothing for (no slip).
+ * Who resolves and why: a "person"'s write (AI's pass follows a mint), an "upgrade" pass (mints so
+ * flagged), a "repoint" of rows whose food went (no slip, no mint), a "split" part AI found no food for (no slip).
  */
 export type ResolveMode = "person" | "upgrade" | "repoint" | "split";
 
@@ -95,10 +94,8 @@ export interface ResolvedIngredient extends IngredientRef {
 }
 
 /**
- * A text as the first two rungs read it: as written, its keys (clean, its
- * fold, its folds with the preparation stripped), the one key texts the rungs
- * read alike share (`foodKey`), its other readings as the same food (plurals
- * and diminutives), and the rules it was read by.
+ * A text as the first two rungs read it: as written, its keys, the one key texts they read alike share
+ * (`foodKey`), its plurals and diminutives, and the rules it was read by.
  */
 interface Spelling extends SpellingKeys {
   text: string;
