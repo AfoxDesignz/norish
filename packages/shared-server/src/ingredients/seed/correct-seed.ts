@@ -19,9 +19,6 @@ import {
   updateIngredientSeedState,
 } from "./catalogue-seed";
 
-/** The corrections version from which a seed files a shared spelling under a language Norish reads. */
-const NORISH_LANGUAGES_FIRST_IN = 3;
-
 export interface CorrectionOutcome {
   /** Seeded spellings moved to the food the seed now gives them. */
   moved: number;
@@ -38,7 +35,7 @@ export async function correctSeedOnce(): Promise<CorrectionOutcome | null> {
   });
 }
 
-async function correctSeed(from: number): Promise<CorrectionOutcome> {
+async function correctSeed(): Promise<CorrectionOutcome> {
   const seeded = await listSeededIngredientIds();
   const outcome: CorrectionOutcome = { moved: 0, refiled: 0 };
 
@@ -62,7 +59,7 @@ async function correctSeed(from: number): Promise<CorrectionOutcome> {
 
   // The seed re-stamps a kept spelling's language as it applies a file: the nightly refresh,
   // its validators forgotten, applies the file again. The boot downloads nothing.
-  if (from < NORISH_LANGUAGES_FIRST_IN && (await readIngredientSeedState()).appliedAt) {
+  if ((await readIngredientSeedState()).appliedAt) {
     await updateIngredientSeedState({ etag: null, lastModified: null });
   }
 

@@ -40,9 +40,6 @@ import { oncePerVersion } from "./catalogue-seed";
 /** Raised when a release needs the cleanup to run again. */
 export const CLEANUP_VERSION = 4;
 
-/** The cleanup version that forgets 0.25's chosen parents (7); one run from after it keeps them. */
-const PARENTS_UNMARKED_IN = 4;
-
 /** How many variants one round removes; each round commits, so a boot cut short resumes. */
 // ponytail: ~2 ms a variant, ~2.5 min for production's 71k; set-based if ticket 12 finds it slow.
 const REMOVED_PER_ROUND = 200;
@@ -173,9 +170,9 @@ async function cleanUpCatalogue(
   // 6. A hidden food has no flag (`unflagHiddenFoods`).
   outcome.unflagged = await underTreeLock(unflagHiddenFoods);
 
-  // 7. 0.25 marked a confirmed suggestion as a person's parent, so its marks go once, after the
-  // passes that file only unmarked foods (corrections, mints) ran this boot.
-  if (from < PARENTS_UNMARKED_IN) outcome.unmarked = await underTreeLock(unmarkChosenParents);
+  // 7. 0.25 marked a confirmed suggestion as a person's parent, so its marks go on an instance's
+  // first cleanup, after this boot's passes that file only unmarked foods (corrections, mints).
+  if (from === 0) outcome.unmarked = await underTreeLock(unmarkChosenParents);
 
   // 8. The AI pass, over every own food no person decided about.
   const askable = await listAskableIngredientIds();
