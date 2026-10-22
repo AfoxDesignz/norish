@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import type { Db, DbTransaction } from "@norish/db/drizzle";
@@ -690,22 +690,61 @@ export async function wasSpellingUndone(tx: Db, aliasId: string): Promise<boolea
 }
 
 /**
+ * The own food holding `fold` that was minted after `since` and nobody decided about: what reading
+ * a removed spelling's rows again minted from its text.
+ */
+export async function findMintHolding(tx: Db, fold: string, since: Date): Promise<string | null> {
+  const [row] = await tx
+    .select({ id: ingredients.id })
+    .from(ingredientAliases)
+    .innerJoin(ingredients, eq(ingredients.id, ingredientAliases.ingredientId))
+    .where(
+      and(
+        eq(ingredientAliases.fold, fold),
+        isNull(ingredients.offId),
+        gt(ingredients.createdAt, since),
+        eq(ingredients.nameChosen, false),
+        eq(ingredients.parentChosen, false),
+        eq(ingredients.keptDistinct, false)
+      )
+    );
+
+  return row?.id ?? null;
+}
+
+/**
  * Put a removed spelling back on its food under its id, pointing back the rows that name no food now
- * or still what the removal left them; false where its text is taken meanwhile.
+ * or still what the removal left them; false where another food holds its text.
  */
 export async function restoreSpelling(
   tx: DbTransaction,
   ingredientId: string,
   undo: ChangedSpelling
 ): Promise<boolean> {
-  const { spelling, lines, left = {} } = undo;
-  const restored = await tx
+  const { spelling, left = {} } = undo;
+  const [restored] = await tx
     .insert(ingredientAliases)
     .values({ ...spelling, ingredientId, ownerId: stillThere(users, spelling.ownerId) })
     .onConflictDoNothing()
     .returning({ id: ingredientAliases.id });
+  // The text back on the food under another id (a mint merged back) is restored too.
+  const [held] = restored
+    ? [restored]
+    : await tx
+        .select({ id: ingredientAliases.id })
+        .from(ingredientAliases)
+        .where(
+          and(
+            eq(ingredientAliases.fold, spelling.fold),
+            eq(ingredientAliases.ingredientId, ingredientId)
+          )
+        );
 
-  if (restored.length === 0) return false;
+  if (!held) return false;
+  const lines = undo.lines.map((line) => ({
+    ...line,
+    aliasIds: line.aliasIds.map((id) => (id === spelling.id ? held.id : id)),
+  }));
   const wanted = [...new Set(lines.flatMap((line) => line.aliasIds))];
   const aliases = new Set(
     wanted.length === 0
@@ -739,7 +778,7 @@ export async function restoreSpelling(
     return named.length === 0 || named.join() === (left[id] ?? []).join();
   };
   const pointers = (ids: string[]) =>
-    ids.map((id) => ({ id, aliasId: spelling.id, left: left[id]?.[0] }));
+    ids.map((id) => ({ id, aliasId: held.id, left: left[id]?.[0] }));
 
   await repointLines(
     tx,

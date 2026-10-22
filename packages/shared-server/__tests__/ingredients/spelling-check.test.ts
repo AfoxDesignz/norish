@@ -411,6 +411,44 @@ describe("AI checks the spellings added to a seeded food", () => {
     expect(pointed.get(repointed!.id)).toBe(thigh);
   });
 
+  it("on Undo, merges back the food its lines minted from the text", async () => {
+    const salt = seeded.get("en:salt")!;
+    const spelled = await added("en:salt", "zeezoutvlokken");
+    const flakesLine = await line("zeezoutvlokken", spelled.get("zeezoutvlokken")!);
+    const flakes = () =>
+      getTestDb()
+        .select({ id: ingredients.id })
+        .from(ingredients)
+        .where(eq(ingredients.name, "zeezoutvlokken"));
+
+    answers({ zeezoutvlokken: ["other-food", "sea salt flakes"] });
+    await checkSpellingsOf(salt);
+    await expect(flakes()).resolves.toHaveLength(1);
+    const [change] = await listAIChangesFor(actor);
+
+    await undoAIChange(actor, change!.id);
+
+    await expect(flakes()).resolves.toEqual([]);
+    expect(await spellingsOf(salt)).toEqual(["salt", "zeezoutvlokken"]);
+    expect(await lineFoods(flakesLine.id)).toEqual([{ food: "salt", spelling: "zeezoutvlokken" }]);
+  });
+
+  it("refuses the Undo where a person chose the food its lines minted from the text", async () => {
+    const salt = seeded.get("en:salt")!;
+    const spelled = await added("en:salt", "zeezoutvlokken");
+
+    await line("zeezoutvlokken", spelled.get("zeezoutvlokken")!);
+    answers({ zeezoutvlokken: ["other-food", "sea salt flakes"] });
+    await checkSpellingsOf(salt);
+    await getTestDb()
+      .update(ingredients)
+      .set({ nameChosen: true })
+      .where(eq(ingredients.name, "zeezoutvlokken"));
+    const [change] = await listAIChangesFor(actor);
+
+    await expect(undoAIChange(actor, change!.id)).rejects.toThrow(/spelling-taken/);
+  });
+
   it("runs once, at the first start with AI on, over seeded foods only", async () => {
     await added("en:chicken-breast", "kipfilet");
     await mintTestFood("hamburgerbroodjes");

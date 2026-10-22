@@ -12,6 +12,7 @@ import { withTransaction } from "@norish/db/drizzle";
 import {
   aliasesStillOn,
   clearAIFlagUnlessOpen,
+  findMintHolding,
   flagUnderOpenChange,
   isInAnyPantry,
   listAIChanges,
@@ -574,11 +575,15 @@ async function reverseChange(tx: DbTransaction, change: StoredAIChange): Promise
       const movedTo = change.target?.id;
 
       if (!movedTo) {
+        const mint = await findMintHolding(tx, undo.spelling.fold, change.createdAt);
+
+        // The removal's rows minted its text again: that food goes back into this one.
+        if (mint) await mergeCatalogueIngredients(tx, mint, foodId);
         if (!(await restoreSpelling(tx, foodId, undo))) {
           throw new CatalogueEditError("spelling-taken");
         }
 
-        return [];
+        return mint ? [mint] : [];
       }
       const alias = await findCatalogueAliasOwner(tx, undo.spelling.id);
 
