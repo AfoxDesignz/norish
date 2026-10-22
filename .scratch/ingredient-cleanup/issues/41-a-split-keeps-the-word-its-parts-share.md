@@ -24,8 +24,16 @@ AI writes each part whole ("sticky or sushi rice" became sticky rice and sushi r
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] "cherry or grape tomatoes" names cherry tomato and grape tomato; "chicken or vegetable stock" names chicken broth and vegetable broth; "chicken breast or thigh" names chicken breast and chicken thigh. This holds at import and in the first start's split.
-- [ ] The words do not split "zonnebloem- of kokosolie".
-- [ ] "salt and black pepper" still names salt and black pepper.
+- [x] "cherry or grape tomatoes" names cherry tomato and grape tomato; "chicken or vegetable stock" names chicken broth and vegetable broth; "chicken breast or thigh" names chicken breast and chicken thigh. This holds at import and in the first start's split.
+- [x] The words do not split "zonnebloem- of kokosolie".
+- [x] "salt and black pepper" still names salt and black pepper.
+
+## Implemented (2026-10-22)
+
+- `sharedWordReadings` in `packages/shared-server/src/ingredients/resolver.ts`, called by `spelledParts`: `SpelledParts.spellings` became `readings: Spelling[][]`, each part's readings in order. A part fewer words than the last part (for the last part: the first) is first read with that part's extra last (first) words; a part before the last ending in "-" is read only that way, borrowing at least one word ("rode- en witte kool" is "rode kool"; "zonnebloem- of kokosolie" tries "zonnebloem kokosolie", unknown, so no split). `foodsByWords` takes each part's first reading rungs 1-2 know, and that reading is the part's text, so a typed Grocery split off "cherry or grape tomatoes" is named "cherry tomatoes". `readByWords` and `partsByWordsOf` fetch aliases for every reading. Import (`resolveLineFoods`), typed groceries/pantry (`typedParts`) and the first start's step 5 all go through it.
+- With more than two parts every non-last part borrows from the last ("chicken, beef or vegetable stock" reads chicken stock and beef stock).
+- No `RUNG_VERSION` or `CLEANUP_VERSION` bump, as the ticket says (stays 10 and 4): only rc/dev ran the old split, and re-running step 5 there would not undo a split already made, since the joined food is gone.
+- Tests: `resolver.test.ts` "reads the shorter part with the words the parts share, where that reading is known" (the ticket's cases plus "rode- en witte kool"), `first-start-cleanup.test.ts` "splits a joined food keeping the word its parts share, and leaves one that reading misses".
+- No docs or release-notes line became wrong ("every part is a known food" still holds).
