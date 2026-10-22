@@ -12,6 +12,7 @@ import { createRecipeWithRefs, getRecipeFull } from "@norish/db";
 import { withTransaction } from "@norish/db/drizzle";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
 import { deleteCatalogueIngredient } from "@norish/db/repositories/ingredient-catalogue";
+import { listJunkFolds } from "@norish/db/repositories/ingredient-junk-pile";
 import { findIngredientAncestors } from "@norish/db/repositories/ingredient-relocation";
 import { ingredients } from "@norish/db/schema";
 import { decide, generateStructured } from "@norish/shared-server/ai/runtime/runtime";
@@ -174,6 +175,39 @@ describe("ingredient resolver with AI on", () => {
     await expect(getRecipeFull(recipeId)).resolves.toMatchObject({
       recipeIngredients: [{ ingredientName: "melted", ingredientId: melted.ingredientId }],
     });
+  });
+
+  it("puts what AI deleted as not a food on the junk pile: the next line naming it mints nothing and asks nothing, until Undo", async () => {
+    const first = await saved(["melted"]);
+    const melted = first.lines[0]!.foods![0]!;
+
+    modelAnswers.push(noFoodReading(true));
+    await askAIAbout(melted.ingredientId);
+    await expect(listJunkFolds()).resolves.toEqual(["melted"]);
+    vi.mocked(generateStructured).mockClear();
+    const minted: string[] = [];
+
+    onIngredientsMinted(async (ids) => void minted.push(...ids));
+    try {
+      const again = await saved(["melted"]);
+
+      expectNoAIRequest();
+      expect(minted).toEqual([]);
+      expect(again.lines).toMatchObject([{ ingredientName: "melted", ingredientId: null }]);
+      await expect(
+        getTestDb().select().from(ingredients).where(eq(ingredients.name, "melted"))
+      ).resolves.toEqual([]);
+    } finally {
+      onIngredientsMinted(undefined);
+    }
+
+    const [change] = await listAIChanges();
+
+    await undoAIChange({ userId, householdUserIds: null, isServerAdmin: false }, change!.id);
+    await expect(listJunkFolds()).resolves.toEqual([]);
+    const restored = await saved(["melted"]);
+
+    expect(restored.lines).toMatchObject([{ ingredientId: melted.ingredientId }]);
   });
 
   it("adds a grocery it does not know asking AI nothing", async () => {

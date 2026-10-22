@@ -17,6 +17,7 @@ import {
   findSeededFoodSpellingsByFolds,
   mintIngredientWithAliases,
 } from "@norish/db/repositories/ingredient-aliases";
+import { listJunkFolds } from "@norish/db/repositories/ingredient-junk-pile";
 import {
   getIngredientWords,
   getUnits,
@@ -118,11 +119,43 @@ export interface ResolvedIngredient extends IngredientRef {
 interface Spelling extends SpellingKeys {
   text: string;
   inflected: string[];
-  rules: SpellingRules;
+  rules: ResolverRules;
 }
 
-function spellingOf(text: string, rules: SpellingRules): Spelling {
-  const keys = spellingKeys(text, rules);
+/** The spelling rules and the junk pile's folds (CONTEXT.md), which a name is read without. */
+interface ResolverRules extends SpellingRules {
+  junk: ReadonlySet<string>;
+}
+
+/** The pieces a cut makes (a comma, a joining word), without those whose fold or plain fold is junk. */
+function withoutJunk(pieces: readonly string[], rules: ResolverRules): string[] {
+  return pieces.filter((piece) => {
+    if (rules.junk.has(ingredientAliasFold(piece))) return false;
+
+    return !rules.junk.has(spellingKeys(piece, rules).plainFold);
+  });
+}
+
+/** A text's pieces at its commas outside brackets, as written. */
+function commaPieces(text: string): string[] {
+  const pieces = [""];
+  let depth = 0;
+
+  for (const char of text) {
+    if ("([{".includes(char)) depth += 1;
+    if (")]}".includes(char)) depth = Math.max(0, depth - 1);
+    if (char === "," && depth === 0) pieces.push("");
+    else pieces[pieces.length - 1] += char;
+  }
+
+  return pieces;
+}
+
+/** A text read on its comma pieces not on the junk pile: "boneless, skinless chicken" is "skinless chicken". */
+function spellingOf(text: string, rules: ResolverRules): Spelling {
+  const pieces = commaPieces(text);
+  const kept = withoutJunk(pieces, rules);
+  const keys = spellingKeys(kept.length === pieces.length ? text : kept.join(","), rules);
 
   return {
     text,
@@ -133,26 +166,26 @@ function spellingOf(text: string, rules: SpellingRules): Spelling {
 }
 
 /** How long built rules are reused: a pass over an instance's history asks thousands of times a minute. */
-const RULES_TTL_MS = 10_000;
+export const RULES_TTL_MS = 10_000;
 
-let builtRules: { at: number; rules: Promise<SpellingRules> } | null = null;
+let builtRules: { at: number; rules: Promise<ResolverRules> } | null = null;
 
 /**
  * The rules rung 2 reads a name by: the administrator's units map and
  * ingredient words, built at most once every few seconds, so an edit lands
  * almost at once and an upgrade's thousands of names don't rebuild them each.
  */
-/** Read the units map and the ingredient words afresh next time: an administrator just changed one. */
+/** Read the units map, the ingredient words and the junk pile afresh next time: one just changed. */
 export function forgetSpellingRules(): void {
   builtRules = null;
 }
 
-async function currentRules(): Promise<SpellingRules> {
+async function currentRules(): Promise<ResolverRules> {
   const now = Date.now();
 
   if (!builtRules || now - builtRules.at > RULES_TTL_MS) {
-    const rules = Promise.all([getUnits(), getIngredientWords()]).then(([units, words]) =>
-      spellingRules(units, words)
+    const rules = Promise.all([getUnits(), getIngredientWords(), listJunkFolds()]).then(
+      ([units, words, junk]) => ({ ...spellingRules(units, words), junk: new Set(junk) })
     );
 
     builtRules = { at: now, rules };
@@ -291,17 +324,21 @@ interface SpelledParts extends JoinedParts {
   readings: Spelling[][];
 }
 
-function spelledParts(clean: string, rules: SpellingRules): SpelledParts | null {
+/** A part on the junk pile is dropped, so parts all on it name no food. */
+function spelledParts(clean: string, rules: ResolverRules): SpelledParts | null {
   const found = joinedParts(clean, rules);
 
-  return (
-    found && {
-      ...found,
-      readings: sharedWordReadings(found.parts).map((texts) =>
-        texts.map((text) => spellingOf(text, rules))
-      ),
-    }
-  );
+  if (!found) return null;
+  const parts = withoutJunk(found.parts, rules);
+
+  return {
+    ...found,
+    parts,
+    words: found.words.slice(0, Math.max(parts.length - 1, 0)),
+    readings: sharedWordReadings(parts).map((texts) =>
+      texts.map((text) => spellingOf(text, rules))
+    ),
+  };
 }
 
 /**
@@ -371,7 +408,7 @@ function foodsByWords(
  */
 async function readByWords(
   asWritten: readonly Spelling[],
-  rules: SpellingRules,
+  rules: ResolverRules,
   splitJoined: boolean
 ) {
   const spellings = asWritten.filter((spelling) => !spellingNamesNoFood(spelling));
@@ -419,11 +456,14 @@ async function resolveTexts(
     const named = byWords.get(spelling);
 
     if (named) {
-      resolved.set(spelling, {
-        text: spelling.text,
-        foods: named.foods.map(refOf),
-        joined: named.joined,
-      });
+      // Every part on the junk pile: the text names no food.
+      if (named.foods.length > 0) {
+        resolved.set(spelling, {
+          text: spelling.text,
+          foods: named.foods.map(refOf),
+          joined: named.joined,
+        });
+      }
       continue;
     }
 

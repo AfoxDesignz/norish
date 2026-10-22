@@ -356,9 +356,10 @@ const iconRound = authedProcedure.query(() => findRunningIconRound(getQueues().i
 
 /**
  * Save an Ingredient's draft from its panel as one edit: a new name, a new
- * parent (null clears it), spellings removed and added, and its icon (a
- * stored file, or null to remove its own), each under its own rule. A
- * refusal anywhere changes nothing, and says why.
+ * parent (null clears it), spellings removed (onto the junk pile where
+ * marked) and added, and its icon (a stored file, or null to remove its
+ * own), each under its own rule. A refusal anywhere changes nothing, and
+ * says why.
  */
 const saveDraft = authedProcedure
   .input(
@@ -368,6 +369,8 @@ const saveDraft = authedProcedure
       parentId: z.uuid().nullable().optional(),
       add: z.array(ingredientName).max(100),
       remove: z.array(z.uuid()).max(100),
+      /** Of `remove`, those the person says name no food, for the junk pile. */
+      junk: z.array(z.uuid()).max(100).default([]),
       icon: z.string().regex(ICON_FILE_PATTERN).nullable().optional(),
     })
   )

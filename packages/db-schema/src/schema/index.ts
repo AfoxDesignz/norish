@@ -4,6 +4,7 @@ export * from "./tags";
 export * from "./cuisines";
 export * from "./ingredients";
 export * from "./ingredient-ai-changes";
+export * from "./ingredient-junk-pile";
 export * from "./recipe-tags";
 export * from "./recipe-cuisines";
 export * from "./cuisine-tag-migrations";

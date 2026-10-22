@@ -36,6 +36,7 @@ import {
   keepIngredientDistinct,
   settleIngredientName,
 } from "@norish/db/repositories/ingredient-catalogue";
+import { addToJunkPile, takeJunkOfAIChange } from "@norish/db/repositories/ingredient-junk-pile";
 import {
   findIngredientAncestors,
   insertCatalogueIngredient,
@@ -60,6 +61,7 @@ import {
 } from "./catalogue";
 import { ingredientChanges } from "./changes";
 import { announceMinted } from "./minted";
+import { forgetSpellingRules } from "./resolver";
 
 /**
  * What applying AI's answer came to: made, refused as a change a person undid, a food a person
@@ -211,8 +213,9 @@ export async function splitByAI(
 }
 
 /**
- * Delete a food AI says is not a food; its rows keep their text and name no food. A Pantry
- * Ingredient naming it keeps it, flagged, and a person's Undo of the same deletion keeps it as is.
+ * Delete a food AI says is not a food; its rows keep their text and name no food, and its spellings
+ * go on the junk pile. A Pantry Ingredient naming it keeps it, flagged, and a person's Undo of the
+ * same deletion keeps it as is.
  */
 export async function deleteByAI(ingredientId: string): Promise<ApplyOutcome | "kept"> {
   const outcome = await withTransaction(async (tx): Promise<ApplyOutcome | "kept"> => {
@@ -228,12 +231,22 @@ export async function deleteByAI(ingredientId: string): Promise<ApplyOutcome | "
 
       return "kept";
     }
-    await recordAIChange(tx, { sure: true, undo: { kind: "not-a-food", food } });
+    const aiChangeId = await recordAIChange(tx, {
+      sure: true,
+      undo: { kind: "not-a-food", food },
+    });
+
     await deleteCatalogueIngredient(tx, ingredientId);
+    await addToJunkPile(
+      tx,
+      food.aliases.map((alias) => alias.fold),
+      { reason: "not-a-food", aiChangeId }
+    );
 
     return "applied";
   });
 
+  if (outcome === "applied") forgetSpellingRules();
   if (outcome === "applied" || outcome === "kept") {
     await ingredientChanges().changed([ingredientId]);
   }
@@ -379,12 +392,13 @@ export async function undoAIChange(
     const foodId = change.ingredient?.id;
     const changed = await reverseChange(tx, change);
 
+    await takeJunkOfAIChange(tx, changeId);
     await settleAIChange(tx, changeId, "undone");
     // A sure change raised no flag, so undoing it lifts none.
     if (!change.sure && foodId) await clearAIFlagUnlessOpen(tx, foodId);
 
     return { changed: foodId ? [foodId, ...changed] : changed };
-  });
+  }).finally(forgetSpellingRules);
 }
 
 /** Put back what one change took, through `tx`; returns the other foods it touched. */

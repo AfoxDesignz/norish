@@ -416,12 +416,13 @@ export async function findCatalogueIngredientOwner(
 export async function findCatalogueAliasOwner(
   tx: DbTransaction,
   aliasId: string
-): Promise<(CatalogueOwner & { ingredientId: string; text: string }) | null> {
+): Promise<(CatalogueOwner & { ingredientId: string; text: string; fold: string }) | null> {
   const [row] = await tx
     .select({
       ownerId: ingredientAliases.ownerId,
       ingredientId: ingredientAliases.ingredientId,
       text: ingredientAliases.text,
+      fold: ingredientAliases.fold,
     })
     .from(ingredientAliases)
     .where(eq(ingredientAliases.id, aliasId))

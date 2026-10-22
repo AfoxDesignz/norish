@@ -852,6 +852,8 @@ export const IngredientSeedStateSchema = z.object({
   cleanupVersion: z.number().int().default(0),
   /** The seed's `SEED_CORRECTIONS_VERSION` last made on the seeded foods. */
   correctionsVersion: z.number().int().default(0),
+  /** The junk pile seed's version last put on the pile (`JUNK_SEED`). */
+  junkSeedVersion: z.number().int().default(0),
 });
 
 export type IngredientSeedState = z.infer<typeof IngredientSeedStateSchema>;

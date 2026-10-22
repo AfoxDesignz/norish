@@ -53,6 +53,7 @@ import {
 } from "@norish/db/repositories/ingredient-catalogue";
 import { findRowsNamingFood, repointLines } from "@norish/db/repositories/ingredient-cleanup";
 import { setIngredientIcon } from "@norish/db/repositories/ingredient-icons";
+import { addToJunkPile, takeOffJunkPile } from "@norish/db/repositories/ingredient-junk-pile";
 import {
   countAliasesOf,
   findIngredientAncestors,
@@ -82,6 +83,7 @@ import { ingredientChanges } from "./changes";
 import { ingredientIcons } from "./icons";
 import {
   cleanIngredientText,
+  forgetSpellingRules,
   resolveIngredients,
   resolveLineFoods,
   typedParts,
@@ -357,14 +359,17 @@ export async function assertMayEditFood(
 /**
  * Add a spelling to any Ingredient, a seeded one included: open to everyone,
  * so a household's own words are understood. It is stored clean, as a recipe text is read
- * (`cleanSpelling`). One another Ingredient holds is refused; one this Ingredient holds is a no-op.
+ * (`cleanSpelling`), and taken off the junk pile. One another Ingredient holds is refused; one this
+ * Ingredient holds is a no-op.
  */
 export async function addAlias(
   actor: CatalogueActor,
   ingredientId: string,
   text: string
 ): Promise<CatalogueEdit> {
-  return await inEdit((tx) => addAliasIn(tx, actor, ingredientId, text));
+  return await inEdit((tx) => addAliasIn(tx, actor, ingredientId, text)).finally(
+    forgetSpellingRules
+  );
 }
 
 async function addAliasIn(
@@ -391,6 +396,7 @@ async function addAliasIn(
   if (!alias && (await findIngredientIdByFold(tx, fold)) !== ingredientId) {
     throw new CatalogueEditError("spelling-taken");
   }
+  await takeOffJunkPile(tx, [fold]);
 
   return { changed: [ingredientId] };
 }
@@ -742,7 +748,9 @@ async function removeAliasIn(
   actor: CatalogueActor,
   aliasId: string,
   /** The Ingredient the spelling must belong to, where the caller is editing one. */
-  of?: string
+  of?: string,
+  /** The person says the spelling names no food: its fold goes on the junk pile. */
+  junk = false
 ): Promise<CatalogueEdit> {
   const alias = await assertMayEdit(actor, await findCatalogueAliasOwner(tx, aliasId));
 
@@ -757,6 +765,8 @@ async function removeAliasIn(
     throw new CatalogueEditError("last-alias");
   }
   await deleteCatalogueAlias(tx, aliasId);
+  // Folds are unique, so no other food still holds the text.
+  if (junk) await addToJunkPile(tx, [alias.fold], { reason: "person" });
 
   return { changed: [alias.ingredientId] };
 }
@@ -769,14 +779,16 @@ export interface IngredientDraft {
   add: readonly string[];
   /** The ids of spellings of this Ingredient to remove. */
   remove: readonly string[];
+  /** Of `remove`, those the person says name no food, for the junk pile. */
+  junk?: readonly string[];
   /** A stored icon file to make the food's own, or null to remove its own; omitted leaves it. */
   icon?: string | null;
 }
 
 /**
  * Save an Ingredient's draft as one edit: the rename, the parent, the
- * spellings removed and those added, and its icon, each under its own rule,
- * in one transaction. A refusal anywhere changes nothing. The icon follows
+ * spellings removed (onto the junk pile where marked) and those added, and its
+ * icon, each under its own rule, in one transaction. A refusal anywhere changes nothing. The icon follows
  * `edit` on the Ingredient, and must be a file an upload or a generation
  * stored; removing the food's own brings back what it showed before.
  */
@@ -794,12 +806,14 @@ export async function saveDraft(
 
       for (const id of parented.changed) changed.add(id);
     }
-    for (const aliasId of draft.remove) await removeAliasIn(tx, actor, aliasId, ingredientId);
+    for (const aliasId of draft.remove) {
+      await removeAliasIn(tx, actor, aliasId, ingredientId, draft.junk?.includes(aliasId));
+    }
     for (const text of draft.add) await addAliasIn(tx, actor, ingredientId, text);
     if (draft.icon !== undefined) await setIconIn(tx, actor, ingredientId, draft.icon);
 
     return { changed: [...changed] };
-  });
+  }).finally(forgetSpellingRules);
 }
 
 async function setIconIn(

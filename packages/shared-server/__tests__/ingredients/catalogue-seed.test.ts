@@ -13,6 +13,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
+import { listJunkFolds } from "@norish/db/repositories/ingredient-junk-pile";
 import { findIngredientAncestors } from "@norish/db/repositories/ingredient-relocation";
 import { listPantryIngredientsByUserIds } from "@norish/db/repositories/pantry";
 import { groceries, ingredientAliases, ingredients, serverConfig } from "@norish/db/schema";
@@ -33,6 +34,14 @@ import {
   updateIngredientSeedState,
 } from "@norish/shared-server/ingredients/seed/catalogue-seed";
 import { correctSeedOnce } from "@norish/shared-server/ingredients/seed/correct-seed";
+import {
+  JUNK_SEED,
+  JUNK_SEED_CONCEPTS,
+  JUNK_SEED_VERSION,
+  seedJunkPileOnce,
+} from "@norish/shared-server/ingredients/seed/junk-pile";
+import { CATALOGUE_LANGUAGES } from "@norish/shared/lib/ingredient-names";
+import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import {
   getSpellingTexts,
@@ -449,6 +458,44 @@ describe("the ingredient catalogue seed", () => {
       await expect(resolve("seasoning")).resolves.toMatchObject({
         ingredientId: coating.ingredientId,
       });
+    });
+  });
+
+  describe("the junk pile seed", () => {
+    it("has every concept in every language Norish reads", () => {
+      for (const [concept, { texts }] of Object.entries(JUNK_SEED_CONCEPTS)) {
+        expect([concept, Object.keys(texts).sort()]).toEqual([
+          concept,
+          [...CATALOGUE_LANGUAGES].sort(),
+        ]);
+      }
+    });
+
+    it("puts its texts on the pile once per version, never again one a person took off", async () => {
+      const outcome = await seedJunkPileOnce();
+
+      expect(outcome).toEqual({ added: 211 });
+      expect((await listJunkFolds()).sort()).toEqual(
+        JUNK_SEED.map((entry) => ingredientAliasFold(entry.text)).sort()
+      );
+      await expect(resolveIngredients(["boneless"], { userId: actor.userId })).resolves.toEqual([
+        null,
+      ]);
+
+      // A person says "boneless" names a food: it leaves the pile, and stays off.
+      const chicken = await resolve("chicken breast");
+
+      await addAlias(actor, chicken.ingredientId, "boneless");
+      await expect(seedJunkPileOnce()).resolves.toBeNull();
+      expect(await listJunkFolds()).not.toContain("boneless");
+
+      // A later version adds only its own entries.
+      const later = [...JUNK_SEED, { text: "afgemeten", version: JUNK_SEED_VERSION + 1 }];
+
+      await expect(seedJunkPileOnce(later)).resolves.toEqual({ added: 1 });
+      expect(await listJunkFolds()).toContain("afgemeten");
+      expect(await listJunkFolds()).not.toContain("boneless");
+      await expect(seedJunkPileOnce(later)).resolves.toBeNull();
     });
   });
 

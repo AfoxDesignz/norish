@@ -245,7 +245,7 @@ export async function updateIngredientSeedState(
  * `pass` gets the version last run (0 for none), so a step can run only when coming from before it.
  */
 export async function oncePerVersion<T extends object>(
-  key: "rungVersion" | "cleanupVersion" | "correctionsVersion",
+  key: "rungVersion" | "cleanupVersion" | "correctionsVersion" | "junkSeedVersion",
   version: number,
   {
     pass,

@@ -50,6 +50,10 @@ const cleanup = vi.hoisted(() => ({
   repointLines: vi.fn(),
 }));
 const aliases = vi.hoisted(() => ({ findLocaleNames: vi.fn(async () => new Map()) }));
+const junkPile = vi.hoisted(() => ({
+  addToJunkPile: vi.fn(async () => 1),
+  takeOffJunkPile: vi.fn(async () => 0),
+}));
 const iconsRepo = vi.hoisted(() => ({
   findIconLineage: vi.fn(async (): Promise<Map<string, unknown>> => new Map()),
   listIconCatalogue: vi.fn(async (): Promise<Map<string, unknown>> => new Map()),
@@ -95,6 +99,7 @@ vi.mock("@norish/db/repositories/ingredient-catalogue", () => catalogue);
 vi.mock("@norish/db/repositories/ingredient-relocation", () => relocation);
 vi.mock("@norish/db/repositories/ingredient-cleanup", () => cleanup);
 vi.mock("@norish/db/repositories/ingredient-aliases", () => aliases);
+vi.mock("@norish/db/repositories/ingredient-junk-pile", () => junkPile);
 vi.mock("@norish/db/repositories/ingredient-icons", () => iconsRepo);
 vi.mock("@norish/shared-server/media/ingredient-icon", async (original) => ({
   ...(await original<typeof import("@norish/shared-server/media/ingredient-icon")>()),
@@ -136,7 +141,12 @@ function withPolicy(edit: PermissionLevel) {
 
 function ownedBy(ownerId: string | null) {
   catalogue.findCatalogueIngredientOwner.mockResolvedValue({ ownerId });
-  catalogue.findCatalogueAliasOwner.mockResolvedValue({ ownerId, ingredientId: ONION, text: "ui" });
+  catalogue.findCatalogueAliasOwner.mockResolvedValue({
+    ownerId,
+    ingredientId: ONION,
+    text: "ui",
+    fold: "ui",
+  });
 }
 
 beforeEach(() => {
@@ -243,6 +253,21 @@ describe("the edit policy", () => {
       }
     }
   );
+
+  it("puts a draft's spelling marked as not a food on the junk pile, and a plain removal nowhere", async () => {
+    withPolicy("everyone");
+    ownedBy(ME);
+    relocation.countAliasesOf.mockResolvedValue(3);
+
+    await expect(
+      callerFor().saveDraft({ ingredientId: ONION, add: [], remove: [ALIAS], junk: [ALIAS] })
+    ).resolves.toEqual({ success: true });
+    expect(junkPile.addToJunkPile).toHaveBeenCalledWith(TX, ["ui"], { reason: "person" });
+
+    junkPile.addToJunkPile.mockClear();
+    await callerFor().saveDraft({ ingredientId: ONION, add: [], remove: [ALIAS] });
+    expect(junkPile.addToJunkPile).not.toHaveBeenCalled();
+  });
 
   it("leaves a seeded, ownerless Ingredient to administrators, whatever the policy", async () => {
     withPolicy("everyone");

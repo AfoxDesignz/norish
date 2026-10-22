@@ -10,6 +10,7 @@ import { recheckUndecidedMintsOnBoot } from "@norish/api/startup/recheck-undecid
 import { registerApiHandlersForQueue } from "@norish/api/startup/register-queue-api-handlers";
 import { seedServerConfig } from "@norish/api/startup/seed-config";
 import { seedIngredientCatalogueOnFirstBoot } from "@norish/api/startup/seed-ingredient-catalogue";
+import { seedJunkPileOnBoot } from "@norish/api/startup/seed-junk-pile";
 import { registerShutdownHandlers } from "@norish/api/startup/shutdown";
 import { initializeVideoProcessing } from "@norish/api/startup/video-processing";
 import { initializeServerConfig, SERVER_CONFIG } from "@norish/config/env-config-server";
@@ -51,6 +52,9 @@ async function main() {
 
   // What earlier versions left in the catalogue, cleaned once per release that changes the cleanup.
   await cleanUpCatalogueOnBoot();
+  // Texts that name no food, which new lines are read without; after the cleanup, which reads
+  // spellings as earlier releases left them.
+  await seedJunkPileOnBoot();
   log.info("-".repeat(50));
 
   // Ingredient Nutrition's source numbers, when this release carries new ones.

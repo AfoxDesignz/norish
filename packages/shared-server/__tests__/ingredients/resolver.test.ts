@@ -11,10 +11,12 @@ import { ServerConfigKeys } from "@norish/config/zod/server-config";
 import { createRecipeWithRefs, getRecipeFull, updateRecipeWithRefs } from "@norish/db";
 import { withTransaction } from "@norish/db/drizzle";
 import { mintIngredientWithAliases } from "@norish/db/repositories/ingredient-aliases";
+import { addToJunkPile } from "@norish/db/repositories/ingredient-junk-pile";
 import { mergeCatalogueIngredients } from "@norish/db/repositories/ingredient-relocation";
 import { addPantryIngredients } from "@norish/db/repositories/pantry";
 import { setConfig } from "@norish/db/repositories/server-config";
 import { ingredients } from "@norish/db/schema";
+import { resolveGroceryNames } from "@norish/shared-server/ingredients/groceries";
 import { onIngredientsMinted } from "@norish/shared-server/ingredients/minted";
 import { withResolvedIngredients } from "@norish/shared-server/ingredients/recipe-lines";
 import {
@@ -907,6 +909,83 @@ describe("ingredient resolver", () => {
         );
         forgetSpellingRules();
       }
+    });
+  });
+
+  describe("the junk pile", () => {
+    async function pile(...texts: string[]) {
+      await withTransaction((tx) =>
+        addToJunkPile(tx, texts.map(ingredientAliasFold), { reason: "seed" })
+      );
+      forgetSpellingRules();
+    }
+
+    async function lines(texts: string[]) {
+      const recipeId = crypto.randomUUID();
+
+      await createRecipeWithRefs(
+        recipeId,
+        userId,
+        await withResolvedIngredients(
+          {
+            name: "Chicken",
+            systemUsed: "metric",
+            recipeIngredients: texts.map((ingredientName, order) => ({
+              ingredientId: null,
+              ingredientName,
+              amount: 1,
+              unit: null,
+              order,
+            })),
+          },
+          { userId }
+        )
+      );
+
+      return (await getRecipeFull(recipeId))!.recipeIngredients;
+    }
+
+    it("drops a comma piece on the pile and reads the text on the rest; all on it, the text names no food", async () => {
+      const breasts = await mintTestFood("skinless chicken breasts");
+      const zout = await mintTestFood("zout");
+
+      await pile("boneless", "to taste");
+      const minted: string[] = [];
+
+      onIngredientsMinted(async (ids) => void minted.push(...ids));
+      try {
+        expect(
+          await lines([
+            "boneless, skinless chicken breasts",
+            "boneless",
+            "lbs boneless",
+            "zout en boneless",
+            "boneless, to taste",
+          ])
+        ).toMatchObject([
+          {
+            ingredientName: "boneless, skinless chicken breasts",
+            ingredientId: breasts.ingredientId,
+          },
+          { ingredientName: "boneless", ingredientId: null },
+          { ingredientName: "lbs boneless", ingredientId: null },
+          { ingredientName: "zout en boneless", ingredientId: zout.ingredientId, joined: null },
+          { ingredientName: "boneless, to taste", ingredientId: null },
+        ]);
+      } finally {
+        onIngredientsMinted(undefined);
+      }
+      expect(minted).toEqual([]);
+      await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(2);
+    });
+
+    it("keeps a typed grocery on the pile, naming no food", async () => {
+      await pile("boneless");
+
+      await expect(resolveGroceryNames([{ name: "boneless" }], { userId })).resolves.toEqual([
+        null,
+      ]);
+      await expect(getTestDb().select().from(ingredients)).resolves.toHaveLength(0);
     });
   });
 });

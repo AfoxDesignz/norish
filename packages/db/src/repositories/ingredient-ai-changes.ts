@@ -41,7 +41,7 @@ export interface StoredAIChange {
   undo: AIChangeUndo;
 }
 
-/** Record what AI just did, through the transaction that did it. */
+/** Record what AI just did, through the transaction that did it; answers its id. */
 export async function recordAIChange(
   tx: Db,
   change: {
@@ -50,14 +50,19 @@ export async function recordAIChange(
     sure: boolean;
     undo: AIChangeUndo;
   }
-): Promise<void> {
-  await tx.insert(ingredientAIChanges).values({
-    kind: change.undo.kind,
-    ingredientId: change.ingredientId ?? null,
-    targetId: change.targetId ?? null,
-    sure: change.sure,
-    undo: change.undo,
-  });
+): Promise<string> {
+  const [row] = await tx
+    .insert(ingredientAIChanges)
+    .values({
+      kind: change.undo.kind,
+      ingredientId: change.ingredientId ?? null,
+      targetId: change.targetId ?? null,
+      sure: change.sure,
+      undo: change.undo,
+    })
+    .returning({ id: ingredientAIChanges.id });
+
+  return row!.id;
 }
 
 const targets = alias(ingredients, "ai_change_targets");

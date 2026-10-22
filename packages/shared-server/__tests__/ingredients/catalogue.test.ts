@@ -11,6 +11,7 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
+import { listJunkFolds } from "@norish/db/repositories/ingredient-junk-pile";
 import { writeGroceryParts } from "@norish/db/repositories/ingredient-relocation";
 import {
   groceries,
@@ -235,6 +236,35 @@ describe("the ingredient catalogue", () => {
     await expect(
       refusal(saveDraft(actor, onion.ingredientId, { add: [], remove: [knoflook!.aliasId] }))
     ).resolves.toBe("not-found");
+  });
+
+  it("puts a spelling removed as not a food on the junk pile, and the spelling added by hand takes it off", async () => {
+    const chicken = await mint("chicken breast");
+
+    await addAlias(actor, chicken.ingredientId, "boneless");
+    await addAlias(actor, chicken.ingredientId, "kipfilet");
+    const [boneless, kipfilet] = await resolveIngredients(["boneless", "kipfilet"], {
+      userId: actor.userId,
+    });
+
+    await saveDraft(actor, chicken.ingredientId, {
+      add: [],
+      remove: [boneless!.aliasId, kipfilet!.aliasId],
+      junk: [boneless!.aliasId],
+    });
+    await expect(listJunkFolds()).resolves.toEqual(["boneless"]);
+    await expect(resolveIngredients(["boneless"], { userId: actor.userId })).resolves.toEqual([
+      null,
+    ]);
+
+    // Another food may say it: "boneless" names that food from now on.
+    const other = await mint("chicken thigh");
+
+    await saveDraft(actor, other.ingredientId, { add: ["boneless"], remove: [], junk: [] });
+    await expect(listJunkFolds()).resolves.toEqual([]);
+    await expect(resolveIngredients(["boneless"], { userId: actor.userId })).resolves.toEqual([
+      expect.objectContaining({ ingredientId: other.ingredientId }),
+    ]);
   });
 
   it("clears the flag of an Ingredient a person renames", async () => {
