@@ -7,6 +7,14 @@
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** done
 
-- [ ] A food is not filed under an own food whose lines name no particular food.
+- [x] A food is not filed under an own food whose lines name no particular food.
+
+## Implemented (2026-10-22)
+
+- Mike's call: a category only lands on a seeded food (`off_id is not null`); an own food is never a category. The parent keeps today's lookup (listed foods, own ones included).
+- `findNamed` (`ingredient-resolution.ts`) takes `{ seeded }`; the category branch of `readThenLookUp` passes `true`, and the one listed-ids query becomes `findSeededIngredientIds` (new, `packages/db/src/repositories/ingredient-aliases.ts`) instead of `findListedIngredientIds`. A seeded food is always listed, so it is still one query.
+- Not decided: whether a food AI reads with its own name as category is a placeholder. Nothing reads it so; the own "toppings" food stays as it is.
+- Tests (`review.test.ts`, "a food whose parent is a category"): "never files it under an own food the category names, a placeholder whose lines leave the choice to the cook" (red first). The Cajun seasoning test now seeds "mixed spices" instead of keeping an own one.
+- Docs: the 0.26 release notes ("filed under its group where the catalogue has one") still hold; unchanged.

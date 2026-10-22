@@ -9,7 +9,20 @@ The requests still finished and used tokens (the log has 151 completions), but t
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** done
 
-- [ ] A busy pass leaves no food flagged `ai-unavailable` for a slow answer.
-- [ ] The job monitor counts every request sent, timed out ones too.
+- [x] A busy pass leaves no food flagged `ai-unavailable` for a slow answer.
+- [x] The job monitor counts every request sent, timed out ones too.
+
+## Implemented (2026-10-22)
+
+**The cause of the missing ledger entries.** `withTimeout` raced the request and gave up on it without ending it. The request went on, finished and recorded `completed` with its tokens, but into the food's own ledger (`queue/src/ingredient-review/worker.ts` opens one per food and copies it into the attempt's ledger once `ask` returns), which had already been copied. So the attempt's Models row never saw it.
+
+**What changed.**
+
+- Runtime: `generateStructured` and `decide` take an optional `timeoutMs`, the deadline of that one request (`requestSignal(deadlineMs)`); the transport's idle timeout and the cached undici agent keep the administrator's AI timeout, so the agent is not rebuilt per feature. A request past its deadline is aborted inside the runtime and recorded `failed` (no tokens: none come back) before the feature sees the error. `isTimedOut(error)` in `ai/runtime/errors.ts` tells a deadline or transport timeout from a stopped job (an `AbortError`, not retried).
+- `ingredient-resolution.ts`: `REQUEST_BUDGET_MS` 30 000 (was 10 000), passed as `timeoutMs`; `withTimeout` is gone from it. `onceMoreOnTimeout()` asks once more after the first request that times out. The reading's shape retry (ticket 24) shares one: at most one timeout retry and one shape retry, so three requests at most. The language model's pick gets its own. The Decision is not retried: a timed-out Decision falls back to the language model as before.
+- Tests: `structured-output.test.ts` and `decide.test.ts` ("ends a request past the feature's own deadline, recorded as a failed use"), the job-stop test asserts a stop is no timeout; `review.test.ts` "a request that runs out of time" (once more and answered, twice flagged `ai-unavailable`, timeout + broken shape = 3 requests, Decision timeout -> language model asked once more). All red first.
+- Cost: one more request per timed-out question. A food whose reading times out twice now waits up to 60 s for its worker slot.
+
+**For Mike.** A timed-out request shows as a failed chip on the job monitor with no tokens, though the provider may bill what it generated before the abort. No release-notes line: the per-request budget was never in the notes.
