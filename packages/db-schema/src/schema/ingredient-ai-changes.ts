@@ -1,6 +1,6 @@
 import { boolean, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-import type { recipeIngredientJoinEnum } from "./recipe-ingredients";
+import type { RecipeIngredientJoin } from "./recipe-ingredients";
 import { ingredients } from "./ingredients";
 
 /** A food AI deleted, its spellings and the rows that named it, for Undo to mint it again under its ids. */
@@ -36,11 +36,11 @@ export interface ChangedSpelling {
   lines: Array<{
     id: string;
     aliasIds: string[];
-    joined: (typeof recipeIngredientJoinEnum.enumValues)[number] | null;
+    joined: RecipeIngredientJoin | null;
   }>;
   groceries: string[];
   recurring: string[];
-  /** For a removal, the spellings each row named once read again, by row id; Undo skips a row changed since. */
+  /** For a removal, what each row named once read again, by id; Undo skips a row changed since. */
   left?: Record<string, string[]>;
 }
 

@@ -20,6 +20,9 @@ export const recipeIngredientJoinEnum = pgEnum("recipe_ingredient_join", [
   "alternatives",
 ]);
 
+/** The join a line's foods have; `LineJoin` in `@norish/shared`, which this package cannot import. */
+export type RecipeIngredientJoin = (typeof recipeIngredientJoinEnum.enumValues)[number];
+
 /**
  * A recipe line. `name` is the line's text as written ("onions, diced"),
  * which is what the recipe shows; its foods are its `recipeIngredientFoods`,
