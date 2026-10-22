@@ -7,4 +7,8 @@
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** done
+
+## Closed by ticket 50 (2026-10-22)
+
+The reading was the plain fold: `matchKnown` stripped the preparation word "crushed" from AI's other name "crushed red pepper", leaving red bell pepper's seeded "red pepper". Ticket 50 looks AI's names up as written (no plain fold), so red pepper flakes stays its own food under chili pepper (`review.test.ts` "files red pepper flakes under chili pepper"). A find by a shortened reading is not put to the second question; it is simply not a find for AI's names.

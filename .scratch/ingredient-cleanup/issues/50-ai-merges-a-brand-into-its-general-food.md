@@ -8,7 +8,7 @@
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** done
 
 ## Brand half: decided (Mike, 2026-10-22)
 
@@ -34,3 +34,19 @@ A brand product is its general food, so the merge is right. Nothing to build for
 - **Root cause 1 (b), 5 of 8:** `findNamed` looks AI's other names up through rungs 1-2 (`findOtherFoodsNamed` → `matchKnown`: fold, then bare, then plain fold). The plain fold drops size and preparation words, and the size words are pooled across all languages (French "petite" strips English "petite potatoes"). So a specific other name becomes the general food's own seeded spelling. Ticket 20's forms list does not do this ("puree" is not a form).
 - **Root cause 2 (c), 3 of 8:** the general food already holds a spelling of the specific food. Two are own spellings from 0.25 recipe lines ("pureed pumpkin" on pumpkin, "fat free greek yogurt" on greek yogurt). One is a seeded foreign word ("salsiccia" on sausage). AI lists that spelling as an other name, and it matches exactly.
 - Open for Mike: is a more specific food (baby potatoes, pumpkin puree, italian sausage) its general food like a brand, or its own food under it? If it is its own food, the narrowest fix for root cause 1 looks other names up by their full spelling only (fold and bare, no plain fold). That leaves root cause 2, the general food holding the specific spelling, which belongs with ticket 52.
+
+## Implemented (2026-10-22)
+
+Mike's decisions: a brand is its general food (no code, see above); a more specific food is its own food, so AI's names are looked up as written.
+
+- `findOtherFoodsNamed` (`packages/shared-server/src/ingredients/resolver.ts`) takes `asWritten`: each text is read by `asWritten(spelling)`, whose plain fold is the bare fold (else the fold), so `matchKnown` finds a food by the fold, the fold without what follows a comma or sits in brackets, and plurals or diminutives of that whole spelling; never the plain fold with sizes and preparation words stripped. Slips are measured from the same whole spelling (`findSlips` reads the plain fold, so "petite potatoes" can no longer be a zero-letter "slip" of "potatoes"). Ticket 32's name-first lookup is unchanged.
+- `findNamed` (`ai/resolution/ingredient-resolution.ts`) passes `asWritten: true`, so every AI name gets it: English name, other names, parent, category, split parts, and the spelling check's other food (`findFoodNamed`). The recheck of undecided mints (`recheck-mints.ts`) and the import (`resolveTexts`) keep the plain fold, so no `RUNG_VERSION` bump.
+- Kept, as not word-stripping: plurals of the whole spelling ("tomato, chopped" still finds "tomatoes"; the existing test "looks the reading up as an import does: plurals, preparation and slips" holds).
+- Prompt (`ingredient-resolution.txt`): the two lines as Mike wrote them; "Unox Knaks" stays on parent only, "koud water" left the English-name examples with the old bullet. `new-prompt-defaults.test.ts` checks both lines. Upgrade note on the Ingredient resolution prompt, a release-notes line under Fixes, an ADR-0037 amendment, CONTEXT.md's Alias entry.
+- Tests (`review.test.ts` "AI's names, looked up as written"; 4 red first, the sausage one green before and after): baby potatoes stays under potato; mini-krieltjes merges into the own food baby potatoes in one request; red pepper flakes goes under chili pepper, not into red bell pepper; deli ham stays under ham; italian sausage still merges into sausage by "salsiccia".
+- Ticket 49 closed by this: its red pepper flakes merge came from "crushed red pepper" read as "red pepper" (cause 1 here).
+
+**Left, for Mike.**
+
+- Root cause 2 (c) is untouched: a general food that already holds the specific food's spelling ("pureed pumpkin" on pumpkin, "fat free greek yogurt" on greek yogurt, "salsiccia" on sausage) still takes the merge. That is ticket 52's.
+- The structured-output schema still describes `englishName` as "Its plain English name, as a shopper would look for it." (`readFoodSchema` in `ingredient-resolution.ts`), which the model also sees. Not changed, since the decision named the two prompt lines only; say if it should match the new bullet.
