@@ -106,7 +106,7 @@ async function readThenLookUp(
   text: string,
   { excludeId, filedUnder, trace }: AskOptions
 ): Promise<AIResolution> {
-  const reading = await readName(text, filedUnder?.name ?? null).catch((error: unknown) => {
+  const reading = await askReading(text, filedUnder?.name ?? null).catch((error: unknown) => {
     aiLogger.warn({ err: error, feature: "ingredient-resolution", text }, "Reading a name failed");
 
     throw failed(error);
@@ -397,7 +397,7 @@ function asReading(answer: z.infer<typeof readingSchema>): Reading | null {
 }
 
 /** What the language model reads a name as, asked once more where the answer breaks its shape. */
-async function readName(text: string, filedUnder: string | null): Promise<Reading | null> {
+async function askReading(text: string, filedUnder: string | null): Promise<Reading | null> {
   const sections = [`Name: ${text}`, ...(filedUnder ? [`Parent: ${filedUnder}`] : [])];
   const ask = onceMoreOnTimeout("ingredient-resolution");
 
