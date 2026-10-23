@@ -5,6 +5,14 @@ export interface ProviderInfo {
   type?: "oauth" | "credential";
 }
 
+/** How each Sign-in Method is shown; OIDC goes by the administrator's name for it when it has one. */
+export const SIGN_IN_METHODS = {
+  credential: { id: "credential", name: "Email", icon: "mdi:email-outline", type: "credential" },
+  github: { id: "github", name: "GitHub", icon: "mdi:github", type: "oauth" },
+  google: { id: "google", name: "Google", icon: "flat-color-icons:google", type: "oauth" },
+  oidc: { id: "oidc", name: "SSO", icon: "mdi:shield-account-outline", type: "oauth" },
+} as const satisfies Record<string, ProviderInfo>;
+
 export interface AuthProvidersResponse {
   providers: ProviderInfo[];
   registrationEnabled: boolean;
