@@ -1272,6 +1272,28 @@ describe("asking AI about an Ingredient", () => {
       });
     });
 
+    it("merges guajillo peppers into guajillo chili, AI's other name guajillo chile being that parent in another inflection", async () => {
+      await applyIngredientSeed([seedEntry("en:guajillo-chili", "guajillo chili")]);
+      const chili = (await findIngredientFor("guajillo chili"))!;
+      const peppers = await flagged("guajillo peppers");
+
+      reads({
+        englishName: "guajillo pepper",
+        parent: "guajillo chili",
+        otherNames: ["guajillo chile", "dried guajillo pepper", "mirasol chile"],
+        sure: true,
+      });
+
+      await expect(askAIAbout(peppers.ingredientId)).resolves.toMatchObject({
+        outcome: "merge",
+        into: "guajillo chili",
+        sure: true,
+      });
+      await expect(findIngredientByAliasId(peppers.aliasId)).resolves.toMatchObject({
+        id: chili.ingredientId,
+      });
+    });
+
     it("files tenderstem broccoli under broccoli: its other name broccolini, a slip of broccoli, is not broccoli", async () => {
       await applyIngredientSeed([seedEntry("en:broccoli", "broccoli")]);
       const broccoli = (await findIngredientFor("broccoli"))!;

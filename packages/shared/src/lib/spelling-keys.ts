@@ -510,15 +510,17 @@ export function spellingKeys(
  * The one key texts that the first two rungs resolve alike share: "onions",
  * "Onions!", "onions, diced", "onions (2)" and, given the units map's
  * phrases, "onions to taste" are all "onions". Empty for an empty text.
+ * `whole` keeps the size and preparation words, as AI's names are read.
  */
 export function foodKey(
   text: string | null | undefined,
-  rules: SpellingRules = BASE_SPELLING_RULES
+  rules: SpellingRules = BASE_SPELLING_RULES,
+  whole = false
 ): string {
   if (!text?.trim()) return "";
   const keys = spellingKeys(text, rules);
 
-  return keys.plainFold || keys.fold;
+  return (whole ? keys.bareFold : keys.plainFold) || keys.fold;
 }
 
 /** A name split at the words that join foods in it. */
@@ -612,9 +614,10 @@ export function inflectedReadings(
 /** The keys a text may be met by: its food key, and that key's singular readings. */
 export function foodKeys(
   text: string | null | undefined,
-  rules: SpellingRules = BASE_SPELLING_RULES
+  rules: SpellingRules = BASE_SPELLING_RULES,
+  whole = false
 ): string[] {
-  const key = foodKey(text, rules);
+  const key = foodKey(text, rules, whole);
 
   return key ? [key, ...inflectedReadings(key, rules)] : [];
 }
@@ -623,9 +626,10 @@ export function foodKeys(
 export function sameFood(
   a: string | null | undefined,
   b: string | null | undefined,
-  rules: SpellingRules = BASE_SPELLING_RULES
+  rules: SpellingRules = BASE_SPELLING_RULES,
+  whole = false
 ): boolean {
-  const keysOfA = new Set(foodKeys(a, rules));
+  const keysOfA = new Set(foodKeys(a, rules, whole));
 
-  return foodKeys(b, rules).some((key) => keysOfA.has(key));
+  return foodKeys(b, rules, whole).some((key) => keysOfA.has(key));
 }

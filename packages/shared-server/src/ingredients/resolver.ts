@@ -153,7 +153,7 @@ export function forgetSpellingRules(): void {
 }
 
 /** The rules rung 2 reads a name by, rebuilt at most every `RULES_TTL_MS` so an edit lands soon. */
-async function currentRules(): Promise<ResolverRules> {
+export async function currentRules(): Promise<ResolverRules> {
   const now = Date.now();
 
   if (!builtRules || now - builtRules.at > RULES_TTL_MS) {

@@ -10,6 +10,7 @@ import {
   foodKey,
   ingredientAliasFold,
   joinedParts,
+  sameFood,
   spellingKeys,
   spellingRules,
   stripPreparation,
@@ -317,6 +318,13 @@ describe("spelling keys", () => {
 
     expect(joinedParts("boter of olie", own)).toBeNull();
     expect(joinedParts("boter en/of olie", own)?.joined).toBe("alternatives");
+  });
+
+  it("reads a name whole for sameFood when asked: sliced ham is ham, but not read whole", () => {
+    expect(sameFood("sliced ham", "ham", phrases)).toBe(true);
+    expect(sameFood("sliced ham", "ham", phrases, true)).toBe(false);
+    expect(sameFood("guajillo chilies", "guajillo chili", phrases, true)).toBe(true);
+    expect(sameFood("broccolini", "broccoli", phrases, true)).toBe(false);
   });
 
   it.each(SPELLING_CASES)("offline, a Pantry %j covers a line %j: %s", (pantry, line, covered) => {

@@ -19,8 +19,9 @@ import { aiLogger } from "@norish/shared-server/logger";
 import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import { foldName } from "@norish/shared/lib/fold-name";
 import { distinctFoods } from "@norish/shared/lib/line-foods";
+import { sameFood } from "@norish/shared/lib/spelling-keys";
 
-import { findFood, isExact, refOf } from "../../ingredients/resolver";
+import { currentRules, findFood, isExact, refOf } from "../../ingredients/resolver";
 import { isCredentialRejection } from "../runtime/errors";
 import { decide, generateStructured } from "../runtime/runtime";
 import { onceMoreOnTimeout } from "../runtime/timeout-retry";
@@ -150,10 +151,10 @@ async function readThenLookUp(
     sure: reading.sure && found.sure,
   });
 
-  // The English name finding a food exactly, or an other name that is AI's parent, says the name
-  // is that food, its parent or not.
-  const parentNamed =
-    !!food.parent && food.otherNames.some((name) => foldName(name) === foldName(food.parent));
+  // The English name finding a food exactly, or an other name that spells AI's parent (plurals
+  // included, read whole), says the name is that food, its parent or not.
+  const rules = await currentRules();
+  const parentNamed = food.otherNames.some((name) => sameFood(name, food.parent, rules, true));
 
   if (found.food && ((food.englishName && found.byFirstName) || parentNamed)) {
     return same(found.food.ingredientId);
