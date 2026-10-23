@@ -156,12 +156,23 @@ describe("keeping and undoing AI Changes", () => {
     await expect(parentOf(red.ingredientId)).resolves.toBeNull();
   });
 
+  it("refuses a parent that would close a cycle, as a cycle", async () => {
+    const onion = await mint("onion");
+    const red = await mint("red onion");
+
+    await parentByAI(red.ingredientId, onion.ingredientId, true);
+    await expect(parentByAI(onion.ingredientId, red.ingredientId, true)).resolves.toMatchObject({
+      outcome: "cycle",
+    });
+    await expect(parentOf(onion.ingredientId)).resolves.toBeNull();
+  });
+
   it("undoes a Plain Name: the former name is back, and stays settled", async () => {
     const tonijn = await mint("GR TONIJN UIT BLIK");
 
     await expect(
       renameByAI(tonijn.ingredientId, "GR TONIJN UIT BLIK", "tonijn uit blik")
-    ).resolves.toBe(true);
+    ).resolves.toBe("applied");
     await undoAIChange(actor, (await onlyChange()).id);
 
     const [row] = await getTestDb()
@@ -361,7 +372,7 @@ describe("keeping and undoing AI Changes", () => {
     await expect(parentByAI(uien.ingredientId, onion.ingredientId, false)).resolves.toMatchObject({
       outcome: "decided",
     });
-    await expect(renameByAI(uien.ingredientId, "uien", "ui")).resolves.toBe(false);
+    await expect(renameByAI(uien.ingredientId, "uien", "ui")).resolves.toBe("decided");
     await flagByAnswer(uien.ingredientId, false);
 
     await expect(findIngredientByAliasId(uien.aliasId)).resolves.toMatchObject({

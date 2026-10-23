@@ -17,7 +17,14 @@ import { distinctFoods } from "@norish/shared/lib/line-foods";
 
 import type { AIResolution } from "../ai/resolution/ingredient-resolution";
 import { askWhatFoodThisIs } from "../ai/resolution/ingredient-resolution";
-import { deleteByAI, flagByAnswer, mergeByAI, parentByAI, splitByAI } from "./ai-changes";
+import {
+  deleteByAI,
+  flagByAnswer,
+  mergeByAI,
+  parentByAI,
+  skippedBy,
+  splitByAI,
+} from "./ai-changes";
 import { ingredientChanges } from "./changes";
 import { announcingAfter } from "./minted";
 import { nameAfterAnswer } from "./plain-names";
@@ -44,10 +51,8 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
     const into = await findCatalogueIngredient(answer.ingredientId);
     const applied = into ? await mergeByAI(ingredientId, into.id, answer.sure) : "gone";
 
-    if (applied === "undone" || applied === "decided") {
-      return { outcome: "skipped", reason: applied, ...trace };
-    }
     if (!into || applied === "gone") return await unanswered(ingredientId, "food-gone", trace);
+    if (applied !== "applied") return { ...skippedBy(applied), ...trace };
 
     return { outcome: "merge", into: into.name, sure: answer.sure, ...trace };
   }
@@ -83,6 +88,7 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
   const named = row.nameSettled ? null : await nameAfterAnswer(ingredientId);
 
   if (named) return { ...trace, ...named };
+  if (filed && filed !== "applied") return { ...skippedBy(filed), ...trace };
   if (parent && filed === "applied") return { outcome: "parent", of: parent.name, sure, ...trace };
   if (dropped) return { outcome: "no-parent", from: dropped.name, sure, ...trace };
 
@@ -122,10 +128,7 @@ async function split(
   const applied = await splitByAI(food.id, [first, ...rest], answer.joined);
 
   if (applied === "refused") return await doubted(food.id, "ai-unsure", trace);
-
-  if (applied === "decided" || applied === "gone") {
-    return { outcome: "skipped", reason: applied === "gone" ? "not-found" : applied, ...trace };
-  }
+  if (applied !== "applied") return { ...skippedBy(applied), ...trace };
 
   return { outcome: "split", into: parts.map((part) => part.text), ...trace };
 }
@@ -134,17 +137,10 @@ async function split(
 async function deleted(ingredientId: string, trace: ReviewTrace): Promise<ReviewOutcome> {
   const outcome = await deleteByAI(ingredientId);
 
-  switch (outcome) {
-    case "kept":
-      return { outcome: "unsure", reason: "ai-junk", ...trace };
-    case "gone":
-      return { outcome: "skipped", reason: "not-found", ...trace };
-    case "decided":
-    case "undone":
-      return { outcome: "skipped", reason: outcome, ...trace };
-    case "applied":
-      return { outcome: "not-a-food", ...trace };
-  }
+  if (outcome === "kept") return { outcome: "unsure", reason: "ai-junk", ...trace };
+  if (outcome === "applied") return { outcome: "not-a-food", ...trace };
+
+  return { ...skippedBy(outcome), ...trace };
 }
 
 /** An answer AI was not sure of that would change too much to make: the food is flagged with it. */

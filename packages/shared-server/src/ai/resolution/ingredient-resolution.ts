@@ -197,16 +197,18 @@ async function readThenLookUp(
 
 /**
  * The listed food other than `excludeId` a name AI gave finds, as any AI name is looked up
- * (`findNamed`); null where the second question got no answer.
+ * (`findNamed`); "unanswered" where the second question got no answer.
  */
 export async function findFoodNamed(
   name: string,
   excludeId: string
-): Promise<{ food: IngredientRef | null } | null> {
+): Promise<{ kind: "found"; food: IngredientRef } | { kind: "not-found" | "unanswered" }> {
   try {
-    return { food: (await findByName(name, excludeId, noTrace())).food };
+    const { food } = await findByName(name, excludeId, noTrace());
+
+    return food ? { kind: "found", food } : { kind: "not-found" };
   } catch (error) {
-    if (error instanceof Unanswered) return null;
+    if (error instanceof Unanswered) return { kind: "unanswered" };
     throw error;
   }
 }

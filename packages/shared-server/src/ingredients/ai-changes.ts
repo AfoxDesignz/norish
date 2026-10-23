@@ -74,16 +74,18 @@ import { ingredientChanges } from "./changes";
 import { announceMinted } from "./minted";
 import { forgetSpellingRules } from "./resolver";
 
-/**
- * What applying AI's answer came to: made, refused as a change a person undid, a food a person
- * decided about while AI was asking, or a food gone.
- */
+/** Applying AI's answer: made, undone by a person before, decided by a person meanwhile, or a food gone. */
 export type ApplyOutcome = "applied" | "undone" | "decided" | "gone";
 
-async function announceIfApplied(
-  outcome: ApplyOutcome,
+/** An outcome that changed nothing, reported as skipped; a food gone is not found. */
+export function skippedBy<R extends string>(outcome: R | "gone") {
+  return { outcome: "skipped", reason: outcome === "gone" ? "not-found" : outcome } as const;
+}
+
+async function announceIfApplied<T extends string>(
+  outcome: T,
   changed: Array<string | null>
-): Promise<ApplyOutcome> {
+): Promise<T> {
   if (outcome === "applied") {
     await ingredientChanges().changed(changed.filter((id): id is string => id !== null));
   }
@@ -129,13 +131,13 @@ export async function mergeByAI(sourceId: string, targetId: string, sure: boolea
 export async function parentByAI(ingredientId: string, parentId: string | null, sure: boolean) {
   let previous: string | null = null;
   const ids = parentId ? [ingredientId, parentId] : [ingredientId];
-  const outcome = await withTransaction(async (tx): Promise<ApplyOutcome> => {
+  const outcome = await withTransaction(async (tx): Promise<ApplyOutcome | "cycle"> => {
     const locked = await lockForAI(tx, ids);
 
     if (locked) return locked;
     if (await wasParentUndone(tx, ingredientId, parentId)) return "undone";
 
-    if (parentId && (await closesCycle(tx, ingredientId, parentId))) return "gone";
+    if (parentId && (await closesCycle(tx, ingredientId, parentId))) return "cycle";
     previous = (await findIngredientAncestors([ingredientId], tx)).get(ingredientId)?.[0] ?? null;
     const replaced = await takeOpenParentChanges(tx, ingredientId);
     const undoTo = parentId !== null && replaced ? replaced.formerParentId : previous;
@@ -162,23 +164,23 @@ export async function parentByAI(ingredientId: string, parentId: string | null, 
   };
 }
 
-/** Rename a food to its Plain Name, which settles it; false where it was settled or taken meanwhile. */
+/** Rename a food to its Plain Name and settle it; "settled" where settled or taken meanwhile. */
 export async function renameByAI(ingredientId: string, formerName: string, name: string) {
-  const renamed = await withTransaction(async (tx) => {
-    if (await lockForAI(tx, [ingredientId])) return false;
-    if (!(await renameToPlainName(tx, ingredientId, name))) return false;
+  const outcome = await withTransaction(async (tx): Promise<ApplyOutcome | "settled"> => {
+    const locked = await lockForAI(tx, [ingredientId]);
+
+    if (locked) return locked;
+    if (!(await renameToPlainName(tx, ingredientId, name))) return "settled";
     await recordAIChange(tx, {
       ingredientId,
       sure: true,
       undo: { kind: "plain-name", formerName, name },
     });
 
-    return true;
+    return "applied";
   });
 
-  if (renamed) await ingredientChanges().changed([ingredientId]);
-
-  return renamed;
+  return await announceIfApplied(outcome, [ingredientId]);
 }
 
 /**
@@ -271,6 +273,9 @@ export async function deleteByAI(ingredientId: string): Promise<ApplyOutcome | "
   return outcome;
 }
 
+/** What a spelling AI's answer would take off or move came to. */
+export type SpellingOutcome = ApplyOutcome | "seeded" | "last-spelling";
+
 /**
  * The spelling the food holds that the seed did not give it, locked with the food (and `targetId`);
  * an outcome instead where it went, is seeded, was undone or is the food's last.
@@ -286,9 +291,10 @@ async function lockAddedSpelling(
   if (!(await lockFoods(tx, ids))) return "gone";
   const read = await readChangedSpelling(tx, aliasId);
 
-  if (!read || read.ingredientId !== ingredientId || read.seeded) return "gone";
+  if (!read || read.ingredientId !== ingredientId) return "gone";
+  if (read.seeded) return "seeded";
   if (await wasSpellingUndone(tx, aliasId)) return "undone";
-  if ((await countAliasesOf(tx, ingredientId)) <= 1) return "gone";
+  if ((await countAliasesOf(tx, ingredientId)) <= 1) return "last-spelling";
   const { ingredientId: _on, seeded: _seeded, ...spelling } = read;
 
   return spelling;
@@ -302,7 +308,7 @@ export async function removeSpellingByAI(
   ingredientId: string,
   aliasId: string,
   { notAFood }: { notAFood: boolean }
-): Promise<ApplyOutcome> {
+): Promise<SpellingOutcome> {
   const done = await withTransaction(async (tx) => {
     const spelling = await lockAddedSpelling(tx, ingredientId, aliasId);
 
@@ -344,8 +350,8 @@ export async function moveSpellingByAI(
   ingredientId: string,
   aliasId: string,
   targetId: string
-): Promise<ApplyOutcome> {
-  const outcome = await withTransaction(async (tx): Promise<ApplyOutcome> => {
+): Promise<SpellingOutcome> {
+  const outcome = await withTransaction(async (tx): Promise<SpellingOutcome> => {
     const spelling = await lockAddedSpelling(tx, ingredientId, aliasId, targetId);
 
     if (typeof spelling === "string") return spelling;

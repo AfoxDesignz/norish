@@ -86,7 +86,7 @@ export type ReviewVerdict =
   | { outcome: "not-a-food" }
   | { outcome: "distinct" }
   | { outcome: "unsure"; reason: FlagReason }
-  | { outcome: "skipped"; reason: "decided" | "undone" | "not-found" };
+  | { outcome: "skipped"; reason: "decided" | "undone" | "not-found" | "cycle" };
 
 export interface ReviewTrace {
   /** The plain English food AI read the name as, when it said. */

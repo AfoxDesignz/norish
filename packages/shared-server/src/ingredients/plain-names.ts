@@ -13,7 +13,7 @@ import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import { foldName } from "@norish/shared/lib/fold-name";
 
 import { readPlainName } from "../ai/resolution/plain-name";
-import { mergeByAI, renameByAI } from "./ai-changes";
+import { mergeByAI, renameByAI, skippedBy } from "./ai-changes";
 import { ingredientChanges } from "./changes";
 import { cleanIngredientText, findFood, isExact } from "./resolver";
 
@@ -25,13 +25,13 @@ export type PlainNameOutcome =
   | { outcome: "plain" }
   | ({ outcome: "merge"; into: string; sure: true } & ReviewTrace)
   | ({ outcome: "unsure"; reason: "no-food" } & ReviewTrace)
-  | { outcome: "skipped"; reason: "settled" | "decided" | "undone" };
+  | { outcome: "skipped"; reason: "settled" | "decided" | "undone" | "not-found" };
 
 /** Ask for a food's Plain Name and make it; throws what the question throws. */
 export async function giveItsPlainName(ingredientId: string): Promise<PlainNameOutcome> {
   const row = await findCatalogueIngredient(ingredientId);
 
-  if (!row || row.nameSettled) return { outcome: "skipped", reason: "settled" };
+  if (!row || row.nameSettled) return { outcome: "skipped", reason: row ? "settled" : "not-found" };
   if (!row.askable) return { outcome: "skipped", reason: "decided" };
 
   const spellings = await listCatalogueAliasesOf(ingredientId);
@@ -66,15 +66,11 @@ export async function giveItsPlainName(ingredientId: string): Promise<PlainNameO
       return { outcome: "merge", into, sure: true, ...noTrace() };
     }
 
-    return {
-      outcome: "skipped",
-      reason: merged === "undone" || merged === "decided" ? merged : "settled",
-    };
+    return skippedBy(merged);
   }
+  const renamed = await renameByAI(ingredientId, row.name, plain);
 
-  return (await renameByAI(ingredientId, row.name, plain))
-    ? { outcome: "rename", to: plain }
-    : { outcome: "skipped", reason: "settled" };
+  return renamed === "applied" ? { outcome: "rename", to: plain } : skippedBy(renamed);
 }
 
 /** The Plain Name step after AI's answer: the rename or merge, or null; a broken question changes nothing. */
