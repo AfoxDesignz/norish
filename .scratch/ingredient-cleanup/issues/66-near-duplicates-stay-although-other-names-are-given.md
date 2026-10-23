@@ -9,3 +9,7 @@ To decide: a lookup that finds a food by an other name that is close to a spelli
 **Blocked by:** None
 
 **Status:** needs-triage
+
+## Decided (Mike, 2026-10-23)
+
+"Yes all three and then we have to accept". Build the family question: when AI's names find no food and a parent is found, ask the existing `ingredient-match` question over that parent and its listed children before filing the food under the parent. Evidence (scratchpad near-dup-cause.md): for 19 of m68's 30 near-duplicates the right food is the parent itself (8) or a child of it (11). Measured twice (ticket 31) against the noise band of m70a/m70b (crap 76/84, near-duplicates 34/37); it counts only if it moves clearly outside that band.
