@@ -733,7 +733,9 @@ export async function findFood(
   { except, among }: { except: string; among: "listed" | "seeded" }
 ): Promise<FoundFood[][]> {
   const rules = await currentRules();
-  const spellings = names.map((n) => spellingOf(cleanIngredientText(n), rules, wholeSpellingKeys));
+  const spellings = names.map((name) =>
+    spellingOf(cleanIngredientText(name), rules, wholeSpellingKeys)
+  );
   const { matched, other } = await otherFoodsSpelled(except, spellings, among);
   const slipped = await findSlips(
     [...matched].flatMap(([spelling, match]) => (match ? [] : [spelling])),
