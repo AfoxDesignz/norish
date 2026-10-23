@@ -18,6 +18,7 @@ import {
 import { alias } from "drizzle-orm/pg-core";
 
 import type { Db, DbTransaction } from "@norish/db/drizzle";
+import type { FlagReason } from "@norish/shared/contracts/ingredient-catalogue";
 import type { IngredientSearch, IngredientSearchField } from "@norish/shared/lib/ingredient-search";
 import { db } from "@norish/db/drizzle";
 import {
@@ -412,7 +413,7 @@ export async function unmarkChosenParents(tx: Db): Promise<number> {
 }
 
 /** Say anew why a Flagged Ingredient is one: AI was asked again and is still not sure. */
-export async function setIngredientFlagReason(id: string, flagReason: string): Promise<void> {
+export async function setIngredientFlagReason(id: string, flagReason: FlagReason): Promise<void> {
   await db
     .update(ingredients)
     .set({ flagReason, version: sql`${ingredients.version} + 1` })
