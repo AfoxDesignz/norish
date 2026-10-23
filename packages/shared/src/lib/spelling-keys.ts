@@ -510,17 +510,22 @@ export function spellingKeys(
  * The one key texts that the first two rungs resolve alike share: "onions",
  * "Onions!", "onions, diced", "onions (2)" and, given the units map's
  * phrases, "onions to taste" are all "onions". Empty for an empty text.
- * `whole` keeps the size and preparation words, as AI's names are read.
  */
 export function foodKey(
   text: string | null | undefined,
-  rules: SpellingRules = BASE_SPELLING_RULES,
-  whole = false
+  rules: SpellingRules = BASE_SPELLING_RULES
 ): string {
   if (!text?.trim()) return "";
   const keys = spellingKeys(text, rules);
 
-  return (whole ? keys.bareFold : keys.plainFold) || keys.fold;
+  return keys.plainFold || keys.fold;
+}
+
+/** `foodKey` with the size and preparation words kept, as AI's names are read: "sliced ham" stays. */
+export function wholeFoodKey(text: string | null | undefined, rules = BASE_SPELLING_RULES): string {
+  const keys = text?.trim() ? spellingKeys(text, rules) : null;
+
+  return keys ? keys.bareFold || keys.fold : "";
 }
 
 /** A name split at the words that join foods in it. */
@@ -611,25 +616,16 @@ export function inflectedReadings(
   return [...readings];
 }
 
-/** The keys a text may be met by: its food key, and that key's singular readings. */
-export function foodKeys(
-  text: string | null | undefined,
-  rules: SpellingRules = BASE_SPELLING_RULES,
-  whole = false
-): string[] {
-  const key = foodKey(text, rules, whole);
-
-  return key ? [key, ...inflectedReadings(key, rules)] : [];
-}
-
-/** Whether two texts name one food by spelling alone, plurals and diminutives included. */
+/** Whether two texts name one food by spelling alone, by `keyOf`: plurals and diminutives count. */
 export function sameFood(
   a: string | null | undefined,
   b: string | null | undefined,
   rules: SpellingRules = BASE_SPELLING_RULES,
-  whole = false
+  keyOf = foodKey
 ): boolean {
-  const keysOfA = new Set(foodKeys(a, rules, whole));
+  const keysOf = (text: string | null | undefined) =>
+    [keyOf(text, rules)].flatMap((key) => (key ? [key, ...inflectedReadings(key, rules)] : []));
+  const keysOfA = new Set(keysOf(a));
 
-  return foodKeys(b, rules, whole).some((key) => keysOfA.has(key));
+  return keysOf(b).some((key) => keysOfA.has(key));
 }

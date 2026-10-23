@@ -14,6 +14,7 @@ import {
   spellingKeys,
   spellingRules,
   stripPreparation,
+  wholeFoodKey,
   withoutStrayMarks,
 } from "@norish/shared/lib/spelling-keys";
 
@@ -322,9 +323,9 @@ describe("spelling keys", () => {
 
   it("reads a name whole for sameFood when asked: sliced ham is ham, but not read whole", () => {
     expect(sameFood("sliced ham", "ham", phrases)).toBe(true);
-    expect(sameFood("sliced ham", "ham", phrases, true)).toBe(false);
-    expect(sameFood("guajillo chilies", "guajillo chili", phrases, true)).toBe(true);
-    expect(sameFood("broccolini", "broccoli", phrases, true)).toBe(false);
+    expect(sameFood("sliced ham", "ham", phrases, wholeFoodKey)).toBe(false);
+    expect(sameFood("guajillo chilies", "guajillo chili", phrases, wholeFoodKey)).toBe(true);
+    expect(sameFood("broccolini", "broccoli", phrases, wholeFoodKey)).toBe(false);
   });
 
   it.each(SPELLING_CASES)("offline, a Pantry %j covers a line %j: %s", (pantry, line, covered) => {
