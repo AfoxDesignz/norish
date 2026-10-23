@@ -114,18 +114,35 @@ function decryptUser(user: any): any {
   };
 }
 
-// An add asks the provider who signs in rather than reusing its session. OIDC also re-asks
-// for credentials, for providers without a picker; Google and GitHub know only `select_account`.
-const ADD_PROMPT: Record<string, string> = {
-  oidc: "login select_account",
-  google: "select_account",
-  github: "select_account",
-};
+function oidcDiscoveryUrl(oidc: { wellknown?: string; issuer: string }): string {
+  return oidc.wellknown || new URL(".well-known/openid-configuration", oidc.issuer).toString();
+}
+
+/**
+ * An add asks the provider which account rather than reusing its session: its account picker
+ * where it lists one, a fresh sign-in otherwise (Authentik and Pocket ID before 2.7 list none).
+ */
+async function addPrompt(provider: string): Promise<string | undefined> {
+  if (provider === "google" || provider === "github") return "select_account";
+
+  const oidc = getCachedOIDCProvider();
+
+  if (provider !== "oidc" || !oidc) return undefined;
+
+  const discovery = await fetch(oidcDiscoveryUrl(oidc), { signal: AbortSignal.timeout(5000) })
+    .then((response) => response.json() as Promise<{ prompt_values_supported?: unknown }>)
+    .catch(() => null);
+  const supported = discovery?.prompt_values_supported;
+
+  return Array.isArray(supported) && supported.includes("select_account")
+    ? "select_account"
+    : "login";
+}
 
 // For any client: an add picks its account, and removing never leaves no method the server offers.
 const guardSignInMethods = createAuthMiddleware(async (ctx) => {
   if (ctx.path === "/link-social") {
-    const prompt = ADD_PROMPT[ctx.body?.provider];
+    const prompt = await addPrompt(ctx.body?.provider);
 
     return prompt
       ? {
@@ -198,9 +215,7 @@ function buildOIDCProviders() {
 
     providers.push({
       providerId: "oidc",
-      discoveryUrl:
-        oidcProvider.wellknown ||
-        new URL(".well-known/openid-configuration", oidcProvider.issuer).toString(),
+      discoveryUrl: oidcDiscoveryUrl(oidcProvider),
       clientId: oidcProvider.clientId,
       clientSecret: oidcProvider.clientSecret,
       scopes: allScopes,
@@ -210,11 +225,7 @@ function buildOIDCProviders() {
       // Store full profile for claim processing after session creation
       // Merges claims from ID token and userinfo endpoint (ID token takes precedence for groups)
       getUserInfo: async (tokens: { accessToken: string; idToken?: string }) => {
-        const discoveryUrl =
-          oidcProvider.wellknown ||
-          new URL(".well-known/openid-configuration", oidcProvider.issuer).toString();
-
-        const result = await mergeOIDCTokenClaims(tokens, discoveryUrl);
+        const result = await mergeOIDCTokenClaims(tokens, oidcDiscoveryUrl(oidcProvider));
 
         if (!result) {
           return null;

@@ -23,6 +23,7 @@ export function createIdentityProvider() {
   let issuer = "";
   let hanging = false;
   let signInAs: Identity | null = null;
+  let promptValues: string[] | undefined;
 
   const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
   const signIdToken = (claims: Record<string, unknown>, key = privateKey) => {
@@ -66,6 +67,7 @@ export function createIdentityProvider() {
         response_types_supported: ["code"],
         subject_types_supported: ["public"],
         id_token_signing_alg_values_supported: ["RS256"],
+        ...(promptValues ? { prompt_values_supported: promptValues } : {}),
       });
     }
 
@@ -139,6 +141,10 @@ export function createIdentityProvider() {
     },
     set hanging(value: boolean) {
       hanging = value;
+    },
+    /** The `prompt` values discovery lists; none listed, as Authentik does, while unset. */
+    set promptValues(values: string[] | undefined) {
+      promptValues = values;
     },
     set signInAs(identity: Identity | null) {
       signInAs = identity;

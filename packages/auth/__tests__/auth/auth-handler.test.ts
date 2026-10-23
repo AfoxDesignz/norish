@@ -373,16 +373,26 @@ describe("choosing the account to add", () => {
     return new URL(((await response.json()) as { url: string }).url);
   };
 
-  it("makes the identity provider ask who signs in, but only when adding", async () => {
+  it("asks for a fresh sign-in at a provider that lists no account picker", async () => {
     const { cookie } = await signUpWithPassword();
 
-    expect((await startAdd("oidc", cookie)).searchParams.get("prompt")).toBe(
-      "login select_account"
-    );
+    expect((await startAdd("oidc", cookie)).searchParams.get("prompt")).toBe("login");
 
     const { authorizationUrl } = await signInWithOIDC(ADA);
 
     expect(authorizationUrl.searchParams.get("prompt")).toBeNull();
+  });
+
+  it("shows the account picker of a provider that lists one", async () => {
+    const { cookie } = await signUpWithPassword();
+
+    idp.promptValues = ["none", "login", "consent", "select_account"];
+
+    try {
+      expect((await startAdd("oidc", cookie)).searchParams.get("prompt")).toBe("select_account");
+    } finally {
+      idp.promptValues = undefined;
+    }
   });
 
   it("shows Google's and GitHub's account pickers when adding", async () => {
