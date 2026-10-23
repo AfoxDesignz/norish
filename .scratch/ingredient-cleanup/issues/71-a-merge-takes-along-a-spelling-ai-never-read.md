@@ -8,8 +8,13 @@ To decide: AI's merge reads the spellings it moves, or the spelling check still 
 
 **Blocked by:** None
 
-**Status:** wontfix
+**Status:** done
 
 ## Decided (Mike, 2026-10-23)
 
-Left alone: one food or line in one run. Mike and the orchestrator agreed (2026-10-23) to stop adding rules for single-food findings that may be run-to-run variance, and to first measure that variance (ticket 31) and the near-duplicate gap since m54.
+First left alone as one-run variance, then reopened: it went wrong in m68, m70a, m70b and m74, every run, one of the few regressions against 0.25 (`~/Documents/norish-ticket-31/compare-025.md`). Mike approved the orchestrator's plan: the spelling check skips only the spelling AI read in the merge; the other spellings the merge carried along are still checked.
+
+## Implemented (2026-10-23)
+
+- The merge's AI Change holds the merged food's name (`undo.name`), which is what AI read. `listAliasIdsAIMovedOnto` became `listNamesAIReadOnto` (`db/repositories/ingredient-ai-changes.ts`): a merge's `undo.name`, a spelling move's `undo.spelling.text`. `checkSpellingsOf` skips a spelling whose fold is the food's name's or one of those names' folds, by fold, not alias id.
+- Test (`spelling-check.test.ts`): "checks the other spellings a merge by AI carried along, which AI never read" (Verstegen noedels into seeded noodle; only the World Spice Meals spelling is asked, and taken off). The release-notes sentence of ticket 51 now says the carried-along translations are checked.
