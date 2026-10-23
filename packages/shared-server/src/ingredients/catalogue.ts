@@ -695,16 +695,14 @@ export async function moveAlias(
   targetId: string | null
 ): Promise<CatalogueEdit & { ingredientId: string }> {
   return await inEdit(async (tx) => {
-    // Every catalogue move and merge takes the tree lock first, so they run
-    // one at a time (a nightly seed included) and never deadlock on rows,
-    // and the alias read under it is where it still is.
+    // The tree lock before the alias read, as every move and merge takes it first:
+    // the alias is then still where it was read.
     await lockTree(tx);
 
     const alias = await assertMayEdit(actor, await findCatalogueAliasOwner(tx, aliasId));
     const sourceId = alias.ingredientId;
-    const locked = targetId ? [sourceId, targetId] : [sourceId];
 
-    if ((await lockIngredients(tx, locked)) < locked.length) {
+    if (!(await lockFoods(tx, targetId ? [sourceId, targetId] : [sourceId]))) {
       throw new CatalogueEditError("not-found");
     }
     if (targetId === sourceId) return { ingredientId: sourceId, changed: [sourceId] };

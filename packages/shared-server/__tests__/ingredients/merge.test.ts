@@ -387,6 +387,16 @@ describe("merging Ingredients and moving aliases", () => {
       expect(pantry.map((item) => item.ingredientId)).toEqual([onion.ingredientId]);
     });
 
+    it("leaves a spelling moved onto its own food where it is", async () => {
+      const onion = await mint("onion");
+
+      await expect(moveAlias(actor, onion.aliasId, onion.ingredientId)).resolves.toEqual({
+        ingredientId: onion.ingredientId,
+        changed: [onion.ingredientId],
+      });
+      await expect(typed("onion")).resolves.toMatchObject({ ingredientId: onion.ingredientId });
+    });
+
     it("never moves an Ingredient's last spelling away", async () => {
       const onion = await mint("onion");
       const saffron = await mint("saffron");
