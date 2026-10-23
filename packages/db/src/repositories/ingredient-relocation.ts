@@ -108,6 +108,13 @@ export async function lockIngredients(tx: DbTransaction, ids: readonly string[])
   return rows.length;
 }
 
+/** Take the tree lock, then the foods' rows; false where one of `ids` is gone. */
+export async function lockFoods(tx: DbTransaction, ids: readonly string[]): Promise<boolean> {
+  await lockTree(tx);
+
+  return (await lockIngredients(tx, ids)) === new Set(ids).size;
+}
+
 /** How deep the tree is ever walked: a guard, since the tree has no cycle to loop on. The seed walks as deep. */
 const MAX_DEPTH = 64;
 
@@ -195,8 +202,7 @@ export async function mergeCatalogueIngredients(
   targetId: string,
   { keepFlag = false }: { keepFlag?: boolean } = {}
 ): Promise<boolean> {
-  await lockTree(tx);
-  if ((await lockIngredients(tx, [sourceId, targetId])) < 2) return false;
+  if (sourceId === targetId || !(await lockFoods(tx, [sourceId, targetId]))) return false;
 
   // The target takes the source's place in the tree: where it sat under the
   // source, it moves up to the source's parent first, so the source's

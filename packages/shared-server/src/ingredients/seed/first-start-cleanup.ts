@@ -24,7 +24,7 @@ import {
   spellingsBeside,
 } from "@norish/db/repositories/ingredient-cleanup";
 import {
-  lockIngredients,
+  lockFoods,
   lockTree,
   mergeCatalogueIngredients,
   splitCatalogueIngredient,
@@ -246,8 +246,7 @@ async function splitFood(
   const ids = [ingredientId, ...parts.map((part) => part.ingredientId)];
 
   return await withTransaction(async (tx) => {
-    await lockTree(tx);
-    if ((await lockIngredients(tx, ids)) < new Set(ids).size) return false;
+    if (!(await lockFoods(tx, ids))) return false;
     await splitCatalogueIngredient(tx, ingredientId, [first, ...rest], joined);
 
     return true;

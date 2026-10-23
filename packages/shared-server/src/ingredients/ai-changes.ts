@@ -50,6 +50,7 @@ import {
   countAliasesOf,
   findIngredientAncestors,
   insertCatalogueIngredient,
+  lockFoods,
   lockIngredients,
   lockTree,
   mergeCatalogueIngredients,
@@ -96,8 +97,7 @@ async function announceIfApplied(
  * decided about the first meanwhile, else null.
  */
 async function lockForAI(tx: DbTransaction, ids: readonly string[]) {
-  await lockTree(tx);
-  if ((await lockIngredients(tx, ids)) < ids.length) return "gone";
+  if (!(await lockFoods(tx, ids))) return "gone";
   if (!(await isAskableByAI(tx, ids[0]!))) return "decided";
 
   return null;
@@ -286,8 +286,7 @@ async function lockAddedSpelling(
 ) {
   const ids = targetId ? [ingredientId, targetId] : [ingredientId];
 
-  await lockTree(tx);
-  if ((await lockIngredients(tx, ids)) < ids.length) return "gone";
+  if (!(await lockFoods(tx, ids))) return "gone";
   const read = await readChangedSpelling(tx, aliasId);
 
   if (!read || read.ingredientId !== ingredientId || read.seeded) return "gone";

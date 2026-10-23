@@ -27,12 +27,7 @@ import {
   ingredientIsNamed,
 } from "./ingredient-catalogue";
 import { findRowsNamingSpellings } from "./ingredient-cleanup";
-import {
-  closesCycle,
-  lockIngredients,
-  lockTree,
-  moveCatalogueAlias,
-} from "./ingredient-relocation";
+import { closesCycle, lockFoods, lockTree, moveCatalogueAlias } from "./ingredient-relocation";
 
 /**
  * The catalogue seed's writes (ADR-0038). Applying the seed upserts seeded
@@ -463,8 +458,7 @@ async function lockSpellingOn(
   fromId: string,
   foodIds: readonly string[]
 ): Promise<string | null> {
-  await lockTree(tx);
-  if ((await lockIngredients(tx, foodIds)) < foodIds.length) return null;
+  if (!(await lockFoods(tx, foodIds))) return null;
   const [alias] = await tx
     .select({ id: ingredientAliases.id })
     .from(ingredientAliases)

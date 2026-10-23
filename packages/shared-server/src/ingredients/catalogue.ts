@@ -60,6 +60,7 @@ import {
   countAliasesOf,
   findIngredientAncestors,
   insertCatalogueIngredient,
+  lockFoods,
   lockIngredientNamed,
   lockIngredients,
   lockTree,
@@ -473,12 +474,9 @@ async function setParentIn(
   parentId: string | null
 ): Promise<CatalogueEdit> {
   await assertMayEditIngredient(tx, actor, ingredientId);
-  if (parentId === ingredientId) throw new CatalogueEditError("cycle");
-  await lockTree(tx);
-
   const ids = parentId ? [ingredientId, parentId] : [ingredientId];
 
-  if ((await lockIngredients(tx, ids)) < ids.length) throw new CatalogueEditError("not-found");
+  if (!(await lockFoods(tx, ids))) throw new CatalogueEditError("not-found");
   if (parentId && (await closesCycle(tx, ingredientId, parentId))) {
     throw new CatalogueEditError("cycle");
   }
@@ -507,8 +505,7 @@ export async function deleteIngredient(
     await assertMayEditIngredient(tx, actor, ingredientId);
     // The tree lock, as for every edit that changes what a row points at:
     // a merge into this Ingredient must not land while it goes.
-    await lockTree(tx);
-    if ((await lockIngredients(tx, [ingredientId])) < 1) throw new CatalogueEditError("not-found");
+    if (!(await lockFoods(tx, [ingredientId]))) throw new CatalogueEditError("not-found");
     const rows = await findRowsNamingFood(tx, ingredientId);
 
     await deleteCatalogueIngredient(tx, ingredientId);
