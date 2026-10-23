@@ -221,7 +221,7 @@ async function removeVariants(variants: readonly Variant[]): Promise<number> {
           removed += 1;
           continue;
         }
-        await mergeCatalogueIngredients(tx, spelling.ingredientId, target);
+        await mergeCatalogueIngredients(tx, spelling.ingredientId, target, { keepFlag: true });
       }
       await deleteCatalogueAlias(tx, variant.id);
       removed += 1;

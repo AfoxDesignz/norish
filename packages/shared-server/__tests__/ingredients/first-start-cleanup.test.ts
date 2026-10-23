@@ -382,6 +382,31 @@ describe("the first-start cleanup", () => {
     expect(await lineSpellings(line.id)).toEqual(["zout"]);
   });
 
+  it("keeps the flag of the food a variant joins, as no one decided that merge", async () => {
+    const mint = await oldMint("kokosbloesemsuiker", ["kokosbloesemsuiker"]);
+    const variant = await oldMint("kokosbloesemsuiker naar smaak", [
+      "kokosbloesemsuiker naar smaak",
+    ]);
+    const recipe = await createTestRecipe(userId);
+
+    await insertTestRecipeLine({ recipeId: recipe.id, name: "kokosbloesemsuiker" }, [
+      mint.aliasIds[0]!,
+    ]);
+    await getTestDb()
+      .update(ingredients)
+      .set({ flagReason: "ai-off" })
+      .where(eq(ingredients.id, mint.ingredientId));
+
+    await expect(cleanUpCatalogueOnFirstStart(askAI)).resolves.toMatchObject({ removed: 1 });
+    expect(await exists(variant.ingredientId)).toBe(false);
+    await expect(
+      getTestDb()
+        .select({ flagged: ingredients.flagged, reason: ingredients.flagReason })
+        .from(ingredients)
+        .where(eq(ingredients.id, mint.ingredientId))
+    ).resolves.toEqual([{ flagged: true, reason: "ai-off" }]);
+  });
+
   it("deletes a food whose one spelling names nothing; its grocery keeps its text", async () => {
     const junk = await oldMint(")", [")"]);
 
