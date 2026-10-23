@@ -8,8 +8,13 @@ To decide: does the slip check take only the plural shapes ticket 68 was about, 
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** done
 
 ## Decided (Mike, 2026-10-23)
 
 Undo ticket 68: an other name counts as the parent only when it folds equal to it (ticket 63 as built), no slip check. The slip matcher cannot tell a plural from another food one letter apart ("broccolini"). Ticket 68 becomes superseded.
+
+## Implemented (2026-10-23)
+
+- `parentNamed` in `readThenLookUp` (`ingredient-resolution.ts`) compares other names to AI's parent by `foldName` equality only, as ticket 63 built it; the `slipsNear` import is gone.
+- Test: `review.test.ts` "files tenderstem broccoli under broccoli: its other name broccolini, a slip of broccoli, is not broccoli" replaces 68's guajillo chilies test (it merged before the fix). Release notes and ADR-0037 back to ticket 63's wording. Ticket 68 marked superseded.

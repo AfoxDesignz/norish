@@ -8,8 +8,15 @@ To decide: an answer whose parent is gone is looked up again, or the food is lef
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** done
 
 ## Decided (Mike, 2026-10-23)
 
 "it should still find biefstuk and file it under beef steak". An answer whose parent food is gone by the time it is applied looks the parent's name up again; the merge moved its spellings, so the lookup finds the food it merged into. One rule for any parent AI names, not only the current one.
+
+## Implemented (2026-10-23)
+
+- The `own` answer carries `parent: { id, name } | null` (was `parentId`); `parentOf` names it by the current parent's name (ticket 65 and the kept AI parent), AI's parent, or the category that found it.
+- `askAIAbout` (`review.ts`), the only place a parent answer is applied, re-finds a parent whose row is gone by that name through `findFoodNamed` (`foundAgain`); the merge moved its spellings, so it finds the food it merged into. Not found stays no parent.
+- Test: `review.test.ts` "finds the parent AI names again when a merge took it away while AI was reading" merges biefstuk into beef steak inside the mocked reading.
+- No release-notes line: the AI pass and ticket 65's rule are new in 0.26, so this is a fix inside unreleased behaviour.
