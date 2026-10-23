@@ -41,7 +41,7 @@
       "get": {
         "operationId": "healthLive",
         "summary": "Check whether Norish is alive",
-        "description": "Answers 200 while the server responds and its internal parser answers its own health check. Checks neither the database nor Redis. Point restart probes (Docker HEALTHCHECK, Kubernetes liveness) here.",
+        "description": "Answers 200 while the server responds and its internal parser answers its own health check. Checks neither the database nor Valkey. Point restart probes (Docker HEALTHCHECK, Kubernetes liveness) here.",
         "tags": [
           "Health"
         ],
@@ -102,13 +102,13 @@
       "get": {
         "operationId": "healthReady",
         "summary": "Check whether Norish is ready for traffic",
-        "description": "Answers 503 while the database or Redis is unreachable, and 200 otherwise. The parser's state is in the response but does not fail the check. Point readiness probes and load balancers here.",
+        "description": "Answers 503 while the database or Valkey is unreachable, and 200 otherwise. The parser's state is in the response but does not fail the check. Point readiness probes and load balancers here.",
         "tags": [
           "Health"
         ],
         "responses": {
           "200": {
-            "description": "The database and Redis are healthy.",
+            "description": "The database and Valkey are healthy.",
             "content": {
               "application/json": {
                 "schema": {
@@ -131,7 +131,7 @@
                       ],
                       "additionalProperties": false
                     },
-                    "redis": {
+                    "valkey": {
                       "type": "object",
                       "properties": {
                         "status": {
@@ -166,7 +166,7 @@
                   "required": [
                     "status",
                     "db",
-                    "redis",
+                    "valkey",
                     "parser"
                   ],
                   "additionalProperties": false

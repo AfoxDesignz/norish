@@ -22,10 +22,10 @@ function buildCompose(masterKey: string, obscuraToken: string) {
       AUTH_URL: http://localhost:3000
       DATABASE_URL: postgres://postgres:norish@db:5432/norish
       MASTER_KEY: ${masterKey}
-      REDIS_URL: redis://redis:6379
+      VALKEY_URL: valkey://valkey:6379
       OBSCURA_ENDPOINT: ws://obscura:9222
       OBSCURA_CDP_TOKEN: ${obscuraToken}
-    depends_on: [db, redis, obscura]
+    depends_on: [db, valkey, obscura]
 
   db:
     image: postgres:17-alpine
@@ -35,10 +35,10 @@ function buildCompose(masterKey: string, obscuraToken: string) {
     volumes:
       - db_data:/var/lib/postgresql/data
 
-  redis:
-    image: redis:8.10.1
+  valkey:
+    image: valkey/valkey:9
     volumes:
-      - redis_data:/data
+      - valkey_data:/data
 
   # Renders recipe pages for URL imports
   obscura:
@@ -49,7 +49,7 @@ function buildCompose(masterKey: string, obscuraToken: string) {
 volumes:
   db_data:
   norish_data:
-  redis_data:`;
+  valkey_data:`;
 }
 
 /** Generate a 32-byte random key, base64-encoded — matches `openssl rand -base64 32`. */

@@ -7,7 +7,7 @@ Thank you for your interest in contributing to Norish! This guide will help you 
 - **Node.js** 26 (see `.nvmrc`)
 - **pnpm** 12.x
 - **uv** 0.13 or later (installs the recipe parser's Python 3.15)
-- **Docker** (for PostgreSQL, Redis, and Obscura)
+- **Docker** (for PostgreSQL, Valkey, and Obscura)
 - **Git**
 
 ## Getting Started
@@ -34,7 +34,7 @@ cp .env.example .env.local
 Edit `.env.local` with your local configuration. At minimum, you need:
 
 - `DATABASE_URL` - PostgreSQL connection string
-- `REDIS_URL` - Redis connection string
+- `VALKEY_URL` - Valkey connection string
 - `AUTH_URL` - Your local URL (e.g., `http://localhost:3000`)
 - `MASTER_KEY` - Generate with `openssl rand -base64 32`
 
@@ -44,7 +44,7 @@ Edit `.env.local` with your local configuration. At minimum, you need:
 pnpm run docker:up
 ```
 
-That starts PostgreSQL, Redis, and Obscura — the browser that renders pages for
+That starts PostgreSQL, Valkey, and Obscura — the browser that renders pages for
 URL imports — so nothing has to be launched by hand. `pnpm run docker:down`
 stops them again.
 

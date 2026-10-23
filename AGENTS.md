@@ -13,7 +13,7 @@ Use this file for lightweight repo context.
 - pnpm workspaces + Turborepo
 - `apps/web`: Next.js 16 App Router, React 19, HeroUI v3 (`@heroui/react`), Tailwind CSS v4, Motion, TanStack Query, custom Node server run from source through tsx
 - `apps/mobile`: Expo SDK 56, Expo Router, React Native 0.85, React 19, HeroUI Native v1 (`heroui-native`), Uniwind, Tailwind CSS v4 theme tokens, TanStack Query
-- tRPC, PostgreSQL + Drizzle, Redis + BullMQ, Better Auth
+- tRPC, PostgreSQL + Drizzle, Valkey + BullMQ, Better Auth
 
 This Next.js has breaking changes from your training data: read the relevant guide in `apps/web/node_modules/next/dist/docs/` before writing Next code. Landing sets `agentRules: false`, so `next dev` writes no app-level AGENTS.md.
 

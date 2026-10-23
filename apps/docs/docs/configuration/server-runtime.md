@@ -11,14 +11,14 @@ Settings for the Norish server. Most have working defaults, but you must provide
 
 ## Core
 
-| Variable     | Description                                  | Default                                |
-| ------------ | -------------------------------------------- | -------------------------------------- |
-| `MASTER_KEY` | 32+ character key for encryption derivation  | (required)                             |
-| `AUTH_URL`   | Public URL used for auth callbacks and links | `http://localhost:3000`                |
-| `NODE_ENV`   | Runtime environment                          | `production` (set by the Docker image) |
-| `HOST`       | Server bind address                          | `0.0.0.0`                              |
-| `PORT`       | Server port                                  | `3000`                                 |
-| `REDIS_URL`  | Redis connection URL for events and jobs     | `redis://localhost:6379`               |
+| Variable     | Description                                                             | Default                                |
+| ------------ | ----------------------------------------------------------------------- | -------------------------------------- |
+| `MASTER_KEY` | 32+ character key for encryption derivation                             | (required)                             |
+| `AUTH_URL`   | Public URL used for auth callbacks and links                            | `http://localhost:3000`                |
+| `NODE_ENV`   | Runtime environment                                                     | `production` (set by the Docker image) |
+| `HOST`       | Server bind address                                                     | `0.0.0.0`                              |
+| `PORT`       | Server port                                                             | `3000`                                 |
+| `VALKEY_URL` | Valkey connection URL (`valkey://` or `valkeys://`) for events and jobs | (required)                             |
 
 :::info Generate a `MASTER_KEY`
 Norish derives the keys that encrypt stored secrets from `MASTER_KEY`, so
@@ -32,10 +32,10 @@ openssl rand -base64 32
 
 ## Health checks
 
-| Endpoint               | Answers 200 when                                                       | Use it for                                                      |
-| ---------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `/api/v1/health/live`  | The server responds and its parser answers                             | Restarting Norish: the image's healthcheck, Kubernetes liveness |
-| `/api/v1/health/ready` | The database and Redis answer; the parser is reported but never counts | Sending traffic: Kubernetes readiness, load balancers           |
+| Endpoint               | Answers 200 when                                                        | Use it for                                                      |
+| ---------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `/api/v1/health/live`  | The server responds and its parser answers                              | Restarting Norish: the image's healthcheck, Kubernetes liveness |
+| `/api/v1/health/ready` | The database and Valkey answer; the parser is reported but never counts | Sending traffic: Kubernetes readiness, load balancers           |
 
 ## Networking & origins
 

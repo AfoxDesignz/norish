@@ -19,7 +19,7 @@ Recipe Enrichment enrolled once for every newly usable recipe, whether created m
 _Avoid_: Auto-enhancement
 
 **Automatic Enrichment Enrollment**:
-The post-commit event-driven handoff from a usable recipe to its eligible Automatic Recipe Enrichment jobs. A listener is part of the normal server runtime, but the event is not persisted or replayed; a brief process or Redis interruption can therefore miss enrollment by accepted design.
+The post-commit event-driven handoff from a usable recipe to its eligible Automatic Recipe Enrichment jobs. A listener is part of the normal server runtime, but the event is not persisted or replayed; a brief process or Valkey interruption can therefore miss enrollment by accepted design.
 _Avoid_: Scheduled enrichment, Enrichment saga
 
 **Manual Recipe Enrichment**:
@@ -374,11 +374,11 @@ Who a Realtime Event is routed to: `household`, `user`, `broadcast`, `policy` (o
 _Avoid_: Global (the retired name for internal)
 
 **Realtime Hub**:
-The one per-process subscriber to Redis pub/sub. It subscribes to exact channels on demand and fans out in-process through bounded queues; server-internal listeners register callbacks on it and tRPC subscriptions iterate it. Nothing else opens a Redis subscriber connection.
+The one per-process subscriber to Valkey pub/sub. It subscribes to exact channels on demand and fans out in-process through bounded queues; server-internal listeners register callbacks on it and tRPC subscriptions iterate it. Nothing else opens a Valkey subscriber connection.
 _Avoid_: Multiplexer (the retired per-connection design)
 
 **Lagged**:
-The state of a subscription the server ended because the client could not be brought up to date: its queue overflowed, Redis reconnected, or its Cursor was unusable. The client's only reaction is to refetch that domain and resubscribe. Lagged is the only failure a subscription reports.
+The state of a subscription the server ended because the client could not be brought up to date: its queue overflowed, Valkey reconnected, or its Cursor was unusable. The client's only reaction is to refetch that domain and resubscribe. Lagged is the only failure a subscription reports.
 
 **Resume**:
 Delivering, on reconnect, the Realtime Events a subscription missed since its Cursor, in order, from the Resume Buffer, before continuing live. It is bounded: when it cannot, the subscription is Lagged. Distinct from Replay, which re-sends the Outbox (ADR-0034).
@@ -388,7 +388,7 @@ _Avoid_: Replay (already means Outbox Replay), Catch-up
 The opaque, identity-bound token attached to every delivered Realtime Event that names the subscriber's position on each channel the subscription merges, and that the client resends on reconnect without inspecting it. A Cursor Mark is a Cursor delivered without an event, at the start of every subscription, so a quiet subscription is resumable too.
 
 **Resume Buffer**:
-The per-channel Redis Stream holding recent Realtime Events — about a thousand, for a day — written by the same atomic script that publishes them. A delivery buffer, not an Outbox: a publish can still be lost between the database commit and the buffer, and nothing reconciles the two.
+The per-channel Valkey Stream holding recent Realtime Events — about a thousand, for a day — written by the same atomic script that publishes them. A delivery buffer, not an Outbox: a publish can still be lost between the database commit and the buffer, and nothing reconciles the two.
 
 **Scope Change**:
 An identity change — household created, joined or left, member kicked, account deleted — after which the server closes the user's sockets so every subscription restarts against the current identity, and a Cursor minted under the old identity is refused (ADR-0033).

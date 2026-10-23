@@ -43,7 +43,7 @@ services:
       MASTER_KEY: <32-byte-base64-key> # openssl rand -base64 32
       OBSCURA_ENDPOINT: ws://obscura:9222
       OBSCURA_CDP_TOKEN: <random-token> # openssl rand -hex 32, same value on obscura
-      REDIS_URL: redis://redis:6379
+      VALKEY_URL: valkey://valkey:6379
       UPLOADS_DIR: /app/uploads
       
     healthcheck:
@@ -58,7 +58,7 @@ services:
       start_period: 1m
     depends_on:
       - db
-      - redis
+      - valkey
 
   db:
     image: postgres:17-alpine
@@ -79,17 +79,17 @@ services:
     environment:
       OBSCURA_CDP_TOKEN: <random-token>
 
-  redis:
-    image: redis:8.10.1
-    container_name: norish-redis
+  valkey:
+    image: valkey/valkey:9
+    container_name: norish-valkey
     restart: unless-stopped
     volumes:
-      - redis_data:/data
+      - valkey_data:/data
 
 volumes:
   db_data:
   norish_data:
-  redis_data:
+  valkey_data:
 ```
 
 ## Contributing
