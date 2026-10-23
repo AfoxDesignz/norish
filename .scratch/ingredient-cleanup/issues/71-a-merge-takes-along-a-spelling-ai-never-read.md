@@ -8,4 +8,8 @@ To decide: AI's merge reads the spellings it moves, or the spelling check still 
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** wontfix
+
+## Decided (Mike, 2026-10-23)
+
+Left alone: one food or line in one run. Mike and the orchestrator agreed (2026-10-23) to stop adding rules for single-food findings that may be run-to-run variance, and to first measure that variance (ticket 31) and the near-duplicate gap since m54.

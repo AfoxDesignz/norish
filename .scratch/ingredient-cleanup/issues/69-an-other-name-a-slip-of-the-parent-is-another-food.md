@@ -9,3 +9,7 @@ To decide: does the slip check take only the plural shapes ticket 68 was about, 
 **Blocked by:** None
 
 **Status:** needs-triage
+
+## Decided (Mike, 2026-10-23)
+
+Undo ticket 68: an other name counts as the parent only when it folds equal to it (ticket 63 as built), no slip check. The slip matcher cannot tell a plural from another food one letter apart ("broccolini"). Ticket 68 becomes superseded.

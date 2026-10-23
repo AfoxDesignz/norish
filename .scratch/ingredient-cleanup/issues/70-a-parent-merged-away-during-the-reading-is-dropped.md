@@ -9,3 +9,7 @@ To decide: an answer whose parent is gone is looked up again, or the food is lef
 **Blocked by:** None
 
 **Status:** needs-triage
+
+## Decided (Mike, 2026-10-23)
+
+"it should still find biefstuk and file it under beef steak". An answer whose parent food is gone by the time it is applied looks the parent's name up again; the merge moved its spellings, so the lookup finds the food it merged into. One rule for any parent AI names, not only the current one.
