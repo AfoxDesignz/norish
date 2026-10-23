@@ -20,7 +20,6 @@
       "unavailable": "Attualmente non disponibile",
       "errors": {
         "usedByAnotherAccount": "Questo accesso è già usato da un altro account.",
-        "alreadyAdded": "Questo metodo di accesso è già aggiunto.",
         "lastMethod": "Ti serve almeno un modo per accedere.",
         "signInAgain": "Accedi di nuovo per rimuoverlo.",
         "addFailed": "Impossibile aggiungere questo metodo di accesso.",

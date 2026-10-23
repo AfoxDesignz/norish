@@ -20,7 +20,6 @@
       "unavailable": "Actuellement indisponible",
       "errors": {
         "usedByAnotherAccount": "Cette connexion est déjà utilisée par un autre compte.",
-        "alreadyAdded": "Cette méthode de connexion est déjà ajoutée.",
         "lastMethod": "Il vous faut au moins une façon de vous connecter.",
         "signInAgain": "Reconnectez-vous pour supprimer ceci.",
         "addFailed": "Impossible d'ajouter cette méthode de connexion.",

@@ -359,8 +359,36 @@ describe("adding a sign-in method", () => {
     await addOIDC(cookie, HOME_LAN);
     const response = await addOIDC(cookie, ADA);
 
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ code: "SIGN_IN_METHOD_ALREADY_ADDED" });
+    expect(response.headers.get("location")).toBe("/settings?error=unable_to_link_account");
+    expect(await providersOf(userId)).toEqual(["credential", "oidc"]);
+  });
+});
+
+describe("adding a sign-in method twice at once", () => {
+  it("keeps one identity per provider when two adds finish", async () => {
+    const { cookie, userId } = await signUpWithPassword();
+    const start = () =>
+      authModule.auth.handler(
+        post(
+          "/link-social",
+          { provider: "oidc", callbackURL: "/settings", errorCallbackURL: "/settings" },
+          cookie
+        )
+      );
+    const [first, second] = [await start(), await start()];
+    const finish = async (started: Response, identity: Identity) => {
+      const { url } = (await started.json()) as { url: string };
+      const callback = idp.authorize(new URL(url), identity);
+
+      return authModule.auth.handler(
+        new Request(callback, { headers: { cookie: cookiesFrom(started, cookie) } })
+      );
+    };
+
+    await finish(first, ADA);
+    const response = await finish(second, { ...ADA, sub: "ada-other" });
+
+    expect(response.headers.get("location")).toContain("/settings?error=");
     expect(await providersOf(userId)).toEqual(["credential", "oidc"]);
   });
 });

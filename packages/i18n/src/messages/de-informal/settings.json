@@ -20,7 +20,6 @@
       "unavailable": "Derzeit nicht verfügbar",
       "errors": {
         "usedByAnotherAccount": "Diese Anmeldung wird bereits von einem anderen Konto verwendet.",
-        "alreadyAdded": "Diese Anmeldemethode ist bereits hinzugefügt.",
         "lastMethod": "Du brauchst mindestens eine Möglichkeit, dich anzumelden.",
         "signInAgain": "Melde dich erneut an, um dies zu entfernen.",
         "addFailed": "Diese Anmeldemethode konnte nicht hinzugefügt werden.",

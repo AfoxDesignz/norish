@@ -18,6 +18,7 @@ import { countUsers } from "@norish/db/repositories/users";
 import * as schema from "@norish/db/schema/auth";
 import { isRegistrationEnabled } from "@norish/shared-server/config/server-config-loader";
 import { authLogger } from "@norish/shared-server/logger";
+import { keepsOfferedSignInMethod, LAST_SIGN_IN_METHOD } from "@norish/shared/contracts/dto/auth";
 
 import {
   getPendingOIDCProfile,
@@ -113,12 +114,9 @@ function decryptUser(user: any): any {
   };
 }
 
-/**
- * One identity per provider, and never removing the last method the server
- * still offers, from any client. Better Auth's own checks run after these.
- */
-const guardSignInMethods = createAuthMiddleware(async (ctx) => {
-  if (ctx.path !== "/link-social" && ctx.path !== "/unlink-account") return;
+// Never removing the last method the server still offers, from any client.
+const guardLastSignInMethod = createAuthMiddleware(async (ctx) => {
+  if (ctx.path !== "/unlink-account") return;
 
   const session = await getSessionFromCtx(ctx);
 
@@ -126,24 +124,11 @@ const guardSignInMethods = createAuthMiddleware(async (ctx) => {
   if (!session) return;
 
   const accounts = await ctx.context.internalAdapter.findAccounts(session.user.id);
-
-  if (ctx.path === "/link-social") {
-    if (accounts.some((account) => account.providerId === ctx.body?.provider)) {
-      throw new APIError("BAD_REQUEST", {
-        code: "SIGN_IN_METHOD_ALREADY_ADDED",
-        message: "This sign-in method is already added",
-      });
-    }
-
-    return;
-  }
-
   const offered = new Set((await getAvailableProviders()).map((provider) => provider.id));
-  const left = accounts.filter((account) => account.id !== ctx.body?.accountId);
 
-  if (!left.some((account) => offered.has(account.providerId))) {
+  if (!keepsOfferedSignInMethod(accounts, ctx.body?.accountId, offered)) {
     throw new APIError("BAD_REQUEST", {
-      code: "LAST_SIGN_IN_METHOD",
+      code: LAST_SIGN_IN_METHOD,
       message: "This is the last way to sign in",
     });
   }
@@ -344,10 +329,8 @@ function createBetterAuth() {
       }),
       accountLinking: {
         enabled: true,
-        // Signing in never attaches a new identity to an existing user, even one
-        // with the same email: that is how an account is taken over. Linking
-        // happens only from a signed-in session, where the person has proven
-        // both sides, so the trusted providers need no verified or matching email.
+        // Signing in never links, even on a matching email: that is how accounts are taken
+        // over. A signed-in add proves both sides, so it needs no verified or matching email.
         disableImplicitLinking: true,
         trustedProviders: ["oidc", "google", "github"],
         allowDifferentEmails: true,
@@ -427,7 +410,14 @@ function createBetterAuth() {
       },
       account: {
         create: {
-          before: async (account) => {
+          before: async (account, ctx) => {
+            // One identity per provider, also when two adds started together both finish.
+            const accounts = await ctx?.context.internalAdapter.findAccounts(account.userId);
+
+            if (accounts?.some((existing) => existing.providerId === account.providerId)) {
+              return false;
+            }
+
             return { data: account };
           },
           after: async (account) => {
@@ -501,7 +491,7 @@ function createBetterAuth() {
     ],
 
     hooks: {
-      before: guardSignInMethods,
+      before: guardLastSignInMethod,
       after: createAuthMiddleware(async (ctx) => {
         const returned = ctx.context.returned;
 

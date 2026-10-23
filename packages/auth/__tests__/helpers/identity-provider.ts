@@ -12,11 +12,8 @@ export type Identity = {
   groups?: string[];
 };
 
-/**
- * A minimal OIDC provider: discovery, JWKS, token and userinfo. A test calls
- * `authorize` itself; a browser goes through `/authorize`, which signs in as
- * `signInAs` at once, or cancels while it is null.
- */
+// A minimal OIDC provider. A test calls `authorize`; a browser's `/authorize`
+// signs in as `signInAs`, or cancels while that is null.
 export function createIdentityProvider() {
   const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
   const rogueKey = generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey;

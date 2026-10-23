@@ -20,7 +20,6 @@
       "unavailable": "Obecnie niedostępne",
       "errors": {
         "usedByAnotherAccount": "To logowanie jest już używane przez inne konto.",
-        "alreadyAdded": "Ta metoda logowania jest już dodana.",
         "lastMethod": "Potrzebujesz co najmniej jednego sposobu logowania.",
         "signInAgain": "Zaloguj się ponownie, aby to usunąć.",
         "addFailed": "Nie udało się dodać tej metody logowania.",

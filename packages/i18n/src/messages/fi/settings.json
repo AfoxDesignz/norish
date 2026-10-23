@@ -20,7 +20,6 @@
       "unavailable": "Ei tällä hetkellä käytettävissä",
       "errors": {
         "usedByAnotherAccount": "Tätä kirjautumista käyttää jo toinen tili.",
-        "alreadyAdded": "Tämä kirjautumistapa on jo lisätty.",
         "lastMethod": "Tarvitset vähintään yhden tavan kirjautua.",
         "signInAgain": "Kirjaudu uudelleen poistaaksesi tämän.",
         "addFailed": "Kirjautumistapaa ei voitu lisätä.",

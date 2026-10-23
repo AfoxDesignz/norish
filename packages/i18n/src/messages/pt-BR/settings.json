@@ -20,7 +20,6 @@
       "unavailable": "Indisponível no momento",
       "errors": {
         "usedByAnotherAccount": "Este login já é usado por outra conta.",
-        "alreadyAdded": "Este método de login já foi adicionado.",
         "lastMethod": "Você precisa de pelo menos uma forma de entrar.",
         "signInAgain": "Entre novamente para remover isto.",
         "addFailed": "Não foi possível adicionar este método de login.",

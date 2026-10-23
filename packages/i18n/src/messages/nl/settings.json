@@ -20,7 +20,6 @@
       "unavailable": "Momenteel niet beschikbaar",
       "errors": {
         "usedByAnotherAccount": "Deze inlog wordt al door een ander account gebruikt.",
-        "alreadyAdded": "Deze inlogmethode is al toegevoegd.",
         "lastMethod": "Je hebt minstens één manier nodig om in te loggen.",
         "signInAgain": "Log opnieuw in om dit te verwijderen.",
         "addFailed": "Deze inlogmethode kon niet worden toegevoegd.",

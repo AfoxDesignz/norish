@@ -20,7 +20,6 @@
       "unavailable": "No disponible actualmente",
       "errors": {
         "usedByAnotherAccount": "Este inicio de sesión ya lo usa otra cuenta.",
-        "alreadyAdded": "Este método de inicio de sesión ya está añadido.",
         "lastMethod": "Necesitas al menos una forma de iniciar sesión.",
         "signInAgain": "Vuelve a iniciar sesión para eliminarlo.",
         "addFailed": "No se pudo añadir este método de inicio de sesión.",

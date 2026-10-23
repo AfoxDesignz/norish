@@ -1,8 +1,5 @@
-/**
- * A person who signs in with a password adds the server's OIDC sign-in from
- * Settings, under another email, signs in with it to the same account, and
- * removes it again.
- */
+// A password user adds OIDC under another email in Settings, signs in with it
+// to the same account, and removes it again.
 import { signIn } from "../harness/auth";
 import { expect, IDP_NAME, MEMBER, test } from "./fixture";
 

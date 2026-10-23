@@ -20,7 +20,6 @@
       "unavailable": "Ikke tilgjengelig for øyeblikket",
       "errors": {
         "usedByAnotherAccount": "Denne innloggingen brukes allerede av en annen konto.",
-        "alreadyAdded": "Denne innloggingsmetoden er allerede lagt til.",
         "lastMethod": "Du trenger minst én måte å logge inn på.",
         "signInAgain": "Logg inn på nytt for å fjerne dette.",
         "addFailed": "Innloggingsmetoden kunne ikke legges til.",
