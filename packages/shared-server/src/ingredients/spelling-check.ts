@@ -3,7 +3,7 @@
  * cleanup ticket 46), once, at the first start with AI on; each removal or move an AI Change.
  */
 import { withTransaction } from "@norish/db/drizzle";
-import { listAliasIdsAIMovedOnto } from "@norish/db/repositories/ingredient-ai-changes";
+import { listNamesAIReadOnto } from "@norish/db/repositories/ingredient-ai-changes";
 import {
   findCatalogueIngredient,
   listCatalogueAliasesOf,
@@ -78,11 +78,12 @@ export async function checkSpellingsOf(ingredientId: string): Promise<SpellingCh
   const food = await findCatalogueIngredient(ingredientId);
 
   if (!food) return { outcome: "skipped", reason: "not-found" };
-  const own = ingredientAliasFold(food.name);
-  // AI already judged the spellings its merges and moves put on the food.
-  const byAI = new Set(await listAliasIdsAIMovedOnto(ingredientId));
+  // The food's name and the names AI read when it merged or moved a spelling here need no check.
+  const read = new Set(
+    [food.name, ...(await listNamesAIReadOnto(ingredientId))].map(ingredientAliasFold)
+  );
   const spellings = (await listCatalogueAliasesOf(ingredientId)).filter(
-    (alias) => !alias.seeded && !byAI.has(alias.id) && ingredientAliasFold(alias.text) !== own
+    (alias) => !alias.seeded && !read.has(ingredientAliasFold(alias.text))
   );
 
   if (spellings.length === 0) return { outcome: "skipped", reason: "none" };

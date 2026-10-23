@@ -294,8 +294,8 @@ export async function wasMergeUndone(
   return row !== undefined;
 }
 
-/** The spellings AI Changes not undone moved onto a food: a merge's, and a moved spelling. */
-export async function listAliasIdsAIMovedOnto(ingredientId: string): Promise<string[]> {
+/** The names AI read in the AI Changes not undone onto a food: a merged food's, a moved spelling. */
+export async function listNamesAIReadOnto(ingredientId: string): Promise<string[]> {
   const rows = await db
     .select({ undo: ingredientAIChanges.undo })
     .from(ingredientAIChanges)
@@ -316,7 +316,7 @@ export async function listAliasIdsAIMovedOnto(ingredientId: string): Promise<str
     );
 
   return rows.flatMap(({ undo }) =>
-    undo.kind === "merge" ? undo.aliasIds : undo.kind === "spelling" ? [undo.spelling.id] : []
+    undo.kind === "merge" ? [undo.name] : undo.kind === "spelling" ? [undo.spelling.text] : []
   );
 }
 

@@ -119,6 +119,7 @@ describe("AI checks the spellings added to a seeded food", () => {
       seedEntry("en:chicken-breast", "chicken breast", "chicken breasts"),
       seedEntry("en:chicken-thigh", "chicken thigh"),
       seedEntry("en:salt", "salt"),
+      seedEntry("en:noodle", "noodle"),
     ]);
     seeded = await listSeededIngredientIds();
   });
@@ -482,6 +483,31 @@ describe("AI checks the spellings added to a seeded food", () => {
       reason: "none",
     });
     expect(generateStructured).not.toHaveBeenCalled();
+  });
+
+  it("checks the other spellings a merge by AI carried along, which AI never read", async () => {
+    const noodle = seeded.get("en:noodle")!;
+    const verstegen = await mintTestFood("Verstegen noedels");
+    const text = "Verstegen World Spice Meals Noedels";
+    const [mix] = (await addIngredientAliases({
+      ingredientId: verstegen.ingredientId,
+      aliases: [{ text, fold: ingredientAliasFold(text) }],
+      ownerId: userId,
+      locale: null,
+    }))!;
+
+    await line(text, mix!.aliasId);
+    await expect(mergeByAI(verstegen.ingredientId, noodle, false)).resolves.toBe("applied");
+    answers({ [text]: ["other-food", "mixed spices"] });
+
+    await expect(checkSpellingsOf(noodle)).resolves.toMatchObject({
+      outcome: "checked",
+      removed: [text],
+    });
+    expect(askedSections().at(-1)).toBe(
+      ["Spellings:", `1. ${text}`, `   Line: ${text}`].join("\n")
+    );
+    expect(await spellingsOf(noodle)).toEqual(["Verstegen noedels", "noodle"]);
   });
 
   it("runs once, at the first start with AI on, over seeded foods only", async () => {
