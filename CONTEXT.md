@@ -393,6 +393,12 @@ The per-channel Redis Stream holding recent Realtime Events — about a thousand
 **Scope Change**:
 An identity change — household created, joined or left, member kicked, account deleted — after which the server closes the user's sockets so every subscription restarts against the current identity, and a Cursor minted under the old identity is refused (ADR-0033).
 
+### Accounts & Sign-in
+
+**Sign-in Method**:
+One way a person signs in to their one Norish account: a password, Google, GitHub, or the server's OIDC provider under the name the administrator gave it. A person can have several, and every one leads to the same recipes, household and settings. A method is added only from a signed-in session, where the person has proven both sides, so its email need not match the account's; signing in never adds one, even when the email matches, because that is how an account is taken over. Adding the OIDC method applies its claims at once, as its next sign-in would.
+_Avoid_: Linked Account (collides with Site Account and suggests a second account), Provider (the server-side configuration, not what the person has), Account (the person's whole Norish account)
+
 ### Releases & Docs
 
 **Target Version**:
