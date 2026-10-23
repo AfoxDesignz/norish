@@ -37,7 +37,7 @@ catalog:
   ioredis: ^6.0.0
   jsdom: ^30.1.2
   jszip: 3.10.2
-  next: 16.4.0
+  next: 16.4.2
   pg: 8.23.1
   postcss: ^8.5.30
   prettier: ^3.9.10
