@@ -1185,6 +1185,26 @@ describe("asking AI about an Ingredient", () => {
         id: chili.ingredientId,
       });
     });
+    it("merges a food into the parent AI gives when an other name is that parent's plural", async () => {
+      await applyIngredientSeed([seedEntry("en:guajillo-chili", "guajillo chili")]);
+      const chili = (await findIngredientFor("guajillo chili"))!;
+      const peppers = await flagged("guajillo peppers");
+
+      reads({
+        englishName: "guajillo pepper",
+        parent: "guajillo chili",
+        otherNames: ["guajillo chilies"],
+        sure: true,
+      });
+
+      await expect(askAIAbout(peppers.ingredientId)).resolves.toMatchObject({
+        outcome: "merge",
+        into: "guajillo chili",
+      });
+      await expect(findIngredientByAliasId(peppers.aliasId)).resolves.toMatchObject({
+        id: chili.ingredientId,
+      });
+    });
   });
 
   describe("a spelling in a language Norish does not read", () => {
