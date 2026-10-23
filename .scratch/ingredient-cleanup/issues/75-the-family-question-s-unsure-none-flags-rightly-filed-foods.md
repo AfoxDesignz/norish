@@ -8,4 +8,8 @@ To decide: does an unsure "none" from the family question leave the filing's sur
 
 **Blocked by:** 74 (the same question)
 
-**Status:** needs-triage
+**Status:** wontfix
+
+## Wontfix (2026-10-23)
+
+Ticket 66's family question is taken out, so this no longer happens.

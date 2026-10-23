@@ -8,4 +8,8 @@ To decide: does the family question ask only about the parent's kinds and leave 
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** wontfix
+
+## Wontfix (2026-10-23)
+
+Ticket 66's family question is taken out, so this no longer happens.
