@@ -26,20 +26,13 @@ import { writeRecipeLineFoodsTx } from "./ingredients";
 import { lockPantryFood } from "./pantry";
 
 /**
- * What moves between Ingredients (ADR-0037): a merge, an alias moved to
- * another Ingredient or a new one (the unmerge), and a Parent Ingredient set
- * or cleared. Each takes the tree lock first, so the tree of parents is
- * changed one edit at a time and two edits over one pair of rows never
- * deadlock. Every writer takes the edit's transaction, so an edit is one unit.
- * Nothing here decides who may edit what: the ingredient module in
- * `@norish/shared-server/ingredients` checks the edit policy and calls these.
+ * What moves between Ingredients (ADR-0037): a merge, an alias move, a parent. Each takes the tree
+ * lock first, inside the edit's transaction; the edit policy is the caller's.
  */
 
 /**
- * The rows that hold a fact about an Ingredient, each unique on the
- * Ingredient and one other column: at most one Product Link and one Aisle
- * Link per Store, one store preference, one nutrition correction and one
- * Pantry Ingredient per member.
+ * Rows holding a fact about an Ingredient, unique on it plus one column: a Product and Aisle Link
+ * per Store; a store preference, correction and Pantry row per member.
  */
 const PANTRY_KEYED = { table: pantryIngredients, key: "user_id" } as const;
 const KEYED_BY_INGREDIENT = [
@@ -51,9 +44,8 @@ const KEYED_BY_INGREDIENT = [
 ] as const;
 
 /**
- * Re-point the rows `which` picks out of `table` (as `p`) at `targetId`. A row
- * that would become a second one for the target under the table's key is
- * deleted instead: the target's own is kept.
+ * Re-point the rows `which` picks out of `table` (as `p`) at `targetId`, deleting each one the
+ * target already has under the table's key.
  */
 async function repointKeyed(
   tx: DbTransaction,
@@ -70,12 +62,8 @@ async function repointKeyed(
 }
 
 /**
- * The Pantry is one list per household, kept so by the add (which looks
- * across the household under the `pantry:<ingredient>` lock) rather than by
- * the row's per-member key. Rows that a merge or move has just re-pointed at
- * `targetId` can put one food in a household twice, once per member; the
- * oldest row stays. Under the same lock, so an add landing meanwhile sees
- * what this left.
+ * A merge or move can leave a household two Pantry rows for `targetId` (one per member): the oldest
+ * stays, under the add's `pantry:<ingredient>` lock.
  */
 async function keepOnePantryRowPerHousehold(tx: DbTransaction, targetId: string): Promise<void> {
   await lockPantryFood(tx, targetId);
@@ -88,9 +76,8 @@ async function keepOnePantryRowPerHousehold(tx: DbTransaction, targetId: string)
 }
 
 /**
- * Serialise every change to the tree of Parent Ingredients: two changes that
- * are each acyclic can close a cycle together, so each checks the tree as the
- * one before it left it. Released with the transaction.
+ * Serialise changes to the tree of parents: two changes that are each acyclic can close a cycle
+ * together. Released with the transaction.
  */
 export async function lockTree(tx: DbTransaction): Promise<void> {
   await holdLock(tx, "ingredient-tree");
@@ -182,19 +169,8 @@ export async function setCatalogueIngredientParent(
 }
 
 /**
- * Merge one Ingredient into another: every spelling of the source becomes
- * the target's, so every recipe line, grocery and Pantry Ingredient behind
- * them now means the target, and the source is deleted. What the household
- * taught Norish about the source — Product Links, Aisle Links, store
- * preferences — joins the target, except where the target already has one
- * at that Store (or for that member): the target's is kept. A household that
- * held both foods in the Pantry keeps the one Pantry Ingredient. The target's
- * flag is cleared — a person merged into it — unless `keepFlag`, for a merge
- * nobody decided (the startup pass folding one undecided mint into another),
- * and it takes the source's Open Food Facts id when it has none, so the seed
- * keeps finding the food, and the source's own Ingredient Icon when it has
- * none of its own, so no picture is lost. Takes the tree lock and both rows
- * itself; false, and nothing written, where either is gone.
+ * Merge source into target, locking both: spellings and rows move, links unless the target has its
+ * own; its OFF id and icon fill gaps, the flag clears unless `keepFlag`. False where one is gone.
  */
 export async function mergeCatalogueIngredients(
   tx: DbTransaction,
@@ -204,9 +180,8 @@ export async function mergeCatalogueIngredients(
 ): Promise<boolean> {
   if (sourceId === targetId || !(await lockFoods(tx, [sourceId, targetId]))) return false;
 
-  // The target takes the source's place in the tree: where it sat under the
-  // source, it moves up to the source's parent first, so the source's
-  // children re-parented onto it can never close a cycle.
+  // Where the target sat under the source it first moves up to the source's parent, so the children
+  // re-parented onto it can never close a cycle.
   if ((await ancestorsOf(tx, [targetId])).get(targetId)?.includes(sourceId)) {
     await tx.execute(sql`
       update ${ingredients} set parent_id = (select parent_id from ${ingredients} where id = ${sourceId})
@@ -280,11 +255,8 @@ export async function lockIngredientNamed(tx: DbTransaction, name: string): Prom
 }
 
 /**
- * Move one spelling to another Ingredient: the unmerge. The lines behind the
- * spelling go with it; the Product Links, Aisle Links and store preferences
- * stay with the food they were learned for. A household whose Pantry
- * Ingredient lands on a food it already holds keeps the one. The caller holds
- * the tree lock and both rows, and has kept the source a spelling.
+ * Move one spelling to another Ingredient (the unmerge): its rows go with it, links stay, a Pantry
+ * duplicate folds. The caller holds the tree lock and both rows, the source kept a spelling.
  */
 export async function moveCatalogueAlias(
   tx: DbTransaction,

@@ -33,9 +33,8 @@ const verdictsSchema = z
   .strict();
 
 /**
- * What each of `spellings` names, in order, each shown with a recipe line written with it where one
- * is; a spelling the answer leaves out names the food. Throws
- * where the request fails, a timeout asked once more.
+ * What each of `spellings` names, in order, each shown with a recipe line using it; one the answer
+ * leaves out names the food. Throws where the request fails, a timeout retried once.
  */
 export async function askWhatSpellingsName(
   food: { name: string; parent: string | null },

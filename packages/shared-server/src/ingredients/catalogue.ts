@@ -1,23 +1,6 @@
 /**
- * What a person may do to the catalogue of Ingredients, and doing it
- * (ADR-0037). Every edit checks the instance's ingredient permission policy
- * here, the one place that knows it:
- *
- * - adding an alias is open to everyone;
- * - renaming, re-parenting, marking distinct and deleting follow `edit` on the Ingredient;
- * - merging needs `edit` on both Ingredients;
- * - moving or removing an alias follows `edit` on the alias;
- * - an ownerless (seeded) row is an administrator's alone, and an
- *   administrator bypasses the policy, as for recipes.
- *
- * Renaming, re-parenting or marking a Flagged Ingredient distinct clears its
- * flag: looking after it counts as reviewing it, and keeps the AI Changes
- * that flagged it. Each also keeps AI from asking about the food again.
- *
- * Each edit is one transaction: the owner lookup, the policy check, the
- * locks, the write and the AI Changes it keeps, all through its `tx`. The
- * repositories answer data; what that means as a refusal is decided here.
- * Every edit announces the Ingredients it changed itself (`changes.ts`).
+ * A person's catalogue edits (ADR-0037), each one transaction under the ingredient permission
+ * policy: adding an alias is open, the rest needs `edit`, a seeded row is an admin's.
  */
 import type { PermissionLevel } from "@norish/config/zod/server-config";
 import type { DbTransaction } from "@norish/db/drizzle";
@@ -145,11 +128,8 @@ export interface IngredientListItem {
   ownIcon: boolean;
   canEdit: boolean;
   /**
-   * The spellings worth showing the viewer: the ones in their language, the
-   * language-free ones and a person's own. A food known only in other
-   * languages shows them all. The rest are `hiddenSpellings` many, listed by
-   * `listSpellings` on request: the catalogue knows a food in dozens of
-   * languages, and a page of every one of them is most of what it sends.
+   * The spellings in the viewer's language, language-free or a person's own (all, for a food known
+   * only in others); the rest are `hiddenSpellings`, listed by `listSpellings`.
    */
   aliases: IngredientSpelling[];
   hiddenSpellings: number;
@@ -158,11 +138,8 @@ export interface IngredientListItem {
 export const INGREDIENT_PAGE_SIZE = 50;
 
 /**
- * A page of the catalogue: every Ingredient, or the flagged ones, or those a
- * search finds — the text contained in, or exactly, the name, a translation
- * or the parent, whichever fields it asks for — by name. Every row says what
- * the viewer may do, so an action they may not take is never offered. The
- * viewer's `locale` picks which spellings ride along.
+ * A page of the catalogue (all, flagged, or what a search finds in the fields it asks for), each
+ * row saying what the viewer may do; `locale` picks the spellings shown.
  */
 export async function listIngredients(
   actor: CatalogueActor,
@@ -280,9 +257,7 @@ export interface CatalogueEdit {
 }
 
 /**
- * Run an edit as one unit: the owner lookup, the lock, the write and the
- * AI Changes it keeps all read and write through the one `tx`, so a
- * refusal anywhere undoes the whole edit. Once it has committed, the
+ * Run an edit in one transaction, so a refusal anywhere undoes it all; once committed, the
  * Ingredients it changed are announced.
  */
 export async function inEdit<T extends CatalogueEdit>(
@@ -329,9 +304,8 @@ async function assertMayEditIngredient(
 }
 
 /**
- * Refuse unless the Ingredient is there and `actor` may edit it: what
- * uploading or generating its icon follows, before the draft that holds it
- * is saved under the same rule.
+ * Refuse unless the Ingredient is there and `actor` may edit it: the check before uploading or
+ * drawing its icon, which Save checks again.
  */
 export async function assertMayEditFood(
   actor: CatalogueActor,
@@ -388,10 +362,8 @@ async function addAliasIn(
 }
 
 /**
- * Rename an Ingredient, which clears its flag. Follows `edit` on the
- * Ingredient. The new name becomes one of its spellings too, clean, so a line that
- * says the name resolves here rather than being asked about again; where
- * another Ingredient already holds that spelling, the name alone changes.
+ * Rename an Ingredient (`edit`), which clears its flag; the clean name becomes a spelling too,
+ * unless another Ingredient holds it.
  */
 export async function renameIngredient(
   actor: CatalogueActor,
@@ -434,10 +406,8 @@ async function renameIngredientIn(
 }
 
 /**
- * Set or clear an Ingredient's Parent Ingredient, which clears its flag and
- * keeps what AI was unsure of. Follows `edit` on the Ingredient; the
- * parent is only pointed at, so its own policy is not asked. A parent that
- * would close a cycle is refused.
+ * Set or clear an Ingredient's parent (`edit` on it alone), which clears its flag and keeps AI's
+ * changes; a parent closing a cycle is refused.
  */
 export async function setParent(
   actor: CatalogueActor,
@@ -517,9 +487,8 @@ export async function sweepUnusedIngredients(): Promise<{ deleted: number }> {
 }
 
 /**
- * Mark a Flagged Ingredient distinct: Norish's doubt was unfounded, and what
- * AI was unsure of is kept. The decision is kept, so Norish never
- * merges it later. Follows `edit`.
+ * Mark a Flagged Ingredient distinct (`edit`): its flag goes, AI's changes are kept, and the
+ * decision keeps Norish from merging it later.
  */
 export async function markDistinct(
   actor: CatalogueActor,
@@ -537,9 +506,8 @@ export async function markDistinct(
 }
 
 /**
- * Merge `sourceId` into `targetId`: every spelling of the source, and every
- * line behind them, now means the target, and the source is gone — which is
- * also what clears its flag. Needs `edit` on both.
+ * Merge `sourceId` into `targetId` (`edit` on both): the source's spellings and their lines mean
+ * the target, and the source goes.
  */
 export async function mergeIngredients(
   actor: CatalogueActor,
@@ -560,11 +528,8 @@ export async function mergeIngredients(
 }
 
 /**
- * Move a spelling to another Ingredient, or to a new one named for it
- * (`targetId` null) — the unmerge. Follows `edit` on the alias; the
- * Ingredient it leaves keeps its flag, and a new one is a person's choice, so
- * it is not flagged. An Ingredient keeps at least one spelling. Answers the
- * Ingredient the spelling now names.
+ * Move a spelling (`edit` on it) to another Ingredient, or to a new unflagged one named for it
+ * (`targetId` null), never a food's last. Answers the food it now names.
  */
 export async function moveAlias(
   actor: CatalogueActor,
@@ -618,9 +583,8 @@ export async function moveToFoodNamedFor(
 }
 
 /**
- * Remove a spelling. Follows `edit` on the alias. An Ingredient keeps at
- * least one; what wrote this one keeps its text and its food, under another
- * of the food's spellings.
+ * Remove a spelling (`edit` on it), never a food's last; its rows keep their text and food under
+ * another spelling.
  */
 export async function removeAlias(actor: CatalogueActor, aliasId: string): Promise<CatalogueEdit> {
   const { piled: _piled, ...edit } = await inEdit((tx) => removeAliasIn(tx, actor, aliasId));
@@ -725,9 +689,8 @@ async function setIconIn(
 }
 
 /**
- * Make a drawn icon a food's own, unless a person gave it one while it was
- * being drawn: what a Draw icons round sets, with no review, under `edit` on
- * the Ingredient. Whether it was set.
+ * Make a drawn icon a food's own (`edit`, no review) unless a person set one while it was drawn;
+ * whether it was set.
  */
 export async function setDrawnIcon(
   actor: CatalogueActor,

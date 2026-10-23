@@ -1,7 +1,6 @@
 /**
- * The seed's corrections (`SPELLING_MOVES`) made once on an instance seeded before them: the spelling
- * moves with its rows, and the own foods its words filed under the old food follow it; a spelling
- * taken off has its rows read again.
+ * The seed's corrections (`SPELLING_MOVES`), once on an instance seeded before them: a spelling
+ * moves with its rows and the own foods its words filed, or comes off and its rows are read again.
  */
 import {
   listSeededIngredientIds,

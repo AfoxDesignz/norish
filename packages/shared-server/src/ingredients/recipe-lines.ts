@@ -27,10 +27,8 @@ interface RecipeLineInput {
   amount?: unknown;
   unit?: string | null;
   /**
-   * The texts the line's foods are resolved from, in order, when an import
-   * already knows which foods the line is (Mealie's and Tandoor's own food
-   * names, a Recipe Archive's spellings). The line keeps its own text; these
-   * are read here and never stored.
+   * The texts to resolve the line's foods from, in order, where an import already knows them
+   * (Mealie's, Tandoor's or an archive's food names); read, never stored.
    */
   foodTexts?: readonly string[];
   /** How several `foodTexts` go together. */
@@ -38,17 +36,8 @@ interface RecipeLineInput {
 }
 
 /**
- * Resolve a recipe payload's line texts before the recipe is written, which
- * is the only way a recipe write accepts them. Each line's text is its
- * `ingredientName` as written; a line that names only an Ingredient by id is
- * given that Ingredient's name as its text. A line left with no text is
- * dropped, as the recipe write always skipped it, and one that names no
- * food (a heading, a text with no letter or digit, a colon line with no
- * amount) is written as it is. A line's food is resolved from its `foodTexts`,
- * else from `lineFoodText`; a text written twice is read the first way. A
- * line saved over one of `recipeId` keeps that line's food, or its having
- * none (its food deleted), while its `lineFoodText` is unchanged, so only
- * edited and new lines are resolved.
+ * Resolve a payload's lines before the recipe write (by `foodTexts`, else `lineFoodText`): an
+ * id-only line takes its food's name, an empty one is dropped, an unchanged one keeps its food.
  */
 export async function withResolvedIngredients<
   L extends RecipeLineInput,

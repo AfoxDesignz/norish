@@ -85,11 +85,8 @@ function exported<T>(fact: NutritionFact<T> | null): ExportedFact<T> | null {
 }
 
 /**
- * The whole ingredient catalogue — every Ingredient, its spellings, its
- * parent, its nutrition codes and the numbers the datasets give it — as the
- * machine-readable copy the ODbL asks a derived database be offered in
- * (ADR-0038, ADR-0039). It names no one: owners are left out, and so is
- * every household's correction.
+ * The whole catalogue (Ingredients, spellings, parents, nutrition codes and numbers) as the copy
+ * the ODbL asks for (ADR-0038, ADR-0039); no owners, no household corrections.
  */
 export async function buildCatalogueExport(exportedAt: Date): Promise<CatalogueExport> {
   const { ingredients, aliases } = await listCatalogueForExport();

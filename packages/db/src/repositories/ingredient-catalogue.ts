@@ -39,13 +39,8 @@ import type { RecipeListContext } from "./recipes";
 import { buildOwnerPolicyCondition } from "./recipes";
 
 /**
- * The catalogue of Ingredients as the Ingredients page reads and edits it
- * (ADR-0037): its rows, their spellings, and the edits that stay within one
- * Ingredient. What moves between Ingredients — a merge, an alias move, a
- * parent — is in `ingredient-relocation`. Nothing here decides who may edit
- * what: the ingredient module in `@norish/shared-server/ingredients` checks
- * the edit policy and calls these writers, as the resolver calls the minting
- * ones.
+ * The catalogue as the Ingredients page reads it and edits within one Ingredient (ADR-0037); moves
+ * between Ingredients are `ingredient-relocation`'s, the edit policy the caller's.
  */
 
 /** One Ingredient as the page lists it, with every spelling it is known by. */
@@ -76,11 +71,8 @@ export interface CatalogueOwner {
 }
 
 /**
- * One search against the fields it asks to look in: the Ingredient's name,
- * its translations, or its parent's name and translations. An exact search
- * compares the fold, a contains search runs the `LIKE` pattern. Names carry
- * no fold column, so a name is matched lowercased, which is the fold of an
- * ASCII name; an accented name is found through its own spelling.
+ * One search over the fields it asks for (name, translations, parent): exact compares the fold,
+ * contains runs `LIKE`; a name has no fold column, so it is matched lowercased.
  */
 function matchingSearch(search: IngredientSearch, parents: { id: AnyPgColumn; name: AnyPgColumn }) {
   const matches = (value: SQL): SQL =>
@@ -100,10 +92,8 @@ function matchingSearch(search: IngredientSearch, parents: { id: AnyPgColumn; na
 }
 
 /**
- * A page of the catalogue: every Ingredient, or the flagged ones, or those a
- * search names (`parseIngredientSearch`) by their name or any spelling. An
- * Ingredient named exactly what was typed comes first; then the flagged,
- * since they are what wants looking at; then by name.
+ * A page of the catalogue (all, the flagged, or what a search finds by name or spelling): an exact
+ * name first, then the flagged, then by name.
  */
 export async function listCatalogueIngredients(query: {
   search: IngredientSearch | null;
@@ -285,9 +275,8 @@ export async function findIngredientIdsAmong(
 }
 
 /**
- * One Ingredient as an edit reads it: its name, whether it is flagged, whose
- * it is, its parent, whether its name is settled, and whether AI may ask
- * about it.
+ * One Ingredient as an edit reads it: name, flag, owner, parent, whether its name is settled and
+ * whether AI may ask about it.
  */
 export async function findCatalogueIngredient(id: string): Promise<
   | (CatalogueOwner & {
@@ -452,10 +441,8 @@ export async function findCatalogueAliasOwner(
 }
 
 /**
- * Rename an Ingredient and clear its flag: looking after a flagged Ingredient
- * counts as reviewing it. Null where it is gone. The name is unique, so one
- * another Ingredient got first, even by a rename racing this one, throws a
- * unique violation.
+ * Rename an Ingredient and clear its flag; null where it is gone. A name another Ingredient holds,
+ * even by a racing rename, throws a unique violation.
  */
 export async function renameCatalogueIngredient(
   tx: DbTransaction,
@@ -479,9 +466,8 @@ export async function renameCatalogueIngredient(
 }
 
 /**
- * Mark an Ingredient a food of its own: its flag goes, and Norish remembers
- * the person's decision so it never merges the Ingredient later. Null where
- * it is gone.
+ * Mark an Ingredient a food of its own: its flag goes and the decision is kept, so Norish never
+ * merges it later. Null where it is gone.
  */
 export async function keepIngredientDistinct(
   tx: DbTransaction,
@@ -516,9 +502,8 @@ export async function findIngredientIdByFold(
 }
 
 /**
- * Give an Ingredient a spelling a person added. The fold is unique, so a
- * spelling another Ingredient already holds is refused by the row itself:
- * null then, and the caller says which food holds it.
+ * Give an Ingredient a person's spelling; null where the unique fold refuses it, and the caller
+ * says which food holds it.
  */
 export async function insertCatalogueAlias(
   tx: DbTransaction,
@@ -534,9 +519,8 @@ export async function insertCatalogueAlias(
 }
 
 /**
- * Remove a spelling. Its lines, Groceries, recurring groceries and Pantry Ingredients move to
- * another spelling of the same food, the one folded as its name, else the oldest, so nothing
- * loses its food. The caller holds the Ingredient and has kept it a spelling besides this one.
+ * Remove a spelling; its rows move to the food's spelling folded as its name, else its oldest. The
+ * caller holds the Ingredient and has kept it another spelling.
  */
 export async function deleteCatalogueAlias(tx: DbTransaction, aliasId: string): Promise<void> {
   const [food] = await tx
@@ -627,9 +611,8 @@ export async function findGroceryRows(
 }
 
 /**
- * What names an Ingredient, listed for a viewer: recipes under the recipe
- * view policy, groceries and the Pantry for their household, and how many
- * uses are someone else's.
+ * What names an Ingredient for a viewer: recipes under the view policy, their household's groceries
+ * and Pantry, and how many uses are someone else's.
  */
 export async function listIngredientUses(
   viewer: RecipeListContext,

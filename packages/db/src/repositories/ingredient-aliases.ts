@@ -17,9 +17,8 @@ import type { LineResolution } from "./ingredients";
 import { isConstraintViolation } from "./constraint-violation";
 
 /**
- * The Ingredient Alias rows the ingredient resolver reads and writes. Nothing
- * but the resolver (in `@norish/shared-server/ingredients`) calls the writers
- * here: it is the only path that mints Ingredients or aliases (ADR-0037).
+ * The Ingredient Alias rows the resolver reads and writes; only the resolver
+ * (`shared-server/ingredients`) calls the writers, the one path that mints (ADR-0037).
  */
 
 /**
@@ -121,10 +120,8 @@ export async function findAliasesNearFold(fold: string): Promise<IngredientAlias
 }
 
 /**
- * The spellings of seeded foods among these folds, which a new mint may be
- * filed under by the words its text ends with: the ones the catalogue seed
- * wrote, and the ones a seeded food gained since, by a merge or a person
- * (an instance's own word for garlic is as good a word for it as the seed's).
+ * The seeded foods' spellings among these folds (the seed's, and any a seeded food gained by a
+ * merge or a person), which a mint's last words may file it under.
  */
 export async function findSeededFoodSpellingsByFolds(
   folds: readonly string[]
@@ -221,16 +218,8 @@ export interface MintIngredientInput {
 }
 
 /**
- * Mint an Ingredient with its first aliases, and answer with the alias each
- * requested fold now has.
- *
- * Safe against a concurrent mint of the same spelling: an alias whose fold is
- * already taken keeps pointing where it points, and the new Ingredient is
- * removed again with any spelling it did get joining the one that won. A name that is already an
- * Ingredient's (regardless of case) is that Ingredient, so the aliases join it
- * and nothing is minted or flagged; unless that one has no spelling at all,
- * which only a row from before the upgrade lacks (ADR-0037): nobody decided
- * on it, so the mint takes it over, flag and parent included.
+ * Mint an Ingredient with its aliases, answering each fold's alias. A lost race or a name an
+ * Ingredient has (any case) joins it, unless it has no spelling: the mint takes that over.
  */
 export async function mintIngredientWithAliases(
   input: MintIngredientInput
@@ -317,9 +306,8 @@ async function mintOnce(input: MintIngredientInput): Promise<IngredientAliasRow[
 
     if (!minted) return rows;
 
-    // Lost the race for a spelling: another request's Ingredient already holds
-    // it, so the spellings this mint did get join that one, and one food stays
-    // one Ingredient.
+    // Lost the race for a spelling: what this mint got joins the Ingredient holding it, so one food
+    // stays one Ingredient.
     const winner = rows.find((row) => row.ingredientId !== minted.id)?.ingredientId;
 
     if (!winner) return rows;
@@ -337,10 +325,8 @@ async function mintOnce(input: MintIngredientInput): Promise<IngredientAliasRow[
 }
 
 /**
- * Add spellings to an Ingredient that already exists, and answer with the
- * alias each requested fold now has. A fold another Ingredient already holds
- * keeps pointing where it points: one spelling means one food. Null where
- * the Ingredient is gone — merged away since it was read.
+ * Add spellings to an existing Ingredient, answering each fold's alias; a fold another Ingredient
+ * holds stays there. Null where the Ingredient was merged away.
  */
 export async function addIngredientAliases(input: {
   ingredientId: string;

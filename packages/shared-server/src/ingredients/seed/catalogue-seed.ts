@@ -1,12 +1,6 @@
 /**
- * The ingredient catalogue seed (ADR-0038): the Open Food Facts ingredients
- * taxonomy, fetched nightly and applied as seeded Ingredients, aliases and
- * parents, so a new instance already knows that "ui" is "onion".
- *
- * The seed is an improvement, never a dependency: with no URL, or no
- * internet, Norish resolves names without it. A fetch that fails, or a file
- * that does not read as a taxonomy, throws before anything is applied, so the
- * last good seed stays and the job monitor shows the failure.
+ * The catalogue seed (ADR-0038): the Open Food Facts taxonomy fetched nightly as seeded
+ * Ingredients. Never a dependency: a failed fetch or bad file throws before applying anything.
  */
 import type { IngredientSeedState } from "@norish/config/zod/server-config";
 import type { SeedEntry, SeedOutcome } from "@norish/db/repositories/ingredient-seed";
@@ -50,9 +44,8 @@ function seedText(text: string): string {
 }
 
 /**
- * Spellings Open Food Facts gives the wrong entry, moved to the right one as each file is read, or
- * to none (`to: null`). Raise `SEED_CORRECTIONS_VERSION` with each, so a seeded instance moves its
- * copy (`correctSeedOnce`).
+ * Spellings Open Food Facts gives the wrong entry, moved as each file is read (`to: null`: taken
+ * off); raise `SEED_CORRECTIONS_VERSION` with each, for `correctSeedOnce`.
  */
 export const SPELLING_MOVES: ReadonlyArray<{
   from: string;
@@ -156,13 +149,8 @@ export async function applySeedEntries(entries: SeedEntry[]): Promise<{
 }
 
 /**
- * The seed's one pass over the Ingredients made before it, which an upgrade
- * leaves only where its first boot had no seed to resolve against: each one
- * whose spellings (or the same with their preparation stripped) the seed
- * gives to exactly one entry is merged into that entry's Ingredient, as sure
- * as an exact alias match; one whose spellings the seed gives to several is
- * flagged, for a person to sort out. The language model is not asked: this
- * walks an instance's whole history at once.
+ * The first seed's pass over older Ingredients, no AI: one whose spellings (or stripped ones) the
+ * seed gives one entry merges into it, one it gives several is flagged.
  */
 export async function mergeExistingIntoSeed(
   entries: readonly SeedEntry[]
@@ -275,11 +263,8 @@ export async function oncePerVersion<T extends object>(
 export type RefreshResult = "disabled" | "unchanged" | "applied";
 
 /**
- * Fetch the taxonomy and apply it where it changed since the last good seed.
- * The request is conditional on the last file's validators, and those are
- * stored only once the file has been applied, so a failed apply is retried
- * in full the next time. The first applied seed is followed by the one pass
- * over the Ingredients that existed before it.
+ * Fetch the taxonomy, conditional on the last applied file's validators, and apply it where it
+ * changed; the first applied seed is followed by `mergeExistingIntoSeed`.
  */
 export async function refreshIngredientCatalogue(
   fetchImpl: typeof fetch = fetch
@@ -331,10 +316,8 @@ export async function refreshIngredientCatalogue(
   const firstSeed = !state.mergedExisting;
   const merged = firstSeed ? (await mergeExistingIntoSeed(entries)).merged : 0;
 
-  // The validators are stored only once the file and the one pass are both
-  // through, so a failure in either is retried in full the next time. After
-  // a first seed, the undecided mints made before it are looked at again
-  // against it (`recheckUndecidedMintsOnRungChange`).
+  // The validators are stored only once the file and the pass are through, so a failure retries in
+  // full; after a first seed, `rungVersion: 0` rechecks the older mints against it.
   await updateIngredientSeedState({
     etag: response.headers.get("etag"),
     lastModified: response.headers.get("last-modified"),

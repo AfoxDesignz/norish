@@ -1,9 +1,6 @@
 /**
- * Where the resolver says it minted Ingredients for someone's action, so the
- * AI pass can follow without the resolver knowing of it. The queue listens
- * from startup; nothing listens otherwise, in tests or tools. The seed and
- * the recheck never announce: they mint or rename with AI off, and must not
- * spend a request per food.
+ * Where the resolver announces mints for someone's action, so AI's pass follows without the
+ * resolver knowing it; the queue listens from startup, the seed and recheck never announce.
  */
 import { AsyncLocalStorage } from "node:async_hooks";
 

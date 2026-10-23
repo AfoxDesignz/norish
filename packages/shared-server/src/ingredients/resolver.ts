@@ -36,37 +36,8 @@ import {
 import { announceMinted, announcingAfter } from "./minted";
 
 /**
- * The ingredient resolver: the one module that mints Ingredients and
- * Ingredient Aliases (ADR-0037). Every path that stores a name for a food — a
- * recipe line, a Pantry Ingredient, a Grocery, a recurring grocery — hands its
- * text as written here and stores the alias that comes back; the text itself
- * is kept by the caller and shown as written.
- *
- * The resolution order for one text, read without its stray marks, prices
- * and notes (`cleanSpelling`), where one that names no food stops at once:
- *   1. an alias whose fold is the text's fold;
- *   2. an alias whose fold is the text's with preparation stripped — the part
- *      after the first comma and anything in brackets ("onions, diced" and
- *      "onions (red)" are "onions") — else with a phrase of the units map at
- *      either end, a container, weight or volume at the start and
- *      preparation words at either end stripped too ("salt to taste", "a
- *      pinch of nutmeg", "naar smaak zout", "can of chickpeas drained and
- *      rinsed", "GR CHERRYTOMATEN" and "garlic cloves crushed" are salt,
- *      nutmeg, zout, chickpeas, CHERRYTOMATEN and garlic cloves);
- *   (both keys are `@norish/shared/lib/spelling-keys`, which the clients
- *   match unresolved text on too);
- *   a recipe line neither rung knows whole is then the foods its joining
- *   words split it into, all known ("zout en peper": `resolveLineFoods`);
- *   3. a known food the text is a slip of the fingers from ("barmezaan" for
- *      "parmezaan"), which takes the text's clean spelling (`findSlips`);
- *   4. a new Ingredient, flagged. No AI is asked here: AI's pass follows the
- *      mint in the background (`announceMinted`).
- *
- * A mint or a join gives the food only the text's clean spelling, its plain
- * name else its bare one, never the text as written (ADR-0037).
- *
- * A mint's words may file it under a seeded spelling they end with ("ground cumin") or start with
- * before forms alone ("mango blokjes"), never merge it (ADR-0039); else AI's pass files it.
+ * The one module that mints Ingredients and aliases (ADR-0037). A text resolves by its fold, its
+ * stripped fold, its joined parts, a slip, else a flagged mint that AI's pass follows.
  */
 
 /**
@@ -217,10 +188,8 @@ async function knownAliases(
 }
 
 /**
- * Rungs 1 and 2: the alias with the text's fold, else the one with its
- * preparation stripped, else the one with the units map's phrases and the
- * ingredient words stripped too, else one its plain name is a plural or a
- * diminutive of, or the reverse ("bosuien" and "bosuitjes" are "bosui").
+ * Rungs 1 and 2: the alias with the text's fold, else its bare or plain fold, else one its plain
+ * name is a plural or diminutive of, or the reverse ("bosuien", "bosuitjes": "bosui").
  */
 function matchKnown(
   spelling: Spelling,
@@ -245,9 +214,8 @@ function spellingNamesNoFood(spelling: Spelling): boolean {
 }
 
 /**
- * Resolve texts as written to aliases, one per text and in the same order,
- * null for a text that names no food. Texts that resolve alike share their
- * answer, so one recipe that says "onions" twice mints one Ingredient.
+ * Resolve texts as written to aliases, in order, null for one naming no food; texts that resolve
+ * alike share an answer, so "onions" twice mints once.
  */
 export async function resolveIngredients(
   texts: readonly string[],
@@ -676,10 +644,8 @@ function cleanAlias({ clean, fold, plain, plainFold }: Spelling) {
 }
 
 /**
- * The Ingredient a text already resolves to — an exact or a stripped alias
- * match — or null where Norish does not know it. For readers, which must not
- * mint: asking what a Store knows about a name Norish has never seen is
- * answered with nothing.
+ * The Ingredient a text already resolves to by rungs 1 and 2, else null: for readers, which must
+ * never mint.
  */
 export async function findIngredientFor(text: string): Promise<IngredientRef | null> {
   const cleaned = cleanIngredientText(text);
@@ -786,14 +752,8 @@ export async function findFood(
 }
 
 /**
- * Resolve, then write what was resolved: the one way a write that stores a
- * reference to an Ingredient is made. Resolution and the write are separate
- * transactions, so a merge or a deletion can land between them; when the
- * write finds its Ingredient or alias gone, both run once more, and the text
- * then names the food the merge left (its alias moved with it) or a fresh
- * mint. `resolve` is the resolution itself — `resolveIngredient`,
- * `resolveGroceryNames`, `withResolvedIngredients` — so the second run can
- * never write the first run's stale ids.
+ * Resolve, then write: the one way a reference to an Ingredient is stored. A write that finds its
+ * food merged or deleted meanwhile runs `resolve` once more, never stale ids.
  */
 export function writeResolved<R, T>(
   resolve: () => Promise<R>,

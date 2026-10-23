@@ -31,11 +31,8 @@ import { findRowsNamingSpellings } from "./ingredient-cleanup";
 import { closesCycle, lockFoods, lockTree, moveCatalogueAlias } from "./ingredient-relocation";
 
 /**
- * The catalogue seed's writes (ADR-0038). Applying the seed upserts seeded
- * Ingredients, their seeded aliases and their seeded parents, and nothing a
- * person made: an owned alias, a merge, an alias move and a parent a person
- * set all outlive every refresh. The one pass that merges existing Ingredients
- * into the seed reads through here and merges through the catalogue.
+ * The catalogue seed's writes (ADR-0038): seeded Ingredients, aliases and parents are upserted, and
+ * what a person made (an own alias, a merge, a move, a parent) outlives every refresh.
  */
 
 /** One taxonomy entry as the seed applies it, its spellings already folded. */
@@ -138,26 +135,8 @@ function closesCycleIn(parents: ReadonlyMap<string, string | null>, id: string, 
 }
 
 /**
- * Apply a parsed, validated seed in one transaction, so a failure leaves the
- * last good seed exactly as it was.
- *
- * - An entry's Ingredient is the one that already carries its id; else the
- *   one that holds its name as a spelling or as a name, which is adopted
- *   (given the id) when it carries no other; else a new, ownerless one. An
- *   adopted Ingredient takes the entry's name where no other holds it, and
- *   is flagged no longer: the seed vouches for it, and files it.
- *   One that carries another entry's id absorbed this entry in a merge, and
- *   the entry is left there.
- * - Every spelling of every entry is added as a seeded alias; a spelling
- *   another Ingredient already holds stays where it is, and is reported. One
- *   the entry's food holds takes the language the entry gives it first.
- * - An entry's first parent becomes its Ingredient's parent, unless a person
- *   set or cleared that Ingredient's parent, or the parent would close a
- *   cycle. An entry with no parent leaves its Ingredient's parent alone.
- * - A seeded Ingredient the file no longer lists is removed only when nothing
- *   uses it: no line, grocery, recurring grocery or Pantry Ingredient
- *   through any of its spellings, no link, preference or nutrition
- *   correction, no spelling a person added, and no child.
+ * Apply a parsed seed in one transaction: an entry finds (by id, else name, adopting it) or mints
+ * its food, adds its spellings and a parent no person set; a dropped food goes only unused.
  */
 export async function applyIngredientSeed(entries: readonly SeedEntry[]): Promise<SeedOutcome> {
   return await db.transaction(async (tx) => {
@@ -571,10 +550,8 @@ export interface UndecidedMint {
 }
 
 /**
- * The listed Flagged Ingredients Norish minted itself and no person has decided
- * about: no taxonomy entry, not kept distinct, no parent a person chose (a
- * rename clears the flag, so a flagged one was not renamed since). What the
- * startup pass looks at again whenever the resolver's rules change.
+ * The listed own Flagged Ingredients no person decided about (no entry, not distinct, no chosen
+ * parent), which the startup recheck reads again when the rules change.
  */
 export async function listUndecidedMints(): Promise<UndecidedMint[]> {
   const rows = await db
@@ -617,12 +594,8 @@ export async function listUndecidedMints(): Promise<UndecidedMint[]> {
 }
 
 /**
- * Give an undecided mint the plain name the resolver would mint it under
- * today: the name as a spelling, so later lines that strip to it land here
- * and a sibling mint that strips to it merges here, and as its name where
- * the mint still carries the text it was minted for, no other Ingredient
- * holds the plain name, and its name is not settled (AI or a person named
- * it). A spelling another Ingredient holds is left there.
+ * Give an undecided mint today's plain name as a spelling, and as its name where it keeps its
+ * minted text and the name is free and unsettled; a spelling another food holds stays.
  */
 export async function adoptPlainName(
   id: string,

@@ -1,10 +1,6 @@
 /**
- * The Plain Name of a food's name, read by the language model where the
- * Ingredient Words could not (CONTEXT.md): "GR TONIJN UIT BLIK" is "tonijn
- * uit blik". Its input is a name and its output a name, under the
- * administrator-editable `ingredient-plain-name` Prompt. The food's other
- * spellings ride along, since the words rung 2 took off a name ("@blueband_nl")
- * may be what says whose product it is.
+ * A food's Plain Name read by the model (`ingredient-plain-name`) where the Ingredient Words could
+ * not ("GR TONIJN UIT BLIK" is "tonijn uit blik"); its other spellings ride along.
  */
 import { z } from "zod";
 

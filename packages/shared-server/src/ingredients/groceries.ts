@@ -90,9 +90,8 @@ export async function groceryPartsOf<T extends GroceryName & { id?: string | nul
 }
 
 /**
- * The columns a grocery row keeps for the food its name names (ADR-0037): the
- * alias, and the alias's Ingredient beside it. Both null for a line with no
- * name.
+ * The columns a grocery row keeps for its name's food (ADR-0037): the alias and its Ingredient,
+ * both null for a row with no name.
  */
 export interface GroceryIngredientColumns {
   ingredientAliasId: string | null;

@@ -55,9 +55,8 @@ export async function recheckUndecidedMints(): Promise<RecheckOutcome> {
 }
 
 /**
- * The pass, where the resolver's rules changed since it last ran. The rung
- * version is recorded only once the pass is through, so a failure is retried
- * in full at the next boot.
+ * The pass, where the resolver's rules changed since it last ran; the rung version is recorded only
+ * once it is through, so a failure retries in full at the next boot.
  */
 export async function recheckUndecidedMintsOnRungChange(): Promise<RecheckOutcome | null> {
   return await oncePerVersion("rungVersion", RUNG_VERSION, {
