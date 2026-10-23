@@ -7,6 +7,7 @@ import type {
   ReviewOutcome,
   ReviewTrace,
 } from "@norish/shared/contracts/ingredient-catalogue";
+import { wasParentSetByAI } from "@norish/db/repositories/ingredient-ai-changes";
 import {
   findCatalogueIngredient,
   setIngredientFlagReason,
@@ -32,12 +33,12 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
   if (!row) return { outcome: "skipped", reason: "not-found", ...trace };
   if (!row.askable) return { outcome: "skipped", reason: "decided", ...trace };
 
-  const filedUnder = row.parentId ? await findCatalogueIngredient(row.parentId) : null;
-  const answer = await askWhatFoodThisIs(row.name, {
-    excludeId: ingredientId,
-    filedUnder,
-    trace,
-  });
+  const current = row.parentId ? await findCatalogueIngredient(row.parentId) : null;
+  const filedUnder = current && {
+    ...current,
+    byAI: await wasParentSetByAI(ingredientId, current.id),
+  };
+  const answer = await askWhatFoodThisIs(row.name, { excludeId: ingredientId, filedUnder, trace });
 
   if (answer.kind === "same") {
     const into = await findCatalogueIngredient(answer.ingredientId);

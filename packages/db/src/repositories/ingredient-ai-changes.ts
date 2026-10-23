@@ -321,10 +321,20 @@ export async function listAliasIdsAIMovedOnto(ingredientId: string): Promise<str
 }
 
 /** Whether a person undid filing `ingredientId` under `parentId`, or under no parent (null). */
-export async function wasParentUndone(
+export function wasParentUndone(tx: Db, ingredientId: string, parentId: string | null) {
+  return hasParentChange(tx, ingredientId, parentId, true);
+}
+
+/** Whether AI filed `ingredientId` under `parentId` in a change still listed and not undone. */
+export function wasParentSetByAI(ingredientId: string, parentId: string) {
+  return hasParentChange(db, ingredientId, parentId, false);
+}
+
+async function hasParentChange(
   tx: Db,
   ingredientId: string,
-  parentId: string | null
+  parentId: string | null,
+  undone: boolean
 ): Promise<boolean> {
   const [row] = await tx
     .select({ id: ingredientAIChanges.id })
@@ -336,7 +346,7 @@ export async function wasParentUndone(
         parentId === null
           ? isNull(ingredientAIChanges.targetId)
           : eq(ingredientAIChanges.targetId, parentId),
-        sql`${ingredientAIChanges.undoneAt} is not null`
+        undone ? isNotNull(ingredientAIChanges.undoneAt) : isNull(ingredientAIChanges.undoneAt)
       )
     )
     .limit(1);

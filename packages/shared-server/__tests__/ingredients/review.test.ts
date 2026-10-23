@@ -426,7 +426,7 @@ describe("asking AI about an Ingredient", () => {
     it("drops the parent, listed on Changed by AI to undo", async () => {
       const { food } = await underButter("peanut butter");
 
-      reads({ englishName: "peanut butter", parent: null, sure: true });
+      reads({ englishName: "peanut butter", parent: "spread", sure: true });
 
       await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
         outcome: "no-parent",
@@ -581,24 +581,6 @@ describe("asking AI about an Ingredient", () => {
       expect(await changes()).toEqual([]);
     });
 
-    it("keeps the parent when the catalogue lacks the parent AI names", async () => {
-      const kipgehakt = await kept("kipgehakt");
-      const lean = await flagged("mager kipgehakt");
-
-      await getTestDb()
-        .update(ingredients)
-        .set({ parentId: kipgehakt.ingredientId })
-        .where(eq(ingredients.id, lean.ingredientId));
-      reads({ englishName: "lean chicken mince", parent: "chicken mince", sure: true });
-
-      await expect(askAIAbout(lean.ingredientId)).resolves.toMatchObject({
-        outcome: "parent",
-        of: "kipgehakt",
-      });
-      await expect(parentOf(lean.ingredientId)).resolves.toBe(kipgehakt.ingredientId);
-      expect(await changes()).toEqual([]);
-    });
-
     it("moves it to the plain food AI names when the catalogue has that food", async () => {
       const { food } = await under("spice", "chinese 5 spice");
       const mixed = await kept("mixed spices");
@@ -654,8 +636,46 @@ describe("asking AI about an Ingredient", () => {
       await expect(parentOf(food.ingredientId)).resolves.toBeNull();
     });
 
-    it("keeps the parent when the catalogue lacks the category AI names", async () => {
-      const { food, filed } = await under("protein", "unflavoured protein");
+    it("drops the parent when the catalogue lacks the category too", async () => {
+      const { food } = await under("fish", "Klop-Fix fish");
+
+      reads({ englishName: "fish batter mix", parent: null, category: "baking mix", sure: true });
+
+      await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
+        outcome: "no-parent",
+        from: "fish",
+      });
+      await expect(parentOf(food.ingredientId)).resolves.toBeNull();
+    });
+  });
+
+  describe("a food an earlier AI answer gave its parent", () => {
+    /** `text`, filed by AI's first answer under `parent`. */
+    async function filedByAI(text: string, parent: string) {
+      const food = await flagged(text);
+
+      reads({ englishName: text, parent, sure: true });
+      await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({ outcome: "parent" });
+
+      return food;
+    }
+
+    it("keeps the parent when the catalogue lacks the parent AI names now", async () => {
+      const kipgehakt = await kept("kipgehakt");
+      const lean = await filedByAI("lean chicken mince", "kipgehakt");
+
+      reads({ englishName: "lean chicken mince", parent: "chicken mince", sure: true });
+
+      await expect(askAIAbout(lean.ingredientId)).resolves.toMatchObject({
+        outcome: "parent",
+        of: "kipgehakt",
+      });
+      await expect(parentOf(lean.ingredientId)).resolves.toBe(kipgehakt.ingredientId);
+    });
+
+    it("keeps the parent when the catalogue lacks the category AI names now", async () => {
+      const protein = await kept("protein");
+      const powder = await filedByAI("eiwitpoeder naturel", "protein");
 
       reads({
         englishName: "unflavored protein powder",
@@ -664,12 +684,11 @@ describe("asking AI about an Ingredient", () => {
         sure: true,
       });
 
-      await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
+      await expect(askAIAbout(powder.ingredientId)).resolves.toMatchObject({
         outcome: "parent",
         of: "protein",
       });
-      await expect(parentOf(food.ingredientId)).resolves.toBe(filed);
-      expect(await changes()).toEqual([]);
+      await expect(parentOf(powder.ingredientId)).resolves.toBe(protein.ingredientId);
     });
   });
 

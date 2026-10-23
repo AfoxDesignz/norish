@@ -83,8 +83,11 @@ function failed(error: unknown): Unanswered {
 export interface AskOptions {
   /** The Ingredient the question is about, never its own answer. */
   excludeId: string;
-  /** The parent it is filed under now, so AI judges it rather than makes one up. */
-  filedUnder: { id: string; name: string } | null;
+  /**
+   * The parent it is filed under now, so AI judges it rather than makes one up, and whether an AI
+   * Change put it there (a person's parent is never asked about).
+   */
+  filedUnder: { id: string; name: string; byAI: boolean } | null;
   /** Where to record what was asked, for a person who wants to know: filled in as it goes. */
   trace: ReviewTrace;
 }
@@ -104,8 +107,8 @@ export async function askWhatFoodThisIs(text: string, options: AskOptions): Prom
 /**
  * The reading, looked up: a food the names find is the one, several found are asked about; else
  * the parent AI named, else its category, found, is its parent. The parent the food has stays where
- * AI names it in fewer words, or names a parent or category the catalogue lacks; naming neither
- * drops it. Flagged unless AI was sure.
+ * AI names it in fewer words, or, where AI put it there, names a parent or category the catalogue
+ * lacks. Flagged unless AI was sure.
  */
 async function readThenLookUp(
   text: string,
@@ -187,7 +190,7 @@ async function readThenLookUp(
 
   return {
     kind: "own",
-    parentId: filed ? (filed.food?.ingredientId ?? filedUnder?.id ?? null) : null,
+    parentId: filed?.food?.ingredientId ?? (filed && filedUnder?.byAI ? filedUnder.id : null),
     sure: reading.sure && found.sure && (filed?.sure ?? true),
   };
 }
