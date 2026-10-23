@@ -364,21 +364,22 @@ export interface IngredientCandidate {
   aliases: string[];
 }
 
-/** These Ingredients as candidates for a question, each with its parent and shortest other names. */
+/** These Ingredients as candidates for a question, in order, each with its parent and shortest other names. */
 export async function findIngredientCandidatesByIds(
   ids: readonly string[]
 ): Promise<IngredientCandidate[]> {
   if (ids.length === 0) return [];
 
   const parents = alias(ingredients, "parent");
-
-  return await candidatesFor(
+  const candidates = await candidatesFor(
     await db
       .select({ id: ingredients.id, name: ingredients.name, parent: parents.name })
       .from(ingredients)
       .leftJoin(parents, eq(parents.id, ingredients.parentId))
       .where(inArray(ingredients.id, [...ids]))
   );
+
+  return candidates.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
 }
 
 /** Candidate rows for known Ingredients: each with its shortest other names. */
