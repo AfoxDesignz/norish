@@ -677,25 +677,35 @@ export function refOf({ aliasId, ingredientId }: IngredientRef): IngredientRef {
 }
 
 /**
- * Each readable spelling's food other than `ingredientId`: the food named it, else the one food
- * rungs 1–2 find in a language Norish reads; and that filter, for slips.
+ * Each readable spelling's food other than `ingredientId` (and `among` those): the food named it,
+ * else the one food rungs 1–2 find in a language Norish reads; and that filter, for slips.
  */
-async function otherFoodsSpelled(ingredientId: string, spellings: readonly Spelling[]) {
+async function otherFoodsSpelled(
+  ingredientId: string,
+  spellings: readonly Spelling[],
+  among?: "listed" | "seeded"
+) {
   const readable = spellings.filter((spelling) => spelling.text && !spellingNamesNoFood(spelling));
   const all = await knownAliases(readable);
+  const names = await findIngredientsNamed(
+    readable.flatMap((spelling) => [spelling.fold, spelling.clean.toLowerCase()])
+  );
+  const kept =
+    among &&
+    (await findIngredientIdsAmong(
+      [...all.values(), ...names].map((row) => row.ingredientId),
+      among
+    ));
+  const amongThem = (row: IngredientRef) => !kept || kept.has(row.ingredientId);
   // Only by a spelling in a language Norish reads: AI's "bun" is not pear's Volapük "bün".
   const other = (row: IngredientAliasRow) =>
     row.ingredientId !== ingredientId && norishReads(row.locale);
-  const known = new Map([...all].filter(([, row]) => other(row)));
+  const known = new Map([...all].filter(([, row]) => other(row) && amongThem(row)));
   // A food's name beats another food's spelling (yam's Croatian "jam" is not the food jam); a
   // spelling the asked food holds stays its own, so a split moves it to the food named for it.
   const named = new Map(
-    (
-      await findIngredientsNamed(
-        readable.flatMap((spelling) => [spelling.fold, spelling.clean.toLowerCase()])
-      )
-    )
-      .filter((row) => row.ingredientId !== ingredientId)
+    names
+      .filter((row) => row.ingredientId !== ingredientId && amongThem(row))
       .map((row) => [ingredientAliasFold(row.name), { ...refOf(row), text: row.name }])
   );
   const byName = (spelling: Spelling) =>
@@ -729,7 +739,7 @@ export async function findFood(
 ): Promise<FoundFood[][]> {
   const rules = await currentRules();
   const spellings = names.map((name) => spellingOf(cleanIngredientText(name), rules, true));
-  const { matched, other } = await otherFoodsSpelled(except, spellings);
+  const { matched, other } = await otherFoodsSpelled(except, spellings, among);
   const slipped = await findSlips(
     [...matched].flatMap(([spelling, match]) => (match ? [] : [spelling])),
     other

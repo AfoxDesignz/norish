@@ -60,6 +60,7 @@ import {
   createTestRecipe,
   getTestDb,
   insertTestRecipeLine,
+  mintTestFood,
   nameInATestRecipe,
 } from "../../../db/__tests__/helpers/db-test-helpers";
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
@@ -960,6 +961,22 @@ describe("asking AI about an Ingredient", () => {
         id: tortilla.ingredientId,
         flagged: false,
       });
+    });
+
+    it("looks past a hidden food AI's name matches exactly, to the listed slip", async () => {
+      const tortilla = await kept("tortilla");
+      const tortillas = await flagged("maïstortilla");
+
+      await mintTestFood("tortila", { ownerId: actor.userId });
+      vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
+      reads({ englishName: "tortila", parent: null, sure: true });
+      picks("tortilla", true);
+
+      await expect(askAIAbout(tortillas.ingredientId)).resolves.toMatchObject({
+        outcome: "merge",
+        into: "tortilla",
+      });
+      expect(listed()).toBe("Foods in the catalogue it may be:\n- tortilla");
     });
 
     it("takes an exact match beside a slip without a second question", async () => {
