@@ -1,15 +1,18 @@
 /**
  * The seed's corrections (`SPELLING_MOVES`) made once on an instance seeded before them: the spelling
- * moves with its rows, and the own foods its words filed under the old food follow it.
+ * moves with its rows, and the own foods its words filed under the old food follow it; a spelling
+ * taken off has its rows read again.
  */
 import {
   listSeededIngredientIds,
   listUnchosenOwnChildren,
   moveSeededSpelling,
   refileOwnFood,
+  takeOffSeededSpelling,
 } from "@norish/db/repositories/ingredient-seed";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
+import { resolveAgain } from "../catalogue";
 import { readName } from "../resolver";
 import {
   oncePerVersion,
@@ -20,7 +23,7 @@ import {
 } from "./catalogue-seed";
 
 export interface CorrectionOutcome {
-  /** Seeded spellings moved to the food the seed now gives them. */
+  /** Seeded spellings moved to the food the seed now gives them, or taken off where it gives none. */
   moved: number;
   /** Own foods the words filed under the old food, now under the new one. */
   refiled: number;
@@ -35,18 +38,29 @@ export async function correctSeedOnce(): Promise<CorrectionOutcome | null> {
   });
 }
 
+/** Move the spelling to `toId`, or with none take it off and read its rows again; false where gone. */
+async function moveOrTakeOff(fold: string, fromId: string, toId: string | null): Promise<boolean> {
+  if (toId) return await moveSeededSpelling(fold, fromId, toId);
+  const rows = await takeOffSeededSpelling(fold, fromId);
+
+  if (rows) await resolveAgain(rows, "person");
+
+  return rows !== null;
+}
+
 async function correctSeed(): Promise<CorrectionOutcome> {
   const seeded = await listSeededIngredientIds();
   const outcome: CorrectionOutcome = { moved: 0, refiled: 0 };
 
   for (const move of SPELLING_MOVES) {
     const fromId = seeded.get(move.from);
-    const toId = seeded.get(move.to);
+    const toId = move.to && seeded.get(move.to);
 
-    if (!fromId || !toId) continue;
+    if (!fromId || toId === undefined) continue;
     for (const spelling of move.spellings) {
-      if (await moveSeededSpelling(ingredientAliasFold(spelling), fromId, toId)) outcome.moved += 1;
+      if (await moveOrTakeOff(ingredientAliasFold(spelling), fromId, toId)) outcome.moved += 1;
     }
+    if (!toId) continue;
     for (const child of await listUnchosenOwnChildren(fromId)) {
       if (
         (await (await readName(child.name)).parent()) === toId &&

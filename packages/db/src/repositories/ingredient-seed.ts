@@ -13,6 +13,7 @@ import {
   storeProductLinks,
 } from "@norish/db/schema";
 
+import type { NamingRows } from "./ingredient-cleanup";
 import {
   clearAIFlagUnlessOpen,
   parentIsOpenAnswer,
@@ -20,7 +21,12 @@ import {
   vouchForOpenAIChanges,
   wasParentUndone,
 } from "./ingredient-ai-changes";
-import { ingredientIsListed, ingredientIsNamed } from "./ingredient-catalogue";
+import {
+  deleteCatalogueAlias,
+  ingredientIsListed,
+  ingredientIsNamed,
+} from "./ingredient-catalogue";
+import { findRowsNamingSpellings } from "./ingredient-cleanup";
 import {
   findIngredientAncestors,
   lockIngredients,
@@ -450,6 +456,23 @@ export async function insertSeededIngredient(
   });
 }
 
+/** The spelling `fold` on `fromId`, its foods locked; null where one of them is gone. */
+async function lockSpellingOn(
+  tx: DbTransaction,
+  fold: string,
+  fromId: string,
+  foodIds: readonly string[]
+): Promise<string | null> {
+  await lockTree(tx);
+  if ((await lockIngredients(tx, foodIds)) < foodIds.length) return null;
+  const [alias] = await tx
+    .select({ id: ingredientAliases.id })
+    .from(ingredientAliases)
+    .where(and(eq(ingredientAliases.fold, fold), eq(ingredientAliases.ingredientId, fromId)));
+
+  return alias?.id ?? null;
+}
+
 /** Move a seeded spelling, with its rows, from one seeded food to another that the seed now gives it. */
 export async function moveSeededSpelling(
   fold: string,
@@ -457,17 +480,29 @@ export async function moveSeededSpelling(
   toId: string
 ): Promise<boolean> {
   return await db.transaction(async (tx) => {
-    await lockTree(tx);
-    if ((await lockIngredients(tx, [fromId, toId])) < 2) return false;
-    const [alias] = await tx
-      .select({ id: ingredientAliases.id })
-      .from(ingredientAliases)
-      .where(and(eq(ingredientAliases.fold, fold), eq(ingredientAliases.ingredientId, fromId)));
+    const aliasId = await lockSpellingOn(tx, fold, fromId, [fromId, toId]);
 
-    if (!alias) return false;
-    await moveCatalogueAlias(tx, alias.id, toId);
+    if (!aliasId) return false;
+    await moveCatalogueAlias(tx, aliasId, toId);
 
     return true;
+  });
+}
+
+/** Take a seeded spelling the seed gives no food off its food; the rows that named it, to read again. */
+export async function takeOffSeededSpelling(
+  fold: string,
+  fromId: string
+): Promise<NamingRows | null> {
+  return await db.transaction(async (tx) => {
+    const aliasId = await lockSpellingOn(tx, fold, fromId, [fromId]);
+
+    if (!aliasId) return null;
+    const rows = await findRowsNamingSpellings(tx, [aliasId]);
+
+    await deleteCatalogueAlias(tx, aliasId);
+
+    return rows;
   });
 }
 

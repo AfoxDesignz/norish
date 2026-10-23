@@ -50,10 +50,15 @@ function seedText(text: string): string {
 }
 
 /**
- * Spellings Open Food Facts gives the wrong entry, moved to the right one as each file is read.
- * Raise `SEED_CORRECTIONS_VERSION` with each, so a seeded instance moves its copy (`correctSeedOnce`).
+ * Spellings Open Food Facts gives the wrong entry, moved to the right one as each file is read, or
+ * to none (`to: null`). Raise `SEED_CORRECTIONS_VERSION` with each, so a seeded instance moves its
+ * copy (`correctSeedOnce`).
  */
-export const SPELLING_MOVES: ReadonlyArray<{ from: string; to: string; spellings: string[] }> = [
+export const SPELLING_MOVES: ReadonlyArray<{
+  from: string;
+  to: string | null;
+  spellings: string[];
+}> = [
   // Its coating also holds seasoning's names; a seasoning is a spice mix (ingredient-cleanup 21).
   {
     from: "en:coating",
@@ -62,18 +67,21 @@ export const SPELLING_MOVES: ReadonlyArray<{ from: string; to: string; spellings
   },
   // Yam comes first in the file, so its Croatian "jam" took jam's own name (ingredient-cleanup 32).
   { from: "en:yam", to: "en:jam", spellings: ["jam"] },
+  // AI's parent "steak" found patty by its French name; the file has no drumstick (ticket 52).
+  { from: "en:patty", to: "en:beef-steak", spellings: ["steak"] },
+  { from: "en:chicken-thigh", to: null, spellings: ["chicken drumstick"] },
 ];
 
-/** 3: a spelling an entry's languages share is filed under one Norish reads (ingredient-cleanup 42). */
-export const SEED_CORRECTIONS_VERSION = 3;
+/** 4: steak to beef steak, chicken drumstick off chicken thigh (ingredient-cleanup 52). */
+export const SEED_CORRECTIONS_VERSION = 4;
 
 /** The entries with each move made where the file has its food: no other entry keeps the spelling. */
 function corrected(entries: readonly SeedEntry[]): SeedEntry[] {
   const offIds = new Set(entries.map((entry) => entry.offId));
-  const owner = new Map<string, string>();
+  const owner = new Map<string, string | null>();
 
   for (const move of SPELLING_MOVES) {
-    if (!offIds.has(move.to)) continue;
+    if (move.to && !offIds.has(move.to)) continue;
     for (const spelling of move.spellings) owner.set(ingredientAliasFold(spelling), move.to);
   }
 
@@ -81,7 +89,7 @@ function corrected(entries: readonly SeedEntry[]): SeedEntry[] {
 
   return entries.map((entry) => {
     const kept = entry.aliases.filter(
-      (alias) => (owner.get(alias.fold) ?? entry.offId) === entry.offId
+      (alias) => !owner.has(alias.fold) || owner.get(alias.fold) === entry.offId
     );
     const gained = moved.filter(
       (alias, index) =>

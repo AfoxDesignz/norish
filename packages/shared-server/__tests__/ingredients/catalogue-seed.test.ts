@@ -13,7 +13,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import type { CatalogueActor } from "@norish/shared-server/ingredients/catalogue";
 import { ServerConfigKeys } from "@norish/config/zod/server-config";
 import { listAIChanges } from "@norish/db/repositories/ingredient-ai-changes";
-import { findIngredientByAliasId } from "@norish/db/repositories/ingredient-aliases";
+import {
+  findIngredientByAliasId,
+  findRecipeLineAliases,
+} from "@norish/db/repositories/ingredient-aliases";
 import { listJunkFolds } from "@norish/db/repositories/ingredient-junk-pile";
 import { findIngredientAncestors } from "@norish/db/repositories/ingredient-relocation";
 import { listPantryIngredientsByUserIds } from "@norish/db/repositories/pantry";
@@ -377,6 +380,48 @@ describe("the ingredient catalogue seed", () => {
       await expect(resolve("jam")).resolves.toMatchObject({
         ingredientId: (await ingredientNamed("jam"))!.id,
       });
+    });
+
+    it("gives steak to beef steak, and takes chicken drumstick off chicken thigh, when the file is applied", async () => {
+      await applySeedFile(
+        `${excerpt}\n\nen: patty, patties\nfr: steak\n\nen: beef steak\n\n` +
+          `en: chicken thigh, chicken drumstick\n`
+      );
+
+      await expect(resolve("steak")).resolves.toMatchObject({
+        ingredientId: (await ingredientNamed("beef steak"))!.id,
+      });
+      await expect(getSpellingTexts((await ingredientNamed("chicken thigh"))!.id)).resolves.toEqual(
+        ["chicken thigh"]
+      );
+    });
+
+    it("takes chicken drumstick off chicken thigh once on an instance seeded before, its lines read again", async () => {
+      await applySeedFile(`${excerpt}\n\nen: chicken thigh\n`);
+      const thigh = (await ingredientNamed("chicken thigh"))!.id;
+      // As a seed from before the correction left it.
+      const [drumstick] = await getTestDb()
+        .insert(ingredientAliases)
+        .values({
+          ingredientId: thigh,
+          text: "chicken drumstick",
+          fold: ingredientAliasFold("chicken drumstick"),
+          locale: "en",
+          seeded: true,
+        })
+        .returning({ id: ingredientAliases.id });
+      const line = await nameInATestRecipe(actor.userId, drumstick!.id, "chicken drumstick");
+
+      await updateIngredientSeedState({ correctionsVersion: SEED_CORRECTIONS_VERSION - 1 });
+      await expect(correctSeedOnce()).resolves.toEqual({ moved: 1, refiled: 0 });
+
+      await expect(getSpellingTexts(thigh)).resolves.toEqual(["chicken thigh"]);
+      const own = await ingredientNamed("chicken drumstick");
+
+      expect(own).toMatchObject({ offId: null });
+      expect((await findRecipeLineAliases([line.id])).get(line.id)?.foods).toEqual([
+        expect.objectContaining({ ingredientId: own!.id }),
+      ]);
     });
 
     it("files a spelling an entry's languages share under the one Norish reads, also on an instance seeded before", async () => {
