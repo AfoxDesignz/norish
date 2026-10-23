@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { SQL } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
-import { eq, getTableName, inArray, sql } from "drizzle-orm";
+import { getTableName, inArray, sql } from "drizzle-orm";
 import z from "zod";
 
 import type { UnitsMap } from "@norish/config/zod/server-config";
 import type { DbTransaction } from "@norish/db/drizzle";
 import type { IngredientRef } from "@norish/db/repositories/ingredient-aliases";
-import type { IngredientDto } from "@norish/shared/contracts/dto/ingredient";
 import type { MeasurementSystem } from "@norish/shared/contracts/dto/recipe";
 import type {
   RecipeIngredientInsertDto,
@@ -16,11 +15,9 @@ import type {
 import type { LineJoin } from "@norish/shared/lib/line-foods";
 import defaultUnits from "@norish/config/units.default.json" with { type: "json" };
 import { ServerConfigKeys, UnitsConfigSchema } from "@norish/config/zod/server-config";
-import { db } from "@norish/db/drizzle";
 import { dbLogger } from "@norish/db/logger";
 import { getConfig } from "@norish/db/repositories/server-config";
-import { ingredients, recipeIngredientFoods, recipeIngredients } from "@norish/db/schema";
-import { IngredientSelectBaseSchema } from "@norish/shared/contracts/zod";
+import { recipeIngredientFoods, recipeIngredients } from "@norish/db/schema";
 import {
   RecipeIngredientInputSchema,
   RecipeIngredientSelectWithNameSchema,
@@ -39,13 +36,6 @@ export async function getUnitsForNormalization(): Promise<UnitsMap> {
   }
 
   return defaultUnits as UnitsMap;
-}
-
-export async function findIngredientById(id: string): Promise<IngredientDto | null> {
-  const rows = await db.select().from(ingredients).where(eq(ingredients.id, id)).limit(1);
-  const parsed = IngredientSelectBaseSchema.safeParse(rows[0]);
-
-  return parsed.success ? parsed.data : null;
 }
 
 /** The foods a line's text resolved to, in order, and how several go together. */

@@ -33,10 +33,11 @@ import { addToPantry } from "@norish/shared-server/ingredients/pantry";
 import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 import { buildCatalogueExport } from "@norish/shared-server/ingredients/seed/catalogue-export";
 import {
-  applySeedFile,
+  applySeedEntries,
   readIngredientSeedState,
   refreshIngredientCatalogue,
   SEED_CORRECTIONS_VERSION,
+  seedEntriesOf,
   updateIngredientSeedState,
 } from "@norish/shared-server/ingredients/seed/catalogue-seed";
 import { correctSeedOnce } from "@norish/shared-server/ingredients/seed/correct-seed";
@@ -57,6 +58,9 @@ import {
 import { RepositoryTestBase } from "../../../db/__tests__/helpers/repository-test-base";
 
 const excerpt = readFileSync(join(__dirname, "fixtures", "ingredients-taxonomy.txt"), "utf8");
+
+/** A taxonomy file applied as the refresh applies it, without the fetch. */
+const applySeedFile = async (file: string) => await applySeedEntries(seedEntriesOf(file));
 
 /** The excerpt without one entry, as a later version of the file might be. */
 function without(entryFirstLine: string, file = excerpt): string {

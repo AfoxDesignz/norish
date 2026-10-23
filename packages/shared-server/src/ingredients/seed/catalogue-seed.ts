@@ -135,20 +135,8 @@ function norishFirst<T extends { locale: string | null }>(names: readonly T[]): 
   return [...names].sort((a, b) => Number(norishReads(b.locale)) - Number(norishReads(a.locale)));
 }
 
-/**
- * Apply a taxonomy file: read the whole of it first, then apply it in one
- * transaction. A file that does not read as a taxonomy throws and applies
- * nothing.
- */
-export async function applySeedFile(file: string): Promise<{
-  entries: SeedEntry[];
-  outcome: SeedOutcome;
-}> {
-  return await applySeedEntries(seedEntriesOf(file));
-}
-
 /** Apply entries already read from a taxonomy file, in one transaction. */
-async function applySeedEntries(entries: SeedEntry[]): Promise<{
+export async function applySeedEntries(entries: SeedEntry[]): Promise<{
   entries: SeedEntry[];
   outcome: SeedOutcome;
 }> {

@@ -40,7 +40,6 @@ import {
   deleteCatalogueAlias,
   deleteCatalogueIngredient,
   findCatalogueAliasOwner,
-  findCatalogueIngredient,
   findCatalogueIngredientOwner,
   findIngredientIdByFold,
   insertCatalogueAlias,
@@ -327,11 +326,6 @@ async function assertMayEditIngredient(
   ingredientId: string
 ): Promise<void> {
   await assertMayEdit(actor, await findCatalogueIngredientOwner(tx, ingredientId));
-}
-
-/** The Ingredient, if `actor` may edit it; refused otherwise. */
-export async function editableIngredient(actor: CatalogueActor, ingredientId: string) {
-  return await assertMayEdit(actor, await findCatalogueIngredient(ingredientId));
 }
 
 /**
