@@ -7,8 +7,15 @@
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** done
 
 ## Decided (Mike, 2026-10-23)
 
 "build all except 66". The spelling check skips the spellings an AI Change moved onto a food in the same first start (AI already judged them). For the rest it shows AI one recipe line that uses the spelling, so a comma fragment is judged with the line it came from.
+
+## Implemented (2026-10-23)
+
+- `checkSpellingsOf` (`ingredients/spelling-check.ts`) leaves out the spellings `listAliasIdsAIMovedOnto(id)` (`db/repositories/ingredient-ai-changes.ts`) names: the `aliasIds` of a merge not undone listed under the food, and the spelling of a spelling move (kind `spelling`) whose `targetId` is the food. No time bound for "this start": the check runs once per `SPELLING_CHECK_VERSION`, and AI Changes exist only since this release, so every one it finds is from the run it belongs to; one from an earlier pass is AI's judgement just the same.
+- Each spelling goes to AI with one recipe line written with it, `findRowsNamingSpellings(tx, [aliasId]).lines[0].name`, as `   Line: …` under its entry in `Spellings:`. `askWhatSpellingsName` takes `{ text, line }[]`. The prompt says so in one clause; the admin prompt description says so in all 16 locales.
+- `SPELLING_CHECK_VERSION` stays 1: the check has not shipped in a release, so no instance needs it run again.
+- Tests (`spelling-check.test.ts`): "shows AI a recipe line written with each spelling, so a fragment is read in its line" and "leaves the spellings a merge by AI moved onto the food, which AI already judged". Release-notes line beside ticket 46's. No ADR or CONTEXT.md line: ticket 46 put none there.

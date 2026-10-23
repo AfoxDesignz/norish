@@ -9,8 +9,14 @@ Ticket 21's seed corrections (`SPELLING_MOVES`) can move both; whether to is Mik
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** done
 
 ## Decided (Mike, 2026-10-23)
 
 "build all except 66". Seed corrections fix both: French "steak" moves from patty to beef steak; English "chicken drumstick" leaves chicken thigh (no seeded drumstick food exists, so AI makes its own drumstick food). Same mechanism as en:yam → en:jam, SEED_CORRECTIONS_VERSION bumped.
+
+## Implemented (2026-10-23)
+
+- `SPELLING_MOVES` (`seed/catalogue-seed.ts`) gains `en:patty` → `en:beef-steak` ("steak") and `en:chicken-thigh` → `null` ("chicken drumstick"). `to: null` is the one new thing: the file gives the spelling to no entry. `SEED_CORRECTIONS_VERSION` 4.
+- On an instance seeded before, `correctSeedOnce` takes a null move's spelling off through `takeOffSeededSpelling(fold, fromId)` (`db/repositories/ingredient-seed.ts`, shares `lockSpellingOn` with `moveSeededSpelling`), which answers the rows that named it; they are read again with `resolveAgain(rows, "person")`, as AI's spelling removal does, so a drumstick line mints its own food for AI's pass. A null move refiles no children. It counts in `moved`.
+- Tests (`catalogue-seed.test.ts`): "gives steak to beef steak, and takes chicken drumstick off chicken thigh, when the file is applied" and "takes chicken drumstick off chicken thigh once on an instance seeded before, its lines read again". Release-notes line after the jam line. Checked against the live OFF file: "steak" is French on patty only, "chicken drumstick" English on chicken thigh only.
