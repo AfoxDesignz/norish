@@ -27,21 +27,15 @@ import { decide, generateStructured } from "../runtime/runtime";
 import { onceMoreOnTimeout } from "../runtime/timeout-retry";
 
 /**
- * At or above: the Decision's pick is acted on — a food it names as a known
- * one is merged into it. A wrong "same" lends one food's Product
- * Link and Aisle to another and nobody notices, where a wrong "new" is one
- * merge on the Ingredients page, so the bar is high. A named constant with a
- * test, never a setting.
+ * At or above: a known food the Decision picks is merged into. A wrong "same" lends one food's
+ * Product Link and Aisle to another unnoticed, a wrong "new" is one merge away: so the bar is high.
  */
 export const RESOLUTION_THRESHOLD = 0.8;
 
 /** At or above: a slip of the fingers the Decision picks is sure, so it is not flagged. */
 export const SURE_SLIP_THRESHOLD = 0.9;
 
-/**
- * How long one request to AI may take: a pass makes one per question, a split's parts included.
- * A request past it is asked once more.
- */
+/** How long one AI request (one per question, a split's parts too) may take; past it, once more. */
 export const REQUEST_BUDGET_MS = 30_000;
 
 /** How many of a candidate's other names one question shows. */
@@ -105,10 +99,8 @@ export async function askWhatFoodThisIs(text: string, options: AskOptions): Prom
 }
 
 /**
- * The reading, looked up: a food the names find is the one, several found are asked about; else
- * the parent AI named, else its category, found, is its parent. The parent the food has stays where
- * AI names it in fewer words, or, where AI put it there, names a parent or category the catalogue
- * lacks. Flagged unless AI was sure.
+ * The reading, looked up: a food the names find is the one, else it is its own under `parentOf`,
+ * unless the names find a food other than that parent. Flagged unless AI was sure.
  */
 async function readThenLookUp(
   text: string,
@@ -170,29 +162,41 @@ async function readThenLookUp(
   if (found.food && ((food.englishName && found.byFirstName) || parentNamed)) {
     return same(found.food.ingredientId);
   }
-  // AI's parent as the last words of the parent the food has ("pepper" for "red bell pepper") is it.
-  const parent = !food.parent
-    ? null
-    : filedUnder && ` ${foldName(filedUnder.name)}`.endsWith(` ${foldName(food.parent)}`)
-      ? { food: { ingredientId: filedUnder.id }, sure: true }
-      : await findByName(food.parent, excludeId, trace);
+  const parent = await parentOf(food, { excludeId, filedUnder, trace }, !found.food);
 
   // A food only AI's other names (or a slip) find is never the parent AI gave: filed under it.
-  if (found.food && parent?.food?.ingredientId !== found.food.ingredientId) {
-    return same(found.food.ingredientId);
-  }
+  if (found.food && parent?.id !== found.food.ingredientId) return same(found.food.ingredientId);
 
-  // The category only where the catalogue has no parent of that name.
-  const filed =
-    parent?.food || !food.category
-      ? parent
-      : await findByName(food.category, excludeId, trace, { seeded: true });
+  // A parent or category AI named that the catalogue lacks keeps the parent AI gave the food.
+  const keptByAI = parent && filedUnder?.byAI ? filedUnder.id : null;
 
   return {
     kind: "own",
-    parentId: filed?.food?.ingredientId ?? (filed && filedUnder?.byAI ? filedUnder.id : null),
-    sure: reading.sure && found.sure && (filed?.sure ?? true),
+    parentId: parent?.id ?? keptByAI,
+    sure: reading.sure && found.sure && (parent?.sure ?? true),
   };
+}
+
+/**
+ * The parent AI named, found, else (`orCategory`) its category; null where AI named neither. AI's
+ * parent as the last words of the parent the food has ("pepper" for "red bell pepper") is it.
+ */
+async function parentOf(
+  { parent, category }: ReadFood,
+  { excludeId, filedUnder, trace }: AskOptions,
+  orCategory: boolean
+): Promise<{ id: string | null; sure: boolean } | null> {
+  if (parent && filedUnder && ` ${foldName(filedUnder.name)}`.endsWith(` ${foldName(parent)}`)) {
+    return { id: filedUnder.id, sure: true };
+  }
+
+  const found = parent ? await findByName(parent, excludeId, trace) : null;
+  const filed =
+    found?.food || !orCategory || !category
+      ? found
+      : await findByName(category, excludeId, trace, "seeded");
+
+  return filed && { id: filed.food?.ingredientId ?? null, sure: filed.sure };
 }
 
 /**
@@ -214,15 +218,10 @@ export async function findFoodNamed(
 }
 
 /** `findNamed` for a name AI gave alone, with no reading of its own (a parent, a category). */
-function findByName(
-  name: string,
-  excludeId: string,
-  trace: ReviewTrace,
-  options?: { seeded?: boolean }
-) {
+function findByName(name: string, excludeId: string, trace: ReviewTrace, among?: "seeded") {
   const readAs = { englishName: null, parent: null, category: null };
 
-  return findNamed({ name, readAs }, excludeId, [name], trace, options);
+  return findNamed({ name, readAs }, excludeId, [name], trace, among);
 }
 
 /** A read food's names to look up: its English name and the other names a shop sells it under. */
@@ -247,17 +246,17 @@ interface Found {
 type Candidate = IngredientCandidate & { matched: string };
 
 /**
- * The listed (`seeded`: seeded) food other than `excludeId` these names find: an exact spelling
- * wins, else several or slips alone are asked about. Sure where the answer is.
+ * The `among` food other than `excludeId` these names find: an exact spelling wins, else several or
+ * slips alone are asked about. Sure where the answer is.
  */
 async function findNamed(
   asked: Asked,
   excludeId: string,
   names: readonly string[],
   trace: ReviewTrace,
-  { seeded = false }: { seeded?: boolean } = {}
+  among: "listed" | "seeded" = "listed"
 ): Promise<Found> {
-  const byName = await findFood(names, { except: excludeId, among: seeded ? "seeded" : "listed" });
+  const byName = await findFood(names, { except: excludeId, among });
   const found = byName.flat();
   const exact = found.filter(isExact);
   const ranked = distinctFoods(
