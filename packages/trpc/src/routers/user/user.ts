@@ -9,6 +9,7 @@ import {
   getAllergiesForUsers,
   getApiKeysForUser,
   getHouseholdForUser,
+  getSignInMethodsForUser,
   getUserAllergies,
   getUserById,
   getUserPreferences,
@@ -344,6 +345,8 @@ const deleteAccount = authedProcedure.mutation(async ({ ctx }) => {
 /**
  * Get current user's allergies
  */
+const signInMethods = authedProcedure.query(({ ctx }) => getSignInMethodsForUser(ctx.user.id));
+
 const getAllergies = authedProcedure.query(async ({ ctx }) => {
   log.debug({ userId: ctx.user.id }, "Getting user allergies");
 
@@ -412,6 +415,7 @@ export const userProcedures = router({
   uploadAvatar,
   deleteAvatar,
   deleteAccount,
+  signInMethods,
   getAllergies,
   setAllergies,
   updatePreferences,

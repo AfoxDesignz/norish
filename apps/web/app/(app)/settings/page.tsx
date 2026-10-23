@@ -23,6 +23,8 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
               client.query(trpc.siteAuthTokens.list.queryOptions()),
               client.query(trpc.config.localeConfig.queryOptions()),
               client.query(trpc.config.timersEnabled.queryOptions()),
+              client.query(trpc.config.authProviders.queryOptions()),
+              client.query(trpc.user.signInMethods.queryOptions()),
             ];
           case "caldav":
             return [

@@ -17,10 +17,6 @@ import {
 } from "@norish/shared/contracts/dto/auth";
 import { authClient } from "@norish/shared/lib/auth/client";
 
-import NewFeatureChip from "../../components/new-feature-chip";
-
-const ACCOUNTS_KEY = ["auth", "accounts"];
-
 type ErrorMessage =
   "usedByAnotherAccount" | "lastMethod" | "signInAgain" | "addFailed" | "removeFailed";
 
@@ -32,12 +28,10 @@ const ERROR_MESSAGES: Record<string, ErrorMessage> = {
 };
 
 // Better Auth's client answers `{ data, error }` rather than throwing.
-async function orThrow<T>(request: Promise<{ data: T | null; error: unknown }>): Promise<T | null> {
-  const { data, error } = await request;
+async function orThrow(request: Promise<{ error: unknown }>): Promise<void> {
+  const { error } = await request;
 
   if (error) throw error;
-
-  return data;
 }
 
 export default function SignInMethodsCard() {
@@ -51,10 +45,8 @@ export default function SignInMethodsCard() {
     ...trpc.config.authProviders.queryOptions(),
     select: (data) => data.providers,
   });
-  const { data: accounts = [] } = useQuery({
-    queryKey: ACCOUNTS_KEY,
-    queryFn: async () => (await orThrow(authClient.listAccounts())) ?? [],
-  });
+  const accountsQuery = trpc.user.signInMethods.queryOptions();
+  const { data: accounts = [] } = useQuery(accountsQuery);
 
   const showError = (code: string | undefined, fallback: ErrorMessage) =>
     toast(t(`errors.${ERROR_MESSAGES[code ?? ""] ?? fallback}`), { variant: "danger" });
@@ -84,7 +76,7 @@ export default function SignInMethodsCard() {
   const remove = useMutation({
     mutationFn: (accountId: string) => orThrow(authClient.unlinkAccount({ accountId })),
     onError: (error: { code?: string }) => showError(error.code, "removeFailed"),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: accountsQuery.queryKey }),
   });
 
   const offeredIds = new Set(offered.map((provider) => provider.id));
@@ -101,13 +93,11 @@ export default function SignInMethodsCard() {
       provider.type === "oauth" && !accounts.some((account) => account.providerId === provider.id)
   );
 
+  // With one method on the server there is nothing to add or remove.
+  if (offered.length < 2) return null;
+
   return (
-    <SettingsCard
-      badges={<NewFeatureChip showOnVersion="0.26.0" />}
-      description={t("description")}
-      icon={FingerPrintIcon}
-      title={t("title")}
-    >
+    <SettingsCard description={t("description")} icon={FingerPrintIcon} title={t("title")}>
       <ul className="divide-border divide-y">
         {accounts.map((account) => {
           const canRemove = keepsOfferedSignInMethod(accounts, account.id, offeredIds);

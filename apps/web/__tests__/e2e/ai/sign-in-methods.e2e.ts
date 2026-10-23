@@ -17,12 +17,19 @@ test("a password user adds OIDC in Settings, signs in with it, and removes it", 
     const page = await passwordContext.newPage();
     const oidcRow = page.getByRole("listitem").filter({ hasText: IDP_NAME });
 
-    await page.goto("/settings");
+    // The server renders the card with its rows, so it never shows an Add it takes back.
+    const html = await (await page.goto("/settings"))?.text();
+
+    expect(html).toContain(">Password</span>");
+    expect(html).toContain(`>${IDP_NAME}</span>`);
     await expect(page.getByRole("listitem").filter({ hasText: "Password" })).toBeVisible();
 
     // Cancelling at the identity provider comes back with nothing added.
     aiStack.idp.signInAs = null;
-    await oidcRow.getByRole("button", { name: "Add" }).click();
+    await Promise.all([
+      page.waitForURL(/error=access_denied/),
+      oidcRow.getByRole("button", { name: "Add" }).click(),
+    ]);
     await expect(page).toHaveURL(/\/settings$/);
     await expect(oidcRow.getByRole("button", { name: "Add" })).toBeVisible();
 
