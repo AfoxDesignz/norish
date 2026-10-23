@@ -243,14 +243,14 @@ describe("asking AI about an Ingredient", () => {
     const frankfurter = await kept("frankfurter");
     const knaks = await flagged("Unox Knaks");
 
-    reads({ englishName: "frankfurter", parent: "sausage", sure: true });
+    reads({ englishName: "frankfurter", parents: ["sausage"], sure: true });
 
     await expect(askAIAbout(knaks.ingredientId)).resolves.toMatchObject({
       outcome: "merge",
       into: "frankfurter",
       sure: true,
       englishName: "frankfurter",
-      parent: "sausage",
+      parents: ["sausage"],
       considered: [],
     });
     await expect(findIngredientByAliasId(knaks.aliasId)).resolves.toMatchObject({
@@ -269,9 +269,9 @@ describe("asking AI about an Ingredient", () => {
     const tomaat = await flagged("tomaat");
     const courgette = await flagged("courgette");
 
-    reads({ englishName: "tomato, chopped", parent: null, sure: true });
+    reads({ englishName: "tomato, chopped", sure: true });
     await expect(askAIAbout(tomaat.ingredientId)).resolves.toMatchObject({ outcome: "merge" });
-    reads({ englishName: "zuchini", parent: null, sure: true });
+    reads({ englishName: "zuchini", sure: true });
     decides("Is zucchini", 0.95);
     await expect(askAIAbout(courgette.ingredientId)).resolves.toMatchObject({ outcome: "merge" });
 
@@ -289,7 +289,6 @@ describe("asking AI about an Ingredient", () => {
 
     reads({
       englishName: "frankfurter",
-      parent: null,
       otherNames: ["hot dog sausage", "wiener"],
       sure: true,
     });
@@ -316,7 +315,7 @@ describe("asking AI about an Ingredient", () => {
     const onion = await kept("onion");
     const rings = await flagged("onion rings");
 
-    reads({ englishName: "onion", parent: null, sure: false });
+    reads({ englishName: "onion", sure: false });
 
     await expect(askAIAbout(rings.ingredientId)).resolves.toMatchObject({
       outcome: "merge",
@@ -335,7 +334,7 @@ describe("asking AI about an Ingredient", () => {
     const onion = await kept("onion");
     const red = await flagged("rode uien");
 
-    reads({ englishName: "red onion", parent: "onion", sure: true });
+    reads({ englishName: "red onion", parents: ["onion"], sure: true });
 
     await expect(askAIAbout(red.ingredientId)).resolves.toMatchObject({
       outcome: "parent",
@@ -358,7 +357,7 @@ describe("asking AI about an Ingredient", () => {
     const onion = await kept("onion");
     const red = await flagged("red onion");
 
-    reads({ englishName: "red onion", parent: "onion", sure: false });
+    reads({ englishName: "red onion", parents: ["onion"], sure: false });
 
     await expect(askAIAbout(red.ingredientId)).resolves.toMatchObject({
       outcome: "parent",
@@ -380,7 +379,7 @@ describe("asking AI about an Ingredient", () => {
     const spring = await flagged("Spring Onions Fresh");
 
     // "spring onion" is a plural away from the food's own spelling, which is no answer.
-    reads({ englishName: "spring onion", parent: null, sure: true });
+    reads({ englishName: "spring onion", sure: true });
     answers("ingredient-plain-name", { plainName: "spring onions" });
 
     await expect(askAIAbout(spring.ingredientId)).resolves.toMatchObject({
@@ -398,7 +397,7 @@ describe("asking AI about an Ingredient", () => {
   it("leaves a food AI is not sure is its own as it was, flagged as unsure", async () => {
     const thing = await flagged("Multitool deluxe");
 
-    reads({ englishName: "multitool", parent: "tool", sure: false });
+    reads({ englishName: "multitool", parents: ["tool"], sure: false });
 
     await expect(askAIAbout(thing.ingredientId)).resolves.toMatchObject({
       outcome: "unsure",
@@ -427,7 +426,7 @@ describe("asking AI about an Ingredient", () => {
     it("drops the parent, listed on Changed by AI to undo", async () => {
       const { food } = await underButter("peanut butter");
 
-      reads({ englishName: "peanut butter", parent: "spread", sure: true });
+      reads({ englishName: "peanut butter", parents: ["spread"], sure: true });
 
       await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
         outcome: "no-parent",
@@ -449,12 +448,12 @@ describe("asking AI about an Ingredient", () => {
     it("puts the parent back on Undo, and AI leaves it when asked again", async () => {
       const { food, butter } = await underButter("peanut butter");
 
-      reads({ englishName: "peanut butter", parent: null, sure: true });
+      reads({ englishName: "peanut butter", sure: true });
       await askAIAbout(food.ingredientId);
       await undoAIChange(actor, (await listAIChanges())[0]!.id);
       await expect(parentOf(food.ingredientId)).resolves.toBe(butter);
 
-      reads({ englishName: "peanut butter", parent: null, sure: true });
+      reads({ englishName: "peanut butter", sure: true });
       await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
         outcome: "skipped",
         reason: "undone",
@@ -465,7 +464,7 @@ describe("asking AI about an Ingredient", () => {
     it("drops the parent when unsure too, flagging the food, and Undo puts it back", async () => {
       const { food, butter } = await underButter("cookie butter");
 
-      reads({ englishName: "cookie butter", parent: null, sure: false });
+      reads({ englishName: "cookie butter", sure: false });
 
       await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
         outcome: "no-parent",
@@ -506,7 +505,7 @@ describe("asking AI about an Ingredient", () => {
           .set({ parentId: null })
           .where(eq(ingredients.id, food.ingredientId));
 
-        return foodReading({ englishName: "peanut butter", parent: null, sure: true });
+        return foodReading({ englishName: "peanut butter", sure: true });
       }) as never);
 
       await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
@@ -517,7 +516,7 @@ describe("asking AI about an Ingredient", () => {
       const { food, butter } = await underButter("peanut butter");
       const spread = await kept("spread");
 
-      reads({ englishName: "peanut butter", parent: null, sure: true });
+      reads({ englishName: "peanut butter", sure: true });
       await askAIAbout(food.ingredientId);
       await withTransaction((tx) => mergeCatalogueIngredients(tx, butter!, spread.ingredientId));
 
@@ -544,10 +543,10 @@ describe("asking AI about an Ingredient", () => {
     it("shows AI the parent the food is filed under, and keeps it when AI names it", async () => {
       const { food, filed } = await under("whey", "chocolate whey");
 
-      reads({ englishName: "chocolate whey protein", parent: "whey", sure: true });
+      reads({ englishName: "chocolate whey protein", parents: ["whey"], sure: true });
 
       await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
-        parent: "whey",
+        parents: ["whey"],
       });
       expect(vi.mocked(generateStructured).mock.calls[0]![0].sections).toEqual([
         "Name: chocolate whey",
@@ -571,7 +570,7 @@ describe("asking AI about an Ingredient", () => {
         .update(ingredients)
         .set({ parentId: bell.ingredientId })
         .where(eq(ingredients.id, pointed.ingredientId));
-      reads({ englishName: "red pointed pepper", parent: "pepper", sure: true });
+      reads({ englishName: "red pointed pepper", parents: ["pepper"], sure: true });
 
       await expect(askAIAbout(pointed.ingredientId)).resolves.toMatchObject({
         outcome: "parent",
@@ -597,7 +596,7 @@ describe("asking AI about an Ingredient", () => {
           mergeCatalogueIngredients(tx, biefstuk.ingredientId, steak.ingredientId)
         );
 
-        return foodReading({ englishName: "beef tips", parent: "biefstuk", sure: true });
+        return foodReading({ englishName: "beef tips", parents: ["biefstuk"], sure: true });
       }) as never);
 
       await expect(askAIAbout(puntjes.ingredientId)).resolves.toMatchObject({
@@ -612,7 +611,7 @@ describe("asking AI about an Ingredient", () => {
       const { food } = await under("spice", "chinese 5 spice");
       const mixed = await kept("mixed spices");
 
-      reads({ englishName: "five spice powder", parent: "mixed spices", sure: true });
+      reads({ englishName: "five spice powder", parents: ["mixed spices"], sure: true });
 
       await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
         outcome: "parent",
@@ -626,7 +625,7 @@ describe("asking AI about an Ingredient", () => {
     it("keeps the category it is filed under when AI names it as the category", async () => {
       const { food, filed } = await under("spice", "chinese 5 spice");
 
-      reads({ englishName: "five spice powder", parent: null, category: "spice", sure: true });
+      reads({ englishName: "five spice powder", category: "spice", sure: true });
 
       await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({ category: "spice" });
       await expect(parentOf(food.ingredientId)).resolves.toBe(filed);
@@ -644,7 +643,7 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "Cajun seasoning",
-        parent: "Cajun spice",
+        parents: ["Cajun spice"],
         category: "mixed spices",
         sure: true,
       });
@@ -657,7 +656,7 @@ describe("asking AI about an Ingredient", () => {
       await kept("toppings");
       const food = await flagged("whipped topping");
 
-      reads({ englishName: "whipped topping", parent: null, category: "toppings", sure: true });
+      reads({ englishName: "whipped topping", category: "toppings", sure: true });
       await askAIAbout(food.ingredientId);
 
       await expect(parentOf(food.ingredientId)).resolves.toBeNull();
@@ -666,7 +665,7 @@ describe("asking AI about an Ingredient", () => {
     it("drops the parent when the catalogue lacks the category too", async () => {
       const { food } = await under("fish", "Klop-Fix fish");
 
-      reads({ englishName: "fish batter mix", parent: null, category: "baking mix", sure: true });
+      reads({ englishName: "fish batter mix", category: "baking mix", sure: true });
 
       await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({
         outcome: "no-parent",
@@ -681,7 +680,7 @@ describe("asking AI about an Ingredient", () => {
     async function filedByAI(text: string, parent: string) {
       const food = await flagged(text);
 
-      reads({ englishName: text, parent, sure: true });
+      reads({ englishName: text, parents: [parent], sure: true });
       await expect(askAIAbout(food.ingredientId)).resolves.toMatchObject({ outcome: "parent" });
 
       return food;
@@ -691,7 +690,7 @@ describe("asking AI about an Ingredient", () => {
       const kipgehakt = await kept("kipgehakt");
       const lean = await filedByAI("lean chicken mince", "kipgehakt");
 
-      reads({ englishName: "lean chicken mince", parent: "chicken mince", sure: true });
+      reads({ englishName: "lean chicken mince", parents: ["chicken mince"], sure: true });
 
       await expect(askAIAbout(lean.ingredientId)).resolves.toMatchObject({
         outcome: "parent",
@@ -706,7 +705,6 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "unflavored protein powder",
-        parent: null,
         category: "protein powder",
         sure: true,
       });
@@ -728,7 +726,6 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "tomato",
-        parent: null,
         otherNames: ["plum tomato"],
         sure: true,
       });
@@ -769,7 +766,7 @@ describe("asking AI about an Ingredient", () => {
 
       vi.mocked(decide).mockClear();
       vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
-      reads({ englishName: "tomato", parent: null, otherNames: ["plum tomato"], sure: true });
+      reads({ englishName: "tomato", otherNames: ["plum tomato"], sure: true });
       picks("tomato", false);
       await expect(askAIAbout(pomodoro.ingredientId)).resolves.toMatchObject({
         outcome: "merge",
@@ -850,7 +847,7 @@ describe("asking AI about an Ingredient", () => {
       vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
       reads({
         englishName: "red pesto",
-        parent: "pesto",
+        parents: ["pesto"],
         category: "sauce",
         otherNames: ["pesto rosso"],
         sure: true,
@@ -867,7 +864,7 @@ describe("asking AI about an Ingredient", () => {
       expect(second?.[0].sections).toEqual([
         "Name: rode pesto",
         "English name: red pesto",
-        "Parent: pesto",
+        "Parents: pesto",
         "Category: sauce",
         "Foods in the catalogue it may be:\n- red port (parent: port; matched: porto rosso; also: rode port)",
       ]);
@@ -883,7 +880,12 @@ describe("asking AI about an Ingredient", () => {
       await redPort();
       const pesto = await flagged("rode pesto");
 
-      reads({ englishName: "red pesto", parent: "pesto", otherNames: ["pesto rosso"], sure: true });
+      reads({
+        englishName: "red pesto",
+        parents: ["pesto"],
+        otherNames: ["pesto rosso"],
+        sure: true,
+      });
       decides("Is none of these", 0.9);
 
       await expect(askAIAbout(pesto.ingredientId)).resolves.toMatchObject({
@@ -892,7 +894,7 @@ describe("asking AI about an Ingredient", () => {
       expect(vi.mocked(decide).mock.calls[0]?.[0].state).toEqual({
         name: "rode pesto",
         englishName: "red pesto",
-        parent: "pesto",
+        parents: ["pesto"],
         foods: [
           { name: "red port", parent: "port", matched: "porto rosso", alsoKnownAs: ["rode port"] },
         ],
@@ -904,7 +906,12 @@ describe("asking AI about an Ingredient", () => {
       const pesto = await flagged("rode pesto");
 
       vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
-      reads({ englishName: "red pesto", parent: "pesto", otherNames: ["pesto rosso"], sure: true });
+      reads({
+        englishName: "red pesto",
+        parents: ["pesto"],
+        otherNames: ["pesto rosso"],
+        sure: true,
+      });
       picks(null, true);
 
       await expect(askAIAbout(pesto.ingredientId)).resolves.toMatchObject({
@@ -925,7 +932,7 @@ describe("asking AI about an Ingredient", () => {
       const sauce = await flagged("sambel");
 
       vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
-      reads({ englishName: "sambal olek", parent: null, sure: true });
+      reads({ englishName: "sambal olek", sure: true });
       picks(null, true);
 
       await expect(askAIAbout(sauce.ingredientId)).resolves.toMatchObject({
@@ -938,7 +945,7 @@ describe("asking AI about an Ingredient", () => {
       const tortilla = await kept("tortilla");
       const tortillas = await flagged("maïstortilla");
 
-      reads({ englishName: "tortila", parent: null, sure: true });
+      reads({ englishName: "tortila", sure: true });
       decides("Is tortilla", 0.97);
 
       await expect(askAIAbout(tortillas.ingredientId)).resolves.toMatchObject({
@@ -956,7 +963,7 @@ describe("asking AI about an Ingredient", () => {
       const tortilla = await kept("tortilla");
       const tortillas = await flagged("maïstortilla");
 
-      reads({ englishName: "tortila", parent: null, sure: true });
+      reads({ englishName: "tortila", sure: true });
       decides("Is tortilla", 0.85);
 
       await expect(askAIAbout(tortillas.ingredientId)).resolves.toMatchObject({
@@ -975,7 +982,7 @@ describe("asking AI about an Ingredient", () => {
       const tortillas = await flagged("maïstortilla");
 
       vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
-      reads({ englishName: "tortila", parent: null, sure: true });
+      reads({ englishName: "tortila", sure: true });
       picks("tortilla", true);
 
       await expect(askAIAbout(tortillas.ingredientId)).resolves.toMatchObject({
@@ -995,7 +1002,7 @@ describe("asking AI about an Ingredient", () => {
 
       await mintTestFood("tortila", { ownerId: actor.userId });
       vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
-      reads({ englishName: "tortila", parent: null, sure: true });
+      reads({ englishName: "tortila", sure: true });
       picks("tortilla", true);
 
       await expect(askAIAbout(tortillas.ingredientId)).resolves.toMatchObject({
@@ -1011,7 +1018,7 @@ describe("asking AI about an Ingredient", () => {
       await kept("red port");
       const rode = await flagged("rode pesto");
 
-      reads({ englishName: "red pesto", parent: null, otherNames: ["red pest"], sure: true });
+      reads({ englishName: "red pesto", otherNames: ["red pest"], sure: true });
 
       await expect(askAIAbout(rode.ingredientId)).resolves.toMatchObject({
         outcome: "merge",
@@ -1029,7 +1036,7 @@ describe("asking AI about an Ingredient", () => {
       const wrap = await flagged("maïswrap");
 
       vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
-      reads({ englishName: "corn wrap", parent: "tortila", sure: true });
+      reads({ englishName: "corn wrap", parents: ["tortila"], sure: true });
       picks(null, true);
       await expect(askAIAbout(wrap.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
       expect(listed()).toBe("Foods in the catalogue it may be:\n- tortilla");
@@ -1037,7 +1044,7 @@ describe("asking AI about an Ingredient", () => {
 
       const flour = await flagged("bloemwrap");
 
-      reads({ englishName: "flour wrap", parent: "tortila", sure: true });
+      reads({ englishName: "flour wrap", parents: ["tortila"], sure: true });
       picks("tortilla", false);
       await expect(askAIAbout(flour.ingredientId)).resolves.toMatchObject({
         outcome: "parent",
@@ -1051,7 +1058,7 @@ describe("asking AI about an Ingredient", () => {
       await unnamed("rye bread");
       const whole = await flagged("volkoren roggebrood");
 
-      reads({ englishName: "wholegrain rye bread", parent: "rye bread", sure: true });
+      reads({ englishName: "wholegrain rye bread", parents: ["rye bread"], sure: true });
       await expect(askAIAbout(whole.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
       await expect(parentOf(whole.ingredientId)).resolves.toBeNull();
     });
@@ -1066,7 +1073,7 @@ describe("asking AI about an Ingredient", () => {
       ]);
       const hero = await flagged("Hero Bosvruchtenjam");
 
-      reads({ englishName: "forest fruit jam", parent: "jam", sure: true });
+      reads({ englishName: "forest fruit jam", parents: ["jam"], sure: true });
 
       await expect(askAIAbout(hero.ingredientId)).resolves.toMatchObject({
         outcome: "parent",
@@ -1092,7 +1099,7 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "baby potatoes",
-        parent: "potato",
+        parents: ["potato"],
         otherNames: ["mini potatoes", "petite potatoes"],
         sure: true,
       });
@@ -1109,7 +1116,7 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "baby potatoes",
-        parent: "potato",
+        parents: ["potato"],
         otherNames: ["small potatoes", "petite potatoes"],
         sure: true,
       });
@@ -1135,7 +1142,7 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "red pepper flakes",
-        parent: "chili pepper",
+        parents: ["chili pepper"],
         otherNames: ["crushed red pepper", "red chili flakes"],
         sure: true,
       });
@@ -1154,7 +1161,7 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "deli ham",
-        parent: "ham",
+        parents: ["ham"],
         otherNames: ["sliced ham", "lunch meat ham"],
         sure: true,
       });
@@ -1170,7 +1177,7 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "Italian sausage",
-        parent: "sausage",
+        parents: ["sausage"],
         otherNames: ["Italian-style sausage", "salsiccia"],
         sure: true,
       });
@@ -1190,7 +1197,7 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "pumpkin puree",
-        parent: "pumpkin",
+        parents: ["pumpkin"],
         otherNames: ["pureed pumpkin"],
         sure: true,
       });
@@ -1211,7 +1218,7 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "Chicken thigh",
-        parent: "chicken thigh",
+        parents: ["chicken thigh"],
         otherNames: ["chicken thighs"],
         sure: true,
       });
@@ -1233,7 +1240,7 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "edamame beans",
-        parent: "edamame",
+        parents: ["edamame"],
         otherNames: ["young soybeans"],
         sure: true,
       });
@@ -1257,7 +1264,7 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "guajillo pepper",
-        parent: "guajillo chili",
+        parents: ["guajillo chili"],
         otherNames: ["guajillo chile", "Guajillo chili"],
         sure: true,
       });
@@ -1279,7 +1286,7 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "guajillo pepper",
-        parent: "guajillo chili",
+        parents: ["guajillo chili"],
         otherNames: ["guajillo chile", "dried guajillo pepper", "mirasol chile"],
         sure: true,
       });
@@ -1301,7 +1308,7 @@ describe("asking AI about an Ingredient", () => {
 
       reads({
         englishName: "tenderstem broccoli",
-        parent: "broccoli",
+        parents: ["broccoli"],
         otherNames: ["broccolini"],
         sure: true,
       });
@@ -1327,8 +1334,8 @@ describe("asking AI about an Ingredient", () => {
       const buns = await flagged("burger buns");
       const salam = await flagged("salam blaadjes");
 
-      reads({ englishName: "burger buns", parent: "bun", sure: true });
-      reads({ englishName: "salam leaves", parent: "salam", sure: true });
+      reads({ englishName: "burger buns", parents: ["bun"], sure: true });
+      reads({ englishName: "salam leaves", parents: ["salam"], sure: true });
       // Salam is a slip from salami's English name, so that is asked about, not taken.
       picks(null, true);
 
@@ -1336,6 +1343,78 @@ describe("asking AI about an Ingredient", () => {
       await expect(askAIAbout(salam.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
       await expect(parentOf(buns.ingredientId)).resolves.toBeNull();
       await expect(parentOf(salam.ingredientId)).resolves.toBeNull();
+    });
+  });
+
+  describe("AI's several parents, in the name's language and in English", () => {
+    it("files mager kipgehakt under the own food kipgehakt, its native parent, though chicken mince finds nothing", async () => {
+      const kipgehakt = await kept("kipgehakt");
+      const mager = await flagged("mager kipgehakt");
+
+      reads({
+        englishName: "lean chicken mince",
+        parents: ["chicken mince"],
+        nativeParents: ["kipgehakt"],
+        sure: true,
+      });
+
+      await expect(askAIAbout(mager.ingredientId)).resolves.toMatchObject({
+        outcome: "parent",
+        of: "kipgehakt",
+        nativeParents: ["kipgehakt"],
+      });
+      await expect(parentOf(mager.ingredientId)).resolves.toBe(kipgehakt.ingredientId);
+    });
+
+    it("files burger buns under bread roll, the first of its parents the catalogue has", async () => {
+      await applyIngredientSeed([seedEntry("en:bread-roll", "bread roll")]);
+      const roll = (await findIngredientFor("bread roll"))!;
+      const buns = await flagged("burger buns");
+
+      reads({ englishName: "burger buns", parents: ["bun", "bread roll"], sure: true });
+
+      await expect(askAIAbout(buns.ingredientId)).resolves.toMatchObject({
+        outcome: "parent",
+        of: "bread roll",
+      });
+      await expect(parentOf(buns.ingredientId)).resolves.toBe(roll.ingredientId);
+    });
+
+    it("prefers the native parent when the English one finds a food too", async () => {
+      await applyIngredientSeed([seedEntry("en:chicken-mince", "chicken mince")]);
+      const kipgehakt = await kept("kipgehakt");
+      const mager = await flagged("mager kipgehakt");
+
+      reads({
+        englishName: "lean chicken mince",
+        parents: ["chicken mince"],
+        nativeParents: ["kipgehakt"],
+        sure: true,
+      });
+      await askAIAbout(mager.ingredientId);
+
+      await expect(parentOf(mager.ingredientId)).resolves.toBe(kipgehakt.ingredientId);
+    });
+
+    it("files italian sausage under sausage, the parent its names find, though the native parent finds braadworst", async () => {
+      await applyIngredientSeed([seedEntry("en:sausage", "sausage", "salsiccia")]);
+      const sausage = (await findIngredientFor("sausage"))!;
+      await kept("braadworst");
+      const italian = await flagged("italian sausage");
+
+      reads({
+        englishName: "Italian sausage",
+        parents: ["sausage"],
+        nativeParents: ["braadworst"],
+        otherNames: ["salsiccia"],
+        sure: true,
+      });
+
+      await expect(askAIAbout(italian.ingredientId)).resolves.toMatchObject({
+        outcome: "parent",
+        of: "sausage",
+      });
+      await expect(parentOf(italian.ingredientId)).resolves.toBe(sausage.ingredientId);
     });
   });
 
@@ -1384,7 +1463,7 @@ describe("asking AI about an Ingredient", () => {
     await kept("onion");
     const red = await flagged("red onion");
 
-    reads({ englishName: "red onion", parent: "onion", sure: false });
+    reads({ englishName: "red onion", parents: ["onion"], sure: false });
     await askAIAbout(red.ingredientId);
     answers("ingredient-resolution", new Error("model unreachable"));
 
@@ -1484,7 +1563,7 @@ describe("asking AI about an Ingredient", () => {
     await unnamed("rye bread");
     const rogge = await flagged("roggebrood");
 
-    reads({ englishName: "rye bread", parent: null, sure: true });
+    reads({ englishName: "rye bread", sure: true });
     await expect(askAIAbout(rogge.ingredientId)).resolves.toMatchObject({ outcome: "distinct" });
     await expect(findIngredientByAliasId(rogge.aliasId)).resolves.toMatchObject({
       id: rogge.ingredientId,
@@ -1496,20 +1575,20 @@ describe("asking AI about an Ingredient", () => {
     const bulbs = await flagged("onion bulbs");
     const red = await flagged("red onion");
 
-    reads({ englishName: "onion", parent: null, sure: true });
+    reads({ englishName: "onion", sure: true });
     await askAIAbout(bulbs.ingredientId);
-    reads({ englishName: "red onion", parent: "onion", sure: true });
+    reads({ englishName: "red onion", parents: ["onion"], sure: true });
     await askAIAbout(red.ingredientId);
     for (const change of await listAIChanges()) await undoAIChange(actor, change.id);
 
     const restored = (await findIngredientByAliasId(bulbs.aliasId))!;
 
-    reads({ englishName: "onion", parent: null, sure: true });
+    reads({ englishName: "onion", sure: true });
     await expect(askAIAbout(restored.id)).resolves.toMatchObject({
       outcome: "skipped",
       reason: "undone",
     });
-    reads({ englishName: "red onion", parent: "onion", sure: true });
+    reads({ englishName: "red onion", parents: ["onion"], sure: true });
     await expect(askAIAbout(red.ingredientId)).resolves.toMatchObject({
       outcome: "skipped",
       reason: "undone",
@@ -1525,7 +1604,7 @@ describe("asking AI about an Ingredient", () => {
     await kept("onion");
     const red = await flagged("red onion");
 
-    reads({ englishName: "red onion", parent: "onion", sure: false });
+    reads({ englishName: "red onion", parents: ["onion"], sure: false });
     await askAIAbout(red.ingredientId);
     await keepAIChange(actor, (await listAIChanges())[0]!.id);
 
@@ -1633,7 +1712,7 @@ describe("asking AI about an Ingredient", () => {
       await kept("plum tomato");
       const tomaat = await flagged("tomaat");
 
-      reads({ englishName: "tomato", parent: null, otherNames: ["plum tomato"], sure: true });
+      reads({ englishName: "tomato", otherNames: ["plum tomato"], sure: true });
       vi.mocked(decide).mockRejectedValueOnce(timedOut());
       answers("ingredient-match", timedOut());
       picks("tomato", true);

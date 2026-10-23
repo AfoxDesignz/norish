@@ -147,7 +147,7 @@ describe("ingredient resolver with AI on", () => {
       // The pass reads "rode uien" as red onion, a kind of onion, and files it there.
       const red = lines[1]!.ingredientId!;
 
-      modelAnswers.push(foodReading({ englishName: "red onion", parent: "onion", sure: true }));
+      modelAnswers.push(foodReading({ englishName: "red onion", parents: ["onion"], sure: true }));
       await expect(askAIAbout(red)).resolves.toMatchObject({ outcome: "parent", of: "onion" });
       await expect(findIngredientAncestors([red])).resolves.toEqual(
         new Map([[red, [onion.ingredientId]]])

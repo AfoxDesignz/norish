@@ -91,8 +91,10 @@ export type ReviewVerdict =
 export interface ReviewTrace {
   /** The plain English food AI read the name as, when it said. */
   englishName: string | null;
-  /** The plain food AI said it is made of or sold as, its parent. */
-  parent: string | null;
+  /** The plain foods AI said it is made of or sold as, its parents, in English. */
+  parents: string[];
+  /** Those parents in the name's own language. */
+  nativeParents: string[];
   /** The general group AI said it belongs under, filed under where no parent is found. */
   category: string | null;
   /** The other names AI said a shop sells it under. */
@@ -107,7 +109,8 @@ export interface ReviewTrace {
 export function noTrace(): ReviewTrace {
   return {
     englishName: null,
-    parent: null,
+    parents: [],
+    nativeParents: [],
     category: null,
     otherNames: [],
     parts: null,

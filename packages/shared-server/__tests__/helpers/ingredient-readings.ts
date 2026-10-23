@@ -2,16 +2,25 @@
 interface ReadFood {
   written?: string;
   englishName: string;
-  parent?: string | null;
+  parents?: string[];
+  nativeParents?: string[];
   category?: string | null;
   otherNames?: string[];
 }
 
-function food({ written, englishName, parent = null, category = null, otherNames }: ReadFood) {
+function food({
+  written,
+  englishName,
+  parents,
+  nativeParents,
+  category = null,
+  otherNames,
+}: ReadFood) {
   return {
     written: written ?? englishName,
     englishName,
-    parent,
+    parents: parents ?? null,
+    nativeParents: nativeParents ?? null,
     category,
     otherNames: otherNames ?? null,
   };

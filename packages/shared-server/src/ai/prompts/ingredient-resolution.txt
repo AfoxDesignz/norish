@@ -18,9 +18,9 @@ cook already owns and uses, not something bought for the recipe: "rolling pin",
 ("melted", "overnight and drained") is not a food.
 
 A "Parent:" section shows the food the name is filed under today. Check it like
-any other answer. Keep it as the parent if correct; otherwise give the correct
-parent or null. If there is no parent, give the category when appropriate, or
-null.
+any other answer. Keep it among the parents if correct; otherwise give the
+correct parents or null. If there are no parents, give the category when
+appropriate, or null.
 
 Give two or three other names a shop might sell the same food under; Norish
 finds the food by them.

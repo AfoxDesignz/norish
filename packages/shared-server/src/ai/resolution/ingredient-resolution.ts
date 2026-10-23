@@ -138,7 +138,8 @@ async function readThenLookUp(
 
   Object.assign(trace, {
     englishName: food.englishName,
-    parent: food.parent,
+    parents: food.parents,
+    nativeParents: food.nativeParents,
     category: food.category,
     otherNames: food.otherNames,
   });
@@ -151,18 +152,19 @@ async function readThenLookUp(
     sure: reading.sure && found.sure,
   });
 
-  // The English name finding a food exactly, or an other name that spells AI's parent (plurals
-  // included, read whole), says the name is that food, its parent or not.
+  // The English name finding a food exactly, or an other name that spells one of AI's parents
+  // (plurals included, read whole), says the name is that food, its parent or not.
   const rules = await currentRules();
+  const parents = [...food.nativeParents, ...food.parents];
   const parentNamed = food.otherNames.some((name) =>
-    sameFood(name, food.parent, rules, wholeFoodKey)
+    parents.some((parent) => sameFood(name, parent, rules, wholeFoodKey))
   );
 
   if (found.food && ((food.englishName && found.byFirstName) || parentNamed)) {
     return same(found.food.ingredientId);
   }
   const category = found.food ? null : food.category;
-  const parent = await parentOf(food.parent, category, { excludeId, filedUnder, trace });
+  const parent = await parentOf(parents, category, found.food, { excludeId, filedUnder, trace });
 
   // A food only AI's other names (or a slip) find is never the parent AI gave: filed under it.
   if (found.food && parent?.food?.id !== found.food.ingredientId) {
@@ -180,22 +182,38 @@ async function readThenLookUp(
 }
 
 /**
- * The parent AI named, found, else the category; null where neither is named. AI's parent as the
- * last words of the parent the food has ("pepper" for "red bell pepper") is it.
+ * The first of AI's parents that finds a food (one finding `named` before it), else the category; one
+ * that is the last words of the parent the food has ("pepper" for "red bell pepper") is it.
  */
 async function parentOf(
-  parent: string | null,
+  parents: readonly string[],
   category: string | null,
+  named: IngredientRef | null,
   { excludeId, filedUnder, trace }: AskOptions
 ): Promise<{ food: { id: string; name: string } | null; sure: boolean } | null> {
-  if (parent && filedUnder && ` ${foldName(filedUnder.name)}`.endsWith(` ${foldName(parent)}`)) {
+  const current = filedUnder && ` ${foldName(filedUnder.name)}`;
+
+  if (current && parents.some((name) => current.endsWith(` ${foldName(name)}`))) {
     return { food: filedUnder, sure: true };
   }
+  if (parents.length > 0) {
+    const byParent = await findFood(parents, { except: excludeId, among: "listed" });
+    const findsNamed = byParent.findIndex((foods) =>
+      foods.some((one) => one.ingredientId === named?.ingredientId)
+    );
+    const at = Math.max(
+      0,
+      findsNamed >= 0 ? findsNamed : byParent.findIndex((foods) => foods.length > 0)
+    );
+    const parent = parents[at]!;
+    const found = await pickAmong({ name: parent, readAs: NOTHING_READ }, [byParent[at]!], trace);
 
-  const found = parent ? await findByName(parent, excludeId, trace) : null;
-
-  if (parent && found && (found.food || !category)) {
-    return { food: found.food && { id: found.food.ingredientId, name: parent }, sure: found.sure };
+    if (found.food || !category) {
+      return {
+        food: found.food && { id: found.food.ingredientId, name: parent },
+        sure: found.sure,
+      };
+    }
   }
   if (!category) return null;
   const filed = await findByName(category, excludeId, trace, "seeded");
@@ -221,11 +239,9 @@ export async function findFoodNamed(
   }
 }
 
-/** `findNamed` for a name AI gave alone, with no reading of its own (a parent, a category). */
+/** `findNamed` for a name AI gave alone, with no reading of its own (a category). */
 function findByName(name: string, excludeId: string, trace: ReviewTrace, among?: "seeded") {
-  const readAs = { englishName: null, parent: null, category: null };
-
-  return findNamed({ name, readAs }, excludeId, [name], trace, among);
+  return findNamed({ name, readAs: NOTHING_READ }, excludeId, [name], trace, among);
 }
 
 /** A read food's names to look up: its English name and the other names a shop sells it under. */
@@ -233,11 +249,14 @@ function namesOf(food: ReadFood): string[] {
   return [food.englishName, ...food.otherNames].filter((name) => name !== null);
 }
 
-/** A name the second question is about: as written, and what AI read it as (nulls for a parent's name). */
+/** A name the second question is about: as written, and what AI read it as. */
 interface Asked {
   name: string;
-  readAs: { englishName: string | null; parent: string | null; category: string | null };
+  readAs: { englishName: string | null; parents: string[]; category: string | null };
 }
+
+/** The reading of a name AI gave alone, a parent's or a category's. */
+const NOTHING_READ: Asked["readAs"] = { englishName: null, parents: [], category: null };
 
 /** The food names found, and whether the first name found it by its own spelling. */
 interface Found {
@@ -260,7 +279,15 @@ async function findNamed(
   trace: ReviewTrace,
   among: "listed" | "seeded" = "listed"
 ): Promise<Found> {
-  const byName = await findFood(names, { except: excludeId, among });
+  return await pickAmong(asked, await findFood(names, { except: excludeId, among }), trace);
+}
+
+/** The food among what each name found: an exact spelling wins, else several or slips are asked about. */
+async function pickAmong(
+  asked: Asked,
+  byName: Awaited<ReturnType<typeof findFood>>,
+  trace: ReviewTrace
+): Promise<Found> {
   const found = byName.flat();
   const exact = found.filter(isExact);
   const ranked = distinctFoods(
@@ -296,7 +323,8 @@ async function findNamed(
 interface ReadFood {
   written: string;
   englishName: string | null;
-  parent: string | null;
+  parents: string[];
+  nativeParents: string[];
   category: string | null;
   otherNames: string[];
 }
@@ -317,17 +345,23 @@ const readFoodSchema = z
       .describe(
         'Its English name, without what the cook does to it ("tomatoes, chopped" is "tomato") but with what makes it another product ("pumpkin puree", "baby potatoes").'
       ),
-    parent: z
-      .string()
+    parents: z
+      .array(z.string())
       .nullable()
       .describe(
-        'The plain food a shopper buys that this is made of or sold as ("chocolate whey" is "whey", "rode uien" is "onion"). Null when there is none, or when the name is that plain food itself.'
+        'Two or three English wordings of the plain food a shopper buys that this is made of or sold as, the most specific first ("burger buns" is "bun" and "bread roll", "chocolate whey" is "whey protein" and "whey"). Null when there is none, or when the name is that plain food itself.'
+      ),
+    nativeParents: z
+      .array(z.string())
+      .nullable()
+      .describe(
+        'The same parents in the name\'s own language, the most specific first ("mager kipgehakt" is "kipgehakt" and "gehakt"). Null when there are no parents.'
       ),
     category: z
       .string()
       .nullable()
       .describe(
-        'The general group it belongs under ("spice", "sauce", "dog food"), used only when the catalogue has no food named its parent. Null when no group fits.'
+        'The general group it belongs under ("spice", "sauce", "dog food"), used only when the catalogue has no food named by its parents. Null when no group fits.'
       ),
     otherNames: z
       .array(z.string())
@@ -379,12 +413,15 @@ const readingSchema = z
  */
 function asReading(answer: z.infer<typeof readingSchema>): Reading | null {
   const plain = (name: string | null) => name?.trim() || null;
+  const plainAll = (names: string[] | null) =>
+    (names ?? []).map(plain).filter((name) => name !== null);
   const foods = answer.foods.map((food) => ({
     written: food.written.trim(),
     englishName: plain(food.englishName),
-    parent: plain(food.parent),
+    parents: plainAll(food.parents),
+    nativeParents: plainAll(food.nativeParents),
     category: plain(food.category),
-    otherNames: (food.otherNames ?? []).map(plain).filter((name) => name !== null),
+    otherNames: plainAll(food.otherNames),
   }));
   const { kind, joined, reason } = answer.action;
   const [first, ...rest] = foods;
@@ -472,10 +509,12 @@ async function askWhich(
 
 const NONE = "none";
 
-/** Just the fields that are set. */
+/** Just the fields that are set: no null, no empty list. */
 function present<T extends Record<string, unknown>>(fields: T): Partial<T> {
   return Object.fromEntries(
-    Object.entries(fields).filter(([, value]) => value !== null)
+    Object.entries(fields).filter(
+      ([, value]) => value !== null && !(Array.isArray(value) && value.length === 0)
+    )
   ) as Partial<T>;
 }
 
@@ -504,7 +543,7 @@ function foodChoice({ name, readAs }: Asked, candidates: readonly Candidate[]) {
       name,
       ...present({
         englishName: readAs.englishName,
-        parent: readAs.parent,
+        parents: readAs.parents,
         category: readAs.category,
       }),
       foods: candidates.map((candidate) => {
@@ -585,7 +624,7 @@ async function askLanguageModel(
 ): Promise<Pick> {
   const reading = [
     readAs.englishName ? `English name: ${readAs.englishName}` : null,
-    readAs.parent ? `Parent: ${readAs.parent}` : null,
+    readAs.parents.length > 0 ? `Parents: ${readAs.parents.join(", ")}` : null,
     readAs.category ? `Category: ${readAs.category}` : null,
   ].filter((line) => line !== null);
   const foodLine = (candidate: Candidate) => {
