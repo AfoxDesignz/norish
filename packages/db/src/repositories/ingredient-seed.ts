@@ -28,7 +28,7 @@ import {
 } from "./ingredient-catalogue";
 import { findRowsNamingSpellings } from "./ingredient-cleanup";
 import {
-  findIngredientAncestors,
+  closesCycle,
   lockIngredients,
   lockTree,
   moveCatalogueAlias,
@@ -130,7 +130,7 @@ async function holdersOf(
 }
 
 /** Whether giving `id` the parent `parentId` would make it its own ancestor. */
-function closesCycle(parents: ReadonlyMap<string, string | null>, id: string, parentId: string) {
+function closesCycleIn(parents: ReadonlyMap<string, string | null>, id: string, parentId: string) {
   let current: string | null | undefined = parentId;
 
   for (let depth = 0; current && depth < 64; depth += 1) {
@@ -345,7 +345,7 @@ export async function applyIngredientSeed(entries: readonly SeedEntry[]): Promis
 
       // A parent the resolver set from an AI answer stays where the file has none.
       if (parentId === null || parentId === row.parentId || parentId === id) continue;
-      if (parentId && closesCycle(parents, id, parentId)) {
+      if (parentId && closesCycleIn(parents, id, parentId)) {
         outcome.parentCycles += 1;
         continue;
       }
@@ -672,10 +672,7 @@ export async function fileUndecidedMint(id: string, parentId: string): Promise<b
 async function fileUnder(id: string, parentId: string, where: SQL | undefined): Promise<boolean> {
   return await db.transaction(async (tx) => {
     await lockTree(tx);
-    if ((await findIngredientAncestors([parentId], tx)).get(parentId)?.includes(id)) {
-      return false;
-    }
-    if (id === parentId) return false;
+    if (await closesCycle(tx, id, parentId)) return false;
     // A person undid this parent once: AI and the words never set it again.
     if (await wasParentUndone(tx, id, parentId)) return false;
 

@@ -56,6 +56,7 @@ import { findRowsNamingFood, repointLines } from "@norish/db/repositories/ingred
 import { setIngredientIcon } from "@norish/db/repositories/ingredient-icons";
 import { addToJunkPile, takeOffJunkPile } from "@norish/db/repositories/ingredient-junk-pile";
 import {
+  closesCycle,
   countAliasesOf,
   findIngredientAncestors,
   insertCatalogueIngredient,
@@ -478,10 +479,7 @@ async function setParentIn(
   const ids = parentId ? [ingredientId, parentId] : [ingredientId];
 
   if ((await lockIngredients(tx, ids)) < ids.length) throw new CatalogueEditError("not-found");
-  if (
-    parentId &&
-    (await findIngredientAncestors([parentId], tx)).get(parentId)?.includes(ingredientId)
-  ) {
+  if (parentId && (await closesCycle(tx, ingredientId, parentId))) {
     throw new CatalogueEditError("cycle");
   }
   // The parent it leaves and the one it joins each count one kind more or less.

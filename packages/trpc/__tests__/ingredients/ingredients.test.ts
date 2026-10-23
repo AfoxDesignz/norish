@@ -33,6 +33,7 @@ const catalogue = vi.hoisted(() => ({
   renameCatalogueIngredient: vi.fn(),
 }));
 const relocation = vi.hoisted(() => ({
+  closesCycle: vi.fn(async () => false),
   countAliasesOf: vi.fn(),
   findIngredientAncestors: vi.fn(),
   insertCatalogueIngredient: vi.fn(),
@@ -555,7 +556,7 @@ describe("refusals", () => {
 
   it("refuses a parent that would close a cycle", async () => {
     // The parent sits under the food already.
-    relocation.findIngredientAncestors.mockResolvedValue(new Map([[UIEN, [ONION]]]));
+    relocation.closesCycle.mockResolvedValueOnce(true);
 
     await expect(
       callerFor().setParent({ ingredientId: ONION, parentId: UIEN })

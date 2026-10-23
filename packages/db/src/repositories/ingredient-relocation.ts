@@ -149,6 +149,11 @@ export async function findIngredientAncestors(
   return await ancestorsOf(tx, ids);
 }
 
+/** Whether filing `id` under `parentId` closes a cycle: the parent is the food or sits under it. */
+export async function closesCycle(tx: Db, id: string, parentId: string): Promise<boolean> {
+  return id === parentId || !!(await ancestorsOf(tx, [parentId])).get(parentId)?.includes(id);
+}
+
 /**
  * Set or clear (`null`) a parent. A person's choice also marks it chosen and clears the flag; AI's
  * (`byAI`) does neither. The caller holds the tree lock and has ruled out a cycle.

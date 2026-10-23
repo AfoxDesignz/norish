@@ -46,6 +46,7 @@ import {
 import { findRowsNamingSpellings } from "@norish/db/repositories/ingredient-cleanup";
 import { addToJunkPile, takeOffJunkPile } from "@norish/db/repositories/ingredient-junk-pile";
 import {
+  closesCycle,
   countAliasesOf,
   findIngredientAncestors,
   insertCatalogueIngredient,
@@ -135,10 +136,8 @@ export async function parentByAI(ingredientId: string, parentId: string | null, 
     if (locked) return locked;
     if (await wasParentUndone(tx, ingredientId, parentId)) return "undone";
 
-    const ancestors = await findIngredientAncestors(ids, tx);
-
-    if (parentId && ancestors.get(parentId)?.includes(ingredientId)) return "gone";
-    previous = ancestors.get(ingredientId)?.[0] ?? null;
+    if (parentId && (await closesCycle(tx, ingredientId, parentId))) return "gone";
+    previous = (await findIngredientAncestors([ingredientId], tx)).get(ingredientId)?.[0] ?? null;
     const replaced = await takeOpenParentChanges(tx, ingredientId);
     const undoTo = parentId !== null && replaced ? replaced.formerParentId : previous;
 
@@ -571,7 +570,7 @@ async function reverseChange(tx: DbTransaction, change: StoredAIChange): Promise
       const formerFits =
         former !== null &&
         (await lockIngredients(tx, [former])) > 0 &&
-        !(await findIngredientAncestors([former], tx)).get(former)?.includes(foodId);
+        !(await closesCycle(tx, foodId, former));
 
       await setCatalogueIngredientParent(tx, foodId, formerFits ? former : null, { byAI: true });
 
