@@ -1088,7 +1088,7 @@
       "ingredientPlainNameDescription": "Sent to the language model when AI cleans an ingredient's name, with the name and its other spellings appended after it. Says what to take off a name and what to keep.",
       "ingredientPlainNamePlaceholder": "Prompt for cleaning ingredient names...",
       "ingredientSpellingCheck": "Ingredient translation check prompt",
-      "ingredientSpellingCheckDescription": "Sent to the language model once, at the first start with AI on, for each catalogue ingredient with translations that people, imports or merges added, with the ingredient and those translations appended after it. Says which of them name the ingredient, name no food, or name another food.",
+      "ingredientSpellingCheckDescription": "Sent to the language model once, at the first start with AI on, for each catalogue ingredient with translations that people, imports or merges added, with the ingredient, those translations and a recipe line using each appended after it. Says which of them name the ingredient, name no food, or name another food.",
       "ingredientSpellingCheckPlaceholder": "Prompt for checking ingredient translations..."
     },
     "unsavedChanges": "Unsaved changes",

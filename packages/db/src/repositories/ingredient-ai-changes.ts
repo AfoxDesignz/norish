@@ -294,6 +294,32 @@ export async function wasMergeUndone(
   return row !== undefined;
 }
 
+/** The spellings AI Changes not undone moved onto a food: a merge's, and a moved spelling. */
+export async function listAliasIdsAIMovedOnto(ingredientId: string): Promise<string[]> {
+  const rows = await db
+    .select({ undo: ingredientAIChanges.undo })
+    .from(ingredientAIChanges)
+    .where(
+      and(
+        isNull(ingredientAIChanges.undoneAt),
+        or(
+          and(
+            eq(ingredientAIChanges.kind, "merge"),
+            eq(ingredientAIChanges.ingredientId, ingredientId)
+          ),
+          and(
+            eq(ingredientAIChanges.kind, "spelling"),
+            eq(ingredientAIChanges.targetId, ingredientId)
+          )
+        )
+      )
+    );
+
+  return rows.flatMap(({ undo }) =>
+    undo.kind === "merge" ? undo.aliasIds : undo.kind === "spelling" ? [undo.spelling.id] : []
+  );
+}
+
 /** Whether a person undid filing `ingredientId` under `parentId`, or under no parent (null). */
 export async function wasParentUndone(
   tx: Db,

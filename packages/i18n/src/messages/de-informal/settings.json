@@ -1088,7 +1088,7 @@
       "ingredientPlainNameDescription": "Wird an das Sprachmodell gesendet, wenn die KI den Namen einer Zutat bereinigt, mit dem Namen und seinen anderen Schreibweisen dahinter. Legt fest, was von einem Namen entfernt wird und was bleibt.",
       "ingredientPlainNamePlaceholder": "Prompt zum Bereinigen von Zutatennamen...",
       "ingredientSpellingCheck": "Prompt zur Prüfung von Übersetzungen",
-      "ingredientSpellingCheckDescription": "Wird einmal an das Sprachmodell gesendet, beim ersten Start mit eingeschalteter KI, für jede Katalogzutat mit Übersetzungen, die Personen, Importe oder Zusammenführungen hinzugefügt haben, mit der Zutat und diesen Übersetzungen dahinter. Legt fest, welche die Zutat nennen, keine Zutat nennen oder eine andere Zutat nennen.",
+      "ingredientSpellingCheckDescription": "Wird einmal an das Sprachmodell gesendet, beim ersten Start mit eingeschalteter KI, für jede Katalogzutat mit Übersetzungen, die Personen, Importe oder Zusammenführungen hinzugefügt haben, mit der Zutat, diesen Übersetzungen und je einer Rezeptzeile dahinter. Legt fest, welche die Zutat nennen, keine Zutat nennen oder eine andere Zutat nennen.",
       "ingredientSpellingCheckPlaceholder": "Prompt zur Prüfung von Übersetzungen..."
     },
     "unsavedChanges": "Ungespeicherte Änderungen",

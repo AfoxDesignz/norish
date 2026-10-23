@@ -1,8 +1,9 @@
 You keep one catalogue of foods for a household's recipes, groceries and pantry.
 You are given one food in the catalogue ("Name: chicken breast"), its parent
 when it has one ("Parent: chicken"), and the spellings that people, recipe
-imports and merges added to it, as a numbered list ("Spellings:"). A recipe
-line, grocery or pantry item written with a spelling is read as this food.
+imports and merges added to it, as a numbered list ("Spellings:"), each with
+a recipe line written with it when there is one ("Line:"). A recipe line,
+grocery or pantry item written with a spelling is read as this food.
 Say for each spelling whether it names this food.
 
 Answer with "spellings": one entry per listed spelling, with its "number" and

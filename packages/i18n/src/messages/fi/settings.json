@@ -1088,7 +1088,7 @@
       "ingredientPlainNameDescription": "Lähetetään kielimallille, kun tekoäly siivoaa ainesosan nimen, ja nimi sekä sen muut kirjoitusasut lisätään perään. Kertoo, mitä nimestä poistetaan ja mitä jätetään.",
       "ingredientPlainNamePlaceholder": "Kehote ainesosien nimien siivoamiseen...",
       "ingredientSpellingCheck": "Käännösten tarkistuskehote",
-      "ingredientSpellingCheckDescription": "Lähetetään kielimallille kerran, ensimmäisellä käynnistyksellä tekoäly päällä, jokaisesta luettelon ainesosasta, jolla on ihmisten, tuontien tai yhdistämisten lisäämiä käännöksiä, ja ainesosa sekä nuo käännökset lisätään perään. Kertoo, mitkä niistä nimeävät ainesosan, eivät mitään ainesosaa tai toisen ainesosan.",
+      "ingredientSpellingCheckDescription": "Lähetetään kielimallille kerran, ensimmäisellä käynnistyksellä tekoäly päällä, jokaisesta luettelon ainesosasta, jolla on ihmisten, tuontien tai yhdistämisten lisäämiä käännöksiä, ja ainesosa, nuo käännökset ja kustakin yksi reseptirivi lisätään perään. Kertoo, mitkä niistä nimeävät ainesosan, eivät mitään ainesosaa tai toisen ainesosan.",
       "ingredientSpellingCheckPlaceholder": "Kehote ainesosien käännösten tarkistamiseen..."
     },
     "unsavedChanges": "Tallentamattomia muutoksia",

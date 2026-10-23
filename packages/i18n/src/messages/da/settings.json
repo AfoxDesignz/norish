@@ -1088,7 +1088,7 @@
       "ingredientPlainNameDescription": "Sendes til sprogmodellen, når AI rydder op i en ingrediens’ navn, med navnet og dets andre stavemåder tilføjet efter. Siger, hvad der skal fjernes fra et navn, og hvad der skal blive.",
       "ingredientPlainNamePlaceholder": "Prompt til oprydning af ingrediensnavne...",
       "ingredientSpellingCheck": "Prompt til kontrol af oversættelser",
-      "ingredientSpellingCheckDescription": "Sendes én gang til sprogmodellen, ved første start med AI slået til, for hver ingrediens fra kataloget med oversættelser, som personer, importer eller sammenlægninger har tilføjet, med ingrediensen og de oversættelser tilføjet efter. Siger, hvilke der navngiver ingrediensen, ingen ingrediens eller en anden ingrediens.",
+      "ingredientSpellingCheckDescription": "Sendes én gang til sprogmodellen, ved første start med AI slået til, for hver ingrediens fra kataloget med oversættelser, som personer, importer eller sammenlægninger har tilføjet, med ingrediensen, de oversættelser og en opskriftslinje for hver tilføjet efter. Siger, hvilke der navngiver ingrediensen, ingen ingrediens eller en anden ingrediens.",
       "ingredientSpellingCheckPlaceholder": "Prompt til kontrol af oversættelser..."
     },
     "unsavedChanges": "Ugemte ændringer",

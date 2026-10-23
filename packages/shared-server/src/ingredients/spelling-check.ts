@@ -2,11 +2,14 @@
  * AI checks the spellings people, merges and imports added to seeded foods (ADR-0037; ingredient-
  * cleanup ticket 46), once, at the first start with AI on; each removal or move an AI Change.
  */
+import { withTransaction } from "@norish/db/drizzle";
+import { listAliasIdsAIMovedOnto } from "@norish/db/repositories/ingredient-ai-changes";
 import {
   findCatalogueIngredient,
   listCatalogueAliasesOf,
   listSeededFoodsWithOwnSpellings,
 } from "@norish/db/repositories/ingredient-catalogue";
+import { findRowsNamingSpellings } from "@norish/db/repositories/ingredient-cleanup";
 import { isAIEnabled } from "@norish/shared-server/config/server-config-loader";
 import { createLogger } from "@norish/shared-server/logger";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
@@ -76,8 +79,10 @@ export async function checkSpellingsOf(ingredientId: string): Promise<SpellingCh
 
   if (!food) return { outcome: "skipped", reason: "not-found" };
   const own = ingredientAliasFold(food.name);
+  // AI already judged the spellings its merges and moves put on the food.
+  const byAI = new Set(await listAliasIdsAIMovedOnto(ingredientId));
   const spellings = (await listCatalogueAliasesOf(ingredientId)).filter(
-    (alias) => !alias.seeded && ingredientAliasFold(alias.text) !== own
+    (alias) => !alias.seeded && !byAI.has(alias.id) && ingredientAliasFold(alias.text) !== own
   );
 
   if (spellings.length === 0) return { outcome: "skipped", reason: "none" };
@@ -85,7 +90,15 @@ export async function checkSpellingsOf(ingredientId: string): Promise<SpellingCh
   const parent = food.parentId ? await findCatalogueIngredient(food.parentId) : null;
   const verdicts = await askWhatSpellingsName(
     { name: food.name, parent: parent?.name ?? null },
-    spellings.map((alias) => alias.text)
+    // One line per spelling, so a fragment cut from a line is read in it.
+    await withTransaction((tx) =>
+      Promise.all(
+        spellings.map(async (alias) => ({
+          text: alias.text,
+          line: (await findRowsNamingSpellings(tx, [alias.id])).lines[0]?.name ?? null,
+        }))
+      )
+    )
   );
   const checked = {
     kept: [] as string[],

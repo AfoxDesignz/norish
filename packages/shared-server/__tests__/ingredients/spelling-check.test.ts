@@ -28,7 +28,11 @@ import {
   isAIEnabled,
   isDecisionUseEnabled,
 } from "@norish/shared-server/config/server-config-loader";
-import { listAIChangesFor, undoAIChange } from "@norish/shared-server/ingredients/ai-changes";
+import {
+  listAIChangesFor,
+  mergeByAI,
+  undoAIChange,
+} from "@norish/shared-server/ingredients/ai-changes";
 import { onIngredientsMinted } from "@norish/shared-server/ingredients/minted";
 import { resolveIngredients } from "@norish/shared-server/ingredients/resolver";
 import { readIngredientSeedState } from "@norish/shared-server/ingredients/seed/catalogue-seed";
@@ -66,7 +70,10 @@ function answers(verdicts: Record<string, Kind | [Kind, string]>) {
   }: {
     sections: string[];
   }) => {
-    const listed = sections.at(-1)!.split("\n").slice(1);
+    const listed = sections
+      .at(-1)!
+      .split("\n")
+      .filter((entry) => /^\d+\. /.test(entry));
 
     return {
       spellings: listed.flatMap((entry) => {
@@ -200,7 +207,7 @@ describe("AI checks the spellings added to a seeded food", () => {
     expect(
       listed!
         .split("\n")
-        .slice(1)
+        .filter((entry) => /^\d+\. /.test(entry))
         .map((entry) => entry.replace(/^\d+\. /, ""))
         .sort()
     ).toEqual(["boneless", "kipfilet", "lbs boneless"]);
@@ -447,6 +454,34 @@ describe("AI checks the spellings added to a seeded food", () => {
     const [change] = await listAIChangesFor(actor);
 
     await expect(undoAIChange(actor, change!.id)).rejects.toThrow(/spelling-taken/);
+  });
+
+  it("shows AI a recipe line written with each spelling, so a fragment is read in its line", async () => {
+    const chicken = seeded.get("en:chicken-breast")!;
+    const spelled = await added("en:chicken-breast", "skinless");
+
+    await added("en:chicken-breast", "kipfilet");
+    await line("chicken breasts, skinless", spelled.get("skinless")!);
+    answers({});
+    await checkSpellingsOf(chicken);
+
+    expect(askedSections().at(-1)).toBe(
+      ["Spellings:", "1. skinless", "   Line: chicken breasts, skinless", "2. kipfilet"].join("\n")
+    );
+  });
+
+  it("leaves the spellings a merge by AI moved onto the food, which AI already judged", async () => {
+    const chicken = seeded.get("en:chicken-breast")!;
+    const kip = await mintTestFood("kipfilet");
+
+    await line("kipfilet", kip.aliasId);
+    await expect(mergeByAI(kip.ingredientId, chicken, false)).resolves.toBe("applied");
+
+    await expect(checkSpellingsOf(chicken)).resolves.toEqual({
+      outcome: "skipped",
+      reason: "none",
+    });
+    expect(generateStructured).not.toHaveBeenCalled();
   });
 
   it("runs once, at the first start with AI on, over seeded foods only", async () => {

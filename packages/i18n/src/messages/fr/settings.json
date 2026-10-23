@@ -1088,7 +1088,7 @@
       "ingredientPlainNameDescription": "Envoyé au modèle de langage quand l’IA nettoie le nom d’un ingrédient, avec le nom et ses autres graphies ajoutés à la suite. Indique ce qu’il faut retirer d’un nom et ce qu’il faut garder.",
       "ingredientPlainNamePlaceholder": "Prompt de nettoyage des noms d’ingrédients...",
       "ingredientSpellingCheck": "Prompt de vérification des traductions",
-      "ingredientSpellingCheckDescription": "Envoyé une fois au modèle de langage, au premier démarrage avec l’IA activée, pour chaque ingrédient du catalogue ayant des traductions ajoutées par des personnes, des imports ou des fusions, avec l’ingrédient et ces traductions ajoutés à la suite. Indique lesquelles désignent l’ingrédient, aucun aliment ou un autre aliment.",
+      "ingredientSpellingCheckDescription": "Envoyé une fois au modèle de langage, au premier démarrage avec l’IA activée, pour chaque ingrédient du catalogue ayant des traductions ajoutées par des personnes, des imports ou des fusions, avec l’ingrédient, ces traductions et une ligne de recette pour chacune ajoutés à la suite. Indique lesquelles désignent l’ingrédient, aucun aliment ou un autre aliment.",
       "ingredientSpellingCheckPlaceholder": "Prompt pour vérifier les traductions d’ingrédients..."
     },
     "unsavedChanges": "Modifications non enregistrées",

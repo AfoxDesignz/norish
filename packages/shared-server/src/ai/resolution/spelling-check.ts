@@ -33,12 +33,13 @@ const verdictsSchema = z
   .strict();
 
 /**
- * What each of `spellings` names, in order; a spelling the answer leaves out names the food. Throws
+ * What each of `spellings` names, in order, each shown with a recipe line written with it where one
+ * is; a spelling the answer leaves out names the food. Throws
  * where the request fails, a timeout asked once more.
  */
 export async function askWhatSpellingsName(
   food: { name: string; parent: string | null },
-  spellings: readonly string[]
+  spellings: ReadonlyArray<{ text: string; line: string | null }>
 ): Promise<SpellingVerdict[]> {
   const answer = await onceMoreOnTimeout("ingredient-spelling-check")(() =>
     generateStructured({
@@ -48,7 +49,13 @@ export async function askWhatSpellingsName(
       sections: [
         `Name: ${food.name}`,
         ...(food.parent ? [`Parent: ${food.parent}`] : []),
-        ["Spellings:", ...spellings.map((text, index) => `${index + 1}. ${text}`)].join("\n"),
+        [
+          "Spellings:",
+          ...spellings.flatMap(({ text, line }, index) => [
+            `${index + 1}. ${text}`,
+            ...(line ? [`   Line: ${line}`] : []),
+          ]),
+        ].join("\n"),
       ],
     })
   );

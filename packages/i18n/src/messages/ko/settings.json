@@ -1088,7 +1088,7 @@
       "ingredientPlainNameDescription": "AI가 재료 이름을 정리할 때 언어 모델에 보내며, 그 뒤에 이름과 다른 표기가 붙습니다. 이름에서 무엇을 지우고 무엇을 남길지 정합니다.",
       "ingredientPlainNamePlaceholder": "재료 이름 정리 프롬프트...",
       "ingredientSpellingCheck": "번역 확인 프롬프트",
-      "ingredientSpellingCheckDescription": "AI가 켜진 첫 시작 때 한 번, 사람이나 가져오기, 병합이 추가한 번역이 있는 카탈로그 식재료마다 언어 모델에 보내며, 그 뒤에 식재료와 그 번역이 붙습니다. 어떤 번역이 그 식재료를 가리키는지, 식재료가 아닌지, 다른 식재료인지 정합니다.",
+      "ingredientSpellingCheckDescription": "AI가 켜진 첫 시작 때 한 번, 사람이나 가져오기, 병합이 추가한 번역이 있는 카탈로그 식재료마다 언어 모델에 보내며, 그 뒤에 식재료와 그 번역, 번역마다 레시피 한 줄이 붙습니다. 어떤 번역이 그 식재료를 가리키는지, 식재료가 아닌지, 다른 식재료인지 정합니다.",
       "ingredientSpellingCheckPlaceholder": "식재료 번역 확인 프롬프트..."
     },
     "unsavedChanges": "저장되지 않은 변경사항",
