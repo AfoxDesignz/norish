@@ -9,6 +9,7 @@ import { withTransaction } from "@norish/db/drizzle";
 import {
   deleteCatalogueAlias,
   deleteCatalogueIngredient,
+  findCatalogueAliasOwner,
   findIngredientIdByFold,
   listAskableIngredientIds,
   unflagHiddenFoods,
@@ -21,9 +22,9 @@ import {
   listSpellingsForCleanup,
   renameFood,
   rewriteSpelling,
-  spellingsBeside,
 } from "@norish/db/repositories/ingredient-cleanup";
 import {
+  countAliasesOf,
   lockFoods,
   lockTree,
   mergeCatalogueIngredients,
@@ -206,21 +207,21 @@ async function removeVariants(variants: readonly Variant[]): Promise<number> {
     );
 
     for (const variant of variants) {
-      const beside = await spellingsBeside(tx, variant.id);
+      const spelling = await findCatalogueAliasOwner(tx, variant.id);
 
-      if (!beside) continue;
-      if (beside.others === 0) {
+      if (!spelling) continue;
+      if ((await countAliasesOf(tx, spelling.ingredientId)) <= 1) {
         const target = variant.clean.fold
           ? await findIngredientIdByFold(tx, variant.clean.fold)
           : null;
 
         // A colon spelling's fold may be its clean one, so the food holding it is its own.
-        if (!target || target === beside.ingredientId) {
-          await deleteCatalogueIngredient(tx, beside.ingredientId);
+        if (!target || target === spelling.ingredientId) {
+          await deleteCatalogueIngredient(tx, spelling.ingredientId);
           removed += 1;
           continue;
         }
-        await mergeCatalogueIngredients(tx, beside.ingredientId, target);
+        await mergeCatalogueIngredients(tx, spelling.ingredientId, target);
       }
       await deleteCatalogueAlias(tx, variant.id);
       removed += 1;

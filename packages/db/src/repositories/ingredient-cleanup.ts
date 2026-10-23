@@ -1,5 +1,5 @@
 import type { SQL } from "drizzle-orm";
-import { and, asc, count, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 
 import type { Db, DbTransaction } from "@norish/db/drizzle";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
@@ -66,30 +66,6 @@ export async function rewriteSpelling(
     .returning({ id: ingredientAliases.id });
 
   return rewritten.length > 0;
-}
-
-/** The food a spelling is on and how many other spellings it has; null where the spelling is gone. */
-export async function spellingsBeside(
-  tx: DbTransaction,
-  aliasId: string
-): Promise<{ ingredientId: string; others: number } | null> {
-  const [spelling] = await tx
-    .select({ ingredientId: ingredientAliases.ingredientId })
-    .from(ingredientAliases)
-    .where(eq(ingredientAliases.id, aliasId));
-
-  if (!spelling) return null;
-  const [row] = await tx
-    .select({ n: count() })
-    .from(ingredientAliases)
-    .where(
-      and(
-        eq(ingredientAliases.ingredientId, spelling.ingredientId),
-        ne(ingredientAliases.id, aliasId)
-      )
-    );
-
-  return { ingredientId: spelling.ingredientId, others: row?.n ?? 0 };
 }
 
 /** A row a spelling named, with its own text and whose it is. */
