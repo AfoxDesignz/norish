@@ -135,6 +135,17 @@ describe("Plain Names", () => {
     expect(await listAIChanges()).toEqual([]);
   });
 
+  it("lowers a name in capitals only to its plain name", async () => {
+    const tuna = await food("TONIJN UIT BLIK");
+
+    readsAs("tonijn uit blik");
+    await expect(giveItsPlainName(tuna)).resolves.toEqual({
+      outcome: "rename",
+      to: "tonijn uit blik",
+    });
+    expect(await row(tuna)).toMatchObject({ name: "tonijn uit blik", nameSettled: true });
+  });
+
   it("merges into the food that already spells the plain name", async () => {
     const onion = await food("onion");
     const messy = await food("Verse Onion Deluxe");

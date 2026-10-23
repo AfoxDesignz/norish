@@ -42,8 +42,12 @@ export async function giveItsPlainName(ingredientId: string): Promise<PlainNameO
   const plain = read ? cleanIngredientText(read) : "";
 
   if (!plain) return { outcome: "unsure", reason: "no-food", ...noTrace() };
-  // Folded as spellings are, so a name differing only in case keeps the casing it has.
-  if (foldName(plain) === foldName(row.name)) {
+  // Folded as spellings are: a case-only difference keeps the casing, but not of a name in capitals.
+  const settled = /\p{Ll}/u.test(row.name)
+    ? foldName(plain) === foldName(row.name)
+    : plain === row.name;
+
+  if (settled) {
     if (await settleIngredientName(ingredientId)) await ingredientChanges().changed([ingredientId]);
 
     return { outcome: "plain" };
