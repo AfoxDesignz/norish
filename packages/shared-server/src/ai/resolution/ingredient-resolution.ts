@@ -103,7 +103,9 @@ export async function askWhatFoodThisIs(text: string, options: AskOptions): Prom
 
 /**
  * The reading, looked up: a food the names find is the one, several found are asked about; else
- * the parent AI named, else its category, found, is its parent. Flagged unless AI was sure.
+ * the parent AI named, else its category, found, is its parent. The parent the food has stays where
+ * AI names it in fewer words, or names a parent or category the catalogue lacks; naming neither
+ * drops it. Flagged unless AI was sure.
  */
 async function readThenLookUp(
   text: string,
@@ -185,7 +187,7 @@ async function readThenLookUp(
 
   return {
     kind: "own",
-    parentId: filed?.food?.ingredientId ?? null,
+    parentId: filed ? (filed.food?.ingredientId ?? filedUnder?.id ?? null) : null,
     sure: reading.sure && found.sure && (filed?.sure ?? true),
   };
 }

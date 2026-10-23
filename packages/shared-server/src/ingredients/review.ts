@@ -67,7 +67,7 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
 
   const { sure } = answer;
   const parent = answer.parentId ? await findCatalogueIngredient(answer.parentId) : null;
-  // A parent AI names that is not found drops the current one; a person's parent is never asked.
+  // No parent from AI drops the current one; a person's parent is never asked.
   const { outcome: filed, previous } =
     parent || row.parentId
       ? await parentByAI(ingredientId, parent?.id ?? null, sure)
