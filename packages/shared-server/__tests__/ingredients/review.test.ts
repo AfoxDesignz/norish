@@ -1245,24 +1245,27 @@ describe("asking AI about an Ingredient", () => {
         id: chili.ingredientId,
       });
     });
-    it("merges a food into the parent AI gives when an other name is that parent's plural", async () => {
-      await applyIngredientSeed([seedEntry("en:guajillo-chili", "guajillo chili")]);
-      const chili = (await findIngredientFor("guajillo chili"))!;
-      const peppers = await flagged("guajillo peppers");
+
+    it("files tenderstem broccoli under broccoli: its other name broccolini, a slip of broccoli, is not broccoli", async () => {
+      await applyIngredientSeed([seedEntry("en:broccoli", "broccoli")]);
+      const broccoli = (await findIngredientFor("broccoli"))!;
+      const tenderstem = await flagged("tenderstem broccoli");
 
       reads({
-        englishName: "guajillo pepper",
-        parent: "guajillo chili",
-        otherNames: ["guajillo chilies"],
+        englishName: "tenderstem broccoli",
+        parent: "broccoli",
+        otherNames: ["broccolini"],
         sure: true,
       });
+      picks("broccoli", true);
 
-      await expect(askAIAbout(peppers.ingredientId)).resolves.toMatchObject({
-        outcome: "merge",
-        into: "guajillo chili",
+      await expect(askAIAbout(tenderstem.ingredientId)).resolves.toMatchObject({
+        outcome: "parent",
+        of: "broccoli",
       });
-      await expect(findIngredientByAliasId(peppers.aliasId)).resolves.toMatchObject({
-        id: chili.ingredientId,
+      await expect(landed(tenderstem)).resolves.toEqual({
+        same: true,
+        parent: broccoli.ingredientId,
       });
     });
   });
