@@ -11,6 +11,22 @@
     "ingredients": "Składniki"
   },
   "user": {
+    "signInMethods": {
+      "title": "Metody logowania",
+      "description": "Sposoby logowania się na to konto.",
+      "password": "Hasło",
+      "add": "Dodaj",
+      "remove": "Usuń",
+      "unavailable": "Obecnie niedostępne",
+      "errors": {
+        "usedByAnotherAccount": "To logowanie jest już używane przez inne konto.",
+        "alreadyAdded": "Ta metoda logowania jest już dodana.",
+        "lastMethod": "Potrzebujesz co najmniej jednego sposobu logowania.",
+        "signInAgain": "Zaloguj się ponownie, aby to usunąć.",
+        "addFailed": "Nie udało się dodać tej metody logowania.",
+        "removeFailed": "Nie udało się usunąć tej metody logowania."
+      }
+    },
     "profile": {
       "title": "Profil",
       "nameLabel": "Imię i nazwisko",

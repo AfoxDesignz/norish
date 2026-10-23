@@ -11,6 +11,22 @@
     "ingredients": "Ingredientes"
   },
   "user": {
+    "signInMethods": {
+      "title": "Métodos de inicio de sesión",
+      "description": "Las formas de iniciar sesión en esta cuenta.",
+      "password": "Contraseña",
+      "add": "Añadir",
+      "remove": "Eliminar",
+      "unavailable": "No disponible actualmente",
+      "errors": {
+        "usedByAnotherAccount": "Este inicio de sesión ya lo usa otra cuenta.",
+        "alreadyAdded": "Este método de inicio de sesión ya está añadido.",
+        "lastMethod": "Necesitas al menos una forma de iniciar sesión.",
+        "signInAgain": "Vuelve a iniciar sesión para eliminarlo.",
+        "addFailed": "No se pudo añadir este método de inicio de sesión.",
+        "removeFailed": "No se pudo eliminar este método de inicio de sesión."
+      }
+    },
     "profile": {
       "title": "Perfil",
       "nameLabel": "Nombre",

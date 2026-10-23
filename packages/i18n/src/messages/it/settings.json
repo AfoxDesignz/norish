@@ -11,6 +11,22 @@
     "ingredients": "Ingredienti"
   },
   "user": {
+    "signInMethods": {
+      "title": "Metodi di accesso",
+      "description": "I modi in cui accedi a questo account.",
+      "password": "Password",
+      "add": "Aggiungi",
+      "remove": "Rimuovi",
+      "unavailable": "Attualmente non disponibile",
+      "errors": {
+        "usedByAnotherAccount": "Questo accesso è già usato da un altro account.",
+        "alreadyAdded": "Questo metodo di accesso è già aggiunto.",
+        "lastMethod": "Ti serve almeno un modo per accedere.",
+        "signInAgain": "Accedi di nuovo per rimuoverlo.",
+        "addFailed": "Impossibile aggiungere questo metodo di accesso.",
+        "removeFailed": "Impossibile rimuovere questo metodo di accesso."
+      }
+    },
     "profile": {
       "title": "Profilo",
       "nameLabel": "Nome",

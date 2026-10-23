@@ -11,6 +11,22 @@
     "ingredients": "Ingrediënten"
   },
   "user": {
+    "signInMethods": {
+      "title": "Inlogmethoden",
+      "description": "De manieren waarop je bij dit account inlogt.",
+      "password": "Wachtwoord",
+      "add": "Toevoegen",
+      "remove": "Verwijderen",
+      "unavailable": "Momenteel niet beschikbaar",
+      "errors": {
+        "usedByAnotherAccount": "Deze inlog wordt al door een ander account gebruikt.",
+        "alreadyAdded": "Deze inlogmethode is al toegevoegd.",
+        "lastMethod": "Je hebt minstens één manier nodig om in te loggen.",
+        "signInAgain": "Log opnieuw in om dit te verwijderen.",
+        "addFailed": "Deze inlogmethode kon niet worden toegevoegd.",
+        "removeFailed": "Deze inlogmethode kon niet worden verwijderd."
+      }
+    },
     "profile": {
       "title": "Profiel",
       "nameLabel": "Naam",

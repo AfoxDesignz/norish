@@ -17,13 +17,16 @@ import type { Identity } from "../helpers/identity-provider";
 import { REDIS_IMAGE } from "../../../shared-server/__tests__/helpers/redis";
 import { createIdentityProvider, IDP_CLIENT_ID } from "../helpers/identity-provider";
 
-const { store, client, registration } = vi.hoisted(() => ({
+const { store, client, registration, serverConfig, admins } = vi.hoisted(() => ({
   store: { user: [], session: [], account: [], verification: [], apikey: [] } as Record<
     string,
     unknown[]
   >,
   client: { redis: null as unknown },
   registration: { enabled: true },
+  // What the sign-in page reads to offer a method.
+  serverConfig: {} as Record<string, unknown>,
+  admins: new Set<string>(),
 }));
 
 vi.mock("better-auth/adapters/drizzle", async () => {
@@ -34,10 +37,18 @@ vi.mock("better-auth/adapters/drizzle", async () => {
 
 vi.mock("@norish/db/drizzle", () => ({ db: {} }));
 vi.mock("@norish/db/repositories/api-keys", () => ({ setApiKeyAuthService: vi.fn() }));
-vi.mock("@norish/db/repositories/server-config", () => ({ setConfig: vi.fn() }));
+vi.mock("@norish/db/repositories/server-config", () => ({
+  setConfig: vi.fn(),
+  getConfig: async (key: string) => serverConfig[key] ?? null,
+}));
 vi.mock("@norish/db/repositories/users", () => ({
   countUsers: vi.fn().mockResolvedValue(2),
   deleteUser: vi.fn(),
+  isUserServerOwner: async () => false,
+  setUserAdminStatus: async (userId: string, isAdmin: boolean) => {
+    if (isAdmin) admins.add(userId);
+    else admins.delete(userId);
+  },
 }));
 vi.mock("@norish/db/repositories/households", () => ({ getHouseholdForUser: vi.fn() }));
 vi.mock("@norish/shared-server/config/server-config-loader", () => ({
@@ -118,6 +129,54 @@ async function sessionFor(cookie: string) {
   return authModule.auth.api.getSession({ headers: new Headers({ cookie }) });
 }
 
+/** Signs up with a password, as the person who later adds other methods. */
+async function signUpWithPassword(email = "ada@norish.test") {
+  const response = await authModule.auth.handler(
+    post("/sign-up/email", { email, password: "ada-password-1", name: "Ada" })
+  );
+
+  expect(response.status).toBe(200);
+
+  const cookie = cookiesFrom(response);
+
+  return { cookie, userId: (await sessionFor(cookie))?.user.id ?? "" };
+}
+
+/** Presses "Add" on the card for OIDC and signs in at the provider. */
+async function addOIDC(cookie: string, identity: Identity) {
+  const start = await authModule.auth.handler(
+    post(
+      "/link-social",
+      { provider: "oidc", callbackURL: "/settings", errorCallbackURL: "/settings" },
+      cookie
+    )
+  );
+
+  if (!start.ok) return start;
+
+  const { url } = (await start.json()) as { url: string };
+  const callback = idp.authorize(new URL(url), identity);
+
+  return authModule.auth.handler(
+    new Request(callback, { headers: { cookie: cookiesFrom(start, cookie) } })
+  );
+}
+
+async function providersOf(userId: string) {
+  const ctx = await context();
+
+  return (await ctx.internalAdapter.findAccounts(userId)).map((a) => a.providerId).sort();
+}
+
+async function removeMethod(cookie: string, providerId: string) {
+  const ctx = await context();
+  const session = await sessionFor(cookie);
+  const accounts = await ctx.internalAdapter.findAccounts(session?.user.id ?? "");
+  const account = accounts.find((a) => a.providerId === providerId);
+
+  return authModule.auth.handler(post("/unlink-account", { accountId: account?.id }, cookie));
+}
+
 async function context() {
   return authModule.auth.$context;
 }
@@ -136,6 +195,13 @@ async function importAuth(): Promise<AuthModule> {
       clientId: IDP_CLIENT_ID,
       clientSecret: "secret",
       isOverridden: false,
+      claimConfig: {
+        enabled: true,
+        scopes: [],
+        groupsClaim: "groups",
+        adminGroup: "norish_admin",
+        householdPrefix: "norish_household_",
+      },
     },
     passwordEnabled: true,
   });
@@ -166,6 +232,13 @@ beforeEach(async () => {
   for (const rows of Object.values(store)) rows.length = 0;
   await redis.flushall();
   registration.enabled = true;
+  admins.clear();
+  Object.assign(serverConfig, {
+    password_auth_enabled: true,
+    auth_provider_github: { clientId: "github-id" },
+    auth_provider_google: { clientId: "google-id" },
+    auth_provider_oidc: { name: "Test IdP", issuer, clientId: IDP_CLIENT_ID },
+  });
 });
 
 const ADA: Identity = {
@@ -240,6 +313,91 @@ describe("account linking", () => {
     expect((await ctx.internalAdapter.findAccounts(user.id)).map((a) => a.providerId)).toEqual([
       "google",
     ]);
+  });
+});
+
+describe("adding a sign-in method", () => {
+  const HOME_LAN: Identity = { sub: "ada-home", email: "ada@home.lan", name: "Ada" };
+
+  it("lets a password user add OIDC with another email and sign in with it", async () => {
+    const { cookie, userId } = await signUpWithPassword();
+
+    const response = await addOIDC(cookie, HOME_LAN);
+
+    expect(response.headers.get("location")).toBe("/settings");
+    expect(await providersOf(userId)).toEqual(["credential", "oidc"]);
+
+    const { cookie: oidcCookie } = await signInWithOIDC(HOME_LAN);
+
+    expect((await sessionFor(oidcCookie))?.user.id).toBe(userId);
+    expect(store.user).toHaveLength(1);
+  });
+
+  it("applies the OIDC admin claim at once", async () => {
+    const { cookie, userId } = await signUpWithPassword();
+
+    await addOIDC(cookie, { ...HOME_LAN, groups: ["norish_admin"] });
+
+    expect(admins.has(userId)).toBe(true);
+  });
+
+  it("refuses an identity that signs in to another account", async () => {
+    await signInWithOIDC(ADA);
+    const { cookie, userId } = await signUpWithPassword("someone@norish.test");
+
+    const response = await addOIDC(cookie, ADA);
+
+    expect(response.headers.get("location")).toBe(
+      "/settings?error=account_already_linked_to_different_user"
+    );
+    expect(await providersOf(userId)).toEqual(["credential"]);
+  });
+
+  it("refuses a second identity for a provider the user already has", async () => {
+    const { cookie, userId } = await signUpWithPassword();
+
+    await addOIDC(cookie, HOME_LAN);
+    const response = await addOIDC(cookie, ADA);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "SIGN_IN_METHOD_ALREADY_ADDED" });
+    expect(await providersOf(userId)).toEqual(["credential", "oidc"]);
+  });
+});
+
+describe("removing a sign-in method", () => {
+  it("removes one while another offered method remains", async () => {
+    const { cookie, userId } = await signUpWithPassword();
+
+    await addOIDC(cookie, ADA);
+    const response = await removeMethod(cookie, "oidc");
+
+    expect(response.status).toBe(200);
+    expect(await providersOf(userId)).toEqual(["credential"]);
+  });
+
+  it("refuses to remove the last method the server offers", async () => {
+    const { cookie, userId } = await signUpWithPassword();
+
+    await addOIDC(cookie, ADA);
+    serverConfig.auth_provider_oidc = null;
+
+    const response = await removeMethod(cookie, "credential");
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "LAST_SIGN_IN_METHOD" });
+    expect(await providersOf(userId)).toEqual(["credential", "oidc"]);
+  });
+
+  it("does not count a password while password sign-in is off", async () => {
+    const { cookie, userId } = await signUpWithPassword();
+
+    await addOIDC(cookie, ADA);
+    serverConfig.password_auth_enabled = false;
+
+    expect((await removeMethod(cookie, "oidc")).status).toBe(400);
+    expect((await removeMethod(cookie, "credential")).status).toBe(200);
+    expect(await providersOf(userId)).toEqual(["oidc"]);
   });
 });
 

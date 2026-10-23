@@ -11,6 +11,22 @@
     "ingredients": "Ingredients"
   },
   "user": {
+    "signInMethods": {
+      "title": "Sign-in methods",
+      "description": "The ways you can sign in to this account.",
+      "password": "Password",
+      "add": "Add",
+      "remove": "Remove",
+      "unavailable": "Not currently available",
+      "errors": {
+        "usedByAnotherAccount": "This sign-in is already used by another account.",
+        "alreadyAdded": "This sign-in method is already added.",
+        "lastMethod": "You need at least one way to sign in.",
+        "signInAgain": "Sign in again to remove this.",
+        "addFailed": "This sign-in method could not be added.",
+        "removeFailed": "This sign-in method could not be removed."
+      }
+    },
     "profile": {
       "title": "Profile",
       "nameLabel": "Name",

@@ -11,6 +11,22 @@
     "ingredients": "Zutaten"
   },
   "user": {
+    "signInMethods": {
+      "title": "Anmeldemethoden",
+      "description": "Die Wege, auf denen Sie sich bei diesem Konto anmelden.",
+      "password": "Passwort",
+      "add": "Hinzufügen",
+      "remove": "Entfernen",
+      "unavailable": "Derzeit nicht verfügbar",
+      "errors": {
+        "usedByAnotherAccount": "Diese Anmeldung wird bereits von einem anderen Konto verwendet.",
+        "alreadyAdded": "Diese Anmeldemethode ist bereits hinzugefügt.",
+        "lastMethod": "Sie benötigen mindestens eine Möglichkeit, sich anzumelden.",
+        "signInAgain": "Melden Sie sich erneut an, um dies zu entfernen.",
+        "addFailed": "Diese Anmeldemethode konnte nicht hinzugefügt werden.",
+        "removeFailed": "Diese Anmeldemethode konnte nicht entfernt werden."
+      }
+    },
     "profile": {
       "title": "Profil",
       "nameLabel": "Name",

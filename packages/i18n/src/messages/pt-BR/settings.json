@@ -11,6 +11,22 @@
     "ingredients": "Ingredientes"
   },
   "user": {
+    "signInMethods": {
+      "title": "Métodos de login",
+      "description": "As formas de entrar nesta conta.",
+      "password": "Senha",
+      "add": "Adicionar",
+      "remove": "Remover",
+      "unavailable": "Indisponível no momento",
+      "errors": {
+        "usedByAnotherAccount": "Este login já é usado por outra conta.",
+        "alreadyAdded": "Este método de login já foi adicionado.",
+        "lastMethod": "Você precisa de pelo menos uma forma de entrar.",
+        "signInAgain": "Entre novamente para remover isto.",
+        "addFailed": "Não foi possível adicionar este método de login.",
+        "removeFailed": "Não foi possível remover este método de login."
+      }
+    },
     "profile": {
       "title": "Perfil",
       "nameLabel": "Nome",

@@ -3,7 +3,7 @@ import type { DBAdapter } from "better-auth/adapters";
 import { apiKey } from "@better-auth/api-key";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { genericOAuth } from "better-auth/plugins";
 
@@ -33,6 +33,7 @@ import {
   getCachedOIDCProvider,
   getCachedPasswordAuthEnabled,
 } from "./provider-cache";
+import { getAvailableProviders } from "./providers";
 import { redisSecondaryStorage } from "./secondary-storage";
 
 /**
@@ -111,6 +112,42 @@ function decryptUser(user: any): any {
     image: safeDecrypt(user.image),
   };
 }
+
+/**
+ * One identity per provider, and never removing the last method the server
+ * still offers, from any client. Better Auth's own checks run after these.
+ */
+const guardSignInMethods = createAuthMiddleware(async (ctx) => {
+  if (ctx.path !== "/link-social" && ctx.path !== "/unlink-account") return;
+
+  const session = await getSessionFromCtx(ctx);
+
+  // The endpoint refuses a request without a session itself.
+  if (!session) return;
+
+  const accounts = await ctx.context.internalAdapter.findAccounts(session.user.id);
+
+  if (ctx.path === "/link-social") {
+    if (accounts.some((account) => account.providerId === ctx.body?.provider)) {
+      throw new APIError("BAD_REQUEST", {
+        code: "SIGN_IN_METHOD_ALREADY_ADDED",
+        message: "This sign-in method is already added",
+      });
+    }
+
+    return;
+  }
+
+  const offered = new Set((await getAvailableProviders()).map((provider) => provider.id));
+  const left = accounts.filter((account) => account.id !== ctx.body?.accountId);
+
+  if (!left.some((account) => offered.has(account.providerId))) {
+    throw new APIError("BAD_REQUEST", {
+      code: "LAST_SIGN_IN_METHOD",
+      message: "This is the last way to sign in",
+    });
+  }
+});
 
 // Build social providers configuration from cached DB values
 function buildSocialProviders() {
@@ -309,10 +346,11 @@ function createBetterAuth() {
         enabled: true,
         // Signing in never attaches a new identity to an existing user, even one
         // with the same email: that is how an account is taken over. Linking
-        // happens only from a signed-in session, where the trusted providers
-        // may be linked although they do not report the email as verified.
+        // happens only from a signed-in session, where the person has proven
+        // both sides, so the trusted providers need no verified or matching email.
         disableImplicitLinking: true,
         trustedProviders: ["oidc", "google", "github"],
+        allowDifferentEmails: true,
       },
     },
     socialProviders: buildSocialProviders(),
@@ -463,6 +501,7 @@ function createBetterAuth() {
     ],
 
     hooks: {
+      before: guardSignInMethods,
       after: createAuthMiddleware(async (ctx) => {
         const returned = ctx.context.returned;
 
