@@ -54,8 +54,9 @@ async function correctSeed(): Promise<CorrectionOutcome> {
 
   for (const move of SPELLING_MOVES) {
     const fromId = seeded.get(move.from);
-    const toId = move.to && seeded.get(move.to);
+    const toId = move.to === null ? null : seeded.get(move.to);
 
+    // Taken off where the seed gives the spelling no food (null), skipped where that food is unseeded.
     if (!fromId || toId === undefined) continue;
     for (const spelling of move.spellings) {
       if (await moveOrTakeOff(ingredientAliasFold(spelling), fromId, toId)) outcome.moved += 1;
