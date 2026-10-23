@@ -29,16 +29,16 @@ your `AUTH_URL` as the host:
 Norish never links accounts on its own. Signing in with a provider whose email already belongs to
 another account is refused with "This email is already in use."
 
-When the server offers more than one sign-in method, you can add another under **Settings => User
-=> Sign-in methods**. Press **Add** next to the provider and sign in there with the account you want
-to add; the provider asks even when you are already signed in to it. You come back to Settings with
-the method listed, and from then on either one signs you in to the same account. The
-provider's email doesn't have to match the one Norish has. Adding OIDC applies its claims at once,
-as your next OIDC sign-in would.
+When the server offers more than one sign-in method, you can connect another under **Settings =>
+User => Sign-in methods**. Press **Connect** with the provider's name and sign in there with the
+account you want to connect; the provider asks even when you are already signed in to it. You come
+back to Settings with the method listed, and from then on either one signs you in to the same
+account. The provider's email doesn't have to match the one Norish has. Connecting OIDC applies its
+claims at once, as your next OIDC sign-in would.
 
-**Remove** takes a method off again. The last method the server offers can't be removed, and a
-password counts only while password sign-in is on. A method the server no longer offers stays listed
-as not currently available.
+**Disconnect** takes a method off again. The last method the server offers can't be disconnected,
+and a password counts only while password sign-in is on. A method the server no longer offers stays
+listed as not currently available.
 
 ![The Sign-in methods card in user settings](/img/screenshots/settings-sign-in-methods.png)
 
