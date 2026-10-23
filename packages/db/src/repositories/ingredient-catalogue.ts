@@ -274,17 +274,6 @@ export async function findIngredientIdsAmong(
   return new Set(rows.map((row) => row.id));
 }
 
-/** The listed foods filed directly under this one, by name. */
-export async function findListedKindIds(parentId: string): Promise<string[]> {
-  const rows = await db
-    .select({ id: ingredients.id })
-    .from(ingredients)
-    .where(and(eq(ingredients.parentId, parentId), ingredientIsListed()))
-    .orderBy(asc(sql`lower(${ingredients.name})`), asc(ingredients.id));
-
-  return rows.map((row) => row.id);
-}
-
 /**
  * One Ingredient as an edit reads it: name, flag, owner, parent, whether its name is settled and
  * whether AI may ask about it.

@@ -11,7 +11,6 @@ import type {
 import type { FlagReason, ReviewTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import type { LineJoin } from "@norish/shared/lib/line-foods";
 import { findIngredientCandidatesByIds } from "@norish/db/repositories/ingredient-aliases";
-import { findListedKindIds } from "@norish/db/repositories/ingredient-catalogue";
 import {
   isAIEnabled,
   isDecisionUseEnabled,
@@ -41,9 +40,6 @@ export const REQUEST_BUDGET_MS = 30_000;
 
 /** How many of a candidate's other names one question shows. */
 const SHOWN_ALIASES = 5;
-
-/** The most kinds of a parent the family question shows. */
-const SHOWN_KINDS = 10;
 
 /**
  * What rung 3 made of a name: a known food, a food of its own (under its parent, if any), several
@@ -103,8 +99,8 @@ export async function askWhatFoodThisIs(text: string, options: AskOptions): Prom
 }
 
 /**
- * The reading, looked up: a food the names find is the one, unless it is the parent (`parentOf`);
- * else the parent or a kind of it the family question picks; else its own under the parent.
+ * The reading, looked up: a food the names find is the one, else it is its own under `parentOf`,
+ * unless the names find a food other than that parent. Flagged unless AI was sure.
  */
 async function readThenLookUp(
   text: string,
@@ -147,14 +143,12 @@ async function readThenLookUp(
     otherNames: food.otherNames,
   });
 
-  const asked = { name: text, readAs: food };
-  const names = namesOf(food);
-  const found = await findNamed(asked, excludeId, names, trace);
+  const found = await findNamed({ name: text, readAs: food }, excludeId, namesOf(food), trace);
 
-  const same = (ingredientId: string, sure = true): AIResolution => ({
+  const same = (ingredientId: string): AIResolution => ({
     kind: "same",
     ingredientId,
-    sure: reading.sure && found.sure && sure,
+    sure: reading.sure && found.sure,
   });
 
   // The English name finding a food exactly, or an other name that spells AI's parent (plurals
@@ -175,53 +169,14 @@ async function readThenLookUp(
     return same(found.food.ingredientId);
   }
 
-  // Names that find nothing ask whether the food is the parent found or one of its kinds.
-  const family =
-    !found.food && parent?.food
-      ? await askFamily(asked, names, parent.food.id, excludeId, trace)
-      : null;
-
-  if (family?.ingredientId) return same(family.ingredientId, family.sure);
-
   // A parent or category AI named that the catalogue lacks keeps the parent AI gave the food.
   const keptByAI = parent && filedUnder?.byAI ? filedUnder : null;
 
   return {
     kind: "own",
     parent: parent?.food ?? keptByAI,
-    sure: reading.sure && found.sure && (family?.sure ?? true) && (parent?.sure ?? true),
+    sure: reading.sure && found.sure && (parent?.sure ?? true),
   };
-}
-
-/**
- * Which of the parent and its listed kinds (never the food itself) the name is, asked as a slip is:
- * nothing spelled them. Past `SHOWN_KINDS`, the kinds sharing most words with AI's names are shown.
- */
-async function askFamily(
-  asked: Asked,
-  names: readonly string[],
-  parentId: string,
-  excludeId: string,
-  trace: ReviewTrace
-): Promise<Pick> {
-  const kindIds = (await findListedKindIds(parentId)).filter((id) => id !== excludeId);
-  const wordsOf = (texts: readonly string[]) =>
-    new Set(texts.flatMap((text) => foldName(text).split(" ")));
-  const named = wordsOf([asked.name, ...names]);
-  const rank = ({ id, name, aliases }: IngredientCandidate) =>
-    id === parentId
-      ? Infinity
-      : [...wordsOf([name, ...aliases])].filter((word) => named.has(word)).length;
-  const family = (await findIngredientCandidatesByIds([parentId, ...kindIds]))
-    .sort((a, b) => rank(b) - rank(a))
-    .slice(0, SHOWN_KINDS + 1);
-
-  return await askWhich(
-    asked,
-    family.map((candidate) => ({ ...candidate, matched: candidate.name })),
-    true,
-    trace
-  );
 }
 
 /**
@@ -322,7 +277,8 @@ async function findNamed(
       matched: matched.get(candidate.id) ?? candidate.name,
     }));
 
-    pick = await askWhich(asked, candidates, exact.length === 0, trace);
+    trace.considered.push(...candidates.map((candidate) => candidate.name));
+    pick = await askWhich(asked, candidates, exact.length === 0);
   }
 
   const picked = ranked.find((one) => one.ingredientId === pick.ingredientId);
@@ -486,12 +442,9 @@ interface Pick {
 async function askWhich(
   asked: Asked,
   candidates: readonly Candidate[],
-  slips: boolean,
-  trace: ReviewTrace
+  slips: boolean
 ): Promise<Pick> {
   const text = asked.name;
-
-  trace.considered.push(...candidates.map((candidate) => candidate.name));
 
   if (await isDecisionUseEnabled("ingredientResolution")) {
     // A Decision failure of any retryability is a warn log and the fallback.

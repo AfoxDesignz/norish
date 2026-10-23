@@ -144,15 +144,10 @@ describe("ingredient resolver with AI on", () => {
           .sort()
       );
 
-      // The pass reads "rode uien" as red onion, a kind of onion, is none of onion's family, and
-      // files it there.
+      // The pass reads "rode uien" as red onion, a kind of onion, and files it there.
       const red = lines[1]!.ingredientId!;
 
-      vi.mocked(isDecisionUseEnabled).mockResolvedValue(false);
-      modelAnswers.push(foodReading({ englishName: "red onion", parent: "onion", sure: true }), {
-        food: null,
-        sure: true,
-      });
+      modelAnswers.push(foodReading({ englishName: "red onion", parent: "onion", sure: true }));
       await expect(askAIAbout(red)).resolves.toMatchObject({ outcome: "parent", of: "onion" });
       await expect(findIngredientAncestors([red])).resolves.toEqual(
         new Map([[red, [onion.ingredientId]]])
