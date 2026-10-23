@@ -35,7 +35,7 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
   const filedUnder = row.parentId ? await findCatalogueIngredient(row.parentId) : null;
   const answer = await askWhatFoodThisIs(row.name, {
     excludeId: ingredientId,
-    filedUnder: filedUnder?.name ?? null,
+    filedUnder,
     trace,
   });
 

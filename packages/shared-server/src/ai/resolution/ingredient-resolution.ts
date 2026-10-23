@@ -82,8 +82,8 @@ function failed(error: unknown): Unanswered {
 export interface AskOptions {
   /** The Ingredient the question is about, never its own answer. */
   excludeId: string;
-  /** The parent's name it is filed under now, so AI judges it rather than makes one up. */
-  filedUnder: string | null;
+  /** The parent it is filed under now, so AI judges it rather than makes one up. */
+  filedUnder: { id: string; name: string } | null;
   /** Where to record what was asked, for a person who wants to know: filled in as it goes. */
   trace: ReviewTrace;
 }
@@ -108,7 +108,7 @@ async function readThenLookUp(
   text: string,
   { excludeId, filedUnder, trace }: AskOptions
 ): Promise<AIResolution> {
-  const reading = await readName(text, filedUnder).catch((error: unknown) => {
+  const reading = await readName(text, filedUnder?.name ?? null).catch((error: unknown) => {
     aiLogger.warn({ err: error, feature: "ingredient-resolution", text }, "Reading a name failed");
 
     throw failed(error);
@@ -161,7 +161,12 @@ async function readThenLookUp(
   if (found.food && ((food.englishName && found.byFirstName) || parentNamed)) {
     return same(found.food.ingredientId);
   }
-  const parent = food.parent ? await findByName(food.parent, excludeId, trace) : null;
+  // AI's parent as the last words of the parent the food has ("pepper" for "red bell pepper") is it.
+  const parent = !food.parent
+    ? null
+    : filedUnder && ` ${foldName(filedUnder.name)}`.endsWith(` ${foldName(food.parent)}`)
+      ? { food: { ingredientId: filedUnder.id }, sure: true }
+      : await findByName(food.parent, excludeId, trace);
 
   // A food only AI's other names (or a slip) find is never the parent AI gave: filed under it.
   if (found.food && parent?.food?.ingredientId !== found.food.ingredientId) {

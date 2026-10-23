@@ -558,6 +558,29 @@ describe("asking AI about an Ingredient", () => {
       });
     });
 
+    it("keeps the parent when AI names it in fewer words, though another food has those words", async () => {
+      await applyIngredientSeed([
+        seedEntry("en:pepper", "pepper"),
+        seedEntry("en:red-bell-pepper", "red bell pepper"),
+      ]);
+      const bell = (await findIngredientFor("red bell pepper"))!;
+      const pointed = await flagged("red pointed peppers");
+
+      await getTestDb()
+        .update(ingredients)
+        .set({ parentId: bell.ingredientId })
+        .where(eq(ingredients.id, pointed.ingredientId));
+      reads({ englishName: "red pointed pepper", parent: "pepper", sure: true });
+
+      await expect(askAIAbout(pointed.ingredientId)).resolves.toMatchObject({
+        outcome: "parent",
+        of: "red bell pepper",
+        sure: true,
+      });
+      await expect(parentOf(pointed.ingredientId)).resolves.toBe(bell.ingredientId);
+      expect(await changes()).toEqual([]);
+    });
+
     it("moves it to the plain food AI names when the catalogue has that food", async () => {
       const { food } = await under("spice", "chinese 5 spice");
       const mixed = await kept("mixed spices");
