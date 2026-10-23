@@ -13,10 +13,12 @@
   "user": {
     "signInMethods": {
       "title": "Anmeldemethoden",
-      "description": "Die Wege, auf denen du dich bei diesem Konto anmeldest.",
+      "description": "Verbinde dein Konto mit SSO.",
       "password": "Passwort",
-      "add": "Hinzufügen",
-      "remove": "Entfernen",
+      "addAnother": "Weitere Anmeldemethode hinzufügen",
+      "addProvider": "Mit {provider} verbinden",
+      "added": "Hinzugefügt am {date}",
+      "remove": "Trennen",
       "unavailable": "Derzeit nicht verfügbar",
       "errors": {
         "usedByAnotherAccount": "Diese Anmeldung wird bereits von einem anderen Konto verwendet.",

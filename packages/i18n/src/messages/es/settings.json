@@ -13,10 +13,12 @@
   "user": {
     "signInMethods": {
       "title": "Métodos de inicio de sesión",
-      "description": "Las formas de iniciar sesión en esta cuenta.",
+      "description": "Conecta tu cuenta con SSO.",
       "password": "Contraseña",
-      "add": "Añadir",
-      "remove": "Eliminar",
+      "addAnother": "Añade otra forma de iniciar sesión",
+      "addProvider": "Conectar {provider}",
+      "added": "Añadido el {date}",
+      "remove": "Desconectar",
       "unavailable": "No disponible actualmente",
       "errors": {
         "usedByAnotherAccount": "Este inicio de sesión ya lo usa otra cuenta.",

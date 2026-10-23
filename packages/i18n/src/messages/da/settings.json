@@ -13,10 +13,12 @@
   "user": {
     "signInMethods": {
       "title": "Loginmetoder",
-      "description": "De måder, du logger ind på denne konto.",
+      "description": "Forbind din konto med SSO.",
       "password": "Adgangskode",
-      "add": "Tilføj",
-      "remove": "Fjern",
+      "addAnother": "Tilføj en anden måde at logge ind på",
+      "addProvider": "Forbind {provider}",
+      "added": "Tilføjet {date}",
+      "remove": "Afbryd",
       "unavailable": "Ikke tilgængelig i øjeblikket",
       "errors": {
         "usedByAnotherAccount": "Dette login bruges allerede af en anden konto.",

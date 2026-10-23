@@ -13,10 +13,12 @@
   "user": {
     "signInMethods": {
       "title": "Способи входу",
-      "description": "Способи, якими ви входите в цей обліковий запис.",
+      "description": "Підключіть обліковий запис до SSO.",
       "password": "Пароль",
-      "add": "Додати",
-      "remove": "Видалити",
+      "addAnother": "Додайте інший спосіб входу",
+      "addProvider": "Підключити {provider}",
+      "added": "Додано {date}",
+      "remove": "Відключити",
       "unavailable": "Зараз недоступно",
       "errors": {
         "usedByAnotherAccount": "Цей вхід уже використовує інший обліковий запис.",

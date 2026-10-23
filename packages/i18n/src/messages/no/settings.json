@@ -13,10 +13,12 @@
   "user": {
     "signInMethods": {
       "title": "Innloggingsmetoder",
-      "description": "Måtene du logger inn på denne kontoen.",
+      "description": "Koble kontoen din til SSO.",
       "password": "Passord",
-      "add": "Legg til",
-      "remove": "Fjern",
+      "addAnother": "Legg til en annen måte å logge inn på",
+      "addProvider": "Koble til {provider}",
+      "added": "Lagt til {date}",
+      "remove": "Koble fra",
       "unavailable": "Ikke tilgjengelig for øyeblikket",
       "errors": {
         "usedByAnotherAccount": "Denne innloggingen brukes allerede av en annen konto.",

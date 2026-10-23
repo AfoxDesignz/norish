@@ -341,9 +341,9 @@ export async function clearUserAvatar(
 /** The user's Sign-in Methods: one account row per provider, password included. */
 export async function getSignInMethodsForUser(
   userId: string
-): Promise<{ id: string; providerId: string }[]> {
+): Promise<{ id: string; providerId: string; createdAt: Date }[]> {
   return db
-    .select({ id: accounts.id, providerId: accounts.providerId })
+    .select({ id: accounts.id, providerId: accounts.providerId, createdAt: accounts.createdAt })
     .from(accounts)
     .where(eq(accounts.userId, userId))
     .orderBy(accounts.createdAt);

@@ -13,10 +13,12 @@
   "user": {
     "signInMethods": {
       "title": "Métodos de login",
-      "description": "As formas de entrar nesta conta.",
+      "description": "Conecte sua conta com SSO.",
       "password": "Senha",
-      "add": "Adicionar",
-      "remove": "Remover",
+      "addAnother": "Adicione outra forma de entrar",
+      "addProvider": "Conectar {provider}",
+      "added": "Adicionado em {date}",
+      "remove": "Desconectar",
       "unavailable": "Indisponível no momento",
       "errors": {
         "usedByAnotherAccount": "Este login já é usado por outra conta.",

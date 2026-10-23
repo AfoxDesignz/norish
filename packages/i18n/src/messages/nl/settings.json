@@ -13,10 +13,12 @@
   "user": {
     "signInMethods": {
       "title": "Inlogmethoden",
-      "description": "De manieren waarop je bij dit account inlogt.",
+      "description": "Koppel je account aan SSO.",
       "password": "Wachtwoord",
-      "add": "Toevoegen",
-      "remove": "Verwijderen",
+      "addAnother": "Voeg een andere manier van inloggen toe",
+      "addProvider": "{provider} koppelen",
+      "added": "Toegevoegd op {date}",
+      "remove": "Ontkoppelen",
       "unavailable": "Momenteel niet beschikbaar",
       "errors": {
         "usedByAnotherAccount": "Deze inlog wordt al door een ander account gebruikt.",

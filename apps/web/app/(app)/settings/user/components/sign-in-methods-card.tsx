@@ -5,10 +5,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SettingsCard } from "@/app/(app)/settings/components/settings-card";
 import { ProviderIcon } from "@/app/(auth)/login/components/provider-icon";
 import { useTRPC } from "@/app/providers/trpc-provider";
-import { FingerPrintIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { Button, Chip, toast } from "@heroui/react";
+import { FingerPrintIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { Button, toast } from "@heroui/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 
 import {
   keepsOfferedSignInMethod,
@@ -16,6 +16,8 @@ import {
   SIGN_IN_METHODS,
 } from "@norish/shared/contracts/dto/auth";
 import { authClient } from "@norish/shared/lib/auth/client";
+
+import { useUserSettingsContext } from "../context";
 
 type ErrorMessage =
   "usedByAnotherAccount" | "lastMethod" | "signInAgain" | "addFailed" | "removeFailed";
@@ -36,6 +38,8 @@ async function orThrow(request: Promise<{ error: unknown }>): Promise<void> {
 
 export default function SignInMethodsCard() {
   const t = useTranslations("settings.user.signInMethods");
+  const format = useFormatter();
+  const { user } = useUserSettingsContext();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -98,51 +102,63 @@ export default function SignInMethodsCard() {
 
   return (
     <SettingsCard description={t("description")} icon={FingerPrintIcon} title={t("title")}>
-      <ul className="divide-border divide-y">
+      <ul className="border-border divide-border divide-y overflow-hidden rounded-xl border">
         {accounts.map((account) => {
-          const canRemove = keepsOfferedSignInMethod(accounts, account.id, offeredIds);
+          const name = nameOf(account.providerId);
+          const offeredNow = offeredIds.has(account.providerId);
 
           return (
-            <li key={account.id} className="flex items-center gap-3 py-2">
-              <ProviderIcon
-                icon={methodOf(account.providerId).icon}
-                providerName={nameOf(account.providerId)}
-              />
-              <span className="flex-1">{nameOf(account.providerId)}</span>
-              {!offeredIds.has(account.providerId) && (
-                <Chip size="sm" variant="soft">
-                  {t("unavailable")}
-                </Chip>
+            <li key={account.id} className="flex items-center gap-3 px-4 py-3">
+              <span className="bg-surface-secondary flex size-10 shrink-0 items-center justify-center rounded-lg">
+                <ProviderIcon icon={methodOf(account.providerId).icon} providerName={name} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{name}</p>
+                <p className={`truncate text-sm ${offeredNow ? "text-muted" : "text-warning"}`}>
+                  {!offeredNow
+                    ? t("unavailable")
+                    : account.providerId === "credential"
+                      ? user?.email
+                      : t("added", {
+                          date: format.dateTime(account.createdAt, { dateStyle: "medium" }),
+                        })}
+                </p>
+              </div>
+              {keepsOfferedSignInMethod(accounts, account.id, offeredIds) && (
+                <Button
+                  isPending={remove.isPending && remove.variables === account.id}
+                  size="sm"
+                  variant="tertiary"
+                  onPress={() => remove.mutate(account.id)}
+                >
+                  <TrashIcon className="size-4" />
+                  {/* A phone keeps the row's email; the word stays its accessible name. */}
+                  <span className="max-sm:sr-only">{t("remove")}</span>
+                </Button>
               )}
-              <Button
-                isDisabled={!canRemove}
-                isPending={remove.isPending && remove.variables === account.id}
-                size="sm"
-                variant="danger-soft"
-                onPress={() => remove.mutate(account.id)}
-              >
-                <TrashIcon className="size-4" />
-                {t("remove")}
-              </Button>
             </li>
           );
         })}
-        {addable.map((provider) => (
-          <li key={provider.id} className="flex items-center gap-3 py-2">
-            <ProviderIcon icon={provider.icon} providerName={provider.name} />
-            <span className="text-muted flex-1">{provider.name}</span>
-            <Button
-              isPending={add.isPending && add.variables === provider.id}
-              size="sm"
-              variant="tertiary"
-              onPress={() => add.mutate(provider.id)}
-            >
-              <PlusIcon className="size-4" />
-              {t("add")}
-            </Button>
-          </li>
-        ))}
       </ul>
+      {addable.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-muted text-sm">{t("addAnother")}</p>
+          <div className="flex flex-wrap gap-2">
+            {addable.map((provider) => (
+              <Button
+                key={provider.id}
+                className="gap-2"
+                isPending={add.isPending && add.variables === provider.id}
+                variant="tertiary"
+                onPress={() => add.mutate(provider.id)}
+              >
+                <ProviderIcon icon={provider.icon} providerName={provider.name} width={18} />
+                {t("addProvider", { provider: provider.name })}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
     </SettingsCard>
   );
 }

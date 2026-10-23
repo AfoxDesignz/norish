@@ -13,10 +13,12 @@
   "user": {
     "signInMethods": {
       "title": "Начини за вход",
-      "description": "Начините, по които влизате в този акаунт.",
+      "description": "Свържете акаунта си с SSO.",
       "password": "Парола",
-      "add": "Добави",
-      "remove": "Премахни",
+      "addAnother": "Добавете друг начин за вход",
+      "addProvider": "Свържи {provider}",
+      "added": "Добавено на {date}",
+      "remove": "Прекъсни",
       "unavailable": "В момента не е налично",
       "errors": {
         "usedByAnotherAccount": "Този вход вече се използва от друг акаунт.",

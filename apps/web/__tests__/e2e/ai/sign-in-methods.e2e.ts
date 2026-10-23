@@ -1,9 +1,9 @@
-// A password user adds OIDC under another email in Settings, signs in with it
-// to the same account, and removes it again.
+// A password user connects OIDC under another email in Settings, signs in with it
+// to the same account, and disconnects it again.
 import { signIn } from "../harness/auth";
 import { expect, IDP_NAME, MEMBER, test } from "./fixture";
 
-test("a password user adds OIDC in Settings, signs in with it, and removes it", async ({
+test("a password user connects OIDC in Settings, signs in with it, and disconnects it", async ({
   browser,
   aiStack,
 }) => {
@@ -15,28 +15,26 @@ test("a password user adds OIDC in Settings, signs in with it, and removes it", 
 
   try {
     const page = await passwordContext.newPage();
+    const connect = page.getByRole("button", { name: `Connect ${IDP_NAME}` });
     const oidcRow = page.getByRole("listitem").filter({ hasText: IDP_NAME });
 
-    // The server renders the card with its rows, so it never shows an Add it takes back.
+    // The server renders the card with its methods, so it never offers a Connect it takes back.
     const html = await (await page.goto("/settings"))?.text();
 
-    expect(html).toContain(">Password</span>");
-    expect(html).toContain(`>${IDP_NAME}</span>`);
+    expect(html).toContain(">Password</p>");
+    expect(html).toContain(`Connect ${IDP_NAME}`);
     await expect(page.getByRole("listitem").filter({ hasText: "Password" })).toBeVisible();
 
     // Cancelling at the identity provider comes back with nothing added.
     aiStack.idp.signInAs = null;
-    await Promise.all([
-      page.waitForURL(/error=access_denied/),
-      oidcRow.getByRole("button", { name: "Add" }).click(),
-    ]);
+    await Promise.all([page.waitForURL(/error=access_denied/), connect.click()]);
     await expect(page).toHaveURL(/\/settings$/);
-    await expect(oidcRow.getByRole("button", { name: "Add" })).toBeVisible();
+    await expect(connect).toBeVisible();
 
     aiStack.idp.signInAs = { sub: "member-sub", email: "member@home.lan", name: "Member" };
-    await oidcRow.getByRole("button", { name: "Add" }).click();
+    await connect.click();
     await expect(page).toHaveURL(/\/settings$/);
-    await expect(oidcRow.getByRole("button", { name: "Remove" })).toBeVisible();
+    await expect(oidcRow.getByRole("button", { name: "Disconnect" })).toBeVisible();
 
     const oidcPage = await oidcContext.newPage();
 
@@ -49,10 +47,12 @@ test("a password user adds OIDC in Settings, signs in with it, and removes it", 
     expect(session.user.email).toBe(MEMBER.email);
 
     await oidcPage.goto("/settings");
-    const row = oidcPage.getByRole("listitem").filter({ hasText: IDP_NAME });
-
-    await row.getByRole("button", { name: "Remove" }).click();
-    await expect(row.getByRole("button", { name: "Add" })).toBeVisible();
+    await oidcPage
+      .getByRole("listitem")
+      .filter({ hasText: IDP_NAME })
+      .getByRole("button", { name: "Disconnect" })
+      .click();
+    await expect(oidcPage.getByRole("button", { name: `Connect ${IDP_NAME}` })).toBeVisible();
   } finally {
     aiStack.idp.signInAs = null;
     await Promise.all([passwordContext.close(), oidcContext.close()]);

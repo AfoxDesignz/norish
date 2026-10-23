@@ -13,10 +13,12 @@
   "user": {
     "signInMethods": {
       "title": "Metodi di accesso",
-      "description": "I modi in cui accedi a questo account.",
+      "description": "Collega il tuo account con SSO.",
       "password": "Password",
-      "add": "Aggiungi",
-      "remove": "Rimuovi",
+      "addAnother": "Aggiungi un altro modo per accedere",
+      "addProvider": "Collega {provider}",
+      "added": "Aggiunto il {date}",
+      "remove": "Scollega",
       "unavailable": "Attualmente non disponibile",
       "errors": {
         "usedByAnotherAccount": "Questo accesso è già usato da un altro account.",
