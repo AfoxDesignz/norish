@@ -292,6 +292,30 @@ describe("the first-start cleanup", () => {
     expect(await exists(oils.ingredientId)).toBe(true);
   });
 
+  it("leaves a joined food whose whole name another food spells to AI, as a line would read it", async () => {
+    await mintIngredientWithAliases({
+      name: "salt and pepper",
+      aliases: [{ text: "zout en peper", fold: ingredientAliasFold("zout en peper") }],
+      ownerId: userId,
+      locale: "nl",
+      flagged: false,
+    });
+    const joined = await oldMint("zout en peper", ["peper en zout"]);
+    const line = await insertTestRecipeLine(
+      { recipeId: (await createTestRecipe(userId)).id, name: "peper en zout" },
+      joined.aliasIds
+    );
+
+    await expect(cleanUpCatalogueOnFirstStart(askAI)).resolves.toMatchObject({
+      split: 0,
+      renamed: 0,
+      removed: 0,
+    });
+    expect(await exists(joined.ingredientId)).toBe(true);
+    expect(await lineSpellings(line.id)).toEqual(["peper en zout"]);
+    expect(askAI.mock.calls[0]![0]).toContain(joined.ingredientId);
+  });
+
   it("neither splits nor renames a hidden food", async () => {
     const joined = await oldMint("zout en peper", ["zout en peper"]);
     const dirty = await oldMint("baking soda )", ["baking soda"]);
