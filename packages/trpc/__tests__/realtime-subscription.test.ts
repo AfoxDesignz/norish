@@ -94,7 +94,7 @@ type FakeLiveSourceLike = {
 
 type StreamEntry = [id: string, fields: string[]];
 
-const redis = vi.hoisted(() => {
+const valkey = vi.hoisted(() => {
   const streams = new Map<string, StreamEntry[]>();
 
   const compare = (a: string, b: string) => {
@@ -142,8 +142,8 @@ vi.mock("@norish/shared-server/realtime/hub", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@norish/shared-server/realtime/hub")>()),
   getRealtimeHub: () => ({ subscribe: hub.subscribe, on: vi.fn(), stats: vi.fn() }),
 }));
-vi.mock("@norish/shared-server/redis/client", () => ({
-  getPublisherClient: vi.fn(async () => redis),
+vi.mock("@norish/shared-server/valkey/client", () => ({
+  getPublisherClient: vi.fn(async () => valkey),
 }));
 vi.mock("@norish/shared-server/logger", () => ({
   trpcLogger: logged,
@@ -218,7 +218,7 @@ function envelope(channel: string, eventId: string, payload: unknown): RealtimeE
 function seedStream(channel: string, entries: Array<[id: string, payload: unknown]>) {
   const key = `norish:stream:${channel.slice("norish:".length)}`;
 
-  redis.streams.set(
+  valkey.streams.set(
     key,
     entries.map(([entryId, payload]) => [
       entryId,
@@ -278,7 +278,7 @@ function laggedCause(error: TRPCError): RealtimeLaggedErrorType {
 }
 
 beforeEach(() => {
-  redis.streams.clear();
+  valkey.streams.clear();
   hub.sources.clear();
   hub.subscribe.mockImplementation(
     (channel: string, opts: { signal?: AbortSignal; maxQueue?: number } = {}) => {
@@ -356,8 +356,8 @@ describe("fresh subscription", () => {
 
     expect(first.data).toEqual({ mark: "cursor" });
     expect(first.cursor).toBe(encodeCursor({ identityHash: hash, ids: [id(2), "0-0", id(3)] }));
-    expect(redis.xrevrange).toHaveBeenCalledTimes(3);
-    expect(redis.xrange).not.toHaveBeenCalled();
+    expect(valkey.xrevrange).toHaveBeenCalledTimes(3);
+    expect(valkey.xrange).not.toHaveBeenCalled();
     controller.abort();
   });
 
@@ -369,7 +369,7 @@ describe("fresh subscription", () => {
 
       return new FakeLiveSource(channel, undefined, opts.signal);
     });
-    redis.xrevrange.mockImplementationOnce(async () => {
+    valkey.xrevrange.mockImplementationOnce(async () => {
       order.push("read");
 
       return [];
@@ -438,12 +438,12 @@ describe("fresh subscription", () => {
     const pending = iterator.next();
 
     for (const [channel, source] of hub.sources) {
-      source.fail(new RealtimeLaggedError(channel, "redis-reconnect", 0));
+      source.fail(new RealtimeLaggedError(channel, "valkey-reconnect", 0));
     }
 
     const cause = laggedCause(await failure(pending));
 
-    expect(cause.reason).toBe("redis-reconnect");
+    expect(cause.reason).toBe("valkey-reconnect");
     for (const source of hub.sources.values()) {
       expect(source.returned).toHaveBeenCalled();
     }
@@ -491,8 +491,8 @@ describe("resume", () => {
     expect((third.data as RealtimeEventEnvelope).meta.eventId).toBe(id(3));
     expect(third.cursor).toBe(encodeCursor({ identityHash: hash, ids: [id(3)] }));
 
-    expect(redis.xrange).toHaveBeenCalledWith(CREATED_STREAM, `(${id(1)}`, "+", "COUNT", 1000);
-    expect(redis.xrevrange).not.toHaveBeenCalled();
+    expect(valkey.xrange).toHaveBeenCalledWith(CREATED_STREAM, `(${id(1)}`, "+", "COUNT", 1000);
+    expect(valkey.xrevrange).not.toHaveBeenCalled();
 
     hub.sources.get(CREATED)!.push(envelope(CREATED, id(4), { ids: ["g-4"] }));
 
@@ -558,7 +558,7 @@ describe("resume", () => {
     expect(got[0]!.cursor).toBe(encodeCursor({ identityHash: hash, ids: [id(5), id(2), "0-0"] }));
     expect(got[1]!.cursor).toBe(encodeCursor({ identityHash: hash, ids: [id(5), id(6), "0-0"] }));
     // The user channel's cursor was 0-0: nothing seen, nothing to replay.
-    expect(redis.xrange).not.toHaveBeenCalledWith(
+    expect(valkey.xrange).not.toHaveBeenCalledWith(
       `norish:stream:grocery:user:${USER}:imported`,
       expect.anything(),
       expect.anything(),
@@ -597,11 +597,11 @@ describe("resume", () => {
     const cause = laggedCause(await failure(iterator.next()));
 
     expect(cause).toMatchObject({ channel: CREATED, reason: "cursor-trimmed" });
-    expect(redis.xrange).toHaveBeenCalledTimes(1);
+    expect(valkey.xrange).toHaveBeenCalledTimes(1);
     controller.abort();
   });
 
-  it("is Lagged cursor-expired without a Redis call when the cursor is older than the TTL", async () => {
+  it("is Lagged cursor-expired without a Valkey call when the cursor is older than the TTL", async () => {
     const stale = `${Date.now() - RESUME_TTL_SECONDS * 1_000 - 5_000}-0`;
     const { iterator, controller } = await subscribe("onCreated", {
       lastEventId: encodeCursor({ identityHash: hash, ids: [stale] }),
@@ -610,8 +610,8 @@ describe("resume", () => {
     const cause = laggedCause(await failure(iterator.next()));
 
     expect(cause.reason).toBe("cursor-expired");
-    expect(redis.xrange).not.toHaveBeenCalled();
-    expect(redis.xrevrange).not.toHaveBeenCalled();
+    expect(valkey.xrange).not.toHaveBeenCalled();
+    expect(valkey.xrevrange).not.toHaveBeenCalled();
     controller.abort();
   });
 
@@ -621,7 +621,7 @@ describe("resume", () => {
     const cause = laggedCause(await failure(iterator.next()));
 
     expect(cause.reason).toBe("cursor-invalid");
-    expect(redis.xrange).not.toHaveBeenCalled();
+    expect(valkey.xrange).not.toHaveBeenCalled();
     controller.abort();
   });
 
@@ -644,8 +644,8 @@ describe("resume", () => {
     const cause = laggedCause(await failure(iterator.next()));
 
     expect(cause.reason).toBe("identity-changed");
-    expect(redis.xrange).not.toHaveBeenCalled();
-    expect(redis.xrevrange).not.toHaveBeenCalled();
+    expect(valkey.xrange).not.toHaveBeenCalled();
+    expect(valkey.xrevrange).not.toHaveBeenCalled();
     controller.abort();
   });
 
@@ -697,7 +697,7 @@ describe("a read that fails", () => {
   });
 
   it("ends Lagged unavailable when a stream read fails, and returns every live iterable", async () => {
-    redis.xrevrange.mockRejectedValueOnce(new Error("Command timed out"));
+    valkey.xrevrange.mockRejectedValueOnce(new Error("Command timed out"));
 
     const { iterator, controller } = await subscribe("onCreated");
     const cause = await laggedAfterThePause(iterator.next());

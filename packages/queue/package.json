@@ -6,7 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./contracts/*": "./src/contracts/*.ts",
-    "./redis/bullmq": "./src/redis/bullmq.ts",
+    "./valkey/bullmq": "./src/valkey/bullmq.ts",
     "./*": "./src/*.ts"
   },
   "scripts": {
@@ -33,7 +33,7 @@
     "@norish/eslint-config": "workspace:*",
     "@norish/prettier-config": "workspace:*",
     "@norish/tsconfig": "workspace:*",
-    "@testcontainers/redis": "catalog:",
+    "@testcontainers/valkey": "catalog:",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",

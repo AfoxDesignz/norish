@@ -96,7 +96,7 @@ vi.mock("@norish/shared-server/ingredients/icons", async (original) => ({
     none: ["en:vegetable"],
   }),
 }));
-vi.mock("@norish/queue/redis/bullmq", () => ({ getBullClient: vi.fn() }));
+vi.mock("@norish/queue/valkey/bullmq", () => ({ getBullClient: vi.fn() }));
 vi.mock("@norish/db/repositories/ingredient-catalogue", () => catalogue);
 vi.mock("@norish/db/repositories/ingredient-relocation", () => relocation);
 vi.mock("@norish/db/repositories/ingredient-cleanup", () => cleanup);

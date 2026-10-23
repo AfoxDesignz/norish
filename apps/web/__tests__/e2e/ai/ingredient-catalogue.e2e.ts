@@ -10,7 +10,7 @@
  * each on the list on its own. A food only a grocery names is not on the page, and AI leaves it,
  * until a recipe names it. The scenario seeds a small catalogue of its own
  * rather than fetching Open Food Facts. The real Norish server, database,
- * Redis, tRPC and realtime are all in the path; nothing outbound is.
+ * Valkey, tRPC and realtime are all in the path; nothing outbound is.
  */
 import type { Locator, Page } from "@playwright/test";
 

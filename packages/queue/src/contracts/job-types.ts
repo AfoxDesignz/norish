@@ -88,7 +88,7 @@ export interface RecipeEnrichmentJobData {
   recipeId: string;
   /** Unique per accepted enrollment. */
   runId: string;
-  /** Redis-allocated ordering token. */
+  /** Valkey-allocated ordering token. */
   runSequence: number;
   kind: RecipeEnrichmentKind;
   userId: string;

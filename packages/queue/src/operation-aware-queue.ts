@@ -48,7 +48,7 @@ function addBulkWithOperationContext<TQueue extends Queue<any, any, any>>(
 
 /**
  * Route a Queue's `error` to the logger. Without a listener BullMQ prints it
- * with console.error, so a Redis blip shows up as raw stack traces.
+ * with console.error, so a Valkey blip shows up as raw stack traces.
  */
 export function logQueueErrors<TQueue extends Queue<any, any, any>>(queue: TQueue): TQueue {
   queue.on("error", (err) => {

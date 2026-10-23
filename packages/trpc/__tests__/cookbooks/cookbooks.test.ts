@@ -32,7 +32,7 @@ vi.mock("@norish/shared-server/media/storage", () => ({
   sweepCookbookImages: vi.fn(),
 }));
 // The auth middleware resolves the household itself; the test hands it one on
-// the base context so nothing reaches the cache or Redis.
+// the base context so nothing reaches the cache or Valkey.
 vi.mock("@norish/shared-server/cache/household", () => ({
   getCachedHouseholdForUser: vi.fn().mockResolvedValue(null),
 }));

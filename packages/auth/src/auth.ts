@@ -35,7 +35,7 @@ import {
   getCachedPasswordAuthEnabled,
 } from "./provider-cache";
 import { getAvailableProviders } from "./providers";
-import { redisSecondaryStorage } from "./secondary-storage";
+import { valkeySecondaryStorage } from "./secondary-storage";
 
 /**
  * Creates a wrapped adapter factory that intercepts user email lookups
@@ -234,11 +234,11 @@ function buildOIDCProviders() {
         const { profile, groupsSource } = result;
         const sub = profile.sub as string;
 
-        // Store the merged profile in Redis for claim processing
+        // Store the merged profile in Valkey for claim processing
         await storeOIDCProfile(sub, profile);
         authLogger.debug(
           { sub, hasGroups: "groups" in profile, groupsSource },
-          "Stored merged OIDC profile in Redis for claim processing"
+          "Stored merged OIDC profile in Valkey for claim processing"
         );
 
         return {
@@ -311,7 +311,7 @@ function createBetterAuth() {
           ]
         : []),
     ],
-    secondaryStorage: redisSecondaryStorage,
+    secondaryStorage: valkeySecondaryStorage,
     advanced: {
       ipAddress: { trustedProxies: SERVER_CONFIG.TRUSTED_PROXIES },
     },

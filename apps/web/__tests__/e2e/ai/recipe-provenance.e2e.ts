@@ -7,7 +7,7 @@
  * rendered recipe updating in place.
  *
  * Only the AI provider's HTTP boundary is faked. The real Norish server,
- * database, Redis, BullMQ workers, repositories, authorized mutation layer,
+ * database, Valkey, BullMQ workers, repositories, authorized mutation layer,
  * realtime connection, and UI are all exercised.
  */
 import type { BrowserContext, Page } from "@playwright/test";

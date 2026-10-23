@@ -3,7 +3,7 @@
  * Starting the scheduled tasks. What matters here is not the cron pattern but
  * what happens to a task the code used to have: removing its schedule leaves
  * the jobs that schedule already queued behind, and the worker then fails on
- * every one of them until somebody empties the Redis they sit in.
+ * every one of them until somebody empties the Valkey they sit in.
  */
 import type { Job, Queue } from "bullmq";
 import { describe, expect, it, vi } from "vitest";

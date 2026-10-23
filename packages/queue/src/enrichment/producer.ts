@@ -18,7 +18,7 @@ import { createLogger } from "@norish/shared-server/logger";
 
 import type { RecipeEnrichmentJobData, RecipeEnrichmentJobInput } from "../contracts/job-types";
 import { removeRetainedTerminalJob } from "../helpers";
-import { getBullClient } from "../redis/bullmq";
+import { getBullClient } from "../valkey/bullmq";
 import { publishEnrichmentLifecycle } from "./announce";
 import { ENRICHMENT_JOB_NAMES, enrichmentJobId, findActiveEnrichmentJobId } from "./identity";
 

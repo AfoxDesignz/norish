@@ -8,7 +8,7 @@
  * Ingredient Icons sees none; and a Draw icons round fills a food that had
  * none. The scenario seeds a small catalogue of its own (the harness fetches
  * no Open Food Facts seed), and the fake AI provider's image route stands in
- * for the image provider. The real server, database, Redis, queue and
+ * for the image provider. The real server, database, Valkey, queue and
  * realtime are all in the path.
  */
 import type { Locator, Page } from "@playwright/test";

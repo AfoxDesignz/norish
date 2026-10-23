@@ -31,7 +31,7 @@ import type { ScheduledTaskJobData } from "./scheduled-tasks/tasks";
 import { buildRemovalOptions, QUEUE_SETTINGS } from "./config";
 import { createOperationAwareQueue, logQueueErrors } from "./operation-aware-queue";
 import { QUEUE_NAMES } from "./queue-names";
-import { getBullClient } from "./redis/bullmq";
+import { getBullClient } from "./valkey/bullmq";
 
 const log = createLogger("queue:registry");
 

@@ -16,7 +16,7 @@ vi.mock("../../src/enrichment/announce", () => ({
   publishEnrichmentLifecycle: mocks.publishLifecycle,
 }));
 
-vi.mock("../../src/redis/bullmq", () => ({
+vi.mock("../../src/valkey/bullmq", () => ({
   getBullClient: () => ({ incr: mocks.incr }),
 }));
 
@@ -149,7 +149,7 @@ describe("addEnrichmentJob", () => {
     expect(mocks.publishLifecycle).not.toHaveBeenCalled();
   });
 
-  it("allocates a monotonic sequence from Redis for each attempted run", async () => {
+  it("allocates a monotonic sequence from Valkey for each attempted run", async () => {
     incr.mockResolvedValueOnce(42);
 
     await addEnrichmentJob(queue, job());

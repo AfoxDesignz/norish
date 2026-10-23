@@ -77,7 +77,7 @@ export async function readGrocery(
 
 /**
  * Revoke every session of a user, the way Better Auth does it (sessions live
- * in Redis, so a row delete would not do). The browser keeps its cookie; the
+ * in Valkey, so a row delete would not do). The browser keeps its cookie; the
  * next thing to present it learns that it is worthless.
  */
 export async function revokeSessions(stack: RealtimeStack, identity: Identity): Promise<void> {
@@ -177,8 +177,8 @@ export function sessionHeaders(stack: RealtimeStack, identity: Identity): Record
   return { cookie: cookieHeader(stack.cookies[identity]) };
 }
 
-export async function redisClientCount(stack: RealtimeStack): Promise<number> {
-  const list = await stack.server.redisCli("client", "list");
+export async function valkeyClientCount(stack: RealtimeStack): Promise<number> {
+  const list = await stack.server.valkeyCli("client", "list");
 
   // The CLI that ran the command is one of the listed clients; it is there
   // every time, so it cancels out of any comparison.

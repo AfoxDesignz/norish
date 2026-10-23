@@ -28,7 +28,7 @@ const log = createLogger("queue:enrichment-announce");
  *
  * Creation and import success are already terminal by the time this runs, so
  * a failed publish must not surface as a creation failure: the domain logs and
- * drops a Redis failure, and a payload failing its schema only throws outside
+ * drops a Valkey failure, and a payload failing its schema only throws outside
  * production. Losing the event costs that recipe's automatic enrichment, which
  * the manual actions recover.
  */

@@ -25,7 +25,7 @@ function isKnownTask(data: ScheduledTaskJobData | undefined): boolean {
  * What a removed scheduled task leaves behind. Taking its schedule away does
  * not take away the jobs that schedule already put in the queue, so a task
  * type this build no longer knows keeps arriving — and keeps failing, every
- * few seconds, in a Redis nobody thinks to empty. Clear those out here, where
+ * few seconds, in a Valkey nobody thinks to empty. Clear those out here, where
  * the list of tasks that do exist is already in hand.
  */
 async function removeStrandedTasks(queue: Queue<ScheduledTaskJobData>): Promise<void> {

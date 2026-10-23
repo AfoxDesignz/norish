@@ -1,34 +1,34 @@
 // @vitest-environment node
 /**
- * Shutdown after a Redis restart left the connections half-open: an idle
+ * Shutdown after a Valkey restart left the connections half-open: an idle
  * worker, the queue and the shared BullMQ client close at once, instead of
  * waiting on its run loop's command or a QUIT the dead socket never answers.
  */
-import type { StartedRedisContainer } from "@testcontainers/redis";
-import { RedisContainer } from "@testcontainers/redis";
+import type { StartedValkeyContainer } from "@testcontainers/valkey";
+import { ValkeyContainer } from "@testcontainers/valkey";
 import { Queue } from "bullmq";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 
-import { freezableProxy, REDIS_IMAGE } from "../../../shared-server/__tests__/helpers/redis";
+import { freezableProxy, VALKEY_IMAGE } from "../../../shared-server/__tests__/helpers/valkey";
 import { closeWorkers, createWorker } from "../../src/create-worker";
 import { QUEUE_NAMES } from "../../src/queue-names";
-import { closeBullConnection, getBullClient } from "../../src/redis/bullmq";
+import { closeBullConnection, getBullClient } from "../../src/valkey/bullmq";
 
 const config = vi.hoisted(() => ({ url: "" }));
 
 vi.mock("@norish/config/env-config-server", () => ({
   SERVER_CONFIG: {
-    get REDIS_URL() {
+    get VALKEY_URL() {
       return config.url;
     },
   },
 }));
 
-let container: StartedRedisContainer;
+let container: StartedValkeyContainer;
 let proxy: ReturnType<typeof freezableProxy>;
 
 beforeAll(async () => {
-  container = await new RedisContainer(REDIS_IMAGE).start();
+  container = await new ValkeyContainer(VALKEY_IMAGE).start();
   proxy = freezableProxy({ host: container.getHost(), port: container.getPort() });
   config.url = await proxy.listen();
 });

@@ -1,35 +1,35 @@
 // @vitest-environment node
 /**
- * An idle worker against a real Redis: BullMQ reads `drainDelay` in seconds and
- * blocks on Redis that long per wait. Each wait shows up as a BZPOPMIN, so a
+ * An idle worker against a real Valkey: BullMQ reads `drainDelay` in seconds and
+ * blocks on Valkey that long per wait. Each wait shows up as a BZPOPMIN, so a
  * second one within a few seconds proves the first one ended.
  */
 import { once } from "node:events";
-import type { StartedRedisContainer } from "@testcontainers/redis";
-import { RedisContainer } from "@testcontainers/redis";
+import type { StartedValkeyContainer } from "@testcontainers/valkey";
+import { ValkeyContainer } from "@testcontainers/valkey";
 import { Worker } from "bullmq";
-import Redis from "ioredis";
+import Valkey from "ioredis";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
-import { REDIS_IMAGE } from "../../../shared-server/__tests__/helpers/redis";
+import { VALKEY_IMAGE, valkeyUrl } from "../../../shared-server/__tests__/helpers/valkey";
 import { baseWorkerOptions } from "../../src/config";
-import { getBullConnectionOptions } from "../../src/redis/bullmq";
+import { getBullConnectionOptions } from "../../src/valkey/bullmq";
 
-let redis: StartedRedisContainer;
+let valkey: StartedValkeyContainer;
 
 beforeAll(async () => {
-  redis = await new RedisContainer(REDIS_IMAGE).start();
+  valkey = await new ValkeyContainer(VALKEY_IMAGE).start();
 });
 
 afterAll(async () => {
-  await redis?.stop();
+  await valkey?.stop();
 });
 
 it("ends an idle worker's blocking wait within seconds", async () => {
-  const connection = getBullConnectionOptions(redis.getConnectionUrl());
+  const connection = getBullConnectionOptions(valkeyUrl(valkey));
   // A lone monitor client: ioredis reads another client's command landing before its
-  // MONITOR reply settles as a reply to nothing, and `redis.monitor()` adds that client.
-  const monitor = new Redis({ ...connection, monitor: true });
+  // MONITOR reply settles as a reply to nothing, and `valkey.monitor()` adds that client.
+  const monitor = new Valkey({ ...connection, monitor: true });
 
   await once(monitor, "monitoring");
   const waits: number[] = [];
@@ -38,7 +38,7 @@ it("ends an idle worker's blocking wait within seconds", async () => {
     if (args[0]?.toLowerCase() === "bzpopmin") waits.push(Date.now());
   });
 
-  const worker = new Worker("drain-delay-redis-test", async () => {}, {
+  const worker = new Worker("drain-delay-valkey-test", async () => {}, {
     ...baseWorkerOptions,
     connection,
   });

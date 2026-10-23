@@ -8,7 +8,7 @@
  * by dragging back to the top; renames and removes an aisle and sees the rows
  * come back unfiled; ticks a row and watches it fold into the Store's done
  * row; drops a row on a Store that is nothing but a heading. The real Norish
- * server, database, Redis, tRPC and realtime are all in the path; nothing
+ * server, database, Valkey, tRPC and realtime are all in the path; nothing
  * outbound is, because a plain Store needs no shop.
  */
 import type { Page } from "@playwright/test";

@@ -1,45 +1,45 @@
 // @vitest-environment node
 /**
- * The publisher through a real Redis outage: callers keep getting the one
+ * The publisher through a real Valkey outage: callers keep getting the one
  * client while it reconnects, a command sent during a restart is answered once
- * Redis is back, one sent during a longer outage fails instead of waiting for
+ * Valkey is back, one sent during a longer outage fails instead of waiting for
  * ever, and no extra connection is left behind. The outage is a proxy in
- * front of Redis that drops every connection and refuses new ones.
+ * front of Valkey that drops every connection and refuses new ones.
  */
-import type { StartedRedisContainer } from "@testcontainers/redis";
-import { RedisContainer } from "@testcontainers/redis";
-import Redis from "ioredis";
+import type { StartedValkeyContainer } from "@testcontainers/valkey";
+import { ValkeyContainer } from "@testcontainers/valkey";
+import Valkey from "ioredis";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 
-import { closeRedisConnections, getPublisherClient } from "../../src/redis/client";
-import { freezableProxy, REDIS_IMAGE } from "../helpers/redis";
+import { closeValkeyConnections, getPublisherClient } from "../../src/valkey/client";
+import { freezableProxy, VALKEY_IMAGE } from "../helpers/valkey";
 
 const config = vi.hoisted(() => ({ url: "" }));
 
 vi.mock("@norish/config/env-config-server", () => ({
   SERVER_CONFIG: {
-    get REDIS_URL() {
+    get VALKEY_URL() {
       return config.url;
     },
   },
 }));
 
-let container: StartedRedisContainer;
+let container: StartedValkeyContainer;
 let proxy: ReturnType<typeof freezableProxy>;
 
 beforeAll(async () => {
-  container = await new RedisContainer(REDIS_IMAGE).start();
+  container = await new ValkeyContainer(VALKEY_IMAGE).start();
   proxy = freezableProxy({ host: container.getHost(), port: container.getPort() });
   config.url = await proxy.listen();
 });
 
 afterAll(async () => {
-  await closeRedisConnections();
+  await closeValkeyConnections();
   await proxy?.close();
   await container?.stop();
 });
 
-it("answers a command sent while Redis restarts", async () => {
+it("answers a command sent while Valkey restarts", async () => {
   const publisher = await getPublisherClient();
 
   await publisher.set("session", "kept");
@@ -81,7 +81,7 @@ it("keeps one publisher through an outage, and fails its commands meanwhile", as
   await proxy.listen();
   await expect.poll(() => publisher.status, { timeout: 20_000 }).toBe("ready");
 
-  const admin = new Redis(container.getConnectionUrl());
+  const admin = new Valkey(container.getConnectionUrl());
 
   try {
     const ownId = await admin.client("ID");

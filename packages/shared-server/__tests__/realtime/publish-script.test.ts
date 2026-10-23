@@ -1,13 +1,13 @@
 /**
- * The `realtimePublish` Lua script against compose's Redis, connected with the
- * production options: a Lua script can only be proven by Redis itself.
+ * The `realtimePublish` Lua script against compose's Valkey, connected with the
+ * production options: a Lua script can only be proven by Valkey itself.
  */
 
 // @vitest-environment node
 
-import type { StartedRedisContainer } from "@testcontainers/redis";
-import { RedisContainer } from "@testcontainers/redis";
-import Redis from "ioredis";
+import type { StartedValkeyContainer } from "@testcontainers/valkey";
+import { ValkeyContainer } from "@testcontainers/valkey";
+import Valkey from "ioredis";
 import superjson from "superjson";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -19,10 +19,10 @@ import {
   RESUME_MAXLEN,
   RESUME_TTL_SECONDS,
 } from "../../src/realtime/resume";
-import { getRedisConnectionOptions } from "../../src/redis/client";
-import { REDIS_IMAGE } from "../helpers/redis";
+import { getValkeyConnectionOptions } from "../../src/valkey/client";
+import { VALKEY_IMAGE, valkeyUrl } from "../helpers/valkey";
 
-vi.mock("@norish/config/env-config-server", () => ({ SERVER_CONFIG: { REDIS_URL: "" } }));
+vi.mock("@norish/config/env-config-server", () => ({ SERVER_CONFIG: { VALKEY_URL: "" } }));
 
 const CHANNEL = `norish:test:household:${process.pid}:published`;
 const STREAM = `norish:stream:test:household:${process.pid}:published`;
@@ -42,14 +42,14 @@ function envelope(payload: unknown): RealtimeEventEnvelope {
   };
 }
 
-describe("realtimePublish against Redis", () => {
-  let container: StartedRedisContainer;
-  let publisher: Redis;
-  let subscriber: Redis;
+describe("realtimePublish against Valkey", () => {
+  let container: StartedValkeyContainer;
+  let publisher: Valkey;
+  let subscriber: Valkey;
 
   beforeAll(async () => {
-    container = await new RedisContainer(REDIS_IMAGE).start();
-    publisher = new Redis(getRedisConnectionOptions(container.getConnectionUrl()));
+    container = await new ValkeyContainer(VALKEY_IMAGE).start();
+    publisher = new Valkey(getValkeyConnectionOptions(valkeyUrl(container)));
     subscriber = publisher.duplicate();
     registerRealtimePublish(publisher);
     await subscriber.subscribe(CHANNEL);

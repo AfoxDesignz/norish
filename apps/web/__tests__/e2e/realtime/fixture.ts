@@ -187,7 +187,7 @@ export const test = base.extend<NoTestFixtures, RealtimeWorkerFixtures>({
         captureLogs: true,
         environment: {
           // The scenarios assert on warn-level lines: a lagged subscription,
-          // a Redis reconnect. The server logger reads NEXT_PUBLIC_LOG_LEVEL first.
+          // a Valkey reconnect. The server logger reads NEXT_PUBLIC_LOG_LEVEL first.
           LOG_LEVEL: "warn",
           NEXT_PUBLIC_LOG_LEVEL: "warn",
           TRPC_LOG_LEVEL: "warn",

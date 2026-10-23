@@ -20,7 +20,7 @@ beforeEach(() => {
   fs.mkdirSync(path.join(tmpDir, "apps", "web"), { recursive: true });
   process.chdir(path.join(tmpDir, "apps", "web"));
   process.env = { ...originalEnv, NODE_ENV: "development", SKIP_ENV_VALIDATION: "1" };
-  delete process.env.REDIS_URL;
+  delete process.env.VALKEY_URL;
 });
 
 afterEach(() => {
@@ -30,26 +30,26 @@ afterEach(() => {
 });
 
 it("reads the nearest .env.local above the working directory", async () => {
-  fs.writeFileSync(path.join(tmpDir, ".env.local"), "REDIS_URL=redis://from-file:6379\n");
+  fs.writeFileSync(path.join(tmpDir, ".env.local"), "VALKEY_URL=valkey://from-file:6379\n");
 
   const { SERVER_CONFIG } = await import("@norish/config/env-config-server");
 
-  expect(SERVER_CONFIG.REDIS_URL).toBe("redis://from-file:6379");
+  expect(SERVER_CONFIG.VALKEY_URL).toBe("valkey://from-file:6379");
 });
 
 it("takes a variable set in the process environment over the file", async () => {
-  fs.writeFileSync(path.join(tmpDir, ".env.local"), "REDIS_URL=redis://from-file:6379\n");
-  process.env.REDIS_URL = "redis://from-process:6379";
+  fs.writeFileSync(path.join(tmpDir, ".env.local"), "VALKEY_URL=valkey://from-file:6379\n");
+  process.env.VALKEY_URL = "valkey://from-process:6379";
 
   const { SERVER_CONFIG } = await import("@norish/config/env-config-server");
 
-  expect(SERVER_CONFIG.REDIS_URL).toBe("redis://from-process:6379");
+  expect(SERVER_CONFIG.VALKEY_URL).toBe("valkey://from-process:6379");
 });
 
 it("runs on the process environment alone when there is no file", async () => {
-  process.env.REDIS_URL = "redis://from-process:6379";
+  process.env.VALKEY_URL = "valkey://from-process:6379";
 
   const { SERVER_CONFIG } = await import("@norish/config/env-config-server");
 
-  expect(SERVER_CONFIG.REDIS_URL).toBe("redis://from-process:6379");
+  expect(SERVER_CONFIG.VALKEY_URL).toBe("valkey://from-process:6379");
 });

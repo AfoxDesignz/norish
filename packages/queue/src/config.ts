@@ -2,7 +2,7 @@
  * BullMQ Queue Configuration
  *
  * Centralized configuration for all BullMQ queues and workers.
- * Connection management is handled by @norish/queue/redis/bullmq module.
+ * Connection management is handled by @norish/queue/valkey/bullmq module.
  */
 
 import type { DefaultJobOptions, WorkerOptions } from "bullmq";
@@ -16,7 +16,7 @@ import { QUEUE_NAMES } from "./queue-names";
  * Base worker options shared across all workers.
  */
 export const baseWorkerOptions: Partial<WorkerOptions> = {
-  // Seconds, not milliseconds: how long an idle worker blocks on Redis per wait.
+  // Seconds, not milliseconds: how long an idle worker blocks on Valkey per wait.
   drainDelay: 5,
 
   // Limit stalled job retries to prevent infinite loops

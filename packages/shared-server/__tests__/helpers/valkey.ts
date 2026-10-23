@@ -1,32 +1,38 @@
 import { readFileSync } from "node:fs";
 import { connect, createServer } from "node:net";
+import type { StartedValkeyContainer } from "@testcontainers/valkey";
 import type { AddressInfo, Socket } from "node:net";
 
 /**
- * The Redis image docker/compose.base.yaml ships. Every test that runs against
- * a real Redis starts this one, read from the compose file so the two cannot
+ * The Valkey image docker/compose.base.yaml ships. Every test that runs against
+ * a real Valkey starts this one, read from the compose file so the two cannot
  * drift apart.
  */
-export const REDIS_IMAGE = composeRedisImage();
+export const VALKEY_IMAGE = composeValkeyImage();
 
-function composeRedisImage(): string {
+function composeValkeyImage(): string {
   const compose = readFileSync(
     new URL("../../../../docker/compose.base.yaml", import.meta.url),
     "utf8"
   );
-  const image = /^\s*image:\s*(redis:\S+)\s*$/m.exec(compose)?.[1];
+  const image = /^\s*image:\s*(valkey\/valkey:\S+)\s*$/m.exec(compose)?.[1];
 
-  if (!image) throw new Error("docker/compose.base.yaml names no Redis image");
+  if (!image) throw new Error("docker/compose.base.yaml names no Valkey image");
 
   return image;
 }
 
+/** The container's URL as VALKEY_URL takes it: testcontainers hands out redis://. */
+export function valkeyUrl(container: StartedValkeyContainer): string {
+  return container.getConnectionUrl().replace(/^redis:/, "valkey:");
+}
+
 /**
- * A TCP proxy to Redis whose open connections can be frozen: they stay open
- * and forward nothing, as a connection does when Redis restarts behind
+ * A TCP proxy to Valkey whose open connections can be frozen: they stay open
+ * and forward nothing, as a connection does when Valkey restarts behind
  * Docker's port forwarding. Connections made after a freeze work normally.
  * Closing it is an outage (every connection drops, new ones are refused), and
- * listening again brings Redis back on the same port.
+ * listening again brings Valkey back on the same port.
  */
 export function freezableProxy(target: { host: string; port: number }) {
   let port = 0;
@@ -45,12 +51,12 @@ export function freezableProxy(target: { host: string; port: number }) {
   });
 
   return {
-    /** Listens on a free local port, then on that same one, and resolves to its Redis URL. */
+    /** Listens on a free local port, then on that same one, and resolves to its Valkey URL. */
     listen: () =>
       new Promise<string>((resolve) => {
         server.listen(port, "127.0.0.1", () => {
           port = (server.address() as AddressInfo).port;
-          resolve(`redis://127.0.0.1:${port}`);
+          resolve(`valkey://127.0.0.1:${port}`);
         });
       }),
     freeze() {

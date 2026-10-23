@@ -58,8 +58,8 @@
     "./realtime/recipes": "./src/realtime/recipes.ts",
     "./realtime/resume": "./src/realtime/resume.ts",
     "./realtime/stores": "./src/realtime/stores.ts",
-    "./redis/client": "./src/redis/client.ts",
-    "./redis/url": "./src/redis/url.ts"
+    "./valkey/client": "./src/valkey/client.ts",
+    "./valkey/url": "./src/valkey/url.ts"
   },
   "scripts": {
     "build": "rm -rf dist && pnpm exec tsc -p tsconfig.json --noCheck",
@@ -108,7 +108,7 @@
     "@norish/eslint-config": "workspace:*",
     "@norish/prettier-config": "workspace:*",
     "@norish/tsconfig": "workspace:*",
-    "@testcontainers/redis": "catalog:",
+    "@testcontainers/valkey": "catalog:",
     "@types/archiver": "catalog:",
     "@types/node": "catalog:",
     "drizzle-orm": "catalog:",

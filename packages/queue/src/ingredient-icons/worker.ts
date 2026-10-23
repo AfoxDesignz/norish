@@ -95,7 +95,7 @@ async function announceRound(
   }
 }
 
-/** Exported so the job body can be exercised without a Redis-backed worker. */
+/** Exported so the job body can be exercised without a Valkey-backed worker. */
 export async function processIngredientIconsJob(
   job: Job<IngredientIconsJobData>,
   _token?: string,

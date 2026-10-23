@@ -66,7 +66,7 @@ export function toLinkableRecipe(recipe: RecipeForLinking): RecipeForIngredientL
   };
 }
 
-/** Exported so the job body can be exercised without a Redis-backed worker. */
+/** Exported so the job body can be exercised without a Valkey-backed worker. */
 export async function processIngredientLinkingJob(
   job: Job<RecipeEnrichmentJobData>
 ): Promise<void> {

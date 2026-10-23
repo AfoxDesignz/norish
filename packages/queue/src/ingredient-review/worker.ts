@@ -88,7 +88,7 @@ async function queueIcons(ingredientIds: readonly string[]): Promise<void> {
   }
 }
 
-/** Exported so the job body can be exercised without a Redis-backed worker. */
+/** Exported so the job body can be exercised without a Valkey-backed worker. */
 export async function processIngredientReviewJob(
   job: Job<IngredientReviewJobData>,
   _token?: string,

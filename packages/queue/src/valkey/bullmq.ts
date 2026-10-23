@@ -1,7 +1,7 @@
 /**
- * BullMQ Redis Connection Management
+ * BullMQ Valkey Connection Management
  *
- * Provides a shared Redis connection for BullMQ producers (Queue.add).
+ * Provides a shared Valkey connection for BullMQ producers (Queue.add).
  *
  * IMPORTANT: When passed to Workers, BullMQ internally duplicates this
  * connection to create separate blocking (for job polling) and non-blocking
@@ -10,36 +10,36 @@
  */
 
 import type { RedisOptions } from "ioredis";
-import Redis from "ioredis";
+import Valkey from "ioredis";
 
 import { createLogger } from "@norish/shared-server/logger";
-import { getRedisConnectionOptions } from "@norish/shared-server/redis/client";
+import { getValkeyConnectionOptions } from "@norish/shared-server/valkey/client";
 
-const log = createLogger("redis:bullmq");
+const log = createLogger("valkey:bullmq");
 
 // Read on every access, never copied into a module-local — see the note on
 // `globalForRegistry` in ../registry.ts for why this module is evaluated more
 // than once per process. Here the cost of getting it wrong is one "shared"
-// Redis connection per instance.
+// Valkey connection per instance.
 const globalForBull = globalThis as unknown as {
-  bullClient: Redis | null;
+  bullClient: Valkey | null;
 };
 
 /**
- * Longer than the longest block BullMQ asks Redis for (ten seconds), so only a
+ * Longer than the longest block BullMQ asks Valkey for (ten seconds), so only a
  * socket that stopped answering is dropped: a command can no longer hang for
- * minutes on a connection a Redis restart left half-open.
+ * minutes on a connection a Valkey restart left half-open.
  */
 export const BULL_SOCKET_TIMEOUT_MS = 15_000;
 
 /**
- * The shared Redis options plus what BullMQ needs on top: it connects at once,
+ * The shared Valkey options plus what BullMQ needs on top: it connects at once,
  * a command waits out an outage in the offline queue instead of failing, no
  * ready check holds the connection back, and a dead socket is dropped.
  */
 export function getBullConnectionOptions(url?: string): RedisOptions {
   return {
-    ...getRedisConnectionOptions(url),
+    ...getValkeyConnectionOptions(url),
     lazyConnect: false,
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
@@ -49,14 +49,14 @@ export function getBullConnectionOptions(url?: string): RedisOptions {
 }
 
 /**
- * Get the shared BullMQ Redis connection (singleton).
+ * Get the shared BullMQ Valkey connection (singleton).
  *
  * For Queues (producers): This connection is reused directly.
  * For Workers: BullMQ duplicates this connection internally to create
  * separate blocking/non-blocking connections. The connection passed
  * serves as a template for connection options.
  */
-export function getBullClient(): Redis {
+export function getBullClient(): Valkey {
   const existing = globalForBull.bullClient;
 
   // Check if existing client is still usable
@@ -70,21 +70,21 @@ export function getBullClient(): Redis {
   }
 
   // Create new client if none exists or previous one was closed
-  const bullClient = new Redis({
+  const bullClient = new Valkey({
     ...getBullConnectionOptions(),
     connectionName: `norish:${process.pid}:bull`,
   });
 
   bullClient.on("error", (err) => {
-    log.error({ err }, "BullMQ Redis error");
+    log.error({ err }, "BullMQ Valkey error");
   });
 
   bullClient.on("connect", () => {
-    log.debug("BullMQ Redis connected");
+    log.debug("BullMQ Valkey connected");
   });
 
   bullClient.on("close", () => {
-    log.debug("BullMQ Redis closed");
+    log.debug("BullMQ Valkey closed");
   });
 
   globalForBull.bullClient = bullClient;
@@ -95,7 +95,7 @@ export function getBullClient(): Redis {
 /**
  * Close the shared BullMQ connection. Shutdown calls this after every worker
  * and queue has closed, so nothing is in flight: it disconnects rather than
- * sending a QUIT that a socket left half-open by a Redis restart never answers.
+ * sending a QUIT that a socket left half-open by a Valkey restart never answers.
  */
 export async function closeBullConnection(): Promise<void> {
   const bullClient = globalForBull.bullClient;
@@ -103,6 +103,6 @@ export async function closeBullConnection(): Promise<void> {
   if (bullClient && bullClient.status !== "end") {
     bullClient.disconnect();
     globalForBull.bullClient = null;
-    log.info("BullMQ Redis connection closed");
+    log.info("BullMQ Valkey connection closed");
   }
 }

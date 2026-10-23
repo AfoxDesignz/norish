@@ -1,13 +1,13 @@
 // @vitest-environment node
 /**
- * The hub against a real Redis whose connection goes half-open, as one does
- * when Redis restarts behind Docker's port forwarding: the socket stays open
+ * The hub against a real Valkey whose connection goes half-open, as one does
+ * when Valkey restarts behind Docker's port forwarding: the socket stays open
  * and nothing comes back. The heartbeat's PING arms the socket timeout, the
  * dead socket is dropped and reconnected, and a live iterable ends Lagged.
  */
-import type { StartedRedisContainer } from "@testcontainers/redis";
-import { RedisContainer } from "@testcontainers/redis";
-import Redis from "ioredis";
+import type { StartedValkeyContainer } from "@testcontainers/valkey";
+import { ValkeyContainer } from "@testcontainers/valkey";
+import Valkey from "ioredis";
 import superjson from "superjson";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 
@@ -19,14 +19,14 @@ import {
   startRealtimeHub,
   stopRealtimeHub,
 } from "../../src/realtime/hub";
-import { closeRedisConnections, REDIS_SOCKET_TIMEOUT_MS } from "../../src/redis/client";
-import { freezableProxy, REDIS_IMAGE } from "../helpers/redis";
+import { closeValkeyConnections, VALKEY_SOCKET_TIMEOUT_MS } from "../../src/valkey/client";
+import { freezableProxy, VALKEY_IMAGE } from "../helpers/valkey";
 
 const config = vi.hoisted(() => ({ url: "" }));
 
 vi.mock("@norish/config/env-config-server", () => ({
   SERVER_CONFIG: {
-    get REDIS_URL() {
+    get VALKEY_URL() {
       return config.url;
     },
   },
@@ -47,15 +47,15 @@ const ENVELOPE: RealtimeEventEnvelope = {
   payload: { n: 1 },
 };
 
-let container: StartedRedisContainer;
+let container: StartedValkeyContainer;
 let proxy: ReturnType<typeof freezableProxy>;
-let direct: Redis;
+let direct: Valkey;
 
 beforeAll(async () => {
-  container = await new RedisContainer(REDIS_IMAGE).start();
+  container = await new ValkeyContainer(VALKEY_IMAGE).start();
   proxy = freezableProxy({ host: container.getHost(), port: container.getPort() });
   config.url = await proxy.listen();
-  direct = new Redis(container.getConnectionUrl());
+  direct = new Valkey(container.getConnectionUrl());
 });
 
 afterAll(async () => {
@@ -84,13 +84,13 @@ it("drops a half-open subscriber after a heartbeat and ends its iterables Lagged
     iterator.next().catch((error: unknown) => (ended = error));
     proxy.freeze();
 
-    await vi.advanceTimersByTimeAsync(HEARTBEAT_INTERVAL_MS + REDIS_SOCKET_TIMEOUT_MS);
+    await vi.advanceTimersByTimeAsync(HEARTBEAT_INTERVAL_MS + VALKEY_SOCKET_TIMEOUT_MS);
     await vi.waitFor(() => {
-      expect(ended).toMatchObject({ name: "RealtimeLaggedError", reason: "redis-reconnect" });
+      expect(ended).toMatchObject({ name: "RealtimeLaggedError", reason: "valkey-reconnect" });
     });
   } finally {
     await stopRealtimeHub();
-    await closeRedisConnections();
+    await closeValkeyConnections();
     vi.useRealTimers();
   }
 }, 30_000);

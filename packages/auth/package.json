@@ -32,7 +32,7 @@
     "@norish/eslint-config": "workspace:*",
     "@norish/prettier-config": "workspace:*",
     "@norish/tsconfig": "workspace:*",
-    "@testcontainers/redis": "catalog:",
+    "@testcontainers/valkey": "catalog:",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "ioredis": "catalog:",

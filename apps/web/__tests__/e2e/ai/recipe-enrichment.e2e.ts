@@ -4,7 +4,7 @@
  * Acceptance for this flow crosses recipe creation, the enrichment queues, WebSocket
  * delivery, client cache updates, and visible feedback — no single unit seam
  * covers it. Only the AI provider's HTTP boundary is faked; the real Norish
- * server, database, Redis, BullMQ workers, repositories, authorized mutation
+ * server, database, Valkey, BullMQ workers, repositories, authorized mutation
  * layer, realtime connection, and UI are all exercised.
  */
 import type { BrowserContext, Page } from "@playwright/test";

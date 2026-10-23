@@ -18,7 +18,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const constructed: RedisOptions[] = [];
 
-class MockRedis {
+class MockValkey {
   status = "ready";
 
   constructor(options: RedisOptions) {
@@ -27,17 +27,17 @@ class MockRedis {
 
   on = vi.fn();
   connect = vi.fn().mockResolvedValue(undefined);
-  disconnect = vi.fn().mockImplementation(function (this: MockRedis) {
+  disconnect = vi.fn().mockImplementation(function (this: MockValkey) {
     this.status = "end";
   });
   removeAllListeners = vi.fn();
   duplicate = vi.fn();
 }
 
-vi.mock("ioredis", () => ({ default: MockRedis, Redis: MockRedis }));
+vi.mock("ioredis", () => ({ default: MockValkey, Redis: MockValkey }));
 
 vi.mock("@norish/config/env-config-server", () => ({
-  SERVER_CONFIG: { REDIS_URL: "rediss://worker:hunter2@redis.local:6380/4" },
+  SERVER_CONFIG: { VALKEY_URL: "valkeys://worker:hunter2@valkey.local:6380/4" },
 }));
 
 vi.mock("@norish/shared-server/logger", () => ({
@@ -54,18 +54,18 @@ vi.mock("@norish/shared-server/logger", () => ({
 beforeEach(() => {
   constructed.length = 0;
 
-  const globalForRedis = globalThis as unknown as Record<string, unknown>;
+  const globalForValkey = globalThis as unknown as Record<string, unknown>;
 
-  delete globalForRedis.bullClient;
+  delete globalForValkey.bullClient;
 });
 
 describe("BullMQ connection", () => {
   it("hands the same connection to a second module instance", async () => {
     vi.resetModules();
-    const first = await import("../../src/redis/bullmq");
+    const first = await import("../../src/valkey/bullmq");
 
     vi.resetModules();
-    const second = await import("../../src/redis/bullmq");
+    const second = await import("../../src/valkey/bullmq");
 
     expect(second.getBullClient()).toBe(first.getBullClient());
     expect(constructed).toHaveLength(1);
@@ -73,10 +73,10 @@ describe("BullMQ connection", () => {
 
   it("lets any instance close the connection the other opened", async () => {
     vi.resetModules();
-    const opener = await import("../../src/redis/bullmq");
+    const opener = await import("../../src/valkey/bullmq");
 
     vi.resetModules();
-    const closer = await import("../../src/redis/bullmq");
+    const closer = await import("../../src/valkey/bullmq");
 
     const client = opener.getBullClient();
 
@@ -87,12 +87,12 @@ describe("BullMQ connection", () => {
 
   it("connects with every part of the URL, TLS and database index included", async () => {
     vi.resetModules();
-    const { getBullClient } = await import("../../src/redis/bullmq");
+    const { getBullClient } = await import("../../src/valkey/bullmq");
 
     getBullClient();
 
     expect(constructed[0]).toMatchObject({
-      host: "redis.local",
+      host: "valkey.local",
       port: 6380,
       username: "worker",
       password: "hunter2",
@@ -103,7 +103,7 @@ describe("BullMQ connection", () => {
 
   it("starts from the shared options and leaves reconnecting and the protocol to ioredis", async () => {
     vi.resetModules();
-    const { getBullClient } = await import("../../src/redis/bullmq");
+    const { getBullClient } = await import("../../src/valkey/bullmq");
 
     getBullClient();
 

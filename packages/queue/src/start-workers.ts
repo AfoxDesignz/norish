@@ -19,11 +19,11 @@ import { startNutritionEstimationWorker } from "@norish/queue/nutrition-estimati
 import { startPasteImportWorker } from "@norish/queue/paste-import/worker";
 import { startRecipeImportWorker } from "@norish/queue/recipe-import/worker";
 import { startRecipeProvenanceWorker } from "@norish/queue/recipe-provenance/worker";
-import { closeBullConnection } from "@norish/queue/redis/bullmq";
 import { closeAllQueues, getQueues, initializeQueues } from "@norish/queue/registry";
 import { initializeScheduledJobs } from "@norish/queue/scheduled-tasks/producer";
 import { startScheduledTasksWorker } from "@norish/queue/scheduled-tasks/worker";
 import { startStoreLookupWorker } from "@norish/queue/store-lookup/worker";
+import { closeBullConnection } from "@norish/queue/valkey/bullmq";
 import { onIngredientsMinted } from "@norish/shared-server/ingredients/minted";
 import { createLogger } from "@norish/shared-server/logger";
 
@@ -76,7 +76,7 @@ export async function stopWorkers(): Promise<void> {
   await closeWorkers(WORKER_CLOSE_BUDGET_MS);
   await closeAllQueues();
 
-  // Close shared Redis connection after all workers and queues are stopped
+  // Close shared Valkey connection after all workers and queues are stopped
   await closeBullConnection();
 
   log.info("All BullMQ workers stopped");

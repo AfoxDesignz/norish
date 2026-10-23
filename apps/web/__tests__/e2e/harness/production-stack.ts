@@ -4,14 +4,17 @@ import { rm } from "node:fs/promises";
 import net from "node:net";
 import path from "node:path";
 import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
-import type { StartedRedisContainer } from "@testcontainers/redis";
+import type { StartedValkeyContainer } from "@testcontainers/valkey";
 import type { ChildProcess } from "node:child_process";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
-import { RedisContainer } from "@testcontainers/redis";
+import { ValkeyContainer } from "@testcontainers/valkey";
 
 import { setConfig } from "@norish/db/repositories/server-config";
 
-import { REDIS_IMAGE } from "../../../../../packages/shared-server/__tests__/helpers/redis";
+import {
+  VALKEY_IMAGE,
+  valkeyUrl,
+} from "../../../../../packages/shared-server/__tests__/helpers/valkey";
 import { MASTER_KEY } from "./environment";
 import { connectRepositories, disconnectRepositories } from "./repositories";
 
@@ -63,10 +66,10 @@ function delay(milliseconds: number): Promise<void> {
 }
 
 /**
- * A host port nobody is listening on right now. Redis gets a fixed binding to
+ * A host port nobody is listening on right now. Valkey gets a fixed binding to
  * it rather than a kernel-assigned one, because Docker re-assigns ephemeral
  * host ports on a container restart and a fixed binding survives one — which
- * is what lets a scenario restart Redis under a server that keeps its URL.
+ * is what lets a scenario restart Valkey under a server that keeps its URL.
  * The server and the embedded parser get one too, so stacks running side by
  * side, or beside a dev server, never share (or kill) each other's ports.
  */
@@ -136,10 +139,10 @@ export class ProductionStack {
   private readonly runtimeDir: string;
   private parserPort: number | null = null;
   private postgres: StartedPostgreSqlContainer | null = null;
-  private redis: StartedRedisContainer | null = null;
+  private valkey: StartedValkeyContainer | null = null;
   private activeServer: ProductionServer | null = null;
   private databaseConnectionUrl: string | null = null;
-  private redisConnectionUrl: string | null = null;
+  private valkeyConnectionUrl: string | null = null;
   private capturedLogs: string[] = [];
 
   constructor(private readonly options: ProductionStackOptions) {
@@ -172,12 +175,12 @@ export class ProductionStack {
     return this.databaseConnectionUrl;
   }
 
-  get redisUrl(): string {
-    if (!this.redisConnectionUrl) {
-      throw new Error(`[${this.options.project}] Redis is not provisioned`);
+  get valkeyUrl(): string {
+    if (!this.valkeyConnectionUrl) {
+      throw new Error(`[${this.options.project}] Valkey is not provisioned`);
     }
 
-    return this.redisConnectionUrl;
+    return this.valkeyConnectionUrl;
   }
 
   /** Everything the server wrote since the last `clearLogs()`, one entry per line. */
@@ -189,30 +192,30 @@ export class ProductionStack {
     this.capturedLogs = [];
   }
 
-  /** Run one `redis-cli` command inside the Redis container and return its output. */
-  async redisCli(command: string, ...args: string[]): Promise<string> {
-    if (!this.redis) {
-      throw new Error(`[${this.options.project}] Redis is not provisioned`);
+  /** Run one `valkey-cli` command inside the Valkey container and return its output. */
+  async valkeyCli(command: string, ...args: string[]): Promise<string> {
+    if (!this.valkey) {
+      throw new Error(`[${this.options.project}] Valkey is not provisioned`);
     }
 
-    return (await this.redis.executeCliCmd(command, args)).trim();
+    return (await this.valkey.executeCliCmd(command, args)).trim();
   }
 
   /**
-   * Restart the Redis container in place, the way an operator would: a
-   * SIGTERM, which lets Redis write its snapshot, so sessions and the Resume
+   * Restart the Valkey container in place, the way an operator would: a
+   * SIGTERM, which lets Valkey write its snapshot, so sessions and the Resume
    * Buffer come back with it (testcontainers' default is an immediate kill,
    * after which every session is gone and every request is anonymous). Its
    * host port is a fixed binding, so it survives the restart and the
    * server's clients reconnect on their own — which is the point.
    */
-  async restartRedis(): Promise<void> {
-    if (!this.redis) {
-      throw new Error(`[${this.options.project}] Redis is not provisioned`);
+  async restartValkey(): Promise<void> {
+    if (!this.valkey) {
+      throw new Error(`[${this.options.project}] Valkey is not provisioned`);
     }
 
     // Milliseconds: testcontainers converts this to Docker's seconds itself.
-    await this.redis.restart({ timeout: 10_000 });
+    await this.valkey.restart({ timeout: 10_000 });
   }
 
   async start(): Promise<void> {
@@ -223,24 +226,24 @@ export class ProductionStack {
 
     try {
       this.serverPort = await freeHostPort();
-      const redisHostPort = await freeHostPort();
+      const valkeyHostPort = await freeHostPort();
 
       this.parserPort = await freeHostPort();
-      const [postgresResult, redisResult] = await Promise.allSettled([
+      const [postgresResult, valkeyResult] = await Promise.allSettled([
         new PostgreSqlContainer("postgres:17-alpine")
           .withDatabase(this.options.databaseName)
           .withUsername(this.options.databaseName)
           .withPassword(this.options.databaseName)
           .start(),
-        new RedisContainer(REDIS_IMAGE)
-          .withExposedPorts({ container: 6379, host: redisHostPort })
+        new ValkeyContainer(VALKEY_IMAGE)
+          .withExposedPorts({ container: 6379, host: valkeyHostPort })
           .start(),
       ]);
 
       if (postgresResult.status === "fulfilled") this.postgres = postgresResult.value;
-      if (redisResult.status === "fulfilled") this.redis = redisResult.value;
+      if (valkeyResult.status === "fulfilled") this.valkey = valkeyResult.value;
 
-      const provisioningFailures = [postgresResult, redisResult]
+      const provisioningFailures = [postgresResult, valkeyResult]
         .filter((result): result is PromiseRejectedResult => result.status === "rejected")
         .map((result) => result.reason);
 
@@ -258,7 +261,7 @@ export class ProductionStack {
       }
 
       this.databaseConnectionUrl = this.postgres!.getConnectionUri();
-      this.redisConnectionUrl = this.redis!.getConnectionUrl();
+      this.valkeyConnectionUrl = valkeyUrl(this.valkey!);
       await connectRepositories(this.databaseConnectionUrl);
 
       phase = "migration boot";
@@ -390,18 +393,18 @@ export class ProductionStack {
 
   async stop(): Promise<void> {
     const postgres = this.postgres;
-    const redis = this.redis;
+    const valkey = this.valkey;
 
     this.postgres = null;
-    this.redis = null;
+    this.valkey = null;
 
     await stopAll([
       { label: `[${this.options.project}] production server`, run: () => this.stopServer() },
       { label: `[${this.options.project}] repository pool`, run: () => disconnectRepositories() },
       {
-        label: `[${this.options.project}] Redis`,
+        label: `[${this.options.project}] Valkey`,
         run: async () => {
-          await redis?.stop();
+          await valkey?.stop();
         },
       },
       {
@@ -451,7 +454,7 @@ export class ProductionStack {
       PORT: String(this.port),
       PARSER_API_PORT: String(this.parserPort),
       DATABASE_URL: this.databaseUrl,
-      REDIS_URL: this.redisConnectionUrl!,
+      VALKEY_URL: this.valkeyConnectionUrl!,
       AUTH_URL: this.baseURL,
       TRUSTED_ORIGINS: this.baseURL,
       MASTER_KEY,
@@ -492,7 +495,7 @@ export class ProductionStack {
   private async forceAuthenticationConfig(): Promise<void> {
     await setConfig("password_auth_enabled", true, null);
     await setConfig("registration_enabled", true, null);
-    await this.redis!.executeCliCmd("flushall");
+    await this.valkey!.executeCliCmd("flushall");
   }
 
   private async signUp(user: HarnessUser): Promise<void> {

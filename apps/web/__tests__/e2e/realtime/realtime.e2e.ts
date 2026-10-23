@@ -1,19 +1,19 @@
 /**
  * The realtime layer, end to end, on the production stack (ADR-0032..0034).
  *
- * Two browsers in one household, one server, one Redis. What the spec's
+ * Two browsers in one household, one server, one Valkey. What the spec's
  * Verification section asks of the browser gate: events cross between
  * browsers without a reload; a validation failure toasts only the browser
  * that caused it; a household join mid-connection restarts the joining
- * browser's socket and refuses its old cursor; the server's Redis connection
- * count is independent of open browsers; a Redis restart is logged once and
+ * browser's socket and refuses its old cursor; the server's Valkey connection
+ * count is independent of open browsers; a Valkey restart is logged once and
  * both browsers converge; a browser back from a network gap gets what it
  * missed through Resume before Recovery's refetch answers. And the release
  * checks that could be automated: a restart closes every socket with 1012 in
  * seconds, a foreign Origin is refused, an expired session ends at sign-in.
  *
  * Serial by design: every scenario builds on the household the first one
- * creates, and the disruptive ones (Redis restart, server restart, an
+ * creates, and the disruptive ones (Valkey restart, server restart, an
  * expired session) come last, in the order their damage allows.
  */
 import { randomUUID } from "node:crypto";
@@ -31,10 +31,10 @@ import {
   readGrocery,
   readHousehold,
   recordFrames,
-  redisClientCount,
   revokeSessions,
   rowFor,
   sessionHeaders,
+  valkeyClientCount,
 } from "./support";
 
 test.describe.configure({ mode: "serial" });
@@ -64,19 +64,19 @@ function serverLogged(fragments: string[]): boolean {
   return stack.server.logs().some((line) => fragments.every((fragment) => line.includes(fragment)));
 }
 
-/** The Redis client count once it has stopped moving, so a lazy connection is not misread as a tab's. */
-async function settledRedisClientCount(): Promise<number> {
-  let last = await redisClientCount(stack);
+/** The Valkey client count once it has stopped moving, so a lazy connection is not misread as a tab's. */
+async function settledValkeyClientCount(): Promise<number> {
+  let last = await valkeyClientCount(stack);
 
   for (let attempt = 0; attempt < 10; attempt += 1) {
     await delay(1_000);
-    const next = await redisClientCount(stack);
+    const next = await valkeyClientCount(stack);
 
     if (next === last) return next;
     last = next;
   }
 
-  throw new Error("The Redis client count kept changing");
+  throw new Error("The Valkey client count kept changing");
 }
 
 test.beforeAll(async ({ realtimeStack }) => {
@@ -338,8 +338,8 @@ test("a browser back from a network gap gets what it missed through Resume, befo
   expect(resumed!.socket).toBe(frames.sockets);
 });
 
-test("the server's Redis connection count does not depend on how many browsers are open", async () => {
-  const withTwo = await settledRedisClientCount();
+test("the server's Valkey connection count does not depend on how many browsers are open", async () => {
+  const withTwo = await settledValkeyClientCount();
   const extra: BrowserContext[] = [];
 
   try {
@@ -350,14 +350,14 @@ test("the server's Redis connection count does not depend on how many browsers a
       await openGroceries(await context.newPage());
     }
 
-    expect(await settledRedisClientCount()).toBe(withTwo);
+    expect(await settledValkeyClientCount()).toBe(withTwo);
   } finally {
     await Promise.all(extra.map((context) => context.close()));
   }
 
   // The Resume Buffer behind the household's grocery channel lives a day at most.
   const ttl = Number(
-    await stack.server.redisCli("ttl", `norish:stream:grocery:household:${household.id}:created`)
+    await stack.server.valkeyCli("ttl", `norish:stream:grocery:household:${household.id}:created`)
   );
 
   expect(ttl).toBeGreaterThan(0);
@@ -382,35 +382,35 @@ test("a foreign Origin is refused, an absent one is accepted, and no session clo
 const groceryList = (response: Response) =>
   response.url().includes("groceries.list") && response.ok();
 
-test("both browsers converge when Redis does not answer a restarting subscription in time", async () => {
+test("both browsers converge when Valkey does not answer a restarting subscription in time", async () => {
   const refetched = [pageA, pageB].map((page) =>
     page.waitForResponse(groceryList, { timeout: 30_000 })
   );
 
   // Each restarted subscription then misses the household cache and writes it, which the pause
   // holds past the command timeout; killing the hub's connection ends every subscription Lagged.
-  await stack.server.redisCli(
+  await stack.server.valkeyCli(
     "del",
     ...[stack.userIds.a, stack.userIds.b].map((id) => `norish:cache:household:user:${id}`)
   );
   stack.server.clearLogs();
-  await stack.server.redisCli("client", "pause", "8000", "write");
-  await stack.server.redisCli("client", "kill", "type", "pubsub");
+  await stack.server.valkeyCli("client", "pause", "8000", "write");
+  await stack.server.valkeyCli("client", "kill", "type", "pubsub");
 
   await expect.poll(() => serverLogged(["realtime.reconnected"]), { timeout: 30_000 }).toBe(true);
   await Promise.all(refetched);
 
-  await addGrocery(pageA, "na-redis-pauze");
-  await expect(rowFor(pageB, "na-redis-pauze")).toBeVisible({ timeout: 30_000 });
+  await addGrocery(pageA, "na-valkey-pauze");
+  await expect(rowFor(pageB, "na-valkey-pauze")).toBeVisible({ timeout: 30_000 });
 });
 
-test("a Redis restart is logged once and both browsers converge afterwards", async () => {
+test("a Valkey restart is logged once and both browsers converge afterwards", async () => {
   const refetched = [pageA, pageB].map((page) =>
     page.waitForResponse(groceryList, { timeout: 30_000 })
   );
 
   stack.server.clearLogs();
-  await stack.server.restartRedis();
+  await stack.server.restartValkey();
 
   await expect.poll(() => serverLogged(["realtime.reconnected"]), { timeout: 30_000 }).toBe(true);
   // Every open subscription of both users ended Lagged with the one reason ...
@@ -420,7 +420,7 @@ test("a Redis restart is logged once and both browsers converge afterwards", asy
       .filter(
         (line) =>
           line.includes("Realtime subscription lagged") &&
-          line.includes('"reason":"redis-reconnect"') &&
+          line.includes('"reason":"valkey-reconnect"') &&
           line.includes(userId)
       ).length;
 
@@ -432,8 +432,8 @@ test("a Redis restart is logged once and both browsers converge afterwards", asy
   // ... and both browsers refetched the list.
   await Promise.all(refetched);
 
-  await addGrocery(pageA, "na-redis-herstart");
-  await expect(rowFor(pageB, "na-redis-herstart")).toBeVisible({ timeout: 30_000 });
+  await addGrocery(pageA, "na-valkey-herstart");
+  await expect(rowFor(pageB, "na-valkey-herstart")).toBeVisible({ timeout: 30_000 });
 });
 
 test("a restart closes every socket with 1012 within seconds, and clients reconnect", async () => {
@@ -451,7 +451,7 @@ test("a restart closes every socket with 1012 within seconds, and clients reconn
   await stack.server.stopServer();
   const shutdownMs = Date.now() - startedAt;
 
-  // Right after the Redis restart above, so no step waits on a connection the
+  // Right after the Valkey restart above, so no step waits on a connection the
   // restart left half-open.
   expect(stack.server.logs().filter((line) => line.includes("Shutdown step is slow"))).toEqual([]);
 

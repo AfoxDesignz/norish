@@ -1,100 +1,100 @@
 /**
- * Redis Client Singleton
+ * Valkey Client Singleton
  *
- * The only module that opens a Redis connection for pub/sub. The publisher is
- * a process-wide singleton; subscribers are duplicated from it because a Redis
+ * The only module that opens a Valkey connection for pub/sub. The publisher is
+ * a process-wide singleton; subscribers are duplicated from it because a Valkey
  * client in subscribe mode cannot run other commands.
  */
 
 import type { RedisOptions } from "ioredis";
-import Redis from "ioredis";
+import Valkey from "ioredis";
 
 import { SERVER_CONFIG } from "@norish/config/env-config-server";
 import { createLogger, redactUrl } from "@norish/shared-server/logger";
 import { withTimeout } from "@norish/shared/lib/with-timeout";
 
-import { parseRedisUrl } from "./url";
+import { parseValkeyUrl } from "./url";
 
-const log = createLogger("redis");
+const log = createLogger("valkey");
 
 // Read on every access, never copied into a module-local — see the note on
 // `globalForRegistry` in packages/queue/src/registry.ts for why this module is
 // evaluated more than once per process. Here the cost of getting it wrong is
 // one connection per instance, of which shutdown closes only the one it can see.
-const globalForRedis = globalThis as unknown as {
-  publisherClient: Redis | null | undefined;
+const globalForValkey = globalThis as unknown as {
+  publisherClient: Valkey | null | undefined;
 };
 
 /**
  * A socket that has received nothing for this long after a command went out is
  * taken for dead and reconnected. Without it, a connection left half-open by a
- * Redis restart is only noticed once the operating system's keep-alive gives
+ * Valkey restart is only noticed once the operating system's keep-alive gives
  * up, minutes later.
  */
-export const REDIS_SOCKET_TIMEOUT_MS = 10_000;
+export const VALKEY_SOCKET_TIMEOUT_MS = 10_000;
 
 /**
- * Connection options every Redis client in Norish starts from: the publisher,
+ * Connection options every Valkey client in Norish starts from: the publisher,
  * each subscriber and BullMQ's connections. ioredis 6's defaults do the rest:
  * RESP3, reconnecting with capped exponential backoff for as long as the
  * process lives, and a 30-second keep-alive.
  */
-export function getRedisConnectionOptions(url = SERVER_CONFIG.REDIS_URL): RedisOptions {
+export function getValkeyConnectionOptions(url = SERVER_CONFIG.VALKEY_URL): RedisOptions {
   return {
-    ...parseRedisUrl(url),
+    ...parseValkeyUrl(url),
     lazyConnect: true,
     maxRetriesPerRequest: null,
     // How long a deliberate disconnect waits for the far end to close before
     // destroying the socket. Shutdown waits this long for every connection a
-    // Redis restart left unanswered; ioredis's two seconds overran its budget.
+    // Valkey restart left unanswered; ioredis's two seconds overran its budget.
     disconnectTimeout: 200,
   };
 }
 
 /**
  * The publisher, for PUBLISH and every non-subscribe command. Created once per
- * process: while Redis is down it reconnects, and callers keep getting it.
+ * process: while Valkey is down it reconnects, and callers keep getting it.
  */
-export async function getPublisherClient(): Promise<Redis> {
-  return (globalForRedis.publisherClient ??= createPublisher());
+export async function getPublisherClient(): Promise<Valkey> {
+  return (globalForValkey.publisherClient ??= createPublisher());
 }
 
-function createPublisher(): Redis {
-  log.info({ url: redactUrl(SERVER_CONFIG.REDIS_URL) }, "Connecting to Redis");
+function createPublisher(): Valkey {
+  log.info({ url: redactUrl(SERVER_CONFIG.VALKEY_URL) }, "Connecting to Valkey");
 
-  const client = new Redis({
-    ...getRedisConnectionOptions(),
-    // A command fails when Redis has not answered it within five seconds, so
+  const client = new Valkey({
+    ...getValkeyConnectionOptions(),
+    // A command fails when Valkey has not answered it within five seconds, so
     // an outage cannot hold a request for ever, while a restart that takes a
     // second or two is waited out: a session read failed then reads as signed out.
     commandTimeout: 5_000,
-    socketTimeout: REDIS_SOCKET_TIMEOUT_MS,
+    socketTimeout: VALKEY_SOCKET_TIMEOUT_MS,
     connectionName: `norish:${process.pid}:publisher`,
   });
 
   client.on("error", (err) => {
-    log.error({ err }, "Redis client error");
+    log.error({ err }, "Valkey client error");
   });
 
   client.on("reconnecting", () => {
-    log.warn("Redis client reconnecting");
+    log.warn("Valkey client reconnecting");
   });
 
   client.on("ready", () => {
-    log.info("Redis publisher connected");
+    log.info("Valkey publisher connected");
   });
 
   return client;
 }
 
-const REDIS_HEALTH_TIMEOUT_MS = 2_000;
+const VALKEY_HEALTH_TIMEOUT_MS = 2_000;
 
 /** PING through the publisher. A ping unanswered after two seconds counts as down. */
-export async function getRedisHealth() {
+export async function getValkeyHealth() {
   try {
-    const redis = await getPublisherClient();
+    const valkey = await getPublisherClient();
 
-    await withTimeout(() => redis.ping(), REDIS_HEALTH_TIMEOUT_MS, "Redis PING");
+    await withTimeout(() => valkey.ping(), VALKEY_HEALTH_TIMEOUT_MS, "Valkey PING");
 
     return { status: "ok" as const };
   } catch {
@@ -104,10 +104,10 @@ export async function getRedisHealth() {
 
 /**
  * Create the Realtime Hub's subscriber client, duplicated from the publisher
- * with its socket timeout. It needs its own connection because a Redis client
+ * with its socket timeout. It needs its own connection because a Valkey client
  * in subscribe mode serves nothing else.
  */
-export async function createSubscriberClient(): Promise<Redis> {
+export async function createSubscriberClient(): Promise<Valkey> {
   const publisher = await getPublisherClient();
   // A SUBSCRIBE waits out an outage rather than failing like a publisher's command.
   const subscriber = publisher.duplicate({
@@ -116,10 +116,10 @@ export async function createSubscriberClient(): Promise<Redis> {
   });
 
   subscriber.on("error", (err) => {
-    log.error({ err }, "Redis subscriber error");
+    log.error({ err }, "Valkey subscriber error");
   });
 
-  log.trace("Redis subscriber connected");
+  log.trace("Valkey subscriber connected");
 
   return subscriber;
 }
@@ -129,12 +129,12 @@ export async function createSubscriberClient(): Promise<Redis> {
  * so nothing is in flight: it disconnects rather than sending a QUIT that a
  * dead socket would never answer.
  */
-export async function closeRedisConnections(): Promise<void> {
-  const publisherClient = globalForRedis.publisherClient;
+export async function closeValkeyConnections(): Promise<void> {
+  const publisherClient = globalForValkey.publisherClient;
 
   if (publisherClient && publisherClient.status !== "end") {
-    log.info("Closing Redis connections");
+    log.info("Closing Valkey connections");
     publisherClient.disconnect();
-    globalForRedis.publisherClient = null;
+    globalForValkey.publisherClient = null;
   }
 }

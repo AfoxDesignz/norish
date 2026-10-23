@@ -4,7 +4,7 @@
  * The two paths a shopper actually walks: a name the Store recognises without
  * being asked, which is priced on its own; and a name it does not, which
  * opens the picker and is chosen by hand. The real Norish server, database,
- * Redis, the always-on store lookup worker, the reader, tRPC and realtime are
+ * Valkey, the always-on store lookup worker, the reader, tRPC and realtime are
  * all in the path — only the supermarket is ours, because visiting a real one
  * from a test suite would be flaky and rude in equal measure.
  */

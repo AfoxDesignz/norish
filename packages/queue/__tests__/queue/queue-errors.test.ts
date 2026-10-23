@@ -19,7 +19,7 @@ vi.mock("bullmq", async (importOriginal) => ({
   },
 }));
 
-vi.mock("@norish/queue/redis/bullmq", () => ({ getBullClient: vi.fn() }));
+vi.mock("@norish/queue/valkey/bullmq", () => ({ getBullClient: vi.fn() }));
 vi.mock("@norish/db/repositories/server-config", () => ({ getConfig: async () => null }));
 
 vi.mock("@norish/shared-server/logger", () => ({

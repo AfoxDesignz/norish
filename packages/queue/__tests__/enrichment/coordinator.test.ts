@@ -338,7 +338,7 @@ describe("automatic enrollment", () => {
 
   it("keeps enrolling siblings when one producer throws", async () => {
     addEnrichmentJob.mockImplementation(async (_queue, data) => {
-      if (data.kind === "auto-tagging") throw new Error("redis is down");
+      if (data.kind === "auto-tagging") throw new Error("valkey is down");
 
       return { kind: data.kind, status: "queued", jobId: "job" };
     });
@@ -348,7 +348,7 @@ describe("automatic enrollment", () => {
     expect(outcome(results, "auto-tagging")).toEqual({
       kind: "auto-tagging",
       status: "failed-to-queue",
-      error: "redis is down",
+      error: "valkey is down",
     });
     expect(results.filter((r) => r.status === "queued")).toHaveLength(KIND_COUNT - 1);
   });
@@ -607,12 +607,12 @@ describe("manual enrollment", () => {
   });
 
   it("returns failed-to-queue immediately when the producer throws", async () => {
-    addEnrichmentJob.mockRejectedValue(new Error("redis is down"));
+    addEnrichmentJob.mockRejectedValue(new Error("valkey is down"));
 
     const results = await enrichRecipe(context, { origin: "manual", kind: "auto-tagging" });
 
     expect(results).toEqual([
-      { kind: "auto-tagging", status: "failed-to-queue", error: "redis is down" },
+      { kind: "auto-tagging", status: "failed-to-queue", error: "valkey is down" },
     ]);
   });
 });

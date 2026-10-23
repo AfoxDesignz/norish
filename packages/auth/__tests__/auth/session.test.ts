@@ -104,7 +104,7 @@ describe("verifySessionPrincipal", () => {
 
   it("still rejects when revoking the stale session fails", async () => {
     mockGetUserSessionIdentity.mockResolvedValue(null);
-    mockDeleteSession.mockRejectedValue(new Error("redis down"));
+    mockDeleteSession.mockRejectedValue(new Error("valkey down"));
 
     await expect(verifySessionPrincipal({ userId: "gone", token: "tok-1" })).resolves.toBeNull();
   });

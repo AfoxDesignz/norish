@@ -1,27 +1,27 @@
 // @vitest-environment node
 /**
- * A queue's events stream against a real Redis. Every progress write appends
+ * A queue's events stream against a real Valkey. Every progress write appends
  * the job's whole progress to it and nothing reads it back, so it is capped,
  * and a stream grown under BullMQ's default cap of 10,000 is cut by its next event.
- * Redis trims a stream approximately, a whole node of entries (100 by
+ * Valkey trims a stream approximately, a whole node of entries (100 by
  * default) at a time, so "at the cap" means within one node of it.
  */
-import type { StartedRedisContainer } from "@testcontainers/redis";
-import { RedisContainer } from "@testcontainers/redis";
+import type { StartedValkeyContainer } from "@testcontainers/valkey";
+import { ValkeyContainer } from "@testcontainers/valkey";
 import { Queue } from "bullmq";
-import Redis from "ioredis";
+import Valkey from "ioredis";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 
-import { REDIS_IMAGE } from "../../../shared-server/__tests__/helpers/redis";
+import { VALKEY_IMAGE, valkeyUrl } from "../../../shared-server/__tests__/helpers/valkey";
 import { QUEUE_NAMES } from "../../src/queue-names";
-import { closeBullConnection, getBullConnectionOptions } from "../../src/redis/bullmq";
 import { closeAllQueues, EVENTS_MAX_LEN, getQueues, initializeQueues } from "../../src/registry";
+import { closeBullConnection, getBullConnectionOptions } from "../../src/valkey/bullmq";
 
 const config = vi.hoisted(() => ({ url: "" }));
 
 vi.mock("@norish/config/env-config-server", () => ({
   SERVER_CONFIG: {
-    get REDIS_URL() {
+    get VALKEY_URL() {
       return config.url;
     },
   },
@@ -31,19 +31,19 @@ vi.mock("@norish/db/repositories/server-config", () => ({ getConfig: async () =>
 const STREAM_NODE = 100;
 const EVENTS = `bull:${QUEUE_NAMES.RECIPE_IMPORT}:events`;
 
-let container: StartedRedisContainer;
-let redis: Redis;
+let container: StartedValkeyContainer;
+let valkey: Valkey;
 
 beforeAll(async () => {
-  container = await new RedisContainer(REDIS_IMAGE).start();
-  config.url = container.getConnectionUrl();
-  redis = new Redis(getBullConnectionOptions(config.url));
+  container = await new ValkeyContainer(VALKEY_IMAGE).start();
+  config.url = valkeyUrl(container);
+  valkey = new Valkey(getBullConnectionOptions(config.url));
 });
 
 afterAll(async () => {
   await closeAllQueues();
   await closeBullConnection();
-  redis?.disconnect();
+  valkey?.disconnect();
   await container?.stop();
 });
 
@@ -56,12 +56,12 @@ it("cuts a stream grown under BullMQ's default cap down to the cap at its next e
 
   for (let step = 0; step < 3 * EVENTS_MAX_LEN; step++) await job.updateProgress(step);
   await before.close();
-  expect(await redis.xlen(EVENTS)).toBeGreaterThan(2 * EVENTS_MAX_LEN);
+  expect(await valkey.xlen(EVENTS)).toBeGreaterThan(2 * EVENTS_MAX_LEN);
 
   await initializeQueues();
   // Booting writes the new cap to the queue's metadata; the next event trims to it.
   await expect
-    .poll(() => redis.hget(`bull:${QUEUE_NAMES.RECIPE_IMPORT}:meta`, "opts.maxLenEvents"))
+    .poll(() => valkey.hget(`bull:${QUEUE_NAMES.RECIPE_IMPORT}:meta`, "opts.maxLenEvents"))
     .toBe(String(EVENTS_MAX_LEN));
   await getQueues().recipeImport.add("import", {
     url: "https://example.com/recipe",
@@ -71,7 +71,7 @@ it("cuts a stream grown under BullMQ's default cap down to the cap at its next e
     householdUserIds: null,
   });
 
-  expect(await redis.xlen(EVENTS)).toBeLessThanOrEqual(EVENTS_MAX_LEN + STREAM_NODE);
+  expect(await valkey.xlen(EVENTS)).toBeLessThanOrEqual(EVENTS_MAX_LEN + STREAM_NODE);
 }, 60_000);
 
 it("keeps the stream at its cap however many progress writes a job makes", async () => {
@@ -85,5 +85,5 @@ it("keeps the stream at its cap however many progress writes a job makes", async
 
   for (let step = 0; step < 3 * EVENTS_MAX_LEN; step++) await job.updateProgress(step);
 
-  expect(await redis.xlen(EVENTS)).toBeLessThanOrEqual(EVENTS_MAX_LEN + STREAM_NODE);
+  expect(await valkey.xlen(EVENTS)).toBeLessThanOrEqual(EVENTS_MAX_LEN + STREAM_NODE);
 }, 60_000);

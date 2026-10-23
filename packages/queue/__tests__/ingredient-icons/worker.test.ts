@@ -22,7 +22,7 @@ const realtime = vi.hoisted(() => ({ publish: vi.fn(async () => undefined) }));
 
 vi.mock("@norish/shared-server/ingredients/icon-rounds", () => rounds);
 vi.mock("@norish/shared-server/realtime/ingredients", () => ({ ingredients: realtime }));
-vi.mock("@norish/queue/redis/bullmq", () => ({ getBullClient: vi.fn() }));
+vi.mock("@norish/queue/valkey/bullmq", () => ({ getBullClient: vi.fn() }));
 vi.mock("@norish/shared-server/logger", () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));

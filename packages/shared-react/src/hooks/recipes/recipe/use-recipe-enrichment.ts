@@ -219,7 +219,7 @@ export function createUseRecipeEnrichment({ useTRPC }: CreateRecipeHooksOptions)
                 return entry;
               }
 
-              // Run sequences are allocated atomically in Redis. A terminal
+              // Run sequences are allocated atomically in Valkey. A terminal
               // event from an older run may arrive after the next run queues;
               // never let it replace the newer cache entry or trigger feedback.
               if (

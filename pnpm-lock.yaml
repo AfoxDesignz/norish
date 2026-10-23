@@ -191,7 +191,7 @@ catalogs:
     '@testcontainers/postgresql':
       specifier: ^12.2.1
       version: 12.2.1
-    '@testcontainers/redis':
+    '@testcontainers/valkey':
       specifier: ^12.2.1
       version: 12.2.1
     '@types/archiver':
@@ -543,7 +543,7 @@ importers:
       '@testcontainers/postgresql':
         specifier: 'catalog:'
         version: 12.2.1(supports-color@10.2.2)
-      '@testcontainers/redis':
+      '@testcontainers/valkey':
         specifier: 'catalog:'
         version: 12.2.1(supports-color@10.2.2)
       '@testing-library/jest-dom':
@@ -791,7 +791,7 @@ importers:
       '@norish/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
-      '@testcontainers/redis':
+      '@testcontainers/valkey':
         specifier: 'catalog:'
         version: 12.2.1(supports-color@10.2.2)
       '@types/node':
@@ -1017,7 +1017,7 @@ importers:
       '@norish/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
-      '@testcontainers/redis':
+      '@testcontainers/valkey':
         specifier: 'catalog:'
         version: 12.2.1(supports-color@10.2.2)
       '@types/node':
@@ -1320,7 +1320,7 @@ importers:
       '@norish/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
-      '@testcontainers/redis':
+      '@testcontainers/valkey':
         specifier: 'catalog:'
         version: 12.2.1(supports-color@10.2.2)
       '@types/archiver':
@@ -3968,8 +3968,8 @@ packages:
   '@testcontainers/postgresql@12.2.1':
     resolution: {integrity: sha512-MIbI5KjZ9M4SY4+xzxg/w4ZLBeV+Jd6ognXoWn7dh/mhIhBbn7ss0MiZHNg2XbCbu03BW9YQ9+H9xW8PFkJWaA==}
 
-  '@testcontainers/redis@12.2.1':
-    resolution: {integrity: sha512-pF/HAs0LEsSfuQv++Wyp36S9cFNo8vfweddUOJQl/+wuAW1ThlupJLQv7L4PKkpqYGq+epRuaKhPrNKKnmbU3g==}
+  '@testcontainers/valkey@12.2.1':
+    resolution: {integrity: sha512-H6Bp9hFKUc987/0cNODGGApNnZuLBSfr4SY8DOnJ7pgIa+QCXPskwYRECk4luIvPwWBbyDeiwaRUYq4qUzO59Q==}
 
   '@testing-library/dom@10.4.2':
     resolution: {integrity: sha512-yzr2S9HyAIdhz2/6qHgbs665Q7PKVcDF05vsOlHPxG1mo36gKVesdYVeDLnXgfjJ03CrKRk08knc6+E/9m8v2Q==}
@@ -9220,7 +9220,7 @@ snapshots:
       - react-native-b4a
       - supports-color
 
-  '@testcontainers/redis@12.2.1(supports-color@10.2.2)':
+  '@testcontainers/valkey@12.2.1(supports-color@10.2.2)':
     dependencies:
       testcontainers: 12.2.1(supports-color@10.2.2)
     transitivePeerDependencies:

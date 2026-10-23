@@ -2,19 +2,19 @@
 /**
  * The real auth config through Better Auth's HTTP handler: OIDC sign-in
  * against a fake identity provider that signs RS256 ID tokens, sign-out, API
- * keys, account deletion and rate limits, with a real Redis for state, sessions
+ * keys, account deletion and rate limits, with a real Valkey for state, sessions
  * and counters. Better Auth's memory adapter stands in for Postgres, so the
  * encrypted-email adapter runs as shipped.
  */
-import type { StartedRedisContainer } from "@testcontainers/redis";
-import { RedisContainer } from "@testcontainers/redis";
-import Redis from "ioredis";
+import type { StartedValkeyContainer } from "@testcontainers/valkey";
+import { ValkeyContainer } from "@testcontainers/valkey";
+import Valkey from "ioredis";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getRedisConnectionOptions } from "@norish/shared-server/redis/client";
+import { getValkeyConnectionOptions } from "@norish/shared-server/valkey/client";
 
 import type { Identity } from "../helpers/identity-provider";
-import { REDIS_IMAGE } from "../../../shared-server/__tests__/helpers/redis";
+import { VALKEY_IMAGE, valkeyUrl } from "../../../shared-server/__tests__/helpers/valkey";
 import { createIdentityProvider, IDP_CLIENT_ID } from "../helpers/identity-provider";
 
 const { store, client, registration, serverConfig, admins } = vi.hoisted(() => ({
@@ -22,7 +22,7 @@ const { store, client, registration, serverConfig, admins } = vi.hoisted(() => (
     string,
     unknown[]
   >,
-  client: { redis: null as unknown },
+  client: { valkey: null as unknown },
   registration: { enabled: true },
   // What the sign-in page reads to offer a method.
   serverConfig: {} as Record<string, unknown>,
@@ -63,16 +63,16 @@ vi.mock("@norish/shared-server/logger", () => {
 
   return { authLogger: logger, trpcLogger: logger, createLogger: () => logger };
 });
-vi.mock("@norish/shared-server/redis/client", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@norish/shared-server/redis/client")>()),
-  getPublisherClient: async () => client.redis,
+vi.mock("@norish/shared-server/valkey/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@norish/shared-server/valkey/client")>()),
+  getPublisherClient: async () => client.valkey,
 }));
 
 const AUTH_URL = "http://localhost:3000";
 const CALLBACK = `${AUTH_URL}/api/auth/callback/oidc`;
 const idp = createIdentityProvider();
-let container: StartedRedisContainer;
-let redis: Redis;
+let container: StartedValkeyContainer;
+let valkey: Valkey;
 let issuer: string;
 
 type AuthModule = typeof import("@norish/auth/auth");
@@ -214,9 +214,9 @@ beforeAll(async () => {
   vi.stubEnv("AUTH_URL", AUTH_URL);
   vi.stubEnv("AUTH_RATE_LIMIT_ENABLED", "true");
   vi.stubEnv("TRUSTED_PROXIES", "10.0.0.0/24");
-  container = await new RedisContainer(REDIS_IMAGE).start();
-  redis = new Redis(getRedisConnectionOptions(container.getConnectionUrl()));
-  client.redis = redis;
+  container = await new ValkeyContainer(VALKEY_IMAGE).start();
+  valkey = new Valkey(getValkeyConnectionOptions(valkeyUrl(container)));
+  client.valkey = valkey;
   issuer = await idp.start();
   authModule = await importAuth();
 }, 60_000);
@@ -224,13 +224,13 @@ beforeAll(async () => {
 afterAll(async () => {
   vi.unstubAllEnvs();
   await idp.stop();
-  await redis?.quit();
+  await valkey?.quit();
   await container?.stop();
 });
 
 beforeEach(async () => {
   for (const rows of Object.values(store)) rows.length = 0;
-  await redis.flushall();
+  await valkey.flushall();
   registration.enabled = true;
   admins.clear();
   Object.assign(serverConfig, {

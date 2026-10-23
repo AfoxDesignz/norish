@@ -1,7 +1,7 @@
 /**
  * The policy-aware deduplication id of a URL import. The producer's
- * deduplication itself runs against a real Redis in
- * ../recipe-import/producer-redis.test.ts.
+ * deduplication itself runs against a real Valkey in
+ * ../recipe-import/producer-valkey.test.ts.
  */
 
 // @vitest-environment node

@@ -16,7 +16,7 @@ services:
       - norish_uploads:/app/uploads
     environment:
       DATABASE_URL: postgres://postgres:norish@db:5432/norish
-      REDIS_URL: redis://redis:6379
+      VALKEY_URL: valkey://valkey:6379
       AUTH_URL: http://localhost:3000
       # Include host LAN IP for mobile app access
       TRUSTED_ORIGINS: http://localhost:3000,http://192.168.*.*:3000,exp://,exp://**,exp://192.168.*.*:*/**
@@ -34,7 +34,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
       obscura:
         condition: service_started
@@ -66,15 +66,15 @@ services:
     environment:
       OBSCURA_CDP_TOKEN: test-obscura-token-0123456789abcdef0123456789abcdef
 
-  # Redis for real-time events
-  redis:
-    image: redis:8.10.1
-    container_name: norish-redis-test
+  # Valkey for real-time events
+  valkey:
+    image: valkey/valkey:9
+    container_name: norish-valkey-test
     restart: unless-stopped
     volumes:
-      - redis_data:/data
+      - valkey_data:/data
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: [ "CMD", "valkey-cli", "ping" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -82,4 +82,4 @@ services:
 volumes:
   db_data:
   norish_uploads:
-  redis_data:
+  valkey_data:

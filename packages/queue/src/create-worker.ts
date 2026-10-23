@@ -30,7 +30,7 @@ import { baseWorkerOptions, QUEUE_SETTINGS } from "./config";
 import { stopAtNextStepOnceCancelled } from "./job-steps";
 import { createModelLedgerProcessor } from "./model-ledger-processor";
 import { createContextAwareProcessor } from "./queue-operation-context";
-import { getBullClient } from "./redis/bullmq";
+import { getBullClient } from "./valkey/bullmq";
 
 const log = createLogger("worker");
 
@@ -91,7 +91,7 @@ export function createWorker<T>(
     } catch (err) {
       if (!signal?.aborted) throw err;
       if (signal.reason === SHUTDOWN) {
-        // With Redis unreachable the job stays active, and the next boot's
+        // With Valkey unreachable the job stays active, and the next boot's
         // stalled-job check puts it back.
         await job.moveToWait(token).catch((moveErr: unknown) => {
           log.warn(
@@ -185,7 +185,7 @@ export function cancelRunningJob(queueName: QueueName, jobId: string): boolean {
  * BullMQ record that it did. Then the workers are closed by force, and a job
  * still running stays active for the next boot's stalled-job check.
  * Always by force in the end: BullMQ's graceful close also waits for whatever
- * command its run loop has in flight, which after a Redis restart can sit on a
+ * command its run loop has in flight, which after a Valkey restart can sit on a
  * half-open socket until the socket timeout.
  */
 export async function closeWorkers(budgetMs: number): Promise<void> {

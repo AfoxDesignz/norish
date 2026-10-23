@@ -24,7 +24,7 @@ vi.mock("@norish/shared-server/logger", () => ({
   serverLogger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 vi.mock("@norish/shared-server/realtime/hub", () => ({ stopRealtimeHub: step("hub") }));
-vi.mock("@norish/shared-server/redis/client", () => ({ closeRedisConnections: step("redis") }));
+vi.mock("@norish/shared-server/valkey/client", () => ({ closeValkeyConnections: step("valkey") }));
 vi.mock("@norish/trpc/server", () => ({ stopTrpcWebSocket: step("websocket") }));
 
 afterEach(() => {
@@ -60,7 +60,7 @@ describe("registerShutdownHandlers", () => {
       "workers",
       "parser",
       "hub",
-      "redis",
+      "valkey",
     ]);
     expect(exit).toHaveBeenCalledWith(0);
   });

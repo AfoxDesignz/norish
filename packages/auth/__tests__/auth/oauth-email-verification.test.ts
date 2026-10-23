@@ -6,13 +6,13 @@ import { auth } from "@norish/auth/auth";
 import { setAuthProviderCache } from "@norish/auth/provider-cache";
 
 // The real auth config, with Better Auth's memory adapter standing in for Postgres
-// and a Map for Redis, so the encrypted-email adapter and the hooks run as shipped.
-const { store, redis } = vi.hoisted(() => ({
+// and a Map for Valkey, so the encrypted-email adapter and the hooks run as shipped.
+const { store, valkey } = vi.hoisted(() => ({
   store: { user: [], session: [], account: [], verification: [], apikey: [] } as Record<
     string,
     unknown[]
   >,
-  redis: new Map<string, string>(),
+  valkey: new Map<string, string>(),
 }));
 
 vi.mock("better-auth/adapters/drizzle", async () => {
@@ -37,12 +37,12 @@ vi.mock("@norish/auth/claim-processor", () => ({
 vi.mock("@norish/shared-server/logger", () => ({
   authLogger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
-vi.mock("@norish/shared-server/redis/client", () => ({
+vi.mock("@norish/shared-server/valkey/client", () => ({
   getPublisherClient: async () => ({
-    get: async (key: string) => redis.get(key) ?? null,
-    set: async (key: string, value: string) => redis.set(key, value),
-    setex: async (key: string, _ttl: number, value: string) => redis.set(key, value),
-    del: async (key: string) => redis.delete(key),
+    get: async (key: string) => valkey.get(key) ?? null,
+    set: async (key: string, value: string) => valkey.set(key, value),
+    setex: async (key: string, _ttl: number, value: string) => valkey.set(key, value),
+    del: async (key: string) => valkey.delete(key),
   }),
 }));
 
@@ -83,7 +83,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   for (const rows of Object.values(store)) rows.length = 0;
-  redis.clear();
+  valkey.clear();
 });
 
 describe("OAuth sign-in over encrypted emails", () => {

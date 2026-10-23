@@ -36,7 +36,7 @@ vi.mock("bullmq", () => ({
   Job: class MockJob {},
 }));
 
-vi.mock("@norish/queue/redis/bullmq", () => ({
+vi.mock("@norish/queue/valkey/bullmq", () => ({
   getBullClient: () => ({}),
 }));
 
@@ -99,7 +99,7 @@ describe("queue registry", () => {
 
     const [a, b] = await Promise.all([first.initializeQueues(), second.initializeQueues()]);
 
-    // Two live sets would mean two Redis connections and two dedup namespaces.
+    // Two live sets would mean two Valkey connections and two dedup namespaces.
     expect(a).toBe(b);
   });
 

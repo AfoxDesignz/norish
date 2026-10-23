@@ -15,7 +15,7 @@ import { REACHABILITY_DEADLINE_MS } from "./reachability";
 
 /**
  * The public readiness route (see `packages/trpc` config router): Live means
- * Postgres and Redis answer. A parser outage stops URL imports, not the app.
+ * Postgres and Valkey answer. A parser outage stops URL imports, not the app.
  */
 export const HEALTH_PROBE_PATH = "/api/v1/health/ready";
 

@@ -40,7 +40,7 @@ vi.mock("bullmq", async (importOriginal) => {
 
   return { ...actual, Worker: MockWorker };
 });
-vi.mock("@norish/queue/redis/bullmq", () => ({ getBullClient: vi.fn() }));
+vi.mock("@norish/queue/valkey/bullmq", () => ({ getBullClient: vi.fn() }));
 vi.mock("@norish/queue/scheduler/recurring-grocery-check", () => scheduler);
 vi.mock("@norish/queue/scheduler/old-calendar-cleanup", () => ({
   cleanupOldCalendarData: vi.fn(),

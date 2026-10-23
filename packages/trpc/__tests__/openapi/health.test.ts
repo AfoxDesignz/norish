@@ -10,7 +10,7 @@ const dbExecuteMock = vi.hoisted(() => vi.fn());
 const dbInsertValuesMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const dbInsertMock = vi.hoisted(() => vi.fn().mockReturnValue({ values: dbInsertValuesMock }));
 const getDatabaseHealthMock = vi.hoisted(() => vi.fn());
-const getRedisHealthMock = vi.hoisted(() => vi.fn());
+const getValkeyHealthMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@norish/auth/providers", () => ({
   getAvailableProviders: vi.fn().mockResolvedValue([]),
@@ -55,9 +55,9 @@ vi.mock("@norish/config/env-config-server", async (importOriginal) => {
   };
 });
 
-vi.mock("@norish/shared-server/redis/client", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@norish/shared-server/redis/client")>()),
-  getRedisHealth: getRedisHealthMock,
+vi.mock("@norish/shared-server/valkey/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@norish/shared-server/valkey/client")>()),
+  getValkeyHealth: getValkeyHealthMock,
 }));
 
 const getSessionMock = vi.hoisted(() => vi.fn());
@@ -137,8 +137,8 @@ describe("openapi liveness and readiness endpoints", () => {
     getSessionMock.mockResolvedValue(null);
     getDatabaseHealthMock.mockReset();
     getDatabaseHealthMock.mockResolvedValue({ status: "ok" });
-    getRedisHealthMock.mockReset();
-    getRedisHealthMock.mockResolvedValue({ status: "ok" });
+    getValkeyHealthMock.mockReset();
+    getValkeyHealthMock.mockResolvedValue({ status: "ok" });
   });
 
   afterEach(() => {
@@ -148,10 +148,10 @@ describe("openapi liveness and readiness endpoints", () => {
   const get = (path: string) => handleOpenApiRequest(new Request(`http://localhost/api/v1${path}`));
 
   describe("/health/live", () => {
-    it("answers 200 while the parser answers, Postgres and Redis down or not", async () => {
+    it("answers 200 while the parser answers, Postgres and Valkey down or not", async () => {
       parserAnswers(200);
       getDatabaseHealthMock.mockResolvedValue({ status: "error" });
-      getRedisHealthMock.mockResolvedValue({ status: "error" });
+      getValkeyHealthMock.mockResolvedValue({ status: "error" });
 
       const response = await get("/health/live");
 
@@ -161,7 +161,7 @@ describe("openapi liveness and readiness endpoints", () => {
         parser: { status: "ok", recipeScrapersVersion: "15.10.0" },
       });
       expect(getDatabaseHealthMock).not.toHaveBeenCalled();
-      expect(getRedisHealthMock).not.toHaveBeenCalled();
+      expect(getValkeyHealthMock).not.toHaveBeenCalled();
     });
 
     it("answers 503 when the parser does not answer", async () => {
@@ -186,12 +186,12 @@ describe("openapi liveness and readiness endpoints", () => {
       await expect(response.json()).resolves.toEqual({
         status: "ok",
         db: { status: "ok" },
-        redis: { status: "ok" },
+        valkey: { status: "ok" },
         parser: { status: "error", statusCode: 503 },
       });
     });
 
-    it("waits on a parser that never answers no longer than on Redis's ping", async () => {
+    it("waits on a parser that never answers no longer than on Valkey's ping", async () => {
       const timeout = vi
         .spyOn(AbortSignal, "timeout")
         .mockImplementation(() => AbortSignal.abort(new DOMException("timed out", "TimeoutError")));
@@ -231,15 +231,15 @@ describe("openapi liveness and readiness endpoints", () => {
       );
     });
 
-    it("answers 503 when Redis does not answer its ping", async () => {
+    it("answers 503 when Valkey does not answer its ping", async () => {
       parserAnswers(200);
-      getRedisHealthMock.mockResolvedValue({ status: "error" });
+      getValkeyHealthMock.mockResolvedValue({ status: "error" });
 
       const response = await get("/health/ready");
 
       expect(response.status).toBe(503);
       await expect(response.json()).resolves.toEqual(
-        expect.objectContaining({ message: "Redis is error" })
+        expect.objectContaining({ message: "Valkey is error" })
       );
     });
   });

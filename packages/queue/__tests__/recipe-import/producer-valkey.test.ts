@@ -1,21 +1,21 @@
 // @vitest-environment node
 /**
- * The recipe import producer against a real Redis: one import per URL while
+ * The recipe import producer against a real Valkey: one import per URL while
  * it is in flight, scoped by the view policy, and a new import once the first
  * has finished, whatever the job history keeps.
  */
-import type { StartedRedisContainer } from "@testcontainers/redis";
-import { RedisContainer } from "@testcontainers/redis";
+import type { StartedValkeyContainer } from "@testcontainers/valkey";
+import { ValkeyContainer } from "@testcontainers/valkey";
 import { Queue, Worker } from "bullmq";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { PermissionLevel } from "@norish/config/zod/server-config";
 import type { RecipeImportJobData } from "@norish/queue/contracts/job-types";
 
-import { REDIS_IMAGE } from "../../../shared-server/__tests__/helpers/redis";
+import { VALKEY_IMAGE, valkeyUrl } from "../../../shared-server/__tests__/helpers/valkey";
 import { QUEUE_NAMES } from "../../src/queue-names";
 import { addImportJob } from "../../src/recipe-import/producer";
-import { getBullConnectionOptions } from "../../src/redis/bullmq";
+import { getBullConnectionOptions } from "../../src/valkey/bullmq";
 
 const policy = vi.hoisted(() => ({ view: "everyone" as PermissionLevel }));
 const db = vi.hoisted(() => ({
@@ -31,13 +31,13 @@ vi.mock("@norish/shared-server/config/server-config-loader", () => ({
 }));
 vi.mock("@norish/db", () => db);
 
-let container: StartedRedisContainer;
+let container: StartedValkeyContainer;
 let queue: Queue<RecipeImportJobData>;
 
 beforeAll(async () => {
-  container = await new RedisContainer(REDIS_IMAGE).start();
+  container = await new ValkeyContainer(VALKEY_IMAGE).start();
   queue = new Queue(QUEUE_NAMES.RECIPE_IMPORT, {
-    connection: getBullConnectionOptions(container.getConnectionUrl()),
+    connection: getBullConnectionOptions(valkeyUrl(container)),
   });
 });
 
@@ -75,7 +75,7 @@ it("imports the URL again once the first import has finished, though its job is 
   await addImportJob(queue, importData());
 
   const worker = new Worker(QUEUE_NAMES.RECIPE_IMPORT, async () => {}, {
-    connection: getBullConnectionOptions(container.getConnectionUrl()),
+    connection: getBullConnectionOptions(valkeyUrl(container)),
   });
 
   await expect.poll(() => queue.getCompletedCount()).toBe(1);

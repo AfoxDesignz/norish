@@ -1,22 +1,22 @@
 /**
  * Realtime Hub
  *
- * One per process. Holds exactly one Redis subscriber connection, subscribes
+ * One per process. Holds exactly one Valkey subscriber connection, subscribes
  * to exact channels by refcount, and fans out in-process: server-internal
  * listeners register callbacks with `on()`, tRPC subscriptions iterate
  * `subscribe()` through a bounded queue. A subscriber that falls behind is
  * Lagged — its iterable ends with a `RealtimeLaggedError` — and the client's
  * one reaction is to refetch that domain and resubscribe (ADR-0032).
  *
- * Nothing else in the process talks to Redis pub/sub on the receiving side.
+ * Nothing else in the process talks to Valkey pub/sub on the receiving side.
  */
 
-import type Redis from "ioredis";
+import type Valkey from "ioredis";
 import superjson from "superjson";
 
 import type { RealtimeEventEnvelope } from "@norish/shared/contracts/realtime/envelope";
 import { createLogger } from "@norish/shared-server/logger";
-import { createSubscriberClient } from "@norish/shared-server/redis/client";
+import { createSubscriberClient } from "@norish/shared-server/valkey/client";
 import { isEventEnvelope } from "@norish/shared/contracts/realtime/envelope";
 
 const log = createLogger("realtime:hub");
@@ -32,7 +32,7 @@ export const HEARTBEAT_INTERVAL_MS = 15_000;
 
 export type RealtimeLaggedReason =
   | "queue-overflow"
-  | "redis-reconnect"
+  | "valkey-reconnect"
   | "cursor-invalid"
   | "cursor-expired"
   | "cursor-trimmed"
@@ -142,10 +142,10 @@ class QueueListener {
 interface ChannelState {
   handlers: Set<RealtimeHandler>;
   listeners: Set<QueueListener>;
-  /** Whether Redis currently holds a `SUBSCRIBE` for this channel. */
+  /** Whether Valkey currently holds a `SUBSCRIBE` for this channel. */
   subscribed: boolean;
   /**
-   * Every Redis-side operation for this channel runs through this chain, so
+   * Every Valkey-side operation for this channel runs through this chain, so
    * a fast resubscribe can never race an unsubscribe.
    */
   chain: Promise<void>;
@@ -156,8 +156,8 @@ function refcount(state: ChannelState): number {
   return state.handlers.size + state.listeners.size;
 }
 
-class RedisRealtimeHub implements RealtimeHub {
-  private subscriber: Redis | null = null;
+class ValkeyRealtimeHub implements RealtimeHub {
+  private subscriber: Valkey | null = null;
   private heartbeat: NodeJS.Timeout | null = null;
   private starting: Promise<void> | null = null;
   private readonly channels = new Map<string, ChannelState>();
@@ -290,7 +290,7 @@ class RedisRealtimeHub implements RealtimeHub {
 
     const ready = this.reconcile(channel);
 
-    // A subscription that fails to reach Redis surfaces on the first `next()`;
+    // A subscription that fails to reach Valkey surfaces on the first `next()`;
     // until then nobody awaits it, and an unhandled rejection is not the way
     // to report it.
     ready.catch(() => {});
@@ -386,7 +386,7 @@ class RedisRealtimeHub implements RealtimeHub {
   }
 
   /**
-   * Bring the Redis-side subscription in line with the channel's refcount.
+   * Bring the Valkey-side subscription in line with the channel's refcount.
    * Queued on the channel's chain, so the decision is made when the step runs,
    * not when it was scheduled: subscribe → abort → subscribe in one tick issues
    * a single `SUBSCRIBE` and no `UNSUBSCRIBE`.
@@ -483,7 +483,7 @@ class RedisRealtimeHub implements RealtimeHub {
 
     log.warn(
       { event: "realtime.reconnected", channels },
-      "Redis reconnected; ending live subscriptions"
+      "Valkey reconnected; ending live subscriptions"
     );
 
     // ioredis re-issues every SUBSCRIBE itself (`autoResubscribe`); the hub
@@ -495,7 +495,7 @@ class RedisRealtimeHub implements RealtimeHub {
       for (const listener of state.listeners) {
         const dropped = listener.queue.length;
 
-        listener.end(new RealtimeLaggedError(channel, "redis-reconnect", dropped));
+        listener.end(new RealtimeLaggedError(channel, "valkey-reconnect", dropped));
         this.dropped += dropped;
       }
 
@@ -516,11 +516,11 @@ class RedisRealtimeHub implements RealtimeHub {
 // `globalForRegistry` in packages/queue/src/registry.ts for why this module is
 // evaluated more than once per process.
 const globalForHub = globalThis as unknown as {
-  realtimeHub: RedisRealtimeHub | undefined;
+  realtimeHub: ValkeyRealtimeHub | undefined;
 };
 
-function hubInstance(): RedisRealtimeHub {
-  return (globalForHub.realtimeHub ??= new RedisRealtimeHub());
+function hubInstance(): ValkeyRealtimeHub {
+  return (globalForHub.realtimeHub ??= new ValkeyRealtimeHub());
 }
 
 export function getRealtimeHub(): RealtimeHub {

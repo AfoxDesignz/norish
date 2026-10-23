@@ -52,7 +52,7 @@ export async function deleteUserAccount(userId: string): Promise<void> {
   await sweepUserAvatars(userId);
   await deleteUser(userId);
 
-  // Sessions live in Redis, which the row's cascade never reaches.
+  // Sessions live in Valkey, which the row's cascade never reaches.
   await (await auth.$context).internalAdapter.deleteUserSessions(userId);
 
   // After the row is gone, so a client that reconnects on the invalidation

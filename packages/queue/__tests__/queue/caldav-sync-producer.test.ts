@@ -1,34 +1,34 @@
 // @vitest-environment node
 /**
- * The CalDAV sync producer against a real Redis, with an always-on worker
+ * The CalDAV sync producer against a real Valkey, with an always-on worker
  * recording what it syncs: a burst of edits to one planned item is one sync,
  * an edit during a running sync is synced right after it, and no edit is lost.
  */
-import type { StartedRedisContainer } from "@testcontainers/redis";
+import type { StartedValkeyContainer } from "@testcontainers/valkey";
 import type { Job } from "bullmq";
-import { RedisContainer } from "@testcontainers/redis";
+import { ValkeyContainer } from "@testcontainers/valkey";
 import { Queue } from "bullmq";
 import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
 
 import type { CaldavSyncJobData } from "@norish/queue/contracts/job-types";
 
-import { REDIS_IMAGE } from "../../../shared-server/__tests__/helpers/redis";
+import { VALKEY_IMAGE, valkeyUrl } from "../../../shared-server/__tests__/helpers/valkey";
 import { addCaldavSyncJob, isCaldavSyncPending } from "../../src/caldav-sync/producer";
 import { closeWorkers, createWorker } from "../../src/create-worker";
 import { QUEUE_NAMES } from "../../src/queue-names";
-import { closeBullConnection, getBullClient } from "../../src/redis/bullmq";
+import { closeBullConnection, getBullClient } from "../../src/valkey/bullmq";
 
 const config = vi.hoisted(() => ({ url: "" }));
 
 vi.mock("@norish/config/env-config-server", () => ({
   SERVER_CONFIG: {
-    get REDIS_URL() {
+    get VALKEY_URL() {
       return config.url;
     },
   },
 }));
 
-let container: StartedRedisContainer;
+let container: StartedValkeyContainer;
 let queue: Queue<CaldavSyncJobData>;
 /** What the worker synced, in order: item and title. */
 let synced: string[] = [];
@@ -37,8 +37,8 @@ let hold: { itemId: string; started: () => void; released: Promise<void> } | nul
 let release = () => {};
 
 beforeAll(async () => {
-  container = await new RedisContainer(REDIS_IMAGE).start();
-  config.url = container.getConnectionUrl();
+  container = await new ValkeyContainer(VALKEY_IMAGE).start();
+  config.url = valkeyUrl(container);
   queue = new Queue(QUEUE_NAMES.CALDAV_SYNC, { connection: getBullClient() });
 });
 

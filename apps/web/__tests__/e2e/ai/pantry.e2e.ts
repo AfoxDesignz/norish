@@ -6,7 +6,7 @@
  * it, adds a catalogue food and a typed one; puts a kept food on the list,
  * sees it marked, and ticks it off in the shop; stops keeping a food from its
  * Ingredient panel; and, adding a recipe, teaches the Pantry a staple with
- * We keep this. The real Norish server, database, Redis, tRPC and realtime
+ * We keep this. The real Norish server, database, Valkey, tRPC and realtime
  * are all in the path; nothing outbound is.
  */
 import type { Locator, Page } from "@playwright/test";

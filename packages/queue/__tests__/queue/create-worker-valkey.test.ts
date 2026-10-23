@@ -1,11 +1,11 @@
 // @vitest-environment node
 /**
- * A worker started through `createWorker`, against a real Redis reached
+ * A worker started through `createWorker`, against a real Valkey reached
  * through the production connection options: a producer adds a job, and the
  * test watches what becomes of it.
  */
-import type { StartedRedisContainer } from "@testcontainers/redis";
-import { RedisContainer } from "@testcontainers/redis";
+import type { StartedValkeyContainer } from "@testcontainers/valkey";
+import { ValkeyContainer } from "@testcontainers/valkey";
 import { Queue } from "bullmq";
 import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
 
@@ -15,7 +15,7 @@ import {
   runWithOperationContext,
 } from "@norish/shared-server/lib/operation-context";
 
-import { freezableProxy, REDIS_IMAGE } from "../../../shared-server/__tests__/helpers/redis";
+import { freezableProxy, VALKEY_IMAGE } from "../../../shared-server/__tests__/helpers/valkey";
 import {
   cancelRunningJob,
   closeWorkers,
@@ -26,14 +26,14 @@ import {
 import { readStepProgress, reportStep } from "../../src/job-steps";
 import { QUEUE_NAMES } from "../../src/queue-names";
 import { withJobOperationContext } from "../../src/queue-operation-context";
-import { closeBullConnection, getBullClient } from "../../src/redis/bullmq";
+import { closeBullConnection, getBullClient } from "../../src/valkey/bullmq";
 
 const config = vi.hoisted(() => ({ url: "" }));
 const logged = vi.hoisted(() => vi.fn());
 
 vi.mock("@norish/config/env-config-server", () => ({
   SERVER_CONFIG: {
-    get REDIS_URL() {
+    get VALKEY_URL() {
       return config.url;
     },
   },
@@ -51,12 +51,12 @@ vi.mock("@norish/shared-server/logger", () => ({
 
 const QUEUE = QUEUE_NAMES.RECIPE_IMPORT;
 
-let container: StartedRedisContainer;
+let container: StartedValkeyContainer;
 let proxy: ReturnType<typeof freezableProxy>;
 let queue: Queue;
 
 beforeAll(async () => {
-  container = await new RedisContainer(REDIS_IMAGE).start();
+  container = await new ValkeyContainer(VALKEY_IMAGE).start();
   proxy = freezableProxy({ host: container.getHost(), port: container.getPort() });
   config.url = await proxy.listen();
   queue = new Queue(QUEUE, { connection: getBullClient() });

@@ -72,7 +72,7 @@ async function main() {
 
   registerApiHandlersForQueue();
 
-  // The one Redis subscriber connection of this process; every internal
+  // The one Valkey subscriber connection of this process; every internal
   // listener and tRPC subscription registers on it.
   await startRealtimeHub();
   log.info("-".repeat(50));

@@ -32,7 +32,7 @@ import { QUEUE_NAMES } from "../queue-names";
 
 const log = createLogger("worker:image-generation");
 
-/** Exported so the job body can be exercised without a Redis-backed worker. */
+/** Exported so the job body can be exercised without a Valkey-backed worker. */
 export async function processImageGenerationJob(job: Job<RecipeEnrichmentJobData>): Promise<void> {
   await runEnrichmentJob(job, async (recipe) => {
     // Brief first: an image model is prompted rather than reasoned with, so

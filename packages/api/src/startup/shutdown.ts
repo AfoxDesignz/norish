@@ -3,7 +3,7 @@
  *
  * Manages coordinated shutdown of all server components with timeouts
  * to prevent zombie processes. Ensures resources are released in the
- * correct order: HTTP → WebSocket → internal listeners → workers → hub → Redis.
+ * correct order: HTTP → WebSocket → internal listeners → workers → hub → Valkey.
  */
 
 import type { Server } from "node:http";
@@ -13,7 +13,7 @@ import { stopRecipeEnrichmentListener } from "@norish/api/recipes/enrichment-lis
 import { stopWorkers } from "@norish/queue/start-workers";
 import { serverLogger as log } from "@norish/shared-server/logger";
 import { stopRealtimeHub } from "@norish/shared-server/realtime/hub";
-import { closeRedisConnections } from "@norish/shared-server/redis/client";
+import { closeValkeyConnections } from "@norish/shared-server/valkey/client";
 import { withTimeout } from "@norish/shared/lib/with-timeout";
 import { stopTrpcWebSocket } from "@norish/trpc/server";
 
@@ -74,7 +74,7 @@ let isShuttingDown = false;
  * 4. BullMQ workers - complete current jobs, close queues
  * 5. Extra shutdown tasks - stop embedded child processes or other runtime helpers
  * 6. Realtime hub - end every live subscription, quit the subscriber connection
- * 7. Redis connections - close after all consumers stopped
+ * 7. Valkey connections - close after all consumers stopped
  */
 async function performShutdown(
   server: Server,
@@ -135,9 +135,9 @@ async function performShutdown(
     // 7. Stop the realtime hub: every live subscription ends, the subscriber quits
     await runStep(stopRealtimeHub(), "Stop realtime hub");
 
-    // 8. Close Redis connections (after all consumers stopped)
-    await runStep(closeRedisConnections(), "Close Redis");
-    log.info("Redis connections closed");
+    // 8. Close Valkey connections (after all consumers stopped)
+    await runStep(closeValkeyConnections(), "Close Valkey");
+    log.info("Valkey connections closed");
 
     clearTimeout(forceExitTimeout);
     log.info("Graceful shutdown completed");

@@ -35,7 +35,7 @@ vi.mock("bullmq", async (importOriginal) => {
   return { ...actual, Worker: MockWorker };
 });
 vi.mock("@norish/db/repositories/store-products", () => ({ clearPendingLink }));
-vi.mock("@norish/queue/redis/bullmq", () => ({ getBullClient: vi.fn() }));
+vi.mock("@norish/queue/valkey/bullmq", () => ({ getBullClient: vi.fn() }));
 vi.mock("@norish/queue/store-lookup/lookup", () => lookup);
 
 const STORE = "11111111-1111-4111-8111-111111111111";

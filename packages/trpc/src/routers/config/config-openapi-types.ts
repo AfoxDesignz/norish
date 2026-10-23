@@ -20,6 +20,6 @@ export const liveResponseSchema = z.object({
 export const readyResponseSchema = z.object({
   status: z.literal("ok"),
   db: z.object({ status: z.literal("ok") }),
-  redis: z.object({ status: z.literal("ok") }),
+  valkey: z.object({ status: z.literal("ok") }),
   parser: reportedParserSchema,
 });

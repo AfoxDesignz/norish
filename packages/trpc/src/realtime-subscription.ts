@@ -8,7 +8,7 @@
  * `tracked()` envelopes only — plus a Cursor Mark first, so a subscription
  * that never saw an event is resumable too.
  *
- * Every way a subscription can fall out of order — a read Redis does not
+ * Every way a subscription can fall out of order — a read Valkey does not
  * answer included — ends it with `PRECONDITION_FAILED` / `REALTIME_LAGGED`;
  * the client refetches and resubscribes (ADR-0032, ADR-0034).
  */
@@ -104,7 +104,7 @@ export function realtimeSubscription<C extends RealtimeCatalogue, E extends Clie
       return new TRPCError({ code: "PRECONDITION_FAILED", message: REALTIME_LAGGED, cause: lag });
     };
 
-    // Read here, not in middleware: a lookup Redis does not answer ends Lagged too.
+    // Read here, not in middleware: a lookup Valkey does not answer ends Lagged too.
     // householdKey === userId when household-less: the household channel stays quiet.
     let householdKey: string;
 

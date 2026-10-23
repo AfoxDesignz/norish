@@ -240,8 +240,8 @@ const ServerConfigSchema = z.object({
   MAX_IMAGE_FILE_SIZE: z.coerce.number().default(10 * 1024 * 1024), // 10MB
   MAX_VIDEO_FILE_SIZE: z.coerce.number().default(100 * 1024 * 1024), // 100MB
 
-  // Redis Configuration
-  REDIS_URL: z.url().default("redis://localhost:6379"),
+  // Valkey connection (valkey:// or valkeys://). Required at runtime, like DATABASE_URL
+  VALKEY_URL: isBuild ? z.url().default("valkey://localhost:6379") : z.url(),
 
   // Internationalization
   // If invalid locale is specified, falls back to 'en'

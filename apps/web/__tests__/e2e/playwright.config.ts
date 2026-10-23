@@ -9,7 +9,7 @@ export default defineConfig({
   testDir: ".",
   timeout: 120_000,
   expect: { timeout: 15_000 },
-  // Each worker boots a whole stack (server, parser, Postgres, Redis) beside its
+  // Each worker boots a whole stack (server, parser, Postgres, Valkey) beside its
   // browser, so a worker costs two to three cores and over a gigabyte. On a
   // 10-core, 16 GB Mac, 5 and 8 workers overloaded it into timing reds, and 4
   // swapped out gigabytes per run: renderers crashed and Docker took longer
