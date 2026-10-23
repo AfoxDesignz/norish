@@ -176,16 +176,12 @@ export const RULES_TTL_MS = 10_000;
 
 let builtRules: { at: number; rules: Promise<ResolverRules> } | null = null;
 
-/**
- * The rules rung 2 reads a name by: the administrator's units map and
- * ingredient words, built at most once every few seconds, so an edit lands
- * almost at once and an upgrade's thousands of names don't rebuild them each.
- */
 /** Read the units map, the ingredient words and the junk pile afresh next time: one just changed. */
 export function forgetSpellingRules(): void {
   builtRules = null;
 }
 
+/** The rules rung 2 reads a name by, rebuilt at most every `RULES_TTL_MS` so an edit lands soon. */
 async function currentRules(): Promise<ResolverRules> {
   const now = Date.now();
 
@@ -407,13 +403,14 @@ function foodsByWords(
 }
 
 /**
- * The aliases spellings and, with `splitJoined`, their joined parts match, and the foods the words
- * name for each spelling not known whole. One query; mints nothing.
+ * The aliases spellings and, with `splitJoined`, their joined parts match (none of `exceptId`), and
+ * the foods the words name for each spelling not known whole. One query; mints nothing.
  */
 async function readByWords(
   asWritten: readonly Spelling[],
   rules: ResolverRules,
-  splitJoined: boolean
+  splitJoined: boolean,
+  exceptId?: string
 ) {
   const spellings = asWritten.filter((spelling) => !spellingNamesNoFood(spelling));
   const splits = new Map(
@@ -427,6 +424,9 @@ async function readByWords(
     ...spellings,
     ...[...splits.values()].flatMap((found) => found.readings.flat()),
   ]);
+
+  for (const [fold, row] of known) if (row.ingredientId === exceptId) known.delete(fold);
+
   const byWords = new Map(
     [...splits].flatMap(([spelling, found]) => {
       const foods = matchKnown(spelling, known) ? undefined : foodsByWords(found, known);
@@ -655,15 +655,7 @@ export async function readName(text: string): Promise<NameRead> {
     clean: cleanAlias(withJunk),
     parent: () => parentFromWords(spelling),
     parts: async (ownId) => {
-      const spelled = spelledParts(withJunk.clean, junkKept);
-
-      if (!spelled) return null;
-      const known = new Map(
-        [...(await knownAliases(spelled.readings.flat()))].filter(
-          ([, row]) => row.ingredientId !== ownId
-        )
-      );
-      const named = foodsByWords(spelled, known);
+      const named = (await readByWords([withJunk], junkKept, true, ownId)).byWords.get(withJunk);
 
       return named?.joined ? { parts: named.foods, joined: named.joined } : null;
     },
