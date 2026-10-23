@@ -44,7 +44,9 @@ as not currently available.
 
 ## Password
 
-Email and password sign-in is on when no other provider is set up.
+Email and password sign-in is on when no other provider is set up. Set `PASSWORD_AUTH_ENABLED` to
+turn it on or off yourself: Norish applies it at every start, over the setting in the admin settings.
+If no other way to sign in is left at start, Norish turns password sign-in back on.
 
 | Variable                | Description                     | Default |
 | ----------------------- | ------------------------------- | ------- |
