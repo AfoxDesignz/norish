@@ -364,6 +364,35 @@ describe("adding a sign-in method", () => {
   });
 });
 
+describe("choosing the account to add", () => {
+  const startAdd = async (provider: string, cookie: string) => {
+    const response = await authModule.auth.handler(
+      post("/link-social", { provider, callbackURL: "/settings" }, cookie)
+    );
+
+    return new URL(((await response.json()) as { url: string }).url);
+  };
+
+  it("makes the identity provider ask who signs in, but only when adding", async () => {
+    const { cookie } = await signUpWithPassword();
+
+    expect((await startAdd("oidc", cookie)).searchParams.get("prompt")).toBe(
+      "login select_account"
+    );
+
+    const { authorizationUrl } = await signInWithOIDC(ADA);
+
+    expect(authorizationUrl.searchParams.get("prompt")).toBeNull();
+  });
+
+  it("shows Google's and GitHub's account pickers when adding", async () => {
+    const { cookie } = await signUpWithPassword();
+
+    expect((await startAdd("google", cookie)).searchParams.get("prompt")).toBe("select_account");
+    expect((await startAdd("github", cookie)).searchParams.get("prompt")).toBe("select_account");
+  });
+});
+
 describe("adding a sign-in method twice at once", () => {
   it("keeps one identity per provider when two adds finish", async () => {
     const { cookie, userId } = await signUpWithPassword();

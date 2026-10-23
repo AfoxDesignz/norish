@@ -114,8 +114,28 @@ function decryptUser(user: any): any {
   };
 }
 
-// Never removing the last method the server still offers, from any client.
-const guardLastSignInMethod = createAuthMiddleware(async (ctx) => {
+// An add asks the provider who signs in rather than reusing its session. OIDC also re-asks
+// for credentials, for providers without a picker; Google and GitHub know only `select_account`.
+const ADD_PROMPT: Record<string, string> = {
+  oidc: "login select_account",
+  google: "select_account",
+  github: "select_account",
+};
+
+// For any client: an add picks its account, and removing never leaves no method the server offers.
+const guardSignInMethods = createAuthMiddleware(async (ctx) => {
+  if (ctx.path === "/link-social") {
+    const prompt = ADD_PROMPT[ctx.body?.provider];
+
+    return prompt
+      ? {
+          context: {
+            body: { ...ctx.body, additionalParams: { ...ctx.body.additionalParams, prompt } },
+          },
+        }
+      : undefined;
+  }
+
   if (ctx.path !== "/unlink-account") return;
 
   const session = await getSessionFromCtx(ctx);
@@ -491,7 +511,7 @@ function createBetterAuth() {
     ],
 
     hooks: {
-      before: guardLastSignInMethod,
+      before: guardSignInMethods,
       after: createAuthMiddleware(async (ctx) => {
         const returned = ctx.context.returned;
 
