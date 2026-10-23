@@ -229,26 +229,18 @@ export async function mergeCatalogueIngredients(
     .update(ingredientAliases)
     .set({ ingredientId: targetId, updatedAt: new Date() })
     .where(eq(ingredientAliases.ingredientId, sourceId));
-  // The target is what a person decided the food is: that settles its flag.
-  // A seeded source hands its Open Food Facts id on where the target has
-  // none, so the nightly seed keeps finding the food instead of minting it again;
-  // its own icon goes the same way.
+  // A person's merge settles the target's flag. A source hands on its Open Food Facts id
+  // and icon where the target has none, so the nightly seed keeps finding the food.
   const [gone] = await tx
     .delete(ingredients)
     .where(eq(ingredients.id, sourceId))
     .returning({ offId: ingredients.offId, icon: ingredients.icon });
 
-  await tx.execute(
-    keepFlag
-      ? sql`update ${ingredients} set version = version + 1,
-          off_id = coalesce(off_id, ${gone?.offId ?? null}),
-          icon = coalesce(icon, ${gone?.icon ?? null})
-        where id = ${targetId}`
-      : sql`update ${ingredients} set flagged = false, flag_reason = null, version = version + 1,
-          off_id = coalesce(off_id, ${gone?.offId ?? null}),
-          icon = coalesce(icon, ${gone?.icon ?? null})
-        where id = ${targetId}`
-  );
+  await tx.execute(sql`update ${ingredients} set version = version + 1,
+      ${keepFlag ? sql`` : sql`flagged = false, flag_reason = null,`}
+      off_id = coalesce(off_id, ${gone?.offId ?? null}),
+      icon = coalesce(icon, ${gone?.icon ?? null})
+    where id = ${targetId}`);
 
   return true;
 }
