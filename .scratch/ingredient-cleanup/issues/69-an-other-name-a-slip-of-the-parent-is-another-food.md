@@ -1,0 +1,11 @@
+# 69: An other name a slip from the parent is another food
+
+**What to build:** Found by ticket 31's run after tickets 51-53, 65, 67, 68 and ticket 60's round 2 (2026-10-23, HEAD 814c23937, `m68_post_on`). Ticket 68 compares AI's other names with its parent through `slipsNear`. For a specific broccoli, AI gave the parent "broccoli" and the other name "broccolini", and `slipsNear` finds "broccolini" within a slip of "broccoli". So the name counted as its parent, and both foods were merged into broccoli, sure. Last run both were own foods under broccoli (ticket 56's rule). The same check rightly merged "guajillo chile" into guajillo chili.
+
+On the copy: 2 foods, 4 recipe lines.
+
+To decide: does the slip check take only the plural shapes ticket 68 was about, or does an other name that is another known food never count as the parent?
+
+**Blocked by:** None
+
+**Status:** needs-triage
