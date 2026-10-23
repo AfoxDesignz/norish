@@ -35,3 +35,10 @@ Source over the whole refactor (`e931bfb99..4f5b23f32`, without tests and docs):
 ## Watch
 
 - `publish-script.test.ts` failed once during the refactor and did not reproduce. If it fails again, reproduce it with `--repeat-each` and fix the race.
+
+## Round 2 (2026-10-23)
+
+- `2a1976b0d` one `closesCycle(tx, id, parentId)` in `ingredient-relocation.ts` (the parent is the food, or sits under it) replaces the ancestor checks in `setParentIn`, `parentByAI`, `reverseChange` and `fileUnder`. The seed's in-memory check is renamed `closesCycleIn`.
+- `2c798a595` one `lockFoods(tx, ids)` in `ingredient-relocation.ts` (tree lock, then the rows, true where every distinct id is there) replaces the preamble in `lockForAI`, `lockAddedSpelling`, `setParentIn`, `deleteIngredient`, `splitFood`, `lockSpellingOn` and `mergeCatalogueIngredients`, which now refuses a merge into itself by its ids. `setParentIn`'s own self-parent check went, since `closesCycle` covers it.
+- `1fd513fb3` fix: `moveAlias` onto the spelling's own food is the no-op it was written as, not "not-found" (merge.test "leaves a spelling moved onto its own food where it is").
+- `359b5b9cb` `mergeCatalogueIngredients` writes its target in one update, the flag fragment conditional on `keepFlag`.
