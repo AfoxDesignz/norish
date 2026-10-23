@@ -18,3 +18,7 @@ A plural counts. The other name and the parent are compared with the slip matche
 ## Superseded (2026-10-23)
 
 Undone by ticket 69 (Mike): the slip matcher cannot tell a plural from another food a letter apart ("broccolini" for broccoli). `parentNamed` is fold equality again, the plural test, release-notes wording and ADR-0037 amendment are gone.
+
+## Later (2026-10-23)
+
+The plural now counts through ticket 63's comparison, which moved to `sameFood` (plural and diminutive endings, read whole), not the slip matcher. See ticket 63's "Changed".

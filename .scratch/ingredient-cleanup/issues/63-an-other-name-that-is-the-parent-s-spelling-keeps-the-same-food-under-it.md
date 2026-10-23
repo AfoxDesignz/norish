@@ -20,3 +20,9 @@ To decide: is an other name that is the parent's own spelling, with nothing in t
 - Compared as text, not by the lookup: an other name that is a plural of the parent ("guajillo chilies" for parent "guajillo chili") does not count.
 - Test: `review.test.ts` "merges guajillo peppers into guajillo chili, an other name AI gives being the parent it gives".
 - The release-notes line on ticket 56's rule and an ADR-0037 amendment say so.
+
+## Changed (2026-10-23)
+
+- In m70a/m70b guajillo stayed filed under guajillo chili: AI's other names were "guajillo chiles" (a slip, Decision 0.84) and "guajillo chile" (found exactly through Italian's i/e plural ending), never "guajillo chili" folded, and ticket 69 had taken out 68's slip check. Mike's earlier "a plural of the parent counts" now holds through the spelling keys rather than the slip matcher.
+- `parentNamed` uses `sameFood(name, parent, rules, true)` (`@norish/shared/lib/spelling-keys`) with the resolver's built rules (`currentRules`, now exported). `sameFood`/`foodKeys`/`foodKey` take a `whole` flag that keeps size and preparation words, as AI's names are looked up (ticket 50), so "sliced ham" is not ham and "petite potatoes" not potato. "guajillo chile" and "guajillo chiles" both count, through the Italian i/e ending; "broccolini" still does not.
+- Test: `review.test.ts` "merges guajillo peppers into guajillo chili, AI's other name guajillo chile being that parent in another inflection" (m70b's reading); `spelling-keys.test.ts` pins the `whole` flag. Release-notes sentence and ADR-0037 amendment updated.

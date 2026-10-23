@@ -18,3 +18,7 @@ Undo ticket 68: an other name counts as the parent only when it folds equal to i
 
 - `parentNamed` in `readThenLookUp` (`ingredient-resolution.ts`) compares other names to AI's parent by `foldName` equality only, as ticket 63 built it; the `slipsNear` import is gone.
 - Test: `review.test.ts` "files tenderstem broccoli under broccoli: its other name broccolini, a slip of broccoli, is not broccoli" replaces 68's guajillo chilies test (it merged before the fix). Release notes and ADR-0037 back to ticket 63's wording. Ticket 68 marked superseded.
+
+## Later (2026-10-23)
+
+Ticket 63's comparison moved from fold equality to `sameFood` read whole, so a plural or other inflection of the parent counts; "broccolini" still does not, and this ticket's test stays green. See ticket 63's "Changed".
