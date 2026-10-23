@@ -33,7 +33,7 @@ import { lineNamesNoFood } from "@norish/shared/lib/ingredient-text";
 import { ingredientAliasFold, withoutStrayMarks } from "@norish/shared/lib/spelling-keys";
 
 import type { ResolvedIngredient } from "../resolver";
-import { resolveAgain } from "../catalogue";
+import { resolveAgain } from "../resolve-again";
 import { readName } from "../resolver";
 import { oncePerVersion } from "./catalogue-seed";
 

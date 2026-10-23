@@ -12,7 +12,7 @@ import {
 } from "@norish/db/repositories/ingredient-seed";
 import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
-import { resolveAgain } from "../catalogue";
+import { resolveAgain } from "../resolve-again";
 import { readName } from "../resolver";
 import {
   oncePerVersion,

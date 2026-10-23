@@ -68,10 +68,10 @@ import {
   mayEditOwnedRow,
   moveToFoodNamedFor,
   refusedOn,
-  resolveAgain,
 } from "./catalogue";
 import { ingredientChanges } from "./changes";
 import { announceMinted } from "./minted";
+import { resolveAgain } from "./resolve-again";
 import { forgetSpellingRules } from "./resolver";
 
 /** Applying AI's answer: made, undone by a person before, decided by a person meanwhile, or a food gone. */
