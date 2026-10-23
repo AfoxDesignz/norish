@@ -138,6 +138,13 @@ const ServerConfigSchema = z.object({
     .pipe(z.boolean())
     .default(false),
 
+  // Unset: on when no OAuth provider is configured in the environment.
+  PASSWORD_AUTH_ENABLED: z
+    .string()
+    .transform((val) => val === "true" || val === "1")
+    .pipe(z.boolean())
+    .optional(),
+
   OIDC_NAME: z.string().default("Nora ID"),
   OIDC_ISSUER: z.string().optional(),
   OIDC_CLIENT_ID: z.string().optional(),

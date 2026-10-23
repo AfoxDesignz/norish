@@ -221,9 +221,16 @@ async function loadAuthProvidersIntoCache(): Promise<void> {
   const github = await getConfig<AuthProviderGitHub>(ServerConfigKeys.AUTH_PROVIDER_GITHUB, true);
   const google = await getConfig<AuthProviderGoogle>(ServerConfigKeys.AUTH_PROVIDER_GOOGLE, true);
   const oidc = await getConfig<AuthProviderOIDC>(ServerConfigKeys.AUTH_PROVIDER_OIDC, true);
-  const passwordEnabled = await getConfig<boolean>(ServerConfigKeys.PASSWORD_AUTH_ENABLED);
+  let passwordEnabled = (await getConfig<boolean>(ServerConfigKeys.PASSWORD_AUTH_ENABLED)) ?? false;
 
-  setAuthProviderCache({ github, google, oidc, passwordEnabled: passwordEnabled ?? false });
+  // The environment can take away the last provider; boot never leaves no way to sign in.
+  if (!github && !google && !oidc && !passwordEnabled) {
+    await setConfig(ServerConfigKeys.PASSWORD_AUTH_ENABLED, true, null, false);
+    passwordEnabled = true;
+    serverLogger.warn("No sign-in method was left, so password sign-in is on again");
+  }
+
+  setAuthProviderCache({ github, google, oidc, passwordEnabled });
 
   const configured = [
     github && "GitHub",
@@ -232,11 +239,7 @@ async function loadAuthProvidersIntoCache(): Promise<void> {
     passwordEnabled && "Password",
   ].filter(Boolean);
 
-  if (configured.length > 0) {
-    serverLogger.info({ providers: configured }, "Auth providers loaded");
-  } else {
-    serverLogger.warn("No auth providers configured - users will not be able to log in");
-  }
+  serverLogger.info({ providers: configured }, "Auth providers loaded");
 }
 
 /**
@@ -280,6 +283,18 @@ async function importEnvAuthProvidersIfMissing(): Promise<void> {
   await syncOIDCProvider();
   await syncGitHubProvider();
   await syncGoogleProvider();
+  await syncPasswordAuth();
+}
+
+/** PASSWORD_AUTH_ENABLED, when set, decides password sign-in at every boot. */
+async function syncPasswordAuth(): Promise<void> {
+  const env = SERVER_CONFIG.PASSWORD_AUTH_ENABLED;
+
+  if (env === undefined) return;
+  if ((await getConfig<boolean>(ServerConfigKeys.PASSWORD_AUTH_ENABLED)) === env) return;
+
+  await setConfig(ServerConfigKeys.PASSWORD_AUTH_ENABLED, env, null, false);
+  serverLogger.info({ enabled: env }, "Password sign-in set from PASSWORD_AUTH_ENABLED");
 }
 
 /**
