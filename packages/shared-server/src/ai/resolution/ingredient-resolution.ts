@@ -162,7 +162,8 @@ async function readThenLookUp(
   if (found.food && ((food.englishName && found.byFirstName) || parentNamed)) {
     return same(found.food.ingredientId);
   }
-  const parent = await parentOf(food, { excludeId, filedUnder, trace }, !found.food);
+  const category = found.food ? null : food.category;
+  const parent = await parentOf(food.parent, category, { excludeId, filedUnder, trace });
 
   // A food only AI's other names (or a slip) find is never the parent AI gave: filed under it.
   if (found.food && parent?.id !== found.food.ingredientId) return same(found.food.ingredientId);
@@ -178,13 +179,13 @@ async function readThenLookUp(
 }
 
 /**
- * The parent AI named, found, else (`orCategory`) its category; null where AI named neither. AI's
- * parent as the last words of the parent the food has ("pepper" for "red bell pepper") is it.
+ * The parent AI named, found, else the category; null where neither is named. AI's parent as the
+ * last words of the parent the food has ("pepper" for "red bell pepper") is it.
  */
 async function parentOf(
-  { parent, category }: ReadFood,
-  { excludeId, filedUnder, trace }: AskOptions,
-  orCategory: boolean
+  parent: string | null,
+  category: string | null,
+  { excludeId, filedUnder, trace }: AskOptions
 ): Promise<{ id: string | null; sure: boolean } | null> {
   if (parent && filedUnder && ` ${foldName(filedUnder.name)}`.endsWith(` ${foldName(parent)}`)) {
     return { id: filedUnder.id, sure: true };
@@ -192,9 +193,7 @@ async function parentOf(
 
   const found = parent ? await findByName(parent, excludeId, trace) : null;
   const filed =
-    found?.food || !orCategory || !category
-      ? found
-      : await findByName(category, excludeId, trace, "seeded");
+    found?.food || !category ? found : await findByName(category, excludeId, trace, "seeded");
 
   return filed && { id: filed.food?.ingredientId ?? null, sure: filed.sure };
 }
