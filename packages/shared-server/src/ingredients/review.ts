@@ -16,7 +16,7 @@ import { noTrace } from "@norish/shared/contracts/ingredient-catalogue";
 import { distinctFoods } from "@norish/shared/lib/line-foods";
 
 import type { AIResolution } from "../ai/resolution/ingredient-resolution";
-import { askWhatFoodThisIs } from "../ai/resolution/ingredient-resolution";
+import { askWhatFoodThisIs, findFoodNamed } from "../ai/resolution/ingredient-resolution";
 import {
   deleteByAI,
   flagByAnswer,
@@ -72,7 +72,11 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
   }
 
   const { sure } = answer;
-  const parent = answer.parentId ? await findCatalogueIngredient(answer.parentId) : null;
+  // A parent merged away while AI read is found again by its name: the merge moved its spellings.
+  const parent =
+    answer.parent &&
+    ((await findCatalogueIngredient(answer.parent.id)) ??
+      (await foundAgain(answer.parent.name, ingredientId)));
   // No parent from AI drops the current one; a person's parent is never asked.
   const { outcome: filed, previous } =
     parent || row.parentId
@@ -95,6 +99,12 @@ export async function askAIAbout(ingredientId: string): Promise<ReviewOutcome> {
   return sure
     ? { outcome: "distinct", ...trace }
     : { outcome: "unsure", reason: "ai-unsure", ...trace };
+}
+
+async function foundAgain(name: string, excludeId: string) {
+  const named = await findFoodNamed(name, excludeId);
+
+  return named.kind === "found" ? await findCatalogueIngredient(named.food.ingredientId) : null;
 }
 
 /**

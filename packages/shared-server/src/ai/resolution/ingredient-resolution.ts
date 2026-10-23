@@ -46,7 +46,7 @@ const SHOWN_ALIASES = 5;
  */
 export type AIResolution =
   | { kind: "same"; ingredientId: string; sure: boolean }
-  | { kind: "own"; parentId: string | null; sure: boolean }
+  | { kind: "own"; parent: { id: string; name: string } | null; sure: boolean }
   | { kind: "several"; parts: ReadPart[]; joined: LineJoin; sure: boolean }
   | { kind: "not-a-food"; sure: boolean; tool: boolean }
   | { kind: "unanswered"; reason: UnansweredReason };
@@ -162,14 +162,16 @@ async function readThenLookUp(
   const parent = await parentOf(food.parent, category, { excludeId, filedUnder, trace });
 
   // A food only AI's other names (or a slip) find is never the parent AI gave: filed under it.
-  if (found.food && parent?.id !== found.food.ingredientId) return same(found.food.ingredientId);
+  if (found.food && parent?.food?.id !== found.food.ingredientId) {
+    return same(found.food.ingredientId);
+  }
 
   // A parent or category AI named that the catalogue lacks keeps the parent AI gave the food.
-  const keptByAI = parent && filedUnder?.byAI ? filedUnder.id : null;
+  const keptByAI = parent && filedUnder?.byAI ? filedUnder : null;
 
   return {
     kind: "own",
-    parentId: parent?.id ?? keptByAI,
+    parent: parent?.food ?? keptByAI,
     sure: reading.sure && found.sure && (parent?.sure ?? true),
   };
 }
@@ -182,16 +184,20 @@ async function parentOf(
   parent: string | null,
   category: string | null,
   { excludeId, filedUnder, trace }: AskOptions
-): Promise<{ id: string | null; sure: boolean } | null> {
+): Promise<{ food: { id: string; name: string } | null; sure: boolean } | null> {
   if (parent && filedUnder && ` ${foldName(filedUnder.name)}`.endsWith(` ${foldName(parent)}`)) {
-    return { id: filedUnder.id, sure: true };
+    return { food: filedUnder, sure: true };
   }
 
   const found = parent ? await findByName(parent, excludeId, trace) : null;
-  const filed =
-    found?.food || !category ? found : await findByName(category, excludeId, trace, "seeded");
 
-  return filed && { id: filed.food?.ingredientId ?? null, sure: filed.sure };
+  if (parent && found && (found.food || !category)) {
+    return { food: found.food && { id: found.food.ingredientId, name: parent }, sure: found.sure };
+  }
+  if (!category) return null;
+  const filed = await findByName(category, excludeId, trace, "seeded");
+
+  return { food: filed.food && { id: filed.food.ingredientId, name: category }, sure: filed.sure };
 }
 
 /**

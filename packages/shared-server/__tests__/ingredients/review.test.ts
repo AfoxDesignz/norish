@@ -582,6 +582,32 @@ describe("asking AI about an Ingredient", () => {
       expect(await changes()).toEqual([]);
     });
 
+    it("finds the parent AI names again when a merge took it away while AI was reading", async () => {
+      await applyIngredientSeed([seedEntry("en:beef-steak", "beef steak")]);
+      const steak = (await findIngredientFor("beef steak"))!;
+      const biefstuk = await kept("biefstuk");
+      const puntjes = await flagged("biefstukpuntjes");
+
+      await getTestDb()
+        .update(ingredients)
+        .set({ parentId: biefstuk.ingredientId })
+        .where(eq(ingredients.id, puntjes.ingredientId));
+      vi.mocked(generateStructured).mockImplementationOnce((async () => {
+        await withTransaction((tx) =>
+          mergeCatalogueIngredients(tx, biefstuk.ingredientId, steak.ingredientId)
+        );
+
+        return foodReading({ englishName: "beef tips", parent: "biefstuk", sure: true });
+      }) as never);
+
+      await expect(askAIAbout(puntjes.ingredientId)).resolves.toMatchObject({
+        outcome: "parent",
+        of: "beef steak",
+        sure: true,
+      });
+      await expect(parentOf(puntjes.ingredientId)).resolves.toBe(steak.ingredientId);
+    });
+
     it("moves it to the plain food AI names when the catalogue has that food", async () => {
       const { food } = await under("spice", "chinese 5 spice");
       const mixed = await kept("mixed spices");
