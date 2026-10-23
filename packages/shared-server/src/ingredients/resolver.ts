@@ -31,6 +31,7 @@ import {
   joinedParts,
   spellingKeys,
   spellingRules,
+  wholeSpellingKeys,
 } from "@norish/shared/lib/spelling-keys";
 
 import { announceMinted, announcingAfter } from "./minted";
@@ -128,15 +129,9 @@ function withoutJunkPieces(text: string, rules: ResolverRules): string {
     .join(" ");
 }
 
-/**
- * A text read on its pieces not on the junk pile: "boneless, skinless chicken" is "skinless chicken".
- * `whole` reads it with no size or preparation word stripped ("petite potatoes" is not "potatoes").
- */
-function spellingOf(text: string, rules: ResolverRules, whole = false): Spelling {
-  const found = spellingKeys(withoutJunkPieces(text, rules), rules);
-  const keys = whole
-    ? { ...found, plain: found.bare, plainFold: found.bareFold || found.fold }
-    : found;
+/** A text read on its pieces not on the junk pile: "boneless, skinless chicken" is "skinless chicken". */
+function spellingOf(text: string, rules: ResolverRules, keysOf = spellingKeys): Spelling {
+  const keys = keysOf(withoutJunkPieces(text, rules), rules);
   const key = keys.plainFold || keys.fold;
 
   return { text, ...keys, key, inflected: inflectedReadings(key, rules, true), rules };
@@ -738,7 +733,7 @@ export async function findFood(
   { except, among }: { except: string; among: "listed" | "seeded" }
 ): Promise<FoundFood[][]> {
   const rules = await currentRules();
-  const spellings = names.map((name) => spellingOf(cleanIngredientText(name), rules, true));
+  const spellings = names.map((n) => spellingOf(cleanIngredientText(n), rules, wholeSpellingKeys));
   const { matched, other } = await otherFoodsSpelled(except, spellings, among);
   const slipped = await findSlips(
     [...matched].flatMap(([spelling, match]) => (match ? [] : [spelling])),

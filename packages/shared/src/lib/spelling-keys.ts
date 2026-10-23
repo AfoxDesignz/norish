@@ -521,11 +521,16 @@ export function foodKey(
   return keys.plainFold || keys.fold;
 }
 
+/** `spellingKeys` with the size and preparation words kept: "petite potatoes" is not "potatoes". */
+export function wholeSpellingKeys(text: string, rules = BASE_SPELLING_RULES): SpellingKeys {
+  const keys = spellingKeys(text, rules);
+
+  return { ...keys, plain: keys.bare, plainFold: keys.bareFold || keys.fold };
+}
+
 /** `foodKey` with the size and preparation words kept, as AI's names are read: "sliced ham" stays. */
 export function wholeFoodKey(text: string | null | undefined, rules = BASE_SPELLING_RULES): string {
-  const keys = text?.trim() ? spellingKeys(text, rules) : null;
-
-  return keys ? keys.bareFold || keys.fold : "";
+  return text?.trim() ? wholeSpellingKeys(text, rules).plainFold : "";
 }
 
 /** A name split at the words that join foods in it. */
