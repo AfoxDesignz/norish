@@ -11,3 +11,7 @@ On the copy: 3 foods. Ticket 27 keeps a parent the food shares; here AI names th
 **Blocked by:** None
 
 **Status:** needs-triage
+
+## Decided (Mike, 2026-10-23)
+
+"build all except 66". When AI names a parent or a category and the lookup finds nothing, the food keeps the parent it has instead of losing it. A null parent and null category from AI still remove it. The bouillon cube under mixed spices is left.

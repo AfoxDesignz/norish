@@ -9,3 +9,7 @@ To decide: does a parent AI gives that names a food of another kind (a spice for
 **Blocked by:** None
 
 **Status:** needs-triage
+
+## Decided (Mike, 2026-10-23)
+
+"build all except 66". Specific before general: on 0.25 the food was under red bell pepper, and AI swapped that for "pepper". When the parent AI gives is the last word (or words) of the current parent's name, the food keeps the current, more specific parent. No extra AI call.

@@ -8,3 +8,7 @@
 **Blocked by:** None
 
 **Status:** needs-triage
+
+## Decided (Mike, 2026-10-23)
+
+"build all except 66". The spelling check skips the spellings an AI Change moved onto a food in the same first start (AI already judged them). For the rest it shows AI one recipe line that uses the spelling, so a comma fragment is judged with the line it came from.

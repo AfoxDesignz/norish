@@ -10,3 +10,7 @@ Ticket 21's seed corrections (`SPELLING_MOVES`) can move both; whether to is Mik
 **Blocked by:** None
 
 **Status:** needs-triage
+
+## Decided (Mike, 2026-10-23)
+
+"build all except 66". Seed corrections fix both: French "steak" moves from patty to beef steak; English "chicken drumstick" leaves chicken thigh (no seeded drumstick food exists, so AI makes its own drumstick food). Same mechanism as en:yam → en:jam, SEED_CORRECTIONS_VERSION bumped.
