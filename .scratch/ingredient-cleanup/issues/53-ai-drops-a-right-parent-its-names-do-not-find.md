@@ -10,8 +10,15 @@ On the copy: 3 foods. Ticket 27 keeps a parent the food shares; here AI names th
 
 **Blocked by:** None
 
-**Status:** needs-triage
+**Status:** done
 
 ## Decided (Mike, 2026-10-23)
 
 "build all except 66". When AI names a parent or a category and the lookup finds nothing, the food keeps the parent it has instead of losing it. A null parent and null category from AI still remove it. The bouillon cube under mixed spices is left.
+
+## Implemented (2026-10-23)
+
+- `readThenLookUp` returns the current parent (`filedUnder.id`) as the "own" answer's `parentId` when AI named a parent or a category and neither lookup found a food; with no parent and no category it is null, so `askAIAbout` still drops the parent. One rule with ticket 65, said in `readThenLookUp`'s doc comment: the current parent stays where AI names it in fewer words or names something the catalogue lacks.
+- A kept parent goes through `parentByAI` with the same id: no change recorded, outcome "parent", the flag follows AI's sureness.
+- Tests (`review.test.ts`): "keeps the parent when the catalogue lacks the parent AI names" (mager kipgehakt, "chicken mince") and "keeps the parent when the catalogue lacks the category AI names" (unflavoured protein, "protein powder"), which replaces "drops the parent when the catalogue lacks the category too". "drops the parent, listed on Changed by AI to undo" now reads parent null instead of "spread". Release-notes line and ADR-0037 amendment.
+- For Mike: this also keeps a wrong parent from the words where AI names an unfound parent: "peanut butter" under butter with AI's parent "spread" (not in the catalogue) now stays under butter; before, ticket 23 dropped it. Only a reading with neither parent nor category drops a parent now.

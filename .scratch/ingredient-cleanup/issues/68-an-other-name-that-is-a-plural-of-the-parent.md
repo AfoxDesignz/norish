@@ -4,8 +4,13 @@
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** done
 
 ## Decided (Mike, 2026-10-23)
 
 A plural counts. The other name and the parent are compared with the slip matcher (`name-slips.ts`) the lookup already uses, not a plural rule of its own. Checked on 2026-10-23: it takes "guajillo chilies", "onions", "tomatoes" and "red bell peppers", and misses short or irregular ones ("eggs", "chilies", "bay leaves", "cherries"); those stay as ticket 63 has them.
+
+## Implemented (2026-10-23)
+
+- `parentNamed` in `readThenLookUp` takes an other name that folds equal to AI's parent or that `slipsNear` (`@norish/shared/lib/name-slips`) finds within a slip of it. The exact fold check stays because `slipsNear` returns nothing under five letters.
+- Test: `review.test.ts` "merges a food into the parent AI gives when an other name is that parent's plural" (guajillo chilies). Ticket 63's release-notes sentence names the plural; ADR-0037 amendment.
