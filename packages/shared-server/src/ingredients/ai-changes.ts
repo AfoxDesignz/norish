@@ -41,7 +41,7 @@ import {
   findCatalogueAliasOwner,
   isAskableByAI,
   keepIngredientDistinct,
-  settleIngredientName,
+  renameToPlainName,
 } from "@norish/db/repositories/ingredient-catalogue";
 import { findRowsNamingSpellings } from "@norish/db/repositories/ingredient-cleanup";
 import { addToJunkPile, takeOffJunkPile } from "@norish/db/repositories/ingredient-junk-pile";
@@ -60,7 +60,6 @@ import {
 } from "@norish/db/repositories/ingredient-relocation";
 import { getIngredientPermissionPolicy } from "@norish/shared-server/config/server-config-loader";
 import { distinctFoods } from "@norish/shared/lib/line-foods";
-import { ingredientAliasFold } from "@norish/shared/lib/spelling-keys";
 
 import type { CatalogueActor, CatalogueEdit } from "./catalogue";
 import {
@@ -166,10 +165,8 @@ export async function parentByAI(ingredientId: string, parentId: string | null, 
 /** Rename a food to its Plain Name, which settles it; false where it was settled or taken meanwhile. */
 export async function renameByAI(ingredientId: string, formerName: string, name: string) {
   const renamed = await withTransaction(async (tx) => {
-    const plain = { text: name, fold: ingredientAliasFold(name) };
-
     if (await lockForAI(tx, [ingredientId])) return false;
-    if (!(await settleIngredientName(ingredientId, plain, tx))) return false;
+    if (!(await renameToPlainName(tx, ingredientId, name))) return false;
     await recordAIChange(tx, {
       ingredientId,
       sure: true,

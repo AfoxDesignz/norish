@@ -775,46 +775,34 @@ export function nameIsFree(ingredientId: string, name: string): SQL {
   return sql`not exists (select 1 from ${ingredients} o where o.id <> ${ingredientId} and lower(o.name) = lower(${name}))`;
 }
 
+/** Settle an Ingredient's name unless it is settled already; whether it was. */
+export async function settleIngredientName(id: string): Promise<boolean> {
+  const settled = await db
+    .update(ingredients)
+    .set({ nameSettled: true, version: sql`${ingredients.version} + 1` })
+    .where(and(eq(ingredients.id, id), eq(ingredients.nameSettled, false)))
+    .returning({ id: ingredients.id });
+
+  return settled.length > 0;
+}
+
 /**
- * Settle an Ingredient's name, under `plain` where one is given: the name
- * becomes a spelling too, as a person's rename's does, while the flag stays
- * as it was, since a tidier name says nothing about whether the food is a
- * duplicate. Only while the name is not settled yet, so a person's rename in
- * the meantime is the last word; a name another Ingredient took meanwhile
- * leaves it as it was. Whether it was settled.
+ * Rename an unsettled Ingredient to its Plain Name, settled and added as a spelling, unless another
+ * Ingredient took the name; the flag stays as it was. Whether it was renamed.
  */
-export async function settleIngredientName(
-  id: string,
-  plain?: { text: string; fold: string },
-  /** The transaction to write through, where the caller records the rename beside it. */
-  tx?: DbTransaction
-): Promise<boolean> {
-  const settle = async (write: DbTransaction) => {
-    const [row] = await write
-      .update(ingredients)
-      .set({
-        nameSettled: true,
-        ...(plain ? { name: plain.text } : {}),
-        version: sql`${ingredients.version} + 1`,
-      })
-      .where(
-        and(
-          eq(ingredients.id, id),
-          eq(ingredients.nameSettled, false),
-          ...(plain ? [nameIsFree(id, plain.text)] : [])
-        )
-      )
-      .returning({ id: ingredients.id });
+export async function renameToPlainName(tx: DbTransaction, id: string, name: string) {
+  const [row] = await tx
+    .update(ingredients)
+    .set({ name, nameSettled: true, version: sql`${ingredients.version} + 1` })
+    .where(and(eq(ingredients.id, id), eq(ingredients.nameSettled, false), nameIsFree(id, name)))
+    .returning({ id: ingredients.id });
 
-    if (row && plain) {
-      await write
-        .insert(ingredientAliases)
-        .values({ text: plain.text, fold: plain.fold, ingredientId: id, ownerId: null })
-        .onConflictDoNothing();
-    }
+  if (row) {
+    await tx
+      .insert(ingredientAliases)
+      .values({ text: name, fold: ingredientAliasFold(name), ingredientId: id, ownerId: null })
+      .onConflictDoNothing();
+  }
 
-    return row !== undefined;
-  };
-
-  return tx ? await settle(tx) : await db.transaction(settle);
+  return row !== undefined;
 }

@@ -25,6 +25,7 @@ import {
   deleteCatalogueAlias,
   ingredientIsListed,
   ingredientIsNamed,
+  nameIsFree,
 } from "./ingredient-catalogue";
 import { findRowsNamingSpellings } from "./ingredient-cleanup";
 import { closesCycle, lockFoods, lockTree, moveCatalogueAlias } from "./ingredient-relocation";
@@ -641,7 +642,7 @@ export async function adoptPlainName(
           eq(ingredients.flagged, true),
           eq(ingredients.parentChosen, false),
           eq(ingredients.nameSettled, false),
-          sql`not exists (select 1 from ${ingredients} o where o.id <> ${id} and lower(o.name) = lower(${plain.text}))`
+          nameIsFree(id, plain.text)
         )
       );
   });
