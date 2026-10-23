@@ -30,8 +30,9 @@ Norish never links accounts on its own. Signing in with a provider whose email a
 another account is refused with "This email is already in use."
 
 When the server offers more than one sign-in method, you can add another under **Settings => User
-=> Sign-in methods**. Press **Add** next to the provider and sign in there; you come back to
-Settings with the method listed, and from then on either one signs you in to the same account. The
+=> Sign-in methods**. Press **Add** next to the provider and sign in there with the account you want
+to add; the provider asks even when you are already signed in to it. You come back to Settings with
+the method listed, and from then on either one signs you in to the same account. The
 provider's email doesn't have to match the one Norish has. Adding OIDC applies its claims at once,
 as your next OIDC sign-in would.
 
